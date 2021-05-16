@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OpsColors</class>
+ <widget class="QWidget" name="OpsColors">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>568</width>
+    <height>377</height>
+   </rect>
+  </property>
+  <layout class="QHBoxLayout">
+   <property name="spacing">
+    <number>5</number>
+   </property>
+   <property name="leftMargin">
+    <number>5</number>
+   </property>
+   <property name="topMargin">
+    <number>5</number>
+   </property>
+   <property name="rightMargin">
+    <number>5</number>
+   </property>
+   <property name="bottomMargin">
+    <number>5</number>
+   </property>
+   <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Current Scheme Colors</string>
+     </property>
+     <layout class="QVBoxLayout">
+      <property name="spacing">
+       <number>5</number>
+      </property>
+      <property name="leftMargin">
+       <number>5</number>
+      </property>
+      <property name="topMargin">
+       <number>5</number>
+      </property>
+      <property name="rightMargin">
+       <number>5</number>
+      </property>
+      <property name="bottomMargin">
+       <number>5</number>
+      </property>
+      <item>
+       <widget class="QListWidget" name="ColorPalette">
+        <property name="toolTip">
+         <string>Current color settings</string>
+        </property>
+        <property name="whatsThis">
+         <string>The list of all customizable colors in the program.  Next to each item is a square showing the color it is currently set to.  Click on any item to change its color.</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout">
+        <property name="spacing">
+         <number>3</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="textLabel1_2">
+          <property name="text">
+           <string>InfoBox BG mode:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="kcfg_BoxBGMode">
+          <item>
+           <property name="text">
+            <string>No Fill</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Transparent</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>Opaque</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="textLabel1">
+          <property name="text">
+           <string>Star color mode:</string>
+          </property>
+          <property name="buddy">
+           <cstring>kcfg_StarColorMode</cstring>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="kcfg_StarColorMode">
+          <property name="toolTip">
+           <string>Set the star color mode</string>
+          </property>
+          <property name="whatsThis">
+           <string>There are four ways to draw stars on the map.  By default, stars are circles with a white core and a rim which is tinted to reflect the star's actual color.  You may also choose to draw the stars as solid white, red, or black circles, to match the needs of your overall color scheme.</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout">
+        <property name="spacing">
+         <number>3</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QLabel" name="textLabel2">
+          <property name="text">
+           <string>Star color intensity:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="kcfg_StarColorIntensity">
+          <property name="toolTip">
+           <string>Set the intensity of star colors</string>
+          </property>
+          <property name="whatsThis">
+           <string>When using the realistic-color star mode, this option will set the saturation level of the star's colors.  A higher value means more intense colors.</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Preset Color Schemes</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QListWidget" name="PresetBox">
+        <property name="toolTip">
+         <string>List of preset color schemes</string>
+        </property>
+        <property name="whatsThis">
+         <string>List of all known color schemes.  Several are provided by default, and you may also define your own.</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QPushButton" name="SavePreset">
+          <property name="text">
+           <string>Save</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="AddPreset">
+          <property name="toolTip">
+           <string>Create a new preset color scheme using current settings</string>
+          </property>
+          <property name="whatsThis">
+           <string>After changing the colors to a scheme that you like, press this button to create a new scheme using those colors.  Your scheme will appear here in the list of presets, and will also be available in the &quot;Settings&quot; menu of the main window.</string>
+          </property>
+          <property name="text">
+           <string>Save As...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="RemovePreset">
+          <property name="toolTip">
+           <string>Remove a preset color scheme</string>
+          </property>
+          <property name="whatsThis">
+           <string>Press this button to remove the highlighted color scheme.  This will only work on your custom color schemes.</string>
+          </property>
+          <property name="text">
+           <string>Remove</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Application Themes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QListWidget" name="themesWidget"/>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>ColorPalette</tabstop>
+  <tabstop>kcfg_BoxBGMode</tabstop>
+  <tabstop>kcfg_StarColorMode</tabstop>
+  <tabstop>kcfg_StarColorIntensity</tabstop>
+  <tabstop>PresetBox</tabstop>
+  <tabstop>AddPreset</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

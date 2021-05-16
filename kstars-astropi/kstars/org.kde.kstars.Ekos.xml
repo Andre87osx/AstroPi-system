@@ -1,0 +1,73 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kstars.Ekos">
+    <property name="indiStatus" type="(i)" access="read">
+        <annotation name="org.qtproject.QtDBus.QtTypeName" value="Ekos::CommunicationStatus"/>
+    </property>
+    <property name="ekosStatus" type="(i)" access="read">
+        <annotation name="org.qtproject.QtDBus.QtTypeName" value="Ekos::CommunicationStatus"/>
+    </property>
+    <property name="settleStatus" type="u" access="read"/>
+    <property name="ekosLiveStatus" type="b" access="read"/>
+    <property name="logText" type="as" access="read"/>
+    <method name="connectDevices">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="disconnectDevices">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="start">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="stop">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="getProfiles">
+      <arg type="as" direction="out"/>
+    </method>
+    <method name="setProfile">
+      <arg name="profileName" type="s" direction="in"/>
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="setEkosLiveConnected">
+        <arg name="enabled" type="b" direction="in"/>
+    </method>
+    <method name="setEkosLiveConfig">
+        <arg name="onlineService" type="b" direction="in"/>
+        <arg name="rememberCredentials" type="b" direction="in"/>
+        <arg name="autoConnect" type="b" direction="in"/>
+    </method>
+    <method name="setEkosLiveUser">
+        <arg name="username" type="s" direction="in"/>
+        <arg name="password" type="s" direction="in"/>
+    </method>
+    <method name="setEkosLoggingEnabled">
+        <arg name="name" type="s" direction="in"/>
+        <arg name="enabled" type="b" direction="in"/>
+    </method>
+    <signal name="indiStatusChanged">
+        <arg name="status" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::CommunicationStatus"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::CommunicationStatus"/>
+    </signal>
+    <signal name="ekosStatusChanged">
+        <arg name="status" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::CommunicationStatus"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::CommunicationStatus"/>
+    </signal>
+    <signal name="settleStatusChanged">
+        <arg name="status" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::CommunicationStatus"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::CommunicationStatus"/>
+    </signal>
+    <signal name="ekosLiveStatusChanged">
+        <arg name="status" type="b" direction="out"/>
+    </signal>
+    <signal name="newLog">
+        <arg name="text" type="s" direction="out"/>
+    </signal>
+    <signal name="newModule">
+        <arg name="name" type="s" direction="out"/>
+    </signal>
+  </interface>
+</node>

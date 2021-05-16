@@ -1,0 +1,1316 @@
+<chapter id="config">
+<title>Configuring &kstars;</title>
+
+<sect1 id="setgeo">
+<title>Setting the Geographic Location</title>
+
+<para>
+Here is a screenshot of the <guilabel>Set Geographic Location</guilabel>
+window:
+<screenshot>
+<screeninfo>Changing the Geographic Location</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="geolocator.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Set Location Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para>
+
+<para>
+There is a list of over 3400 predefined cities available to choose from.
+You set your location by highlighting a city from this list.  Each
+city is represented in the world map as a small dot, and when a city
+is highlighted in the list, a red crosshairs appears on its location
+in the map.
+</para>
+
+<para>
+<indexterm><primary>Geographic Location Tool</primary>
+<secondary>Filtering</secondary></indexterm>
+It is not practical to scroll through the full list of 3400 locations,
+looking for a specific city. To make searches easier, the list can be
+filtered by entering text in the boxes below the map. For example, in
+the screenshot, the text <userinput>A</userinput> appears in the
+<guilabel>City Filter</guilabel> box, while <userinput>Te</userinput> has been
+entered in the <guilabel>Province Filter</guilabel> box, and
+<userinput>USA</userinput> is in the <guilabel>Country Filter</guilabel>
+box. Note that all of the cities displayed in the list have city,
+province, and country names that begin with the entered filter
+strings, and that the message below the filter boxes indicates that 6
+cities are matched by the filters.  Also notice that the dots
+representing these six cities in the map have been colored white,
+while the unmatched cities remain gray.
+</para><para>
+The list can also be filtered by location in the map.  Clicking anywhere
+in the world map will show only those cities within two degrees of the
+clicked location.  At this time, you can search by name, or by location,
+but not both at once.  In other words, when you click on the map, the
+name filters are ignored, and vice versa.
+</para><para>
+<indexterm><primary>Geographic Location Tool</primary>
+<secondary>Custom locations</secondary></indexterm>
+The <link linkend="ai-geocoords">longitude, latitude</link> and
+<link linkend="ai-timezones">time zone</link> information for the
+currently-selected location are displayed in the boxes at the bottom of
+the window.  If you feel that any of these values are inaccurate, you
+can modify them and press the <guibutton>+</guibutton> (Add City) button
+to record your custom version of the location.  You can also define a
+completely new location by pressing the
+<guibutton>Clear Fields</guibutton> button, and entering the data for
+the new location.  Note that all fields except the optional
+<guilabel>State/Province</guilabel> must be filled before the new
+location can be added to the list.  &kstars; will automatically load
+your custom locations for all future sessions.  Please note, at this
+point, the only way to remove a custom location is to remove the
+appropriate line from the file <filename>kstars/mycities.dat</filename>
+in your folder <userinput><command>qtpaths</command> <option>--paths GenericDataLocation</option></userinput>.
+</para><para>
+If you add custom locations (or modify existing ones), please send us
+your <filename>mycities.dat</filename> file so that we can add your
+locations to the master list.
+</para>
+</sect1>
+
+<sect1 id="settime">
+<title>Setting the Time</title>
+<para>
+<indexterm><primary>Date and Time</primary>
+<secondary>The simulation clock</secondary></indexterm>
+When &kstars; starts up, the time is set to your computer's system
+clock, and the &kstars; clock is running to keep up with the real time.
+If you want to stop the clock, select <guimenuitem>Stop
+Clock</guimenuitem> from the <guimenu>Time</guimenu> menu, or simply
+click on the <guiicon>Stop Clock</guiicon> icon in the toolbar.  You can
+make the clock run slower or faster than normal, or even make it run
+backward, using the time-step spinbox in the toolbar.  This spinbox
+has two sets of up/down buttons.  The first one will step through all
+83 available time steps, one by one.  The second one will skip to the
+next higher (or lower) unit of time, which allows you to make large
+timestep changes more quickly.
+</para>
+<para>
+<indexterm><primary>Date and Time</primary>
+<secondary>Setting</secondary></indexterm>
+You can set the  time and date by selecting <guimenuitem>Set
+Time...</guimenuitem> from the <guimenu>Time</guimenu> menu, or by
+pressing the <guiicon>time</guiicon> icon in the toolbar.  The
+<guilabel>Set Time</guilabel> window uses a standard &kde; Date Picker
+widget, coupled with a spinbox for setting the hours and minutes.
+If you want to re-synchronize the simulation clock back to the
+current CPU time, just select <guimenuitem>Set Time to Now</guimenuitem>
+from the <guimenu>Time</guimenu> menu.</para>
+
+<note><para>
+<indexterm><primary>Date and Time</primary>
+<secondary>Extended range of dates</secondary></indexterm>
+&kstars; can accept very remote dates beyond the usual limits imposed by
+QDate.  Currently, you can set the date between the years -100000 and +100000.
+We may extend this range even further in future releases.  However, please
+be aware that the accuracy of the simulation becomes more and more degraded
+as more remote dates are examined.  This is especially true for the positions
+of solar system bodies.
+</para></note>
+</sect1>
+
+<sect1 id="viewops">
+<title>The Configure &kstars; Window</title>
+<para>
+<indexterm><primary>Configure &kstars; window</primary></indexterm>
+The <guilabel>Configure &kstars;</guilabel> window allows you to modify
+a wide range of display options.  You can access the window with the
+<guiicon>configure</guiicon> toolbar icon, or by selecting
+<guimenuitem>Configure &kstars;...</guimenuitem> from the
+<guimenu>Settings</guimenu> menu.
+The window is depicted below:
+
+<screenshot>
+<screeninfo>Configure &kstars; Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="viewops.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Configure &kstars; Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para>
+
+<para>
+The <guilabel>Configure &kstars;</guilabel> window is divided into twelve pages:
+<guilabel>Catalogs</guilabel>, <guilabel>Solar System</guilabel>, <guilabel>Satellites</guilabel>,
+<guilabel>Supernovae</guilabel>, <guilabel>Guides</guilabel>, <guilabel>Terrain</guilabel>, <guilabel>Colors</guilabel>, <guilabel>FITS</guilabel>,
+<guilabel>INDI</guilabel>, <guilabel>Ekos</guilabel>, <guilabel>Xplanet</guilabel> and <guilabel>Advanced</guilabel>.
+</para>
+
+<!-- Catalogs page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Catalogs page</secondary></indexterm>
+In the <guilabel>Catalogs</guilabel> page, you determine which object
+catalogs are displayed in the map along with several properties.
+</para>
+
+<!-- Solar System page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Solar System page</secondary></indexterm>
+In the <guilabel>Solar System</guilabel> page, you can specify whether
+the Sun, Moon, planets, comets and asteroids are displayed.
+</para>
+
+<!-- Satellites page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Satellites page</secondary></indexterm>
+The <guilabel>Satellites</guilabel> page allows you to set the satellites view options.
+</para>
+
+<!-- Supernovae page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Supernovae page</secondary></indexterm>
+The <guilabel>Supernovae</guilabel> page allows you to manage how supernovae are displayed by &kstars;.
+</para>
+
+<!-- Guides page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Guides page</secondary></indexterm>
+The <guilabel>Guides</guilabel> page lets you toggle whether non-objects
+are displayed (&ie;, constellation lines, constellation names, the
+Milky Way contour).
+</para>
+
+<para>
+<indexterm><primary>Sky culture</primary></indexterm>
+It is possible to choose a <guilabel>Sky culture</guilabel> for the constellation lines and names on this page. The current version of &kstars; includes data for more than a dozen sky cultures.
+</para>
+
+<!-- Terrain page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Terrain page</secondary></indexterm>
+<indexterm><primary>Terrain image</primary>
+<secondary>Customizing</secondary></indexterm>
+The <guilabel>Terrain</guilabel> page allows you to set the terrain or landscape image
+and configure its speedup options.
+</para>
+
+<!-- Colors page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Colors page</secondary></indexterm>
+<indexterm><primary>Color Schemes</primary>
+<secondary>Customizing</secondary></indexterm>
+The <guilabel>Colors</guilabel> page allows you to set the color scheme,
+and to define new custom color schemes.
+</para>
+
+<!-- FITS page: -->
+<para>For detailed explanation of the options on the <guilabel>FITS</guilabel>
+page see the <link linkend="fits-configure">Configure FITS</link> section.
+</para>
+
+<!-- INDI page: -->
+<para>For detailed explanation of the options on the <guilabel>INDI</guilabel>
+page see the <link linkend="indi-configure">Configure INDI</link> section.
+</para>
+
+<!-- Ekos page: -->
+<para>For detailed explanation of <guilabel>Ekos</guilabel> astrophotography suite,
+see the <link linkend="tool-ekos">Ekos section of this manual</link>.
+</para>
+
+<!-- Xplanet page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Xplanet page</secondary></indexterm>
+The <guilabel>Xplanet</guilabel> page provides fine-grained control
+over <ulink url="http://xplanet.sourceforge.net/">Solar system planet surface renderer Xplanet</ulink> (should be installed separately).
+</para>
+
+<!-- Advanced page: -->
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Advanced page</secondary></indexterm>
+The <guilabel>Advanced</guilabel> page provides fine-grained control
+over the more subtle behaviors of &kstars;.
+</para>
+</sect1>
+
+<sect1 id="catalogs">
+<title>Catalogs</title>
+<para>
+<screenshot>
+<screeninfo>Catalogs Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="viewops.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Catalogs Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para>
+
+<para>
+<indexterm><primary>Catalogs page</primary>
+<secondary>Short overview</secondary></indexterm>
+In the <guilabel>Catalogs</guilabel> page, you can configure which object catalogs are
+displayed by &kstars;, as well as how much information you would like to be included on
+the Sky Map. By default, &kstars; includes ~300,000 named and unnamed stars up to magnitude 8. For Deep Sky Objects,
+the included catalogs are New General Catalog (<quote>NGC</quote>), Index Catalog (<quote>IC</quote>), and Messier Catalog.
+</para>
+
+<para>
+New General Catalogue of Nebulae and Clusters of Stars (abbreviated as NGC) is a catalogue of 7,840
+deep-sky objects.
+</para>
+
+<para>
+Index Catalogue of Nebulae and Clusters of Stars (abbreviated as IC) serves as a supplement to the
+NGC, and contains an additional 5,386 objects, collectively known as the IC objects.
+</para>
+
+<para>
+Messier Catalogue is a catalogue of 110 deep-sky objects, including diffuse nebulae, planetary nebulae,
+open clusters, globular clusters and galaxies. Messier objects have names like M1, M2, up to M110. The
+maximum apparent visual magnitude of Messier Catalogue is represented by M91's value of 10.2.
+</para>
+
+<para>
+You can install new catalogues using &kstars; <quote>Add-On Installer</quote>. You can open it by opening
+the <menuchoice><guimenu>Data</guimenu><guimenuitem>Download New Data...</guimenuitem></menuchoice> submenu.
+You can choose from a list of catalogues, including:
+<itemizedlist>
+
+<listitem><para>
+Steinicke NGC/IC Catalog: is a more complete NGC/IC catalog.
+</para></listitem>
+
+<listitem><para>
+Abell Planetary Nebulae Catalog: is a catalog of 86 planetary nebulae. The
+maximum magnitude is represented by Abell 47's value of 19.5.
+</para></listitem>
+
+<listitem><para>
+Sharpless HII region Catalog: is the Sharpless (Sh2) catalog of HII regions (diffuse nebulae).
+</para></listitem>
+
+<listitem><para>
+Hickson Compact Groups: is a catalog consisting of 99 compact groups of galaxies.
+</para></listitem>
+
+<listitem><para>
+Tycho-2 Star Catalog: is a catalog of more than 2.5 million of the brightest stars. It contains
+stars with a magnitude value from 8.0 to 12.5.
+</para></listitem>
+
+<listitem><para>
+USNO NOMAD Catalog: is a catalog of about 100 million stars with magnitude from 12.5 to 16.5.
+Note that is requires Tycho-2 to be installed.
+</para></listitem>
+
+</itemizedlist>
+</para>
+
+<para>
+The following is a summary of catalogs in KStars:
+
+<table frame="top"><title>Stars Catalogues</title>
+<tgroup cols="4" colsep="1" rowsep="1">
+<thead>
+<row>
+<entry>Name</entry>
+<entry>Abbreviation</entry>
+<entry>Number of objects</entry>
+<entry>Magnitude</entry>
+<entry>Add-On</entry>
+<entry>Default</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>Default Catalog</entry>
+<entry>Default</entry>
+<entry>~300,000</entry>
+<entry>Up to 8 magnitude</entry>
+<entry>No</entry>
+<entry>Yes</entry>
+</row>
+<row>
+<entry>Tycho-2</entry>
+<entry>Tycho2</entry>
+<entry>more than 2.5 million</entry>
+<entry>8.0-12.5 </entry>
+<entry>Yes</entry>
+<entry>No</entry>
+</row>
+<row>
+<entry>Naval Observatory Merged Astronomic Dataset</entry>
+<entry>USNO NOMAD</entry>
+<entry>100 million</entry>
+<entry>12.5-16.5</entry>
+<entry>Yes</entry>
+<entry>No</entry>
+</row>
+</tbody>
+</tgroup>
+</table>
+
+<table frame="top"><title>Deep-sky objects Catalogues</title>
+<tgroup cols="4" colsep="1" rowsep="1">
+<thead>
+<row>
+<entry>Name</entry>
+<entry>Abbreviation</entry>
+<entry>Number of objects</entry>
+<entry>Magnitude</entry>
+<entry>Add-On</entry>
+<entry>Default</entry>
+</row>
+</thead>
+<tbody>
+<row>
+<entry>Index Catalogue of Nebulae and Clusters of Stars</entry>
+<entry>IC</entry>
+<entry>5,386</entry>
+<entry>Up to 18.3 magnitude</entry>
+<entry>No</entry>
+<entry>Yes</entry>
+</row>
+<row>
+<entry>New General Catalogue of Nebulae and Clusters of Stars</entry>
+<entry>NGC</entry>
+<entry>7,840</entry>
+<entry>-</entry>
+<entry>No</entry>
+<entry>Yes</entry>
+</row>
+<row>
+<entry>Messier Catalogue</entry>
+<entry>-</entry>
+<entry>110</entry>
+<entry>Up to 10.2 magnitude</entry>
+<entry>No</entry>
+<entry>Yes</entry>
+</row>
+<row>
+<entry>Steinicke NGC/IC</entry>
+<entry>-</entry>
+<entry>-</entry>
+<entry>-</entry>
+<entry>Yes</entry>
+<entry>No</entry>
+</row>
+
+<row>
+<entry>Abell Planetary Nebulae Catalog</entry>
+<entry>-</entry>
+<entry>86</entry>
+<entry>Up to 19.5 magnitude</entry>
+<entry>Yes</entry>
+<entry>No</entry>
+</row>
+
+<row>
+<entry>Sharpless HII region Catalog</entry>
+<entry>Sh2</entry>
+<entry>-</entry>
+<entry>-</entry>
+<entry>Yes</entry>
+<entry>No</entry>
+</row>
+
+<row>
+<entry>Hickson Compact Groups</entry>
+<entry>-</entry>
+<entry>99</entry>
+<entry>-</entry>
+<entry>Yes</entry>
+<entry>No</entry>
+</row>
+
+</tbody>
+</tgroup>
+</table>
+</para>
+
+<para>
+<indexterm><primary>Catalogs</primary>
+<secondary>Star Catalogs</secondary></indexterm>
+The <guilabel>Stars</guilabel> section allows you to manage how stars are
+displayed in &kstars;. You can choose to see the stars or not by checking the
+<guilabel>Star Catalogs</guilabel> checkbox. If you check it, then multiple
+options will be enabled. Thus, you can set how many stars are drawn on the map
+using the <guilabel>Star Density</guilabel> slider. You can also customize
+&kstars; to toggle star name and <link linkend="ai-magnitude">magnitudes</link>.
+Star names are drawn next to bright stars. To display labels of fainter stars,
+increase the <guilabel>Label density</guilabel> slider.
+</para>
+
+<para>
+<indexterm><primary>Catalogs</primary>
+<secondary>Deep-Sky Catalogs</secondary></indexterm>
+Below the stars section, the <guilabel>Deep-Sky Objects</guilabel> section controls
+the display of several non-stellar object catalogs. You can toggle the display of
+Deep Sky Objects and control the display of their names and magnitudes. By default,
+the list of deep-sky objects includes the Messier, NGC and IC catalogs.
+Addons catalogs are available via the
+<menuchoice><guimenu>Data</guimenu><guimenuitem>Download New Data...</guimenuitem></menuchoice>
+submenu where you can download catalogs provided by &kstars; team and the community.
+Furthermore, &kstars; supports import of custom catalogs. To import a raw ASCII catalog
+data file into &kstars;, press the <guibutton>Import Catalog</guibutton> and follow
+the instructions. To import a custom catalog already in &kstars; catalog format, press the
+<guilabel>Load Catalog</guilabel> button.
+
+Each line in the custom catalog file should contain the following space-separated fields:
+</para>
+
+<para>For stars: type(0 for stars), RA, Dec, mag, SpType, name(optional)</para>
+<para>For other types: type(3-8), RA, Dec, mag (optional), flux(optional), name(optional)</para>
+
+<para>The types are:</para>
+<itemizedlist>
+  <listitem><para>0: star</para></listitem>
+  <listitem><para>1: star (in object catalog...probably don't want to use this)</para></listitem>
+  <listitem><para>2: planet (don't use this in custom catalog)</para></listitem>
+  <listitem><para>3: open cluster</para></listitem>
+  <listitem><para>4: globular cluster</para></listitem>
+  <listitem><para>5: gaseous nebula</para></listitem>
+  <listitem><para>6: planetary nebula</para></listitem>
+  <listitem><para>7: supernova remnant</para></listitem>
+  <listitem><para>8: galaxy</para></listitem>
+  <listitem><para>18: radio source</para></listitem>
+</itemizedlist>
+
+<para>
+The SpType is a short string for the spectral type.  For example, <quote>B5</quote>
+or <quote>G2</quote>. The coordinates should be given as floating-point values, in
+the J2000.0 epoch. The name can be anything you wish.  If the name is more than one
+word, it must be enclosed in quotation marks.
+</para>
+
+<para>
+Once you have constructed a custom data file, open the &kstars; configuration window
+to the <guilabel>Catalogs</guilabel> tab, and press the
+<guibutton>Import Catalog...</guibutton> button.  A popup window appears in which
+you can specify a name for the catalog, and the name of the file (including the path):
+</para>
+<screenshot>
+<screeninfo>Import Catalog Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="import_catalog.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Import Catalog Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>
+When you press <guibutton>Ok</guibutton> button, &kstars; will attempt to read the lines
+of your data file. It will report any problems, and if any lines at all were successfully
+parsed, you are given a choice to accept the data file (ignoring any unparsed lines),
+or to cancel the operation to attempt to resolve the problems first.
+</para>
+
+<para>
+You can load a new catalog using the <guibutton>Load Catalog...</guibutton> button.
+A new window will appear, asking you to specify the file that contains the catalog.
+</para>
+<screenshot>
+<screeninfo>Load Catalog Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="load_catalog.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Load Catalog Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>
+Once the data file has been accepted, your custom catalog will be loaded on
+startup along with the standard catalogs. In the <guilabel>Catalogs</guilabel> window
+is a checkbox for each catalog which toggles the display of catalog objects.
+</para>
+<screenshot>
+<screeninfo>Add Catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="add_catalog.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Add Catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>
+Note that, if you want to load a catalog that is already loaded, a warning dialog will pop-up.
+</para>
+<screenshot>
+<screeninfo>Overwrite Catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="overwrite_catalog.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Overwrite Catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>
+You can remove custom catalogs by highlighting its checkbox in the
+<guilabel>Catalogs</guilabel> window, and pressing the
+<guibutton>Remove Catalog...</guibutton> button (this
+button is active only if a custom catalog is highlighted in the list
+of checkboxes). Note that it can not be used for removing &kstars; default catalogs.
+</para>
+<screenshot>
+<screeninfo>Delete Catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="delete_catalog.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Delete Catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>For radio sources catalogs, you must include the flux frequency and units. For example:</para>
+<programlisting>
+# Flux Frequency: 1420 Mhz
+# Flux Unit: mJy
+</programlisting>
+
+<para>The following is a simple catalog file:</para>
+<programlisting>
+# Name: my_catalog
+# Prefix: et_radio
+# Color: #00ff00
+# Epoch: 2000
+# Flux Frequency: 1420 Mhz
+# Flux Unit: mJy
+# ID  RA  Dc  Tp  Mj  Mn  PA  Nm  Flux
+J0001 12:31:23.1 +11:29:34 18 180.60 360.30   45  my_radio_source   70
+</programlisting>
+<para>
+Using the <guilabel>Catalogs</guilabel> window, you can define
+faint limits for sky objects for zoomed in and zoomed out states of the rendering. When
+the <guilabel>Show objects of unknown magnitude</guilabel> item is enabled, objects whose
+magnitudes are unknown, or not available to &kstars;, are drawn irrespective of the faint limits set.
+</para>
+
+<para>
+The following is a brief tutorial on adding new catalogues to &kstars;. To import a
+new catalog, download a raw catalog data file where the data columns are space delimited.
+Any lines starting with # shall be ignored. For this example, we shall use the
+<quote>Lynds Catalog of Dark Nebulae</quote>.
+
+<itemizedlist>
+
+<listitem>
+<para>
+Download / write the raw catalog data file (the raw file is the file containing catalog's
+objects described by a set of parameters, like: ID Number, Right Ascension, Declination and so on).
+</para>
+
+<important>
+<para>In order to successfully load a custom catalog into &kstars;, you need to use the following syntax:
+(otherwise your catalog will be entirely ignored or maybe some objects from your catalog will be wrongly drawn)
+</para>
+<itemizedlist>
+<listitem><para>Every object should be written on a separate row.</para></listitem>
+<listitem><para>The fields of each line should be separated by white space.</para></listitem>
+<listitem><para>The catalog header may contain comment lines beginning with the # symbol.</para></listitem>
+<listitem><para>ID number: integer value.</para></listitem>
+<listitem><para>Right Ascension: colon-delimited hh:mm:ss.s or floating-point value.</para></listitem>
+<listitem><para>Declination: colon-delimited dd:mm:ss.s or floating-point value.</para></listitem>
+<listitem><para>Object type: integer value, one of [ 0,1,2,3,4,5,6,7,8 ].</para></listitem>
+<listitem><para>Common name: string value (if it contains a space, it *must* be enclosed in quotes!).</para></listitem>
+<listitem><para>Magnitude: floating-point value.</para></listitem>
+<listitem><para>Major axis: floating-point value (length of major axis in arcmin).</para></listitem>
+<listitem><para>Minor axis: floating-point value (length of minor axis in arcmin).</para></listitem>
+<listitem><para>Position angle: floating-point value (position angle, in degrees).</para></listitem>
+</itemizedlist>
+</important>
+
+<para>
+The following is a subset of the original raw data file:
+
+<programlisting>
+   1 16 26.0   -16  0    .18 +21.82    .054 3  49    8  452
+   2 18  4.0   -31 30    .13 -05.32   1.240 2   0    4  837
+   3 18  0.0   -31  0    .15 -04.33   5.600 2   0    6  817
+   4 16 59.5   -22  8    .18 +11.82    .004 5  27    7  533
+   5 17 13.2   -24 22    .20 +07.96    .012 4   0    9  595
+</programlisting>
+
+The raw file contains some extra information, unusable for &kstars;. It also contains extra white spaces
+and values are not meeting &kstars; expectations (&ie; for Right Ascension: colon-delimited hh:mm:ss.s
+or floating-point value). Thus, it need to be modified in order to match &kstars; format.
+For a better understanding on what each column means, you can take a look at
+<ulink url="ftp://cdsarc.u-strasbg.fr/cats/VII/7A/">the original source</ulink> of the catalog.
+It contains the raw data file and, in addition, it contains an useful readme, which will help
+you understand what you should keep and furthermore, what you need to remove from the raw data file.
+Minimally, the raw data file should contain the following fields:
+<itemizedlist>
+<listitem><para>ID Number</para></listitem>
+<listitem><para>Object Type</para></listitem>
+<listitem><para>Right Ascension</para></listitem>
+<listitem><para>Declination</para></listitem>
+</itemizedlist>
+
+</para>
+
+<para>
+The raw <quote>Dark Nebulae by Lynds</quote> contains only three usable fields for &kstars;:
+Right Ascension, Declination and Area (square degrees). Therefore, in order to properly
+import the catalog into &kstars;, the ID and Object Type fields need to be added. You can
+insert these values manually using your favorite text editor. However, it is recommended
+to use any spreadsheet application to import the raw data file and add the necessary
+columns. This is especially convenient for large data sets. Since the original raw data
+contains an area field which is not supported by &kstars;, we need to approximate it to a
+usable value which is the Major Axis. Therefore, we use the following formula in the
+spreadsheet to convert area to major axis in arcminutes:
+<constant>Major Axis = sqrt(Area) * 60</constant>
+</para>
+
+<para>
+After importing the raw data file into &kstars; and selecting the appropriate columns, &kstars;
+shall generate the final catalog file suitable for loading directly into &kstars;.
+For example, this is a small subset of the content (header + first five objects) of the
+<quote>Dark Nebulae by Lynds</quote> catalog which was created by &kstars; after importing
+the raw data file which only contains the data columns:
+</para>
+<programlisting>
+# Delimiter:
+# Name: LyndsCatalog
+# Prefix: Lynds
+# Color: #ff7600
+# Epoch: 2000
+# ID  RA  Dc  Mj  Tp
+1 16:26:0 -16:0:0.1 13.943 5
+2 18:4:0 -31:30:0.1 66.813 5
+3 18:0:0 -31:0:0.1 141.986 5
+4 16:59:5 -22:8:0.1 3.795 5
+5 17:13:2 -24:22:0.2 6.573 5
+</programlisting>
+<para>As seen above, each column was assigned a &kstars; designated header such as the ID,
+Right Ascension, Declination, Major axis and Object Type fields. Note that the Catalog Prefix
+(<quote>Lynds</quote>) and the ID field are used together for identifying objects in the Sky Map
+(&ie; objects from this catalog will have names like: Lynds 1, Lynds 2, Lynds 617 up to the
+last object, Lynds 1791).
+</para>
+</listitem>
+
+<listitem><para>
+Open the <menuchoice><guimenu>Settings</guimenu><guimenuitem>Configure &kstars;...</guimenuitem></menuchoice>
+menu and choose <guilabel>Catalogs</guilabel> tab.
+</para></listitem>
+
+<listitem><para>
+In the Deep-Sky objects section, press the <guibutton>Import Catalog...</guibutton> button.
+If the button is not available, check the <guibutton>Deep-Sky Catalogs</guibutton> checkbox.
+This will enable you to configure &kstars; deep-sky objects catalogs.
+</para></listitem>
+
+<listitem><para>
+After you press the <guibutton>Import Catalog...</guibutton> button,
+<guilabel>Import Catalog</guilabel> window will pop up. At first, click on
+<guibutton>Open file dialog</guibutton> button in order to select the raw data file.
+<screenshot>
+<screeninfo>Import catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="open_dialog_ldn.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Import new catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para></listitem>
+
+<listitem><para>
+In the dialog window, find your raw file, select it and then press <guibutton>Open</guibutton> button.
+<screenshot>
+<screeninfo>Open catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="open_ldn.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Open Dark Nebulae catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para></listitem>
+
+<listitem><para>
+Now, you need to specify the correct order of the catalog fields within the raw
+data file. The fields must be added inside <guilabel>Catalog fields</guilabel>
+list. Note that you can drag fields in order to build the right order or you can
+use additional fields from <guilabel>Available fields</guilabel> fields. For
+example, if your raw data file contains a magnitude column, then you need to add
+Magnitude field to the <guilabel>Catalog fields</guilabel> list.
+<screenshot>
+<screeninfo>Complete info for new catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="complete_info_ldn.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Complete info for new catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para></listitem>
+
+<listitem><para>
+After you set the fields so that they match to your catalog raw file, you can move
+to the next step: completing the remaining input fields: <guilabel>Coordinate epoch</guilabel>,
+<guilabel>Catalog name prefix</guilabel>, <guilabel>Catalog name</guilabel> and
+<guilabel>Save catalog as</guilabel>. You can also choose the <guilabel>Symbol color</guilabel>
+used for your catalog. There you can specify how the fields are split within the raw data
+file: CSV (Comma-separated values) or Space Delimited.
+</para></listitem>
+
+<listitem><para>
+You can preview the output by pressing the <guibutton>Preview Output</guibutton> button.
+Pay attention to the header fields to have the same order as your catalog fields
+(&ie; ID RA Dec Major Axis and Object Type).
+</para></listitem>
+
+<listitem><para>
+Press <guibutton>OK</guibutton> button to close the <guilabel>Catalog Preview</guilabel> window.
+Then press <guibutton>OK</guibutton> button again to create and save your catalog.
+</para></listitem>
+
+<listitem><para>
+After you successfully imported your catalog, it will be displayed in the catalogs list.
+You can choose to be displayed or not, by pressing on its checkbox.
+<screenshot>
+<screeninfo>Added Dark Nebulae by Lynds catalog</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="added_ldn.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Dark Nebulae by Lynds catalog</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+</para></listitem>
+</itemizedlist>
+</para>
+</sect1>
+
+<sect1 id="solar_system">
+<title>Solar System</title>
+<screenshot>
+<screeninfo>Solar System Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="solarsystem_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Solar System Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Solar System page</secondary></indexterm>
+In the <guilabel>Solar System</guilabel> page, you can specify whether
+the Sun, Moon, planets, comets and asteroids are displayed, and
+whether the major bodies are drawn as colored circles or actual images.
+You can also toggle whether solar system bodies have name labels attached,
+and control how many of the comets and asteroids get name labels.
+There is an option to automatically attach a temporary <quote>orbit
+trail</quote> whenever a solar system body is tracked, and another to
+toggle whether the color of the orbit trail fades into the background
+sky color.
+</para>
+</sect1>
+
+<sect1 id="satellites">
+<title>Satellites</title>
+<screenshot>
+<screeninfo>Satellites Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="satellites_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Satellites Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Satellites page</secondary></indexterm>
+The <guilabel>Satellites</guilabel> page allows you to set the satellites view options. Firstly,
+you can see or hide the satellites on the skymap using <guilabel>Show satellites</guilabel> checkbox
+from the top <guilabel>View options</guilabel> section. By default, satellites are drawn as small
+light red filled circles with an optional dark red name label next to them. You can enable or disable
+these labels by checking or not the <guilabel>Show labels</guilabel> checkbox. It is located below
+the <guilabel>Show satellites</guilabel> checkbox, within the <guilabel>View options</guilabel> section.
+</para>
+<para>
+The colors of the dots representing satellites and their name labels can be easily customized using
+the <guilabel>Colors</guilabel> page from the same <guilabel>Configure &kstars;</guilabel> window.
+In addition, satellites can be drawn just like regular stars by checking the <guilabel>Draw satellites
+like stars</guilabel> checkbox. To display only the visible satellites from your current geographic location
+and time, select <guilabel>Show only visible satellites</guilabel>.
+</para>
+<para>
+&kstars; can draw artificial satellites from many predefined groups. Thus, you can select to display a particular
+group, multiple groups or partially select subgroups. Under each group, a list of individual satellites is
+presented. To select all satellites from a group, you need to check the group checkbox. You can also select
+only the satellites of interest in each group.
+The satellites orbital elements can be updated via the internet by pressing the <guibutton>Update TLEs</guibutton>
+button. Another way for updating the satellites orbital elements is to use the <menuchoice>
+<guisubmenu>Updates</guisubmenu><guimenuitem>Update satellites orbital elements</guimenuitem></menuchoice> in the
+<guimenu>Data</guimenu> menu. If you know the name of a desired satellite then you can use
+the search satellites method that &kstars; provides. You need to enter the name of satellite in the <guilabel>Search
+satellites</guilabel> text box and the list will be reduced only to its best matches.
+</para>
+<para>
+You can add new satellites to &kstars; default satellites set by editing the
+<filename>kstars/data/satellites.dat</filename> file. As each line of this file is a group of
+satellites, you need to add a new entry for your desired satellites group.
+An entry should have the following format: <userinput>Group Name;local_filename;url</userinput>.
+For example: <userinput>Iridium;iridium.tle;http://celestrak.com/NORAD/elements/iridium.txt</userinput>.
+</para>
+</sect1>
+
+<sect1 id="supernovae">
+<title>Supernovae</title>
+<screenshot>
+<screeninfo>Supernovae Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="supernovae_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Supernovae Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Supernovae page</secondary></indexterm>
+The <guilabel>Supernovae</guilabel> page allows you to decide if the supernovae are displayed or not by checking
+the <guilabel>Show supernovae</guilabel> checkbox. By default, supernovae are drawn as small light orange <quote>+</quote> mark.
+As for satellites, the color of supernovae can be easily customized using the <guilabel>Colors</guilabel> page.
+</para>
+<para>
+You can configure &kstars; to check for newly discovered supernovae on startup by checking the <guilabel>Check for
+Recent Supernovae on Startup</guilabel> checkbox. This way, &kstars; will be always up-to-date with the most recent
+supernovae. You can enable supernova alerts using the <guilabel>Enable Supernova alerts</guilabel> checkbox. Thus,
+&kstars; will automatically alert you every time it learns of a new supernova in the sky. You can set the magnitude
+limit for showing a supernova as well as magnitude limit for supernova alerts using the spin boxes control. The
+limiting magnitude is the faintest apparent magnitude of an skyobject that is visible with the naked-eye or a telescope.
+</para>
+<para>
+The list of recent supernovae can be updated via the internet by pressing the <guibutton>Update List of Recent
+Supernovae</guibutton> button. Another way for updating the supernovae list is to use the
+<menuchoice><guisubmenu>Updates</guisubmenu><guimenuitem>Update Recent Supernovae data</guimenuitem></menuchoice> item in the <guimenu>Data</guimenu> menu.
+</para>
+</sect1>
+
+<sect1 id="guides">
+<title>Guides</title>
+<screenshot>
+<screeninfo>Guides Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="guides_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Guides Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Guides page</secondary></indexterm>
+The <guilabel>Guides</guilabel> page lets you toggle whether non-objects
+are displayed (&ie;, constellation lines, constellation names, the
+Milky Way contour, the <link linkend="ai-cequator">celestial
+equator</link>, <link linkend="ai-ecliptic">the ecliptic</link>, <link
+linkend="ai-horizon">the horizon line</link>, and the opaque ground).
+You can also choose a sky culture, whether you would like to see Latin constellation
+names, <acronym>IAU</acronym>-standard three-letter abbreviations, or
+constellation names using your local language.
+</para>
+</sect1>
+
+<sect1 id="terrain">
+<title>Terrain</title>
+<screenshot>
+<screeninfo>Terrain Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="terrain_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Terrain Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Terrain page</secondary></indexterm>
+The <guilabel>Terrain</guilabel> page lets you configure whether the terrain (landscape) image will be shown on the skymap.
+</para>
+<para>
+The user is responsible for creating a partially-transparent image, that is overlayed onto the sky map. This image should have transparent regions that the user creates to let the skymap show through, and opaque regions representing the trees, buildings, the landscape around the telescope. There is a particular format required, and this is a significant effort. There are many resources on the web that explain how this is done for <ulink url="http://stellarium.org/landscapes.html">Stellarium</ulink>. The details of image creation are the same.
+</para>
+<para>
+Initially, the user captures a full sphere equirectangular projection image from approximately the same point-of-view as his/her telescope. This kind of image can be captured with the Google Camera App, or the Google YouTube App on iPhone, or likely many other camera apps. The user then needs to edit the resulting image so that the sky is erased/transparent, and save it as a PNG. Finally, the user needs to determine where North is in the image, so it can eventually be aligned with the skymap. Once all that is done, the sky map can simulate the local sky view including the local terrain.
+</para>
+<para>
+Once the image is created, it is possible to upload it via the <guilabel>Terrain</guilabel> page and configure the azimuth correction value (in degrees) that allows the user to rotate the view so north in the sky map is aligned with the north in the image.
+</para>
+<para>
+Moreover, some speedup options can be configured to achieve the best user experience when rendering the terrain on the sky map.
+</para>
+<tip>
+    <para>
+        You can toggle the terrain overlay on and off using a keyboard shortcut <keycombo>&Ctrl;&Shift;<keycap>T</keycap></keycombo> and the <menuchoice><guimenu>View</guimenu><guimenuitem>Show terrain</guimenuitem></menuchoice> menu item.
+    </para>
+</tip>
+</sect1>
+
+<sect1 id="colors">
+<title>Colors</title>
+<screenshot>
+<screeninfo>Colors Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="colors_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Colors Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Colors page</secondary></indexterm>
+<indexterm><primary>Color Schemes</primary>
+<secondary>Customizing</secondary></indexterm>
+The <guilabel>Colors</guilabel> page allows you to set the color scheme,
+and to define custom color schemes.  The tab is split into two panels:
+</para>
+<para>
+The left panel shows a list of all display items with adjustable
+colors.  Click on any item to bring up a color selection window to
+adjust its color.  Below the list is the <guilabel>Star Color
+Mode</guilabel> selection box.  By default, &kstars; draws stars with
+a <link linkend="ai-colorandtemp">realistic color</link> tint according
+to the spectral type of the star.  However, you may also choose to draw
+the stars as solid white, black or red circles.  If you are using the
+realistic star colors, you can set the saturation level of the star
+colors with the <guilabel>Star Color Intensity</guilabel> spinbox.
+</para>
+<para>
+The right panel lists the defined color schemes.  There are four
+predefined schemes: the <guilabel>Default Colors</guilabel> scheme,
+<guilabel>Star Chart</guilabel>, which uses black stars on a white
+background, <guilabel>Night Vision</guilabel>, which uses only shades
+of red in order to protect dark-adapted vision, and <guilabel>Moonless
+Night</guilabel>, a more realistic, dark theme.  Additionally,
+you can save the current color settings as a custom scheme by clicking
+the <guibutton>Save Current Colors</guibutton> button.  It will prompt
+you for a name for the new scheme, and then your scheme will appear in
+the list in all future &kstars; sessions.  To remove a custom scheme,
+simply highlight it in the list, and press the <guibutton>Remove Color
+Scheme</guibutton> button.
+</para>
+</sect1>
+
+<sect1 id="fits-configure">
+<title>FITS</title>
+<screenshot>
+<screeninfo>FITS Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="fits_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>FITS Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>FITS page</secondary></indexterm>
+<para><abbrev>FITS</abbrev> (Flexible Image Transport System) is a popular open  standard for storage, transmission and processing of digital data. For the details, one is referred to the <ulink url="https://en.wikipedia.org/wiki/FITS">corresponding Wikipedia article</ulink>. This page allows you to configure presentation and processing of FITS data in &kstars;.
+</para>
+<para>
+    The left panel is for configuring FITS viewer itself.
+</para>
+<para>
+Check the <guilabel>Use FITS Viewer</guilabel> item if you want automatically display received images in the FITS Viewer.
+</para>
+<para>The <guilabel>Single Preview Tab</guilabel> item is to display all captured FITS images in a single tab instead of multiple tabs
+per image. The <guilabel>Single Window Capture</guilabel> item is to display captured FITS images from all cameras in a single FITS Viewer window
+instead of a dedicated window to each camera. The <guilabel>Single Window Open</guilabel> item is to display opened FITS images in a single FITS Viewer window instead of a
+dedicated window to each file and the <guilabel>Independent Window</guilabel> item is to make FITS Viewer window independent from &kstars;.
+</para>
+<para>
+The right panel lists processing options. The <guilabel>Auto Stretch</guilabel> item is to always apply auto stretch to images in FITS Viewer, <guilabel>Limited Resources Mode</guilabel> is to enable limited resource mode to turn off any resource-intensive operations, namely: <guilabel>Auto Debayer</guilabel> (bayered images will not be debayered; only grayscale images are shown), <guilabel>Auto WCS</guilabel> (World Coordinate System data
+will not be processed; WCS maps sky coordinates to image coordinates;
+equatorial grid lines, object identification, and telescope slew within an
+image are disabled), and <guilabel>3D Cube</guilabel> (RGB images will not be
+processed; only grayscale images are shown). You can switch off some of these resource-greedy operations separately as well.
+</para>
+</sect1>
+
+<sect1 id="indi_tab">
+<title>INDI</title>
+<screenshot>
+<screeninfo>INDI Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="indi_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>INDI Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>For detailed explanation of the options on the <guilabel>INDI</guilabel>
+page see the <link linkend="indi-configure">Configure INDI</link> section.
+</para>
+</sect1>
+
+<sect1 id="ekos">
+<title>Ekos</title>
+<screenshot>
+<screeninfo>Ekos Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="ekos_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Ekos Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+Ekos is an astrophotography suite, a complete astrophotography solution that can control
+all INDI devices including numerous telescopes, CCDs, DSLRs, focusers, filters, and a lot more.
+Ekos supports highly accurate tracking using online and offline astrometry solver, autofocus
+and autoguiding capabilities, and capture of single or multiple images using the powerful
+built in sequence manager. For detailed explanation of <guilabel>Ekos</guilabel>,
+see the <link linkend="tool-ekos">Ekos section of this manual</link>.
+</para>
+</sect1>
+
+<sect1 id="xplanet-configure">
+<title>Xplanet</title>
+<screenshot>
+<screeninfo>Xplanet Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="xplanet_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Xplanet Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<ulink url="http://xplanet.sourceforge.net/">Xplanet</ulink> (should be installed separately) is
+a solar system planet surface renderer. This page allows you to configure presentation and
+processing of <application>Xplanet</application> data in &kstars;.
+</para>
+</sect1>
+
+<sect1 id="advanced">
+<title>Advanced</title>
+<screenshot>
+<screeninfo>Advanced Window</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="advanced_tab.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>Advanced Window</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+<para>
+<indexterm><primary>Configure &kstars; window</primary>
+<secondary>Advanced page</secondary></indexterm>
+The <guilabel>Advanced</guilabel> page provides fine-grained control
+over the more subtle behaviors of &kstars;.
+</para><para>
+<indexterm><primary>Atmospheric Refraction</primary></indexterm>
+The <guilabel>Correct for atmospheric refraction</guilabel> checkbox
+controls whether the positions of objects are corrected for the effects
+of the atmosphere.  Because the atmosphere is a spherical shell, light from
+outer space is <quote>bent</quote> as it passes through the atmosphere to
+our telescopes or eyes on the Earth's surface.  The effect is largest for
+objects near the horizon, and actually changes the predicted rise or set
+times of objects by a few minutes.  In fact, when you <quote>see</quote> a
+sunset, the Sun's actual position is already well below the horizon;
+atmospheric refraction makes it seem as if the Sun is still in the sky.
+Note that atmospheric refraction is never applied if you are using
+<guilabel>Equatorial coordinates</guilabel>.
+</para><para>
+<indexterm><primary>Animated Slewing</primary></indexterm>
+The <guilabel>Use animated slewing</guilabel> checkbox controls how the
+display changes when a new focus position is selected in the map.  By
+default, you will see the sky drift or <quote>slew</quote> to the new
+position; if you uncheck this option, then the display will instead
+<quote>snap</quote> immediately to the new focus position.
+</para><para>
+<indexterm><primary>Objects in the Sky</primary>
+<secondary>Labeling</secondary>
+<tertiary>Automatic</tertiary>
+</indexterm>
+If the <guilabel>Attach label to centered object</guilabel> checkbox is
+selected, then a name label will automatically be attached to an object
+when it is being tracked by the program.  The label will be removed when
+the object is no longer being tracked.  Note that you can also manually
+attach a persistent name label to any object with its <link
+linkend="popup-menu">popup menu</link>.
+</para><para>
+<indexterm><primary>Objects in the Sky</primary>
+<secondary>Hiding</secondary></indexterm>
+There are three situations when &kstars; must redraw the sky display very
+rapidly: when a new focus position is selected (and <guilabel>Use
+animated slewing</guilabel> is checked), when the sky is dragged with the
+mouse, and when the time step is large.  In these situations, the positions
+of all objects must be recomputed as rapidly as possible, which can put
+a large load on the <abbrev>CPU</abbrev>.  If the <abbrev>CPU</abbrev>
+cannot keep up with the demand, then the display will seem sluggish or jerky.
+To mitigate this, &kstars; will hide certain objects during these rapid-redraw
+situations, as long as the <guilabel>Hide objects while moving</guilabel>
+checkbox is selected.  The timestep threshold above which objects will be
+hidden is determined by the <guilabel>Also hide if time step larger
+than:</guilabel> timestep-spinbox.  You can specify the objects that should
+be hidden in the <guilabel>Configure Hidden Objects</guilabel> group box.
+</para>
+</sect1>
+
+<sect1 id="customize">
+<title>Customizing the Display</title>
+
+<para>
+There are several ways to modify the display to your liking.</para>
+<itemizedlist>
+<listitem><para>
+<indexterm><primary>Color Schemes</primary><secondary>Selecting</secondary></indexterm>
+Select a different color scheme in the
+<menuchoice><guimenu>Settings</guimenu><guimenuitem>Color Schemes</guimenuitem></menuchoice>
+menu.  There are four predefined color schemes, and you can define your own in the
+<link linkend="config"><guilabel>Configure &kstars;</guilabel></link> window.
+</para></listitem>
+<listitem><para>
+<indexterm><primary>Toolbars</primary>
+<secondary>Customizing</secondary></indexterm>
+Toggle whether the Toolbars are drawn in the
+<menuchoice><guimenu>Settings</guimenu><guimenuitem>Toolbars Shown</guimenuitem></menuchoice>
+menu.  Like most KDE toolbars, they can also be dragged around and
+anchored on any window edge, or even detached from the window completely if they are unlocked.
+</para></listitem>
+<listitem><para>
+<indexterm><primary>Info Boxes</primary><secondary>Customizing</secondary></indexterm>
+<indexterm><primary>Info Boxes</primary><secondary>Shading</secondary></indexterm>
+Toggle whether the Info Boxes are drawn in the
+<menuchoice><guimenu>Settings</guimenu><guimenuitem>Info Boxes</guimenuitem></menuchoice>
+menu.  In addition, you can manipulate the three Info Boxes with the
+mouse.  Each box has additional lines of data that are hidden by default.
+You can toggle whether these additional lines are visible by double-clicking
+a box to <quote>shade</quote> it.  Also, you can reposition a box by
+dragging it with the mouse.  When a box hits a window edge, it will
+<quote>stick</quote> to the edge when the window is resized.
+</para></listitem>
+<listitem>
+<para>
+<indexterm><primary>Field-of-View Symbols</primary><secondary>Description</secondary></indexterm>
+Choose an <quote>FOV Symbol</quote> using the
+<menuchoice><guimenu>Settings</guimenu><guimenuitem>FOV Symbols</guimenuitem></menuchoice>
+menu.  <firstterm>FOV</firstterm> is an acronym for <quote>field-of-view</quote>.
+An FOV symbol is drawn at the center of the window to indicate where the display
+is pointing.  Different symbols have different angular sizes; you can use a symbol to show
+what the view through a particular telescope would look like.  For example, if you choose
+the <quote>7x35 Binoculars</quote> FOV symbol, then a circle is drawn on the display that is
+9.2 degrees in diameter; this is the field-of-view for 7x35 binoculars.
+</para>
+<para>
+<indexterm><primary>Field-of-View Symbols</primary><secondary>Customizing</secondary></indexterm>
+You can define your own FOV symbols (or modify the existing symbols) using the
+<guimenuitem>Edit FOV Symbols...</guimenuitem> menu item, which launches the FOV Editor:
+</para>
+<screenshot>
+<screeninfo>Field-of-View Symbols Editor</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="fovdialog.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>FOV Symbol Editor</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>
+The list of defined FOV symbols is displayed on the left.  On the right are buttons for
+adding a new symbol, editing the highlighted symbol's properties, and removing the
+highlighted symbol from the list.  Note that you can even modify or remove the four
+predefined symbols (if you remove all symbols, the four defaults will be restored the
+next time you start &kstars;).  Below these three buttons is a graphical preview display
+showing the highlighted symbol from the list.  When the <guibutton>New...</guibutton> or
+<guibutton>Edit...</guibutton> button is pressed, the <guilabel>New FOV Indicator</guilabel>
+window is opened:
+</para>
+
+<screenshot>
+<screeninfo>New Field-of-View Symbol</screeninfo>
+<mediaobject>
+  <imageobject>
+    <imagedata fileref="newfov.png" format="PNG"/>
+  </imageobject>
+  <textobject>
+    <phrase>New FOV Symbol</phrase>
+  </textobject>
+</mediaobject>
+</screenshot>
+
+<para>
+<indexterm><primary>Field-of-View Symbols</primary><secondary>Defining New</secondary></indexterm>
+This window lets you modify the four properties that define a FOV symbol: name, size,
+shape, and color.  The angular size for the symbol can either be entered directly in the
+<guilabel>Field of View</guilabel> edit box, or you can use the Eyepiece/Camera Tabs to
+calculate the field-of-view angle, given parameters of your telescope/eyepiece or
+telescope/camera setup.  The five available shapes are: Square, Circle, Crosshairs, Bullseye and Semitransparent circle.
+Once you have specified all four parameters, press <guibutton>Ok</guibutton>,
+and the symbol will appear in the list of defined symbols.  It will also be available
+from the <menuchoice><guimenu>Settings</guimenu><guisubmenu>FOV Symbols</guisubmenu></menuchoice> menu.
+</para>
+</listitem>
+</itemizedlist>
+
+</sect1>
+
+&hips;
+
+</chapter>
