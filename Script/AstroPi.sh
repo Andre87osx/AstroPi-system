@@ -75,14 +75,16 @@ WIFI=`zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplic
   --add-password="Enter the password of selected wifi network" `
 SSID=`echo $WIFI | cut -d'|' -f1`
 PSK=`echo $WIFI | cut -d'|' -f2`
-echo "$password" | sudo -S cat > /etc/wpa_supplicant/wpa_supplicant.conf <<- EOF
+wpa='/etc/wpa_supplicant/wpa_supplicant.conf'
+sudo bash -c "cat > $wpa" <<EOF
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country=IT
 network={
-    ssid="$SSID"
-    psk="$PSK"
-    key_mgmt=WPA-PSK
+  ssid="$SSID"
+  scan_ssid=1
+  psk="$PSK"
+  key_mgmt=WPA-PSK
 }
 EOF
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
