@@ -87,6 +87,7 @@ network={
   key_mgmt=WPA-PSK
 }
 EOF
+exit
 echo "$password" | sudo -S cat > /etc/wpa_supplicant/wpa_supplicant.conf <<- EOF
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
