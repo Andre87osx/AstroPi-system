@@ -37,7 +37,7 @@ echo "# Install dependencies..." ; sleep 2
 # =================================================================
 echo "75"
 echo "# Remove unnecessary libraries" ; sleep 2
-echo "$password" | sudo -S sudo apt -y autoremove
+echo "$password" | sudo -S apt -y autoremove
 (( $? != 0 )) && zenity --error --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
 # =================================================================
@@ -76,7 +76,7 @@ WIFI=`zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplic
 SSID=`echo $WIFI | cut -d'|' -f1`
 PSK=`echo $WIFI | cut -d'|' -f2`
 wpa='/etc/wpa_supplicant/wpa_supplicant.conf'
-sudo bash -c "cat >> $wpa" <<EOF
+echo "$password" | sudo -S bash -c "cat >> $wpa" <<EOF
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country=IT
