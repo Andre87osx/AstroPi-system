@@ -76,7 +76,8 @@ WIFI=`zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplic
 SSID=`echo $WIFI | cut -d'|' -f1`
 PSK=`echo $WIFI | cut -d'|' -f2`
 wpa='/etc/wpa_supplicant/wpa_supplicant.conf'
-echo "$password" | sudo -S bash -c "cat >> $wpa" <<EOF
+wpa_temp='$HOME'
+sudo bash -c "cat >> $wpa_temp" <<EOF
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 update_config=1
 country=IT
