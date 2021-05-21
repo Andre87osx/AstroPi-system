@@ -75,7 +75,8 @@ WIFI=`zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplic
   --add-password="Enter the password of selected wifi network" `
 SSID=`echo $WIFI | cut -d'|' -f1`
 PSK=`echo $WIFI | cut -d'|' -f2`
-echo "$password" | sudo -S echo "nohook wpa_supplicant" >> /etc/wpa_supplicant/wpa_supplicant.conf
+echo "OMBRI" | sudo tee -a /etc/wpa_supplicant/wpa_supplicant.conf
+#echo "$password" | sudo -S echo "nohook wpa_supplicant" >> /etc/wpa_supplicant/wpa_supplicant.conf
 #echo "$password" | sudo -S cat > /etc/wpa_supplicant/wpa_supplicant_new.conf <<- EOF
 #ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
 #update_config=1
