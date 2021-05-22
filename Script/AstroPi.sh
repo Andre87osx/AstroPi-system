@@ -77,8 +77,9 @@ SSID=`echo $WIFI | cut -d'|' -f1`
 PSK=`echo $WIFI | cut -d'|' -f2`
 echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
 echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\nssid="$SSID"\nscan_ssid=1\npsk="$PSK"\nkey_mgmt=WPA-PSK\n}\nEOF" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
-#echo "$password" | sudo -S cat > /etc/wpa_supplicant/wpa_supplicant.conf <<- EOF
-(( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+(( $? != 0 )) && zenity --error --text="Non sono riuscito ad aggiornare i dati. Contatta il supporto\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+zenity --info --width=400 --height=200 --text "La nuova rete WiFi è stata inserita, riavvia il sistema."
+
 exit 0
 
 elif [ "$ans" == "Disable/Enable AstroPi hotspot" ];
@@ -90,7 +91,7 @@ then
     echo "$password" | sudo -S systemctl disable autohotspot
     echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
     zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disabled</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi"
-(( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+(( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
     exit 0
   else
 # Enable AstroPi auto hotspot
