@@ -1628,10 +1628,13 @@ font-weight:bold;
              <string> °</string>
             </property>
             <property name="minimum">
-             <double>-15.000000000000000</double>
+             <double>00.000000000000000</double>
             </property>
             <property name="maximum">
              <double>89.900000000000006</double>
+            </property>
+              <property name="value">
+             <number>10.000000000000000</number>
             </property>
            </widget>
           </item>
@@ -1816,6 +1819,9 @@ font-weight:bold;
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
             </attribute>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -2121,6 +2127,9 @@ font-weight:bold;
             <attribute name="buttonGroup">
              <string notr="true">startupProcedureButtonGroup</string>
             </attribute>
+              <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
