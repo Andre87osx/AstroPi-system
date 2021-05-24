@@ -42,7 +42,7 @@
 #define RESTART_GUIDING_DELAY_MS  5000
 
 #define DEFAULT_CULMINATION_TIME    -60
-#define DEFAULT_MIN_ALTITUDE        10.00
+#define DEFAULT_MIN_ALTITUDE        10
 #define DEFAULT_MIN_MOON_SEPARATION 0
 
 namespace Ekos
@@ -961,7 +961,7 @@ void Scheduler::syncGUIToJob(SchedulerJob *job)
     else
     {
         altConstraintCheck->setChecked(false);
-        minAltitude->setValue(10.00);
+        minAltitude->setValue(10);
     }
 
     if (job->getMinMoonSeparation() >= 0)
