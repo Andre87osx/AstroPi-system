@@ -203,6 +203,50 @@ zenity --error --text="Something went wrong. Contact support at\n<b>https://gith
 else
 zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
 fi
+
+elif [ "$ans" == "Install/Upgrade Kstrs AstroPi" ];
+then
+    zenity --info --width=400 --height=200 --text "La compilazione di Kstar richiede almeno 90min attendere fino al completamento"
+     (
+# =================================================================
+echo "5"
+echo "# Controllo Kstars AstroPi" ; sleep 2
+mkdir $HOME/Projects/kstars-cmake
+cd $HOME/Projects/kstars-cmake
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
+# (( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+# =================================================================
+echo "25"
+echo "# installo / Aggiorno Kstars AstroPi" ; sleep 2
+make -j $(expr $(nproc) + 2)
+(( $? != 0 )) && zenity --error --text="Errore Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+# =================================================================
+echo "50"
+echo "$password" | sudo -S make install
+(( $? != 0 )) && zenity --error --text="Errore Make Install Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+# =================================================================
+echo "75"
+echo "# Yet a moment..." ; sleep 2
+
+# =================================================================
+echo "# All finished." ; sleep 2
+echo "100"
+
+) |
+zenity --progress \
+  --title="AstroPi System" \
+  --text="First Task." \
+  --percentage=0 \
+  --auto-close \
+  --width=300 \
+  --auto-kill
+
+exit_status=$?
+if [ $exit_status -eq 1 ]; then 
+zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+else
+zenity --info --text="Kstars AstroPi allredy installed" --width=300 --title="AstroPi System" && exit 0
+fi
 fi
 
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
