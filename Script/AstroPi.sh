@@ -204,9 +204,9 @@ else
 zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
 fi
 
-elif [ "$ans" == "Install/Upgrade Kstrs AstroPi" ];
+elif [ "$ans" == "Install/Upgrade Kstars AstroPi" ];
 then
-    zenity --info --width=400 --height=200 --text "La compilazione di Kstar richiede almeno 90min attendere fino al completamento"
+    zenity --info --width=400 --height=200 --text "La compilazione di Kstar richiede almeno 30 min attendere fino al completamento"
      (
 # =================================================================
 echo "5"
@@ -214,7 +214,7 @@ echo "# Controllo Kstars AstroPi" ; sleep 2
 mkdir $HOME/Projects/kstars-cmake
 cd $HOME/Projects/kstars-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
-# (( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+(( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 # =================================================================
 echo "25"
 echo "# installo / Aggiorno Kstars AstroPi" ; sleep 2
