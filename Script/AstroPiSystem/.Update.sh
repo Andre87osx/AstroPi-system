@@ -28,8 +28,8 @@ zenity --info --title="AstroPi System" --text="I prepare the files to run the la
 echo "$password" | sudo -S git -C /home/astropi/.AstroPi-system pull
 exit_status=$?
 if [ $exit_status -eq 1 ]; then 
-cd /home/astropi/.AstroPi-system/
-echo "$password" | sudo -S git reset --hard origin/main
+cd /home/astropi/.AstroPi-system
+echo "$password" | sudo -S git reset --hard
 echo "$password" | sudo -S git -C /home/astropi/.AstroPi-system pull
 fi
 # =================================================================
