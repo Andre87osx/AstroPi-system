@@ -17,8 +17,9 @@ then
 echo "5"
 echo "# Preparing update" ; sleep 2
 FILE=/etc/apt/sources.list.d/astroberry.list
-if [ -f "$FILE" ]; then
-echo "$password" | sudo -S rm /etc/apt/sources.list.d/astroberry.list
+if [ !-f "$FILE" ]; then
+wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
+sudo su -c "echo 'deb https://www.astroberry.io/repo/ buster main' > /etc/apt/sources.list.d/astroberry.list"
 fi
 (( $? != 0 )) && zenity --error --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S sh -c 'echo 256 > /sys/module/usbcore/parameters/usbfs_memory_mb'
@@ -33,8 +34,6 @@ echo "$password" | sudo -S apt-get update && sudo apt-get -y dist-upgrade && sud
 # =================================================================
 echo "50"
 echo "# Remove unnecessary libraries" ; sleep 2
-echo "$password" | sudo -S apt-get -y remove libgphoto2-dev libgphoto2-6
-(( $? != 0 )) && zenity --error --text="Something went wrong in <b>APT remove LibGphoto</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S apt -y autoremove
 (( $? != 0 )) && zenity --error --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
@@ -82,7 +81,6 @@ echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
 echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
 (( $? != 0 )) && zenity --error --text="Non sono riuscito ad aggiornare i dati. Contatta il supporto\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 zenity --info --width=400 --height=200 --text "La nuova rete WiFi è stata inserita, riavvia il sistema."
-exit 0
 
 elif [ "$ans" == "Disable/Enable AstroPi hotspot" ];
 then
@@ -94,7 +92,7 @@ then
     echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
     zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disabled</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi"
 (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-    exit 0
+
   else
 # Enable AstroPi auto hotspot
 #######################################  
@@ -102,7 +100,6 @@ then
     echo "$password" | sudo -S systemctl enable autohotspot.service
     zenity --info --width=300 --height=200 --text " The auto hotspot service is now <b>active</b>. In the absence of wifi, hotspots will be generated directly from AstroPi"
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-    exit 0
 fi
 
 elif [ "$ans" == "Install/Upgrade INDI and Driver" ];
