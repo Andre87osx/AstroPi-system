@@ -211,7 +211,7 @@ then
 # =================================================================
 echo "5"
 echo "# Controllo Kstars AstroPi" ; sleep 2
-if [ ! -d $HOME/.Projects/kstars-cmake ]; then mkdir $HOME/.Projects/kstars-cmake; fi
+if [ ! -d $HOME/.Projects/kstars-cmake ]; then echo "$password" | sudo -S mkdir -p $HOME/.Projects/kstars-cmake; fi
 cd $HOME/.Projects/kstars-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
 (( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
