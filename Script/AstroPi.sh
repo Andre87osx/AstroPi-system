@@ -120,12 +120,13 @@ echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev l
 # =================================================================
 echo "15"
 echo "# Checking INDI Core..." ; sleep 2
-if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects ]; then echo "$password" | sudo -S mkdir $HOME/.Projects; fi
 if [ -d $HOME/.Projects/indi-"$INDI_V" ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/indi-"$INDI_V"; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects
 echo "$password" | sudo -S wget -c https://github.com/indilib/indi/archive/refs/tags/v"$INDI_V".tar.gz -O - | sudo tar -xz -C $HOME/.Projects
-if [ ! -d $HOME/.Projects/indi-cmake ]; then mkdir $HOME/.Projects/indi-cmake; fi
+if [ ! -d $HOME/.Projects/indi-cmake ]; then echo "$password" | sudo -S mkdir $HOME/.Projects/indi-cmake; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects/indi-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -137,12 +138,13 @@ echo "$password" | sudo -S make install
 # =================================================================
 echo "25"
 echo "# Checking INDI 3rd Party Library" ; sleep 2
-if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects ]; then echo "$password" | sudo -S mkdir $HOME/.Projects; fi
 if [ -d $HOME/.Projects/indi-3rdparty-"$INDI_V" ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/indi-3rdparty-"$INDI_V"; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects
 echo "$password" | sudo -S wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$INDI_V".tar.gz -O - | sudo tar -xz -C $HOME/.Projects
-if [ ! -d $HOME/.Projects/indi3rdlib-cmake ]; then mkdir $HOME/.Projects/indi3rdlib-cmake; fi
+if [ ! -d $HOME/.Projects/indi3rdlib-cmake ]; then echo "$password" | sudo -S  mkdir $HOME/.Projects/indi3rdlib-cmake; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects/indi3rdlib-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 $HOME/.Projects/indi-3rdparty-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -154,9 +156,8 @@ echo "$password" | sudo -S make install
 # =================================================================
 echo "50"
 echo "# Controllo la versione di INDI 3rd Party Driver" ; sleep 2
-if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
+if [ ! -d $HOME/.Projects/indi3rd-cmake ]; then echo "$password" | sudo -S mkdir -p $HOME/.Projects/indi3rd-cmake; fi
 echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
-if [ ! -d $HOME/.Projects/indi3rd-cmake ]; then mkdir $HOME/.Projects/indi3rd-cmake; fi
 cd $HOME/.Projects/indi3rd-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-3rdparty-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -168,12 +169,13 @@ echo "$password" | sudo -S make install
 # =================================================================
 echo "75"
 echo "# Checking Stellarsolver" ; sleep 2
-if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
+if [ ! -d $HOME/.Projects ]; then echo "$password" | sudo -S mkdir $HOME/.Projects; fi
 echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 if [ -d $HOME/.Projects/stellarsolver ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/stellarsolver; fi
 cd $HOME/.Projects
 git clone https://github.com/rlancaste/stellarsolver.git
-if [ ! -d $HOME/.Projects/stellarsolver-cmake ]; then mkdir $HOME/.Projects/stellarsolver-cmake; fi
+if [ ! -d $HOME/.Projects/stellarsolver-cmake ]; then echo "$password" | sudo -S mkdir $HOME/.Projects/stellarsolver-cmake; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects/stellarsolver-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.Projects/stellarsolver
 (( $? != 0 )) && zenity --error --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
