@@ -108,7 +108,7 @@ then
 # =================================================================
 echo "5"
 echo "# Install dependencies..." ; sleep 2
-echo "$password" | sudo -S apt-get -y install build-essential cmake git libeigen3-dev libcfitsio-dev zlib1g-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev
+echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme
 (( $? != 0 )) && zenity --error --text="Errore nell'installazione delle dipendenze di Kstars\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 echo "$password" | sudo -S apt-get install -y libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libfftw3-dev
 (( $? != 0 )) && zenity --error --text="Errore nell'installazione delle dipendenze di INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
@@ -121,6 +121,7 @@ echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev l
 echo "15"
 echo "# Checking INDI Core..." ; sleep 2
 if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 if [ -d $HOME/.Projects/indi-"$INDI_V" ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/indi-"$INDI_V"; fi
 cd $HOME/.Projects
 echo "$password" | sudo -S wget -c https://github.com/indilib/indi/archive/refs/tags/v"$INDI_V".tar.gz -O - | sudo tar -xz -C $HOME/.Projects
@@ -137,6 +138,7 @@ echo "$password" | sudo -S make install
 echo "25"
 echo "# Checking INDI 3rd Party Library" ; sleep 2
 if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 if [ -d $HOME/.Projects/indi-3rdparty-"$INDI_V" ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/indi-3rdparty-"$INDI_V"; fi
 cd $HOME/.Projects
 echo "$password" | sudo -S wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$INDI_V".tar.gz -O - | sudo tar -xz -C $HOME/.Projects
@@ -153,6 +155,7 @@ echo "$password" | sudo -S make install
 echo "50"
 echo "# Controllo la versione di INDI 3rd Party Driver" ; sleep 2
 if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 if [ ! -d $HOME/.Projects/indi3rd-cmake ]; then mkdir $HOME/.Projects/indi3rd-cmake; fi
 cd $HOME/.Projects/indi3rd-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-3rdparty-"$INDI_V"
@@ -166,6 +169,7 @@ echo "$password" | sudo -S make install
 echo "75"
 echo "# Checking Stellarsolver" ; sleep 2
 if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 if [ -d $HOME/.Projects/stellarsolver ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/stellarsolver; fi
 cd $HOME/.Projects
 git clone https://github.com/rlancaste/stellarsolver.git
@@ -209,6 +213,7 @@ then
 echo "5"
 echo "# Controllo Kstars AstroPi" ; sleep 2
 if [ ! -d $HOME/.Projects/kstars-cmake ]; then echo "$password" | sudo -S mkdir -p $HOME/.Projects/kstars-cmake; fi
+echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects/kstars-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
 (( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
