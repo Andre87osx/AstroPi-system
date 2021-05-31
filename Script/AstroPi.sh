@@ -89,17 +89,19 @@ then
   if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ];
   then
     echo "$password" | sudo -S systemctl disable autohotspot
+    (( $? != 0 )) && zenity --error --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
     echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
+    (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
     zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disabled</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi"
-(( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
   else
 # Enable AstroPi auto hotspot
 #######################################  
     echo "$password" | sudo -S echo "nohook wpa_supplicant" >> /etc/dhcpcd.conf
+    (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
     echo "$password" | sudo -S systemctl enable autohotspot.service
+    (( $? != 0 )) && zenity --error --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
     zenity --info --width=300 --height=200 --text " The auto hotspot service is now <b>active</b>. In the absence of wifi, hotspots will be generated directly from AstroPi"
-(( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 fi
 
 elif [ "$ans" == "Install/Upgrade INDI and Driver" ];
