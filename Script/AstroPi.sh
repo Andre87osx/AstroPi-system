@@ -17,7 +17,7 @@ then
 echo "5"
 echo "# Preparing update" ; sleep 2
 FILE=/etc/apt/sources.list.d/astroberry.list
-if [ !-f "$FILE" ]; then
+if [ ! -f "$FILE" ]; then
 wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
 sudo su -c "echo 'deb https://www.astroberry.io/repo/ buster main' > /etc/apt/sources.list.d/astroberry.list"
 fi
