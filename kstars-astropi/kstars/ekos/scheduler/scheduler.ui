@@ -1633,8 +1633,8 @@ font-weight:bold;
             <property name="maximum">
              <double>89.900000000000006</double>
             </property>
-              <property name="value">
-             <number>10.000000000000000</number>
+            <property name="value">
+             <number>10.00</number>
             </property>
            </widget>
           </item>
