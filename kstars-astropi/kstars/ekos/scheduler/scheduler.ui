@@ -1628,13 +1628,13 @@ font-weight:bold;
              <string> °</string>
             </property>
             <property name="minimum">
-             <double>00.000000000000000</double>
+             <double>-15.000000000000000</double>
             </property>
             <property name="maximum">
              <double>89.900000000000006</double>
             </property>
             <property name="value">
-             <number>10.00</number>
+             <number>10.000000000000000</number>
             </property>
            </widget>
           </item>
