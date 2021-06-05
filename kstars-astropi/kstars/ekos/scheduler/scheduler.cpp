@@ -953,7 +953,7 @@ void Scheduler::syncGUIToJob(SchedulerJob *job)
             break;
     }
 
-   if (job->hasMinAltitude())
+    if (-90 < job->getMinAltitude())
     {
         altConstraintCheck->setChecked(true);
         minAltitude->setValue(job->getMinAltitude());
@@ -961,7 +961,7 @@ void Scheduler::syncGUIToJob(SchedulerJob *job)
     else
     {
         altConstraintCheck->setChecked(false);
-        minAltitude->setValue(DEFAULT_MIN_ALTITUDE);
+        minAltitude->setValue(10);
     }
 
     if (job->getMinMoonSeparation() >= 0)
