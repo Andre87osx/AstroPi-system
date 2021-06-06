@@ -22,7 +22,7 @@
 #include <ekos_scheduler_debug.h>
 
 #define BAD_SCORE -1000
-#define MIN_ALTITUDE 15.0
+#define MIN_ALTITUDE 10.00
 
 SchedulerJob::SchedulerJob()
 {
