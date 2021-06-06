@@ -6,7 +6,7 @@ Name[it_IT]=AstroPi-system
 GenericName=AstroPi-system
 GenericName[en_GB]=AstroPi-system
 Comment=Update AstroPi and application
-Comment=[en_GB]=Update AstroPi and application
+Comment[en_GB]=Update AstroPi and application
 Icon=/usr/share/icons/Adwaita/scalable/emblems/emblem-system-symbolic.svg
 Exec=/home/astropi/.Update.sh
 NotShowIn=GNOME;XFCE;
