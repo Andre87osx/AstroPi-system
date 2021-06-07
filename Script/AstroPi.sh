@@ -206,7 +206,7 @@ exit_status=$?
 if [ $exit_status -eq 1 ]; then 
 zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 else
-zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
+zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System"
 fi
 
 elif [ "$ans" == "Install/Upgrade Kstars AstroPi" ];
@@ -251,9 +251,6 @@ exit_status=$?
 if [ $exit_status -eq 1 ]; then 
 zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 else
-zenity --info --text="Kstars AstroPi allredy installed" --width=300 --title="AstroPi System" && exit 0
+zenity --info --text="Kstars AstroPi allredy installed" --width=300 --title="AstroPi System"
 fi
 fi
-
-(( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-exit 0
