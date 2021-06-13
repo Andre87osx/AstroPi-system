@@ -218,7 +218,8 @@ then
 # =================================================================
 echo "5"
 echo "# Controllo Kstars AstroPi" ; sleep 2
-if [ ! -d $HOME/.Projects/kstars-cmake ]; then echo "$password" | sudo -S mkdir -p $HOME/.Projects/kstars-cmake; fi
+if [ -d $HOME/.Projects/kstars-cmake ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/kstars-cmake; fi
+echo "$password" | sudo -S mkdir -p $HOME/.Projects/kstars-cmake
 echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects/kstars-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
