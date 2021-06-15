@@ -20,6 +20,7 @@
 #include "Options.h"
 #include "skymap.h"
 #include "ksnotification.h"
+#include <QGuiApplication>
 
 #ifdef HAVE_INDI
 #include "basedevice.h"
@@ -66,6 +67,13 @@ void FITSLabel::mouseReleaseEvent(QMouseEvent *e)
         view->updateMouseCursor();
     }
 }
+
+void FITSLabel::leaveEvent(QEvent *e)
+{
+    Q_UNUSED(e);
+    view->updateMagnifyingGlass(-1, -1);
+}
+
 /**
 I added some things to the top of this method to allow panning and Scope slewing to function.
 If you are in the dragMouse mode and the mousebutton is pressed, The method checks the difference
@@ -89,7 +97,7 @@ void FITSLabel::mouseMoveEvent(QMouseEvent *e)
     }
 
     double x, y;
-    FITSData *view_data = view->getImageData();
+    const QSharedPointer<FITSData> &view_data = view->imageData();
 
     uint8_t const *buffer = view_data->getImageBuffer();
 
@@ -98,6 +106,11 @@ void FITSLabel::mouseMoveEvent(QMouseEvent *e)
 
     x = round(e->x() / scale);
     y = round(e->y() / scale);
+
+    if(QGuiApplication::queryKeyboardModifiers().testFlag(Qt::ControlModifier))
+        view->updateMagnifyingGlass(x, y);
+    else
+        view->updateMagnifyingGlass(-1, -1);
 
     x = KSUtils::clamp(x, 1.0, m_Width);
     y = KSUtils::clamp(y, 1.0, m_Height);
@@ -184,7 +197,7 @@ void FITSLabel::mouseMoveEvent(QMouseEvent *e)
             QToolTip::hideText();
     }
 
-    double HFR = view->getImageData()->getHFR(x, y);
+    double HFR = view->imageData()->getHFR(x, y);
 
     if (HFR > 0)
         QToolTip::showText(e->globalPos(), i18nc("Half Flux Radius", "HFR: %1", QString::number(HFR, 'g', 3)), this);
@@ -215,7 +228,7 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
     else if (e->buttons() & Qt::LeftButton && view->getCursorMode() == FITSView::scopeCursor)
     {
 #ifdef HAVE_INDI
-        FITSData *view_data = view->getImageData();
+        const QSharedPointer<FITSData> &view_data = view->imageData();
         if (view_data->hasWCS())
         {
             FITSImage::wcs_point *wcs_coord = view_data->getWCSCoord();
@@ -253,7 +266,7 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
     y = KSUtils::clamp(y, 1.0, m_Height);
 
 #ifdef HAVE_INDI
-    FITSData *view_data = view->getImageData();
+    const QSharedPointer<FITSData> &view_data = view->imageData();
 
     if (e->buttons() & Qt::RightButton && view->getCursorMode() != FITSView::scopeCursor)
     {

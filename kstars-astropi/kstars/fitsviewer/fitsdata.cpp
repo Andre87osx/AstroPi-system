@@ -62,7 +62,6 @@
 const QString FITSData::m_TemporaryPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
 const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw", "orf" };
 
-
 FITSData::FITSData(FITSMode fitsMode): m_Mode(fitsMode)
 {
     qRegisterMetaType<FITSMode>("FITSMode");
@@ -78,7 +77,7 @@ FITSData::FITSData(FITSMode fitsMode): m_Mode(fitsMode)
     m_HistogramIntensity.resize(3);
 }
 
-FITSData::FITSData(const FITSData * other)
+FITSData::FITSData(const QSharedPointer<FITSData> &other)
 {
     qRegisterMetaType<FITSMode>("FITSMode");
 

@@ -1752,7 +1752,7 @@
       </entry>
       <entry name="StretchPreviewSampling" type="UInt">
          <label>Set the coarseness of the preview shown when sliding the fitsviewer's stretch parameter sliders. 1 is full resolution, but can be slow, 4 would be coarse resolution and fast.</label>
-         <default>3</default>
+         <default>4</default>
       </entry>
       <entry name="AdaptiveSampling" type="Bool">
          <label>Automatically down sample images based on available resources.</label>
@@ -1808,10 +1808,13 @@
       <entry name="DefaultFocusFilterWheel" type="String">
          <label>Default focus module filter wheel.</label>
       </entry>
+      <entry name="DefaultFocusTemperatureSource" type="String">
+         <label>Default focus module temperature source.</label>
+      </entry>
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>100</default>
+         <default>500</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1824,7 +1827,15 @@
       <entry name="FocusTolerance" type="Double">
          <label>Default Focuser tolerance value</label>
          <whatsthis>The tolerance specifies the percentage difference between the current focusing position and the minimum obtained during the focusing run. Adjustment of this value is necessary to prevent the focusing algorithm from oscillating back and forth.</whatsthis>
-         <default>5</default>
+         <default>1</default>
+      </entry>
+      <entry name="FocusCaptureTimeout" type="UInt">
+         <whatsthis>Maximum time in seconds to wait for a captured image to be received before declaring a timeout.</whatsthis>
+         <default>120</default>
+      </entry>
+      <entry name="FocusMotionTimeout" type="UInt">
+         <whatsthis>Maximum time in seconds to wait for a focuser to move to desired position before declaring a timeout.</whatsthis>
+         <default>30</default>
       </entry>
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
@@ -1862,17 +1873,17 @@
       </entry>
       <entry name="FocusUseFullField" type="Bool">
          <label>Measure average HFR from all stars combined in a full frame. This method defaults to the Centroid detection, but can use SEP detection too. Its performance decreases as the number of stars increases.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="FocusFullFieldInnerRadius" type="Double">
          <label>Full field inner radius.</label>
          <whatsthis>During full field focusing, stars which are inside this percentage of the frame are filtered out of HFR calculation (default 0%). Detection algorithms may also have an inherent filter.</whatsthis>
-         <default>20.0</default>
+         <default>0.0</default>
       </entry>
       <entry name="FocusFullFieldOuterRadius" type="Double">
          <label>Full field outer radius.</label>
          <whatsthis>During full field focusing, stars which are outside this percentage of the frame are filtered out of HFR calculation (default 100%). Detection algorithms may also have an inherent filter.</whatsthis>
-         <default>80.0</default>
+         <default>100.0</default>
       </entry>
       <entry name="FocusAutoStarEnabled" type="Bool">
          <label>Automatically select a star to focus.</label>
@@ -1896,11 +1907,11 @@
       </entry>
       <entry name="FocusDetection" type="UInt">
          <label>Star detection algorithm</label>
-         <default>3</default>
+         <default>0</default>
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>2</default>
+         <default>0</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>

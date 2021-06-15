@@ -636,6 +636,11 @@ class Capture : public QWidget, public Ui::Capture
         }
 
         /**
+         * @brief showTemperatureRegulation Toggle temperature regulation dialog which sets temperature ramp and threshold
+         */
+        void showTemperatureRegulation();
+
+        /**
          * @brief prepareActiveJobStage1 Check for pre job script to execute. If none, move to stage 2
          */
         void prepareActiveJobStage1();
@@ -1058,11 +1063,11 @@ class Capture : public QWidget, public Ui::Capture
 
         // State
         CaptureState m_State { CAPTURE_IDLE };
-        FocusState focusState { FOCUS_IDLE };
-        GuideState guideState { GUIDE_IDLE };
-        IPState ditheringState {IPS_IDLE};
-        AlignState alignState { ALIGN_IDLE };
-        FilterState filterManagerState { FILTER_IDLE };
+        FocusState m_FocusState { FOCUS_IDLE };
+        GuideState m_GuideState { GUIDE_IDLE };
+        IPState m_DitheringState {IPS_IDLE};
+        AlignState m_AlignState { ALIGN_IDLE };
+        FilterState m_FilterManagerState { FILTER_IDLE };
 
         PauseFunctionPointer pauseFunction;
 
