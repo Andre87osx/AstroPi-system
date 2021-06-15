@@ -214,7 +214,7 @@ class Align : public QWidget, public Ui::Align
              */
         Q_SCRIPTABLE int getLoadAndSlewStatus()
         {
-            return loadSlewState;
+            return solveFromFile;
         }
 
         /** DBUS interface function.
@@ -313,7 +313,7 @@ class Align : public QWidget, public Ui::Align
         /**
              * @brief Generate arguments we pass to the remote solver.
              */
-        QStringList generateRemoteArgs(FITSData *data = nullptr);
+        QStringList generateRemoteArgs(const QSharedPointer<FITSData> &imageData);
 
         /**
              * @brief Does our parser exist in the system?
@@ -816,10 +816,8 @@ class Align : public QWidget, public Ui::Align
         bool useGuideHead { false };
         /// Can the mount sync its coordinates to those set by Ekos?
         bool canSync { false };
-        // LoadSlew mode is when we load an image and solve it, no capture is done.
-        //bool loadSlewMode;
-        /// If load and slew is solved successfully, coordinates obtained, slewed to target, and then captured, solved, and re-slewed to target again.
-        IPState loadSlewState { IPS_IDLE };
+        // solveFromFile is true we load an image and solve it, no capture is done.
+        bool solveFromFile { false };
         // Target Position Angle of solver Load&Slew image to be used for rotator if necessary
         double loadSlewTargetPA { std::numeric_limits<double>::quiet_NaN() };
         double currentRotatorPA { -1 };

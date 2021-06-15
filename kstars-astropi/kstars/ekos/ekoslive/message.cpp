@@ -545,17 +545,17 @@ void Message::sendFilterWheels()
 
     for(ISD::GDInterface *gd : m_Manager->findDevices(KSTARS_FILTER))
     {
-        INDI::Property *prop = gd->getProperty("FILTER_NAME");
-        if (prop == nullptr)
+        auto prop = gd->getProperty("FILTER_NAME");
+        if (!prop)
             break;
 
-        ITextVectorProperty *filterNames = prop->getText();
-        if (filterNames == nullptr)
+        auto filterNames = prop->getText();
+        if (!filterNames)
             break;
 
         QJsonArray filters;
-        for (int i = 0; i < filterNames->ntp; i++)
-            filters.append(filterNames->tp[i].text);
+        for (const auto &it: *filterNames)
+            filters.append(it.getText());
 
         QJsonObject oneFilter =
         {
@@ -1519,7 +1519,7 @@ void Message::processDialogResponse(const QJsonObject &payload)
     KSMessageBox::Instance()->selectResponse(payload["button"].toString());
 }
 
-void Message::processNewProperty(INDI::Property * prop)
+void Message::processNewProperty(INDI::Property prop)
 {
     // Do not send new properties until all properties settle down
     // then send any properties that appears afterwards since the initial bunch
