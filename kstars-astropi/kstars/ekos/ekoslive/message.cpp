@@ -18,7 +18,6 @@
 #include "kstars.h"
 #include "kstarsdata.h"
 #include "ekos_debug.h"
-#include "fitsviewer/fitsview.h"
 
 #include <KActionCollection>
 #include <basedevice.h>
@@ -545,17 +544,17 @@ void Message::sendFilterWheels()
 
     for(ISD::GDInterface *gd : m_Manager->findDevices(KSTARS_FILTER))
     {
-        auto prop = gd->getProperty("FILTER_NAME");
-        if (!prop)
+        INDI::Property *prop = gd->getProperty("FILTER_NAME");
+        if (prop == nullptr)
             break;
 
-        auto filterNames = prop->getText();
-        if (!filterNames)
+        ITextVectorProperty *filterNames = prop->getText();
+        if (filterNames == nullptr)
             break;
 
         QJsonArray filters;
-        for (const auto &it: *filterNames)
-            filters.append(it.getText());
+        for (int i = 0; i < filterNames->ntp; i++)
+            filters.append(filterNames->tp[i].text);
 
         QJsonObject oneFilter =
         {
@@ -969,19 +968,17 @@ void Message::processPolarCommands(const QString &command, const QJsonObject &pa
         double x = payload["x"].toDouble();
         double y = payload["y"].toDouble();
 
-        if (m_BoundingRect.isNull() == false)
+        if (boundingRect.isNull() == false)
         {
             // #1 Find actual dimension inside the bounding rectangle
             // since if we have bounding rectable then x,y fractions are INSIDE it
-            double boundX = x * m_BoundingRect.width();
-            double boundY = y * m_BoundingRect.height();
+            double boundX = x * boundingRect.width();
+            double boundY = y * boundingRect.height();
 
             // #2 Find fraction of the dimensions above the full image size
             // Add to it the bounding rect top left offsets
-            // factors in the change caused by zoom
-            x = ((boundX + m_BoundingRect.x()) / (m_CurrentZoom / 100)) / m_ViewSize.width();
-            y = ((boundY + m_BoundingRect.y()) / (m_CurrentZoom / 100)) / m_ViewSize.height();
-
+            x = (boundX + boundingRect.x()) / viewSize.width();
+            y = (boundY + boundingRect.y()) / viewSize.height();
         }
 
         align->setPAHCorrectionOffsetPercentage(x, y);
@@ -994,16 +991,6 @@ void Message::processPolarCommands(const QString &command, const QJsonObject &pa
     {
         align->setPAHRefreshComplete();
     }
-    else if (command == commands[PAH_SLEW_DONE])
-    {
-        align->setPAHSlewDone();
-    }
-    else if (command == commands[PAH_PAH_SET_ZOOM])
-    {
-        double scale = payload["scale"].toDouble();
-        align->setAlignZoom(scale);
-    }
-
 }
 
 void Message::setPAHStage(Ekos::Align::PAHStage stage)
@@ -1220,15 +1207,6 @@ void Message::processDeviceCommands(const QString &command, const QJsonObject &p
 {
     QList<ISD::GDInterface *> devices = m_Manager->getAllDevices();
     QString device = payload["device"].toString();
-
-    // In case we want to UNSUBSCRIBE from all at once
-    if (device.isEmpty() && command == commands[DEVICE_PROPERTY_UNSUBSCRIBE])
-    {
-        m_PropertySubscriptions.clear();
-        return;
-    }
-
-    // For the device
     auto pos = std::find_if(devices.begin(), devices.end(), [device](ISD::GDInterface * oneDevice)
     {
         return (QString(oneDevice->getDeviceName()) == device);
@@ -1255,7 +1233,7 @@ void Message::processDeviceCommands(const QString &command, const QJsonObject &p
     else if (command == commands[DEVICE_GET])
     {
         QJsonArray properties;
-        for (const auto &oneProp : *oneDevice->getProperties())
+        for (const auto &oneProp : oneDevice->getProperties())
         {
             QJsonObject singleProp;
             if (oneDevice->getJSONProperty(oneProp->getName(), singleProp, payload["compact"].toBool(false)))
@@ -1275,74 +1253,21 @@ void Message::processDeviceCommands(const QString &command, const QJsonObject &p
     // When subscribed, the updates are immediately pushed as soon as they are received.
     else if (command == commands[DEVICE_PROPERTY_SUBSCRIBE])
     {
-        const QJsonArray properties = payload["properties"].toArray();
-        const QJsonArray groups = payload["groups"].toArray();
-
-        // Get existing subscribed props for this device
+        const QString property = payload["property"].toString();
         QSet<QString> props;
         if (m_PropertySubscriptions.contains(device))
             props = m_PropertySubscriptions[device];
-
-        // If it is just a single property, let's insert it to props.
-        if (properties.isEmpty() == false)
-        {
-            for (const auto &oneProp : properties)
-                props.insert(oneProp.toString());
-        }
-        // If group is specified, then we need to add ALL properties belonging to this group.
-        else if (groups.isEmpty() == false)
-        {
-            QVariantList indiGroups = groups.toVariantList();
-            for (auto &oneProp : *oneDevice->getProperties())
-            {
-                if (indiGroups.contains(oneProp->getGroupName()))
-                    props.insert(oneProp->getName());
-            }
-        }
-        // Otherwise, subscribe to ALL property in this device
-        else
-        {
-            for (auto &oneProp : *oneDevice->getProperties())
-                props.insert(oneProp->getName());
-        }
-
+        props.insert(property);
         m_PropertySubscriptions[device] = props;
     }
     else if (command == commands[DEVICE_PROPERTY_UNSUBSCRIBE])
     {
-        const QJsonArray properties = payload["properties"].toArray();
-        const QJsonArray groups = payload["groups"].toArray();
-
-        // Get existing subscribed props for this device
-        QSet<QString> props;
+        const QString property = payload["property"].toString();
         if (m_PropertySubscriptions.contains(device))
-            props = m_PropertySubscriptions[device];
-
-        // If it is just a single property, let's insert it to props.
-        // If it is just a single property, let's insert it to props.
-        if (properties.isEmpty() == false)
         {
-            for (const auto &oneProp : properties)
-                props.remove(oneProp.toString());
+            QSet<QString> props = m_PropertySubscriptions[device];
+            props.remove(property);
         }
-        // If group is specified, then we need to add ALL properties belonging to this group.
-        else if (groups.isEmpty() == false)
-        {
-            QVariantList indiGroups = groups.toVariantList();
-            for (auto &oneProp : *oneDevice->getProperties())
-            {
-                if (indiGroups.contains(oneProp->getGroupName()))
-                    props.remove(oneProp->getName());
-            }
-        }
-        // Otherwise, subscribe to ALL property in this device
-        else
-        {
-            for (auto &oneProp : *oneDevice->getProperties())
-                props.remove(oneProp->getName());
-        }
-
-        m_PropertySubscriptions[device] = props;
     }
 }
 
@@ -1500,18 +1425,17 @@ void Message::sendStates()
 
 void Message::sendEvent(const QString &message, KSNotification::EventType event)
 {
-    if (m_isConnected == false || m_Options[OPTION_SET_NOTIFICATIONS] == false)
+    if (m_isConnected == false && m_Options[OPTION_SET_NOTIFICATIONS] == false)
         return;
 
     QJsonObject newEvent = {{ "severity", event}, {"message", message}, {"uuid", QUuid::createUuid().toString()}};
     sendResponse(commands[NEW_NOTIFICATION], newEvent);
 }
 
-void Message::setBoundingRect(QRect rect, QSize view, double currentZoom)
+void Message::setBoundingRect(QRect rect, QSize view)
 {
-    m_BoundingRect = rect;
-    m_ViewSize = view;
-    m_CurrentZoom = currentZoom;
+    boundingRect = rect;
+    viewSize = view;
 }
 
 void Message::processDialogResponse(const QJsonObject &payload)
@@ -1519,7 +1443,7 @@ void Message::processDialogResponse(const QJsonObject &payload)
     KSMessageBox::Instance()->selectResponse(payload["button"].toString());
 }
 
-void Message::processNewProperty(INDI::Property prop)
+void Message::processNewProperty(INDI::Property * prop)
 {
     // Do not send new properties until all properties settle down
     // then send any properties that appears afterwards since the initial bunch

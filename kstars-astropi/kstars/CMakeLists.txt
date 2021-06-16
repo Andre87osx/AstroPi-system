@@ -143,7 +143,6 @@ if (INDI_FOUND)
             ekos/auxiliary/opslogs.ui
             ekos/auxiliary/serialportassistant.ui
             ekos/auxiliary/stellarsolverprofileeditor.ui
-            ekos/auxiliary/darklibrary.ui
             # Ekos Live
             ekos/ekoslive/ekoslivedialog.ui
             # INDI Hub
@@ -163,8 +162,6 @@ if (INDI_FOUND)
             ekos/auxiliary/weather.cpp
             ekos/auxiliary/dustcap.cpp
             ekos/auxiliary/darklibrary.cpp
-            ekos/auxiliary/darkview.cpp
-            ekos/auxiliary/defectmap.cpp
             ekos/auxiliary/filtermanager.cpp
             ekos/auxiliary/filterdelegate.cpp
             ekos/auxiliary/opslogs.cpp
@@ -179,7 +176,6 @@ if (INDI_FOUND)
             ekos/capture/rotatorsettings.cpp
             ekos/capture/customproperties.cpp
             ekos/capture/scriptsmanager.cpp
-            ekos/capture/placeholderpath.cpp
 
             # Analyze
             ekos/analyze/analyze.cpp
@@ -296,9 +292,7 @@ if (CFITSIO_FOUND)
         fitsviewer/bayer.c
         fitsviewer/fpack.c
         fitsviewer/fpackutil.c
-        fitsviewer/fitshistogrameditor.cpp
-        fitsviewer/fitshistogramview.cpp
-        fitsviewer/fitshistogramcommand.cpp
+        fitsviewer/fitshistogram.cpp
         fitsviewer/fitsview.cpp
         fitsviewer/fitsdata.cpp
         fitsviewer/fitsstardetector.cpp
@@ -414,7 +408,6 @@ set(libkstarstools_SRCS
     tools/exporteyepieceview.cpp
     tools/starhopperdialog.cpp
     tools/adddeepskyobject.cpp
-    tools/greatcircle.cpp
 )
 
 if(${KF5_VERSION} VERSION_EQUAL 5.18.0 OR ${KF5_VERSION} VERSION_GREATER 5.18.0)
@@ -520,7 +513,6 @@ set(kstars_options_SRCS
     options/opssolarsystem.cpp
     options/opssatellites.cpp
     options/opssupernovae.cpp
-    options/opsterrain.cpp
 )
 
 set(kstars_optionsui_SRCS
@@ -531,7 +523,6 @@ set(kstars_optionsui_SRCS
     options/opssolarsystem.ui
     options/opssatellites.ui
     options/opssupernovae.ui
-    options/opsterrain.ui
 )
 
 set(kstars_dialogs_SRCS
@@ -574,10 +565,6 @@ set(hips_SRCS
     hips/pixcache.cpp
     hips/urlfiledownload.cpp
     hips/opships.cpp
-)
-
-set(terrain_SRCS
-    terrain/terrainrenderer.cpp
 )
 
 set(hips_manager_SRCS
@@ -672,7 +659,6 @@ set(libkstarscomponents_SRCS
     skycomponents/equator.cpp
     skycomponents/artificialhorizoncomponent.cpp
     skycomponents/hipscomponent.cpp
-    skycomponents/terraincomponent.cpp
     skycomponents/horizoncomponent.cpp
     skycomponents/milkyway.cpp
     skycomponents/skycomponent.cpp
@@ -978,7 +964,6 @@ set(kstars_SRCS
     ${kstars_skyobjects_SRCS}
     ${kstars_dialogs_SRCS}
     ${hips_SRCS}
-    ${terrain_SRCS}
     ${oal_SRCS}
     ${printing_SRCS}
     #KStars Lite

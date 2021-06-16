@@ -24,7 +24,7 @@ class AlignView : public FITSView
         explicit AlignView(QWidget *parent = nullptr, FITSMode mode = FITS_NORMAL, FITSScale filter = FITS_NONE);
 
         /* Calculate WCS header info and update WCS info */
-        bool injectWCS(double orientation, double ra, double dec, double pixscale, bool eastToTheRight, bool extras);
+        bool injectWCS(double orientation, double ra, double dec, double pixscale, bool extras = true);
 
         void drawOverlay(QPainter *, double scale) override;
 
@@ -43,9 +43,9 @@ class AlignView : public FITSView
 
         void holdOnToImage();
         void releaseImage();
-        const QSharedPointer<FITSData> keptImage() const
+        FITSData *keptImage() const
         {
-            return keptImagePointer;
+            return keptImagePointer.data();
         }
 
     protected:

@@ -17,8 +17,7 @@
 #include "fitstab.h"
 
 #include "fitsdata.h"
-#include "fitshistogrameditor.h"
-#include "fitshistogramcommand.h"
+#include "fitshistogram.h"
 #include "fitsview.h"
 #include "fitsviewer.h"
 #include "ksnotification.h"
@@ -50,11 +49,7 @@ FITSTab::FITSTab(FITSViewer *parent) : QWidget(parent)
 
     statWidget = new QDialog(this);
     fitsHeaderDialog = new QDialog(this);
-    m_HistogramEditor = new FITSHistogramEditor(this);
-    connect(m_HistogramEditor, &FITSHistogramEditor::newHistogramCommand, [this](FITSHistogramCommand * command)
-    {
-        undoStack->push(command);
-    });
+    histogram = new FITSHistogram(this);
 }
 
 FITSTab::~FITSTab()
@@ -66,7 +61,7 @@ FITSTab::~FITSTab()
 
 void FITSTab::saveUnsaved()
 {
-    if (undoStack->isClean() || m_View->getMode() != FITS_NORMAL)
+    if (undoStack->isClean() || view->getMode() != FITS_NORMAL)
         return;
 
     QString caption = i18n("Save Changes to FITS?");
@@ -168,13 +163,13 @@ void setupStretchButton(QPushButton *button, const QString &iconName, const QStr
 // Updates all the widgets in the stretch area to display the view's stretch parameters.
 void FITSTab::setStretchUIValues(bool adjustSliders)
 {
-    StretchParams1Channel params = m_View->getStretchParams().grey_red;
+    StretchParams1Channel params = view->getStretchParams().grey_red;
     setSlider(shadowsSlider.get(), shadowsVal.get(), params.shadows, maxShadows, adjustSliders);
     setSlider(midtonesSlider.get(), midtonesVal.get(), params.midtones, maxMidtones, adjustSliders);
     setSlider(highlightsSlider.get(), highlightsVal.get(), params.highlights, maxHighlights, adjustSliders);
 
 
-    bool stretchActive = m_View->isImageStretched();
+    bool stretchActive = view->isImageStretched();
     if (stretchActive)
     {
         stretchButton->setChecked(true);
@@ -187,7 +182,7 @@ void FITSTab::setStretchUIValues(bool adjustSliders)
     }
 
     // Only activate the auto button if stretching is on and auto-stretching is not set.
-    if (stretchActive && !m_View->getAutoStretch())
+    if (stretchActive && !view->getAutoStretch())
     {
         autoButton->setEnabled(true);
         autoButton->setIcon(QIcon::fromTheme("tools-wizard"));
@@ -201,7 +196,7 @@ void FITSTab::setStretchUIValues(bool adjustSliders)
         autoButton->setIconSize(QSize(22, 22));
         autoButton->setToolTip("");
     }
-    autoButton->setChecked(m_View->getAutoStretch());
+    autoButton->setChecked(view->getAutoStretch());
 
     // Disable most of the UI if stretching is not active.
     shadowsSlider->setEnabled(stretchActive);
@@ -218,8 +213,8 @@ void FITSTab::setStretchUIValues(bool adjustSliders)
 // Adjusts the maxShadows value so that we have room to adjust the slider.
 void FITSTab::rescaleShadows()
 {
-    if (!m_View) return;
-    StretchParams1Channel params = m_View->getStretchParams().grey_red;
+    if (!view) return;
+    StretchParams1Channel params = view->getStretchParams().grey_red;
     maxShadows = std::max(0.002f, std::min(1.0f, params.shadows * 2.0f));
     setStretchUIValues(true);
 }
@@ -227,8 +222,8 @@ void FITSTab::rescaleShadows()
 // Adjusts the maxMidtones value so that we have room to adjust the slider.
 void FITSTab::rescaleMidtones()
 {
-    if (!m_View) return;
-    StretchParams1Channel params = m_View->getStretchParams().grey_red;
+    if (!view) return;
+    StretchParams1Channel params = view->getStretchParams().grey_red;
     maxMidtones = std::max(.002f, std::min(1.0f, params.midtones * 2.0f));
     setStretchUIValues(true);
 }
@@ -273,55 +268,55 @@ QHBoxLayout* FITSTab::setupStretchBar()
     connect(stretchButton.get(), &QPushButton::clicked, [ = ]()
     {
         // This will toggle whether we're currently stretching.
-        m_View->setStretch(!m_View->isImageStretched());
+        view->setStretch(!view->isImageStretched());
     });
 
     // Make rough displays for the slider movement.
     connect(shadowsSlider.get(), &QSlider::sliderMoved, [ = ](int value)
     {
-        StretchParams params = m_View->getStretchParams();
+        StretchParams params = view->getStretchParams();
         params.grey_red.shadows = this->maxShadows * value / 10000.0f;
-        m_View->setPreviewSampling(Options::stretchPreviewSampling());
-        m_View->setStretchParams(params);
-        m_View->setPreviewSampling(0);
+        view->setPreviewSampling(Options::stretchPreviewSampling());
+        view->setStretchParams(params);
+        view->setPreviewSampling(0);
     });
     connect(midtonesSlider.get(), &QSlider::sliderMoved, [ = ](int value)
     {
-        StretchParams params = m_View->getStretchParams();
+        StretchParams params = view->getStretchParams();
         params.grey_red.midtones = this->maxMidtones * value / 10000.0f;
-        m_View->setPreviewSampling(Options::stretchPreviewSampling());
-        m_View->setStretchParams(params);
-        m_View->setPreviewSampling(0);
+        view->setPreviewSampling(Options::stretchPreviewSampling());
+        view->setStretchParams(params);
+        view->setPreviewSampling(0);
     });
     connect(highlightsSlider.get(), &QSlider::sliderMoved, [ = ](int value)
     {
-        StretchParams params = m_View->getStretchParams();
+        StretchParams params = view->getStretchParams();
         params.grey_red.highlights = this->maxHighlights * value / 10000.0f;
-        m_View->setPreviewSampling(Options::stretchPreviewSampling());
-        m_View->setStretchParams(params);
-        m_View->setPreviewSampling(0);
+        view->setPreviewSampling(Options::stretchPreviewSampling());
+        view->setStretchParams(params);
+        view->setPreviewSampling(0);
     });
 
     // Make a final full-res display when the slider is released.
     connect(shadowsSlider.get(), &QSlider::sliderReleased, [ = ]()
     {
-        if (!m_View) return;
+        if (!view) return;
         rescaleShadows();
-        StretchParams params = m_View->getStretchParams();
-        m_View->setStretchParams(params);
+        StretchParams params = view->getStretchParams();
+        view->setStretchParams(params);
     });
     connect(midtonesSlider.get(), &QSlider::sliderReleased, [ = ]()
     {
-        if (!m_View) return;
+        if (!view) return;
         rescaleMidtones();
-        StretchParams params = m_View->getStretchParams();
-        m_View->setStretchParams(params);
+        StretchParams params = view->getStretchParams();
+        view->setStretchParams(params);
     });
     connect(highlightsSlider.get(), &QSlider::sliderReleased, [ = ]()
     {
-        if (!m_View) return;
-        StretchParams params = m_View->getStretchParams();
-        m_View->setStretchParams(params);
+        if (!view) return;
+        StretchParams params = view->getStretchParams();
+        view->setStretchParams(params);
     });
 
     connect(autoButton.get(), &QPushButton::clicked, [ = ]()
@@ -329,8 +324,8 @@ QHBoxLayout* FITSTab::setupStretchBar()
         // If we're not currently using automatic stretch parameters, turn that on.
         // If we're already using automatic parameters, don't do anything.
         // User can just move the sliders to take manual control.
-        if (!m_View->getAutoStretch())
-            m_View->setAutoStretchParams();
+        if (!view->getAutoStretch())
+            view->setAutoStretchParams();
         else
             KMessageBox::information(this, "You are already using automatic stretching. To manually stretch, drag a slider.");
         setStretchUIValues(false);
@@ -338,7 +333,7 @@ QHBoxLayout* FITSTab::setupStretchBar()
 
     // This is mostly useful right at the start, when the image is displayed without any user interaction.
     // Check for slider-in-use, as we don't wont to rescale while the user is active.
-    connect(m_View.get(), &FITSView::newStatus, [ = ](const QString & ignored)
+    connect(view.get(), &FITSView::newStatus, [ = ](const QString & ignored)
     {
         Q_UNUSED(ignored)
         bool slidersInUse = shadowsSlider->isSliderDown() || midtonesSlider->isSliderDown() ||
@@ -356,10 +351,10 @@ QHBoxLayout* FITSTab::setupStretchBar()
 
 bool FITSTab::setupView(FITSMode mode, FITSScale filter)
 {
-    if (m_View.get() == nullptr)
+    if (view.get() == nullptr)
     {
-        m_View.reset(new FITSView(this, mode, filter));
-        m_View->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        view.reset(new FITSView(this, mode, filter));
+        view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         QVBoxLayout *vlayout = new QVBoxLayout();
 
         fitsSplitter = new QSplitter(Qt::Horizontal, this);
@@ -382,7 +377,7 @@ bool FITSTab::setupView(FITSMode mode, FITSScale filter)
 
         fitsTools->addItem(statWidget, i18n("Statistics"));
 
-        fitsTools->addItem(m_HistogramEditor, i18n("Histogram"));
+        fitsTools->addItem(histogram, i18n("Histogram"));
 
         header.setupUi(fitsHeaderDialog);
         fitsTools->addItem(fitsHeaderDialog, i18n("FITS Header"));
@@ -403,23 +398,23 @@ bool FITSTab::setupView(FITSMode mode, FITSScale filter)
         scrollFitsPanel->setWidget(fitsTools);
 
         fitsSplitter->addWidget(scrollFitsPanel);
-        fitsSplitter->addWidget(m_View.get());
+        fitsSplitter->addWidget(view.get());
 
 
         //This code allows the fitsTools to start in a closed state
-        fitsSplitter->setSizes(QList<int>() << 0 << m_View->width() );
+        fitsSplitter->setSizes(QList<int>() << 0 << view->width() );
 
         vlayout->addWidget(fitsSplitter);
         vlayout->addLayout(setupStretchBar());
 
-        connect(fitsSplitter, &QSplitter::splitterMoved, m_HistogramEditor, &FITSHistogramEditor::resizePlot);
+        connect(fitsSplitter, &QSplitter::splitterMoved, histogram, &FITSHistogram::resizePlot);
 
         setLayout(vlayout);
-        connect(m_View.get(), &FITSView::newStatus, this, &FITSTab::newStatus);
-        connect(m_View.get(), &FITSView::debayerToggled, this, &FITSTab::debayerToggled);
+        connect(view.get(), &FITSView::newStatus, this, &FITSTab::newStatus);
+        connect(view.get(), &FITSView::debayerToggled, this, &FITSTab::debayerToggled);
 
         // On Failure to load
-        connect(m_View.get(), &FITSView::failed, this, &FITSTab::failed);
+        connect(view.get(), &FITSView::failed, this, &FITSTab::failed);
 
         return true;
     }
@@ -438,7 +433,7 @@ void FITSTab::loadFile(const QUrl &imageURL, FITSMode mode, FITSScale filter, bo
     {
 
         // On Success loading image
-        connect(m_View.get(), &FITSView::loaded, [&]()
+        connect(view.get(), &FITSView::loaded, [&]()
         {
             processData();
             emit loaded();
@@ -450,9 +445,9 @@ void FITSTab::loadFile(const QUrl &imageURL, FITSMode mode, FITSScale filter, bo
 
     currentURL = imageURL;
 
-    m_View->setFilter(filter);
+    view->setFilter(filter);
 
-    m_View->loadFile(imageURL.toLocalFile(), silent);
+    view->loadFile(imageURL.toLocalFile(), silent);
 }
 
 bool FITSTab::shouldComputeHFR() const
@@ -461,28 +456,33 @@ bool FITSTab::shouldComputeHFR() const
         return true;
     if (!Options::autoHFR())
         return false;
-    return (m_View != nullptr) && (m_View->getMode() == FITS_NORMAL);
+    return (view != nullptr) && (view->getMode() == FITS_NORMAL);
 }
 
 void FITSTab::processData()
 {
-    const QSharedPointer<FITSData> &imageData = m_View->imageData();
-
-    m_HistogramEditor->setImageData(imageData);
+    FITSData *image_data = view->getImageData();
+    histogram->reset();
+    image_data->setHistogram(histogram);
 
     // Only construct histogram if it is actually visible
     // Otherwise wait until histogram is needed before creating it.
-    //    if (fitsSplitter->sizes().at(0) != 0 && !imageData->isHistogramConstructed() &&
-    //            !Options::nonLinearHistogram())
-    //    {
-    //        imageData->constructHistogram();
-    //    }
+    if (fitsSplitter->sizes().at(0) != 0)
+    {
+        histogram->constructHistogram();
+    }
 
     if (shouldComputeHFR())
     {
-        m_View->searchStars();
-        qCDebug(KSTARS_FITS) << "FITS HFR:" << imageData->getHFR();
+        view->searchStars();
+        qCDebug(KSTARS_FITS) << "FITS HFR:" << image_data->getHFR();
     }
+    // This could both compute the HFRs and setup the graphics, however,
+    // if shouldComputeHFR() above is true, then that will compute the HFRs
+    // and this would notice that and just setup graphics. They are separated
+    // for the case where the graphics is not desired.
+    if (viewer->isStarsMarked())
+        view->toggleStars(true);
 
     evaluateStats();
 
@@ -491,30 +491,18 @@ void FITSTab::processData()
     // Don't add it to the list if it is already there
     if (recentImages->findItems(currentURL.toLocalFile(), Qt::MatchExactly).count() == 0)
     {
-        //Don't add it to the list if it is a preview
-        if(!imageData->filename().startsWith(QDir::tempPath()))
+        if(!image_data->isTempFile()) //Don't add it to the list if it is a preview
         {
             disconnect(recentImages, &QListWidget::currentRowChanged, this,
                        &FITSTab::selectRecentFITS);
-            recentImages->addItem(imageData->filename());
+            recentImages->addItem(image_data->filename());
             recentImages->setCurrentRow(recentImages->count() - 1);
             connect(recentImages, &QListWidget::currentRowChanged,  this,
                     &FITSTab::selectRecentFITS);
         }
     }
 
-    //     This could both compute the HFRs and setup the graphics, however,
-    //     if shouldComputeHFR() above is true, then that will compute the HFRs
-    //     and this would notice that and just setup graphics. They are separated
-    //     for the case where the graphics is not desired.
-    if (viewer->isStarsMarked())
-    {
-        m_View->toggleStars(true);
-        m_View->updateFrame();
-    }
-
-    //    if (Options::nonLinearHistogram())
-    //        m_HistogramEditor->createNonLinearHistogram();
+    view->updateFrame();
 }
 
 bool FITSTab::loadData(const QSharedPointer<FITSData> &data, FITSMode mode, FITSScale filter)
@@ -524,15 +512,9 @@ bool FITSTab::loadData(const QSharedPointer<FITSData> &data, FITSMode mode, FITS
     // Empty URL
     currentURL = QUrl();
 
-    if (viewer->isStarsMarked())
-    {
-        m_View->toggleStars(true);
-        //view->updateFrame();
-    }
+    view->setFilter(filter);
 
-    m_View->setFilter(filter);
-
-    if (!m_View->loadData(data))
+    if (!view->loadData(data))
     {
         // On Failure to load
         // connect(view.get(), &FITSView::failed, this, &FITSTab::failed);
@@ -560,44 +542,39 @@ void FITSTab::modifyFITSState(bool clean, const QUrl &imageURL)
 
 bool FITSTab::saveImage(const QString &filename)
 {
-    return m_View->saveImage(filename);
+    return view->saveImage(filename);
 }
 
 void FITSTab::copyFITS()
 {
-    QApplication::clipboard()->setImage(m_View->getDisplayImage());
+    QApplication::clipboard()->setImage(view->getDisplayImage());
 }
 
 void FITSTab::histoFITS()
 {
-    //    if (Options::nonLinearHistogram())
-    //    {
-    //        m_HistogramEditor->createNonLinearHistogram();
-    //        evaluateStats();
-    //    }
-    //    if (!m_View->imageData()->isHistogramConstructed())
-    //    {
-    //        m_View->imageData()->constructHistogram();
-    //        evaluateStats();
-    //    }
+    if (!histogram->isConstructed())
+    {
+        histogram->constructHistogram();
+        evaluateStats();
+    }
 
     fitsTools->setCurrentIndex(1);
-    if(m_View->width() > 200)
-        fitsSplitter->setSizes(QList<int>() << 200 << m_View->width() - 200);
+    if(view->width() > 200)
+        fitsSplitter->setSizes(QList<int>() << 200 << view->width() - 200);
     else
         fitsSplitter->setSizes(QList<int>() << 50 << 50);
 }
 
 void FITSTab::evaluateStats()
 {
-    const QSharedPointer<FITSData> &imageData = m_View->imageData();
+    FITSData *image_data = view->getImageData();
 
-    stat.statsTable->item(STAT_WIDTH, 0)->setText(QString::number(imageData->width()));
-    stat.statsTable->item(STAT_HEIGHT, 0)->setText(QString::number(imageData->height()));
-    stat.statsTable->item(STAT_BITPIX, 0)->setText(QString::number(imageData->bpp()));
-    stat.statsTable->item(STAT_HFR, 0)->setText(QString::number(imageData->getHFR(), 'f', 3));
+    stat.statsTable->item(STAT_WIDTH, 0)->setText(QString::number(image_data->width()));
+    stat.statsTable->item(STAT_HEIGHT, 0)->setText(QString::number(image_data->height()));
+    stat.statsTable->item(STAT_BITPIX, 0)->setText(QString::number(image_data->bpp()));
+    stat.statsTable->item(STAT_HFR, 0)->setText(QString::number(image_data->getHFR(), 'f', 3));
 
-    if (imageData->channels() == 1)
+    if (image_data->channels() == 1)
     {
         for (int i = STAT_MIN; i <= STAT_STDDEV; i++)
         {
@@ -622,36 +599,36 @@ void FITSTab::evaluateStats()
         stat.statsTable->showColumn(2);
     }
 
-    if (!Options::nonLinearHistogram() && !imageData->isHistogramConstructed())
-        imageData->constructHistogram();
+    if (image_data->getMedian() == 0.0 && !histogram->isConstructed())
+        histogram->constructHistogram();
 
-    for (int i = 0; i < imageData->channels(); i++)
+    for (int i = 0; i < image_data->channels(); i++)
     {
-        stat.statsTable->item(STAT_MIN, i)->setText(QString::number(imageData->getMin(i), 'f', 3));
-        stat.statsTable->item(STAT_MAX, i)->setText(QString::number(imageData->getMax(i), 'f', 3));
-        stat.statsTable->item(STAT_MEAN, i)->setText(QString::number(imageData->getMean(i), 'f', 3));
-        stat.statsTable->item(STAT_MEDIAN, i)->setText(QString::number(imageData->getMedian(i), 'f', 3));
-        stat.statsTable->item(STAT_STDDEV, i)->setText(QString::number(imageData->getStdDev(i), 'f', 3));
+        stat.statsTable->item(STAT_MIN, i)->setText(QString::number(image_data->getMin(i), 'f', 3));
+        stat.statsTable->item(STAT_MAX, i)->setText(QString::number(image_data->getMax(i), 'f', 3));
+        stat.statsTable->item(STAT_MEAN, i)->setText(QString::number(image_data->getMean(i), 'f', 3));
+        stat.statsTable->item(STAT_MEDIAN, i)->setText(QString::number(image_data->getMedian(i), 'f', 3));
+        stat.statsTable->item(STAT_STDDEV, i)->setText(QString::number(image_data->getStdDev(i), 'f', 3));
     }
 }
 
 void FITSTab::statFITS()
 {
     fitsTools->setCurrentIndex(0);
-    if(m_View->width() > 200)
-        fitsSplitter->setSizes(QList<int>() << 200 << m_View->width() - 200);
+    if(view->width() > 200)
+        fitsSplitter->setSizes(QList<int>() << 200 << view->width() - 200);
     else
         fitsSplitter->setSizes(QList<int>() << 50 << 50);
 }
 
 void FITSTab::loadFITSHeader()
 {
-    const QSharedPointer<FITSData> &imageData = m_View->imageData();
+    FITSData *image_data = view->getImageData();
 
-    int nkeys = imageData->getRecords().size();
+    int nkeys = image_data->getRecords().size();
     int counter = 0;
     header.tableWidget->setRowCount(nkeys);
-    for (const auto &oneRecord : imageData->getRecords())
+    for (const auto &oneRecord : image_data->getRecords())
     {
         QTableWidgetItem *tempItem = new QTableWidgetItem(oneRecord.key);
         tempItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
@@ -673,8 +650,8 @@ void FITSTab::loadFITSHeader()
 void FITSTab::headerFITS()
 {
     fitsTools->setCurrentIndex(2);
-    if(m_View->width() > 200)
-        fitsSplitter->setSizes(QList<int>() << 200 << m_View->width() - 200);
+    if(view->width() > 200)
+        fitsSplitter->setSizes(QList<int>() << 200 << view->width() - 200);
     else
         fitsSplitter->setSizes(QList<int>() << 50 << 50);
 }
@@ -718,7 +695,7 @@ bool FITSTab::saveFile()
 
         if (!saveImage(localFile))
         {
-            KSNotification::error(i18n("Image save error: %1", m_View->imageData()->getLastError()), i18n("Image Save"));
+            KSNotification::error(i18n("Image save error: %1", view->getImageData()->getLastError()), i18n("Image Save"));
             return false;
         }
 
@@ -742,29 +719,29 @@ bool FITSTab::saveFileAs()
 
 void FITSTab::ZoomIn()
 {
-    QPoint oldCenter = m_View->getImagePoint(m_View->viewport()->rect().center());
-    m_View->ZoomIn();
-    m_View->cleanUpZoom(oldCenter);
+    QPoint oldCenter = view->getImagePoint(view->viewport()->rect().center());
+    view->ZoomIn();
+    view->cleanUpZoom(oldCenter);
 }
 
 void FITSTab::ZoomOut()
 {
-    QPoint oldCenter = m_View->getImagePoint(m_View->viewport()->rect().center());
-    m_View->ZoomOut();
-    m_View->cleanUpZoom(oldCenter);
+    QPoint oldCenter = view->getImagePoint(view->viewport()->rect().center());
+    view->ZoomOut();
+    view->cleanUpZoom(oldCenter);
 }
 
 void FITSTab::ZoomDefault()
 {
-    QPoint oldCenter = m_View->getImagePoint(m_View->viewport()->rect().center());
-    m_View->ZoomDefault();
-    m_View->cleanUpZoom(oldCenter);
+    QPoint oldCenter = view->getImagePoint(view->viewport()->rect().center());
+    view->ZoomDefault();
+    view->cleanUpZoom(oldCenter);
 }
 
 void FITSTab::tabPositionUpdated()
 {
     undoStack->setActive(true);
-    emit newStatus(QString("%1%").arg(m_View->getCurrentZoom()), FITS_ZOOM);
-    emit newStatus(QString("%1x%2").arg(m_View->imageData()->width()).arg(m_View->imageData()->height()),
+    emit newStatus(QString("%1%").arg(view->getCurrentZoom()), FITS_ZOOM);
+    emit newStatus(QString("%1x%2").arg(view->getImageData()->width()).arg(view->getImageData()->height()),
                    FITS_RESOLUTION);
 }

@@ -24,8 +24,7 @@ void TestKSUserDB::initTestCase()
     QVERIFY(QStandardPaths::isTestModeEnabled());
 
     // Remove the user folder that may eventually exist
-    QWARN(qPrintable("Removing " + KSPaths::writableLocation(QStandardPaths::GenericDataLocation)));
-    QVERIFY(QDir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation)).removeRecursively());
+    QDir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation)).removeRecursively();
     QVERIFY(!QDir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation)).exists());
 }
 

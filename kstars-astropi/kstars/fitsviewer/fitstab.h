@@ -34,7 +34,7 @@
 
 #include <memory>
 
-class FITSHistogramEditor;
+class FITSHistogram;
 class FITSView;
 class FITSViewer;
 class FITSData;
@@ -82,11 +82,11 @@ class FITSTab : public QWidget
         }
         inline FITSView *getView()
         {
-            return m_View.get();
+            return view.get();
         }
-        inline QPointer<FITSHistogramEditor> getHistogram()
+        inline QPointer<FITSHistogram> getHistogram()
         {
-            return m_HistogramEditor;
+            return histogram;
         }
         inline QPointer<FITSViewer> getViewer()
         {
@@ -151,13 +151,13 @@ class FITSTab : public QWidget
         QPointer<QDialog> statWidget;
         Ui::statForm stat;
         /// FITS Histogram
-        QPointer<FITSHistogramEditor> m_HistogramEditor;
+        QPointer<FITSHistogram> histogram;
         QPointer<FITSViewer> viewer;
 
         QPointer<QListWidget> recentImages;
 
         /// FITS image object
-        std::unique_ptr<FITSView> m_View;
+        std::unique_ptr<FITSView> view;
 
         /// History for undo/redo
         QUndoStack *undoStack { nullptr };

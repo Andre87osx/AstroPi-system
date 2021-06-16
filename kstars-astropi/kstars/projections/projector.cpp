@@ -416,7 +416,7 @@ bool Projector::unusablePoint(const QPointF &p) const
     return (dx * dx + dy * dy) > r0 * r0;
 }
 
-SkyPoint Projector::fromScreen(const QPointF &p, dms *LST, const dms *lat, bool onlyAltAz) const
+SkyPoint Projector::fromScreen(const QPointF &p, dms *LST, const dms *lat) const
 {
     dms c;
     double sinc, cosc;
@@ -457,8 +457,6 @@ SkyPoint Projector::fromScreen(const QPointF &p, dms *LST, const dms *lat, bool 
             alt = SkyPoint::unrefract(alt);
         result.setAlt(alt);
         result.setAz(az);
-        if (onlyAltAz)
-            return result;
         result.HorizontalToEquatorial(LST, lat);
     }
     else

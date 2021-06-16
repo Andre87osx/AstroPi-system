@@ -66,7 +66,7 @@ Mount::Mount()
 
     currentTelescope = nullptr;
 
-    m_AbortDispatch = -1;
+    abortDispatch = -1;
 
     minAltLimit->setValue(Options::minimumAltLimit());
     maxAltLimit->setValue(Options::maximumAltLimit());
@@ -110,7 +110,7 @@ Mount::Mount()
 
     connect(enableLimitsCheck, &QCheckBox::toggled, this, &Mount::enableAltitudeLimits);
     enableLimitsCheck->setChecked(Options::enableAltitudeLimits());
-    m_AltitudeLimitEnabled = enableLimitsCheck->isChecked();
+    altLimitEnabled = enableLimitsCheck->isChecked();
     connect(enableHaLimitCheck, &QCheckBox::toggled, this, &Mount::enableHourAngleLimits);
     enableHaLimitCheck->setChecked(Options::enableHaLimit());
     //haLimitEnabled = enableHaLimitCheck->isChecked();
@@ -325,46 +325,46 @@ void Mount::removeDevice(ISD::GDInterface *device)
 
 void Mount::syncTelescopeInfo()
 {
-    if (!currentTelescope || currentTelescope->isConnected() == false)
+    if (currentTelescope == nullptr || currentTelescope->isConnected() == false)
         return;
 
-    auto nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
+    INumberVectorProperty *nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
 
     if (nvp)
     {
         primaryScopeGroup->setTitle(currentTelescope->getDeviceName());
         guideScopeGroup->setTitle(i18n("%1 guide scope", currentTelescope->getDeviceName()));
 
-        auto np = nvp->findWidgetByName("TELESCOPE_APERTURE");
+        INumber *np = IUFindNumber(nvp, "TELESCOPE_APERTURE");
 
-        if (np && np->getValue() > 0)
-            primaryScopeApertureIN->setValue(np->getValue());
+        if (np && np->value > 0)
+            primaryScopeApertureIN->setValue(np->value);
 
-        np = nvp->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
-        if (np && np->getValue() > 0)
-            primaryScopeFocalIN->setValue(np->getValue());
+        np = IUFindNumber(nvp, "TELESCOPE_FOCAL_LENGTH");
+        if (np && np->value > 0)
+            primaryScopeFocalIN->setValue(np->value);
 
-        np = nvp->findWidgetByName("GUIDER_APERTURE");
-        if (np && np->getValue() > 0)
-            guideScopeApertureIN->setValue(np->getValue());
+        np = IUFindNumber(nvp, "GUIDER_APERTURE");
+        if (np && np->value > 0)
+            guideScopeApertureIN->setValue(np->value);
 
-        np = nvp->findWidgetByName("GUIDER_FOCAL_LENGTH");
-        if (np && np->getValue() > 0)
-            guideScopeFocalIN->setValue(np->getValue());
+        np = IUFindNumber(nvp, "GUIDER_FOCAL_LENGTH");
+        if (np && np->value > 0)
+            guideScopeFocalIN->setValue(np->value);
     }
 
-    auto svp = currentTelescope->getBaseDevice()->getSwitch("TELESCOPE_SLEW_RATE");
+    ISwitchVectorProperty *svp = currentTelescope->getBaseDevice()->getSwitch("TELESCOPE_SLEW_RATE");
 
     if (svp)
     {
-        int index = svp->findOnSwitchIndex();
+        int index = IUFindOnSwitchIndex(svp);
 
         // QtQuick
         m_SpeedSlider->setEnabled(true);
-        m_SpeedSlider->setProperty("maximumValue", svp->count() - 1);
+        m_SpeedSlider->setProperty("maximumValue", svp->nsp - 1);
         m_SpeedSlider->setProperty("value", index);
 
-        m_SpeedLabel->setProperty("text", i18nc(libindi_strings_context, svp->at(index)->getLabel()));
+        m_SpeedLabel->setProperty("text", i18nc(libindi_strings_context, svp->sp[index].label));
         m_SpeedLabel->setEnabled(true);
     }
     else
@@ -403,8 +403,8 @@ void Mount::syncTelescopeInfo()
     {
         scopeConfigCombo->disconnect();
         scopeConfigCombo->clear();
-        for (const auto &it : *svp)
-            scopeConfigCombo->addItem(it.getLabel());
+        for (int i = 0; i < svp->nsp; i++)
+            scopeConfigCombo->addItem(svp->sp[i].label);
 
         scopeConfigCombo->setCurrentIndex(IUFindOnSwitchIndex(svp));
         connect(scopeConfigCombo, static_cast<void(QComboBox::*)(int)>(&QComboBox::activated), this, &Mount::setScopeConfig);
@@ -437,9 +437,9 @@ void Mount::syncTelescopeInfo()
         trackingGroup->setEnabled(false);
     }
 
-    auto tvp = currentTelescope->getBaseDevice()->getText("SCOPE_CONFIG_NAME");
+    ITextVectorProperty *tvp = currentTelescope->getBaseDevice()->getText("SCOPE_CONFIG_NAME");
     if (tvp)
-        scopeConfigNameEdit->setText(tvp->at(0)->getText());
+        scopeConfigNameEdit->setText(tvp->tp[0].text);
 }
 
 void Mount::registerNewModule(const QString &name)
@@ -463,12 +463,12 @@ void Mount::updateText(ITextVectorProperty *tvp)
 
 bool Mount::setScopeConfig(int index)
 {
-    auto svp = currentTelescope->getBaseDevice()->getSwitch("APPLY_SCOPE_CONFIG");
-    if (!svp)
+    ISwitchVectorProperty *svp = currentTelescope->getBaseDevice()->getSwitch("APPLY_SCOPE_CONFIG");
+    if (svp == nullptr)
         return false;
 
-    svp->reset();
-    svp->at(index)->setState(ISS_ON);
+    IUResetSwitch(svp);
+    svp->sp[index].s = ISS_ON;
 
     // Clear scope config name so that it gets filled by INDI
     scopeConfigNameEdit->clear();
@@ -484,7 +484,7 @@ void Mount::updateTelescopeCoords()
         return;
 
     double ra = 0, dec = 0;
-    if (currentTelescope && currentTelescope->isConnected() && currentTelescope->getEqCoords(&ra, &dec))
+    if (currentTelescope && currentTelescope->getEqCoords(&ra, &dec))
     {
         if (currentTelescope->isJ2000())
         {
@@ -556,8 +556,8 @@ void Mount::updateTelescopeCoords()
             if (currentAlt < minAltLimit->value())
             {
                 // Only stop if current altitude is less than last altitude indicate worse situation
-                if (currentAlt < m_LastAltitude &&
-                        (m_AbortDispatch == -1 ||
+                if (currentAlt < lastAlt &&
+                        (abortDispatch == -1 ||
                          (currentTelescope->isInMotion() /* && ++abortDispatch > ABORT_DISPATCH_LIMIT*/)))
                 {
                     appendLogText(i18n("Telescope altitude is below minimum altitude limit of %1. Aborting motion...",
@@ -566,14 +566,14 @@ void Mount::updateTelescopeCoords()
                     currentTelescope->setTrackEnabled(false);
                     //KNotification::event( QLatin1String( "OperationFailed" ));
                     KNotification::beep();
-                    m_AbortDispatch++;
+                    abortDispatch++;
                 }
             }
             else
             {
                 // Only stop if current altitude is higher than last altitude indicate worse situation
-                if (currentAlt > m_LastAltitude &&
-                        (m_AbortDispatch == -1 ||
+                if (currentAlt > lastAlt &&
+                        (abortDispatch == -1 ||
                          (currentTelescope->isInMotion() /* && ++abortDispatch > ABORT_DISPATCH_LIMIT*/)))
                 {
                     appendLogText(i18n("Telescope altitude is above maximum altitude limit of %1. Aborting motion...",
@@ -582,12 +582,12 @@ void Mount::updateTelescopeCoords()
                     currentTelescope->setTrackEnabled(false);
                     //KNotification::event( QLatin1String( "OperationFailed" ));
                     KNotification::beep();
-                    m_AbortDispatch++;
+                    abortDispatch++;
                 }
             }
         }
         else
-            m_AbortDispatch = -1;
+            abortDispatch = -1;
 
         //qCDebug(KSTARS_EKOS_MOUNT) << "maxHaLimit " << maxHaLimit->isEnabled() << " value " << maxHaLimit->value();
 
@@ -615,15 +615,15 @@ void Mount::updateTelescopeCoords()
                     break;
             }
 
-            qCDebug(KSTARS_EKOS_MOUNT) << "Ha: " << hourAngle() <<
-                                       " haLimit " << haLimit <<
-                                       " " << pierSideStateString() <<
-                                       " haLimitReached " << (haLimitReached ? "true" : "false") <<
-                                       " lastHa " << m_LastHourAngle;
+            // qCDebug(KSTARS_EKOS_MOUNT) << "Ha: " << hourAngle() <<
+            //                              " haLimit " << haLimit <<
+            //                              " " << pierSideStateString() <<
+            //                              " haLimitReached " << (haLimitReached ? "true" : "false") <<
+            //                              " lastHa " << lastHa;
 
             // compare with last ha to avoid multiple calls
-            if (haLimitReached && (rangeHA(hourAngle() - m_LastHourAngle) >= 0 ) &&
-                    (m_AbortDispatch == -1 ||
+            if (haLimitReached && (rangeHA(hourAngle() - lastHa) >= 0 ) &&
+                    (abortDispatch == -1 ||
                      currentTelescope->isInMotion()))
             {
                 // moved past the limit, so stop
@@ -633,17 +633,17 @@ void Mount::updateTelescopeCoords()
                 currentTelescope->setTrackEnabled(false);
                 //KNotification::event( QLatin1String( "OperationFailed" ));
                 KNotification::beep();
-                m_AbortDispatch++;
+                abortDispatch++;
                 // ideally we pause and wait until we have passed the pier flip limit,
                 // then do a pier flip and try to resume
                 // this will need changing to use a target position because the current HA has stopped.
             }
         }
         else
-            m_AbortDispatch = -1;
+            abortDispatch = -1;
 
-        m_LastAltitude = currentAlt;
-        m_LastHourAngle = hourAngle();
+        lastAlt = currentAlt;
+        lastHa = hourAngle();
 
         dms ha2(lst - telescopeCoord.ra());
         emit newCoords(raOUT->text(), decOUT->text(), azOUT->text(), altOUT->text(),
@@ -874,13 +874,6 @@ void Mount::motionCommand(int command, int NS, int WE)
     }
 }
 
-
-void Mount::doPulse(GuideDirection ra_dir, int ra_msecs, GuideDirection dec_dir, int dec_msecs)
-{
-    currentTelescope->doPulse(ra_dir, ra_msecs, dec_dir, dec_msecs);
-}
-
-
 void Mount::save()
 {
     if (currentTelescope == nullptr)
@@ -888,53 +881,46 @@ void Mount::save()
 
     if (scopeConfigNameEdit->text().isEmpty() == false)
     {
-        auto tvp = currentTelescope->getBaseDevice()->getText("SCOPE_CONFIG_NAME");
+        ITextVectorProperty *tvp = currentTelescope->getBaseDevice()->getText("SCOPE_CONFIG_NAME");
         if (tvp)
         {
-            tvp->at(0)->setText(scopeConfigNameEdit->text().toLatin1().constData());
+            IUSaveText(&(tvp->tp[0]), scopeConfigNameEdit->text().toLatin1().constData());
             currentTelescope->getDriverInfo()->getClientManager()->sendNewText(tvp);
         }
     }
 
-    auto nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
+    INumberVectorProperty *nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
 
     if (nvp)
     {
-        bool dirty = false;
         primaryScopeGroup->setTitle(currentTelescope->getDeviceName());
         guideScopeGroup->setTitle(i18n("%1 guide scope", currentTelescope->getDeviceName()));
 
-        auto np = nvp->findWidgetByName("TELESCOPE_APERTURE");
-        if (np && std::fabs(np->getValue() - primaryScopeApertureIN->value()) > 0)
-        {
-            dirty = true;
-            np->setValue(primaryScopeApertureIN->value());
-        }
+        INumber *np = IUFindNumber(nvp, "TELESCOPE_APERTURE");
 
-        np = nvp->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
-        if (np && std::fabs(np->getValue() - primaryScopeFocalIN->value()) > 0)
-            np->setValue(primaryScopeFocalIN->value());
+        if (np)
+            np->value = primaryScopeApertureIN->value();
 
-        np = nvp->findWidgetByName("GUIDER_APERTURE");
-        if (np && std::fabs(np->getValue() - guideScopeApertureIN->value()) > 0)
-        {
-            dirty = true;
-            np->setValue(guideScopeApertureIN->value() <= 1 ? primaryScopeApertureIN->value() : guideScopeApertureIN->value());
-        }
+        np = IUFindNumber(nvp, "TELESCOPE_FOCAL_LENGTH");
+        if (np)
+            np->value = primaryScopeFocalIN->value();
 
-        np = nvp->findWidgetByName("GUIDER_FOCAL_LENGTH");
-        if (np && std::fabs(np->getValue() - guideScopeFocalIN->value()) > 0)
-        {
-            dirty = true;
-            np->setValue(guideScopeFocalIN->value() <= 1 ? primaryScopeFocalIN->value() : guideScopeFocalIN->value());
-        }
+        np = IUFindNumber(nvp, "GUIDER_APERTURE");
+        if (np)
+            np->value =
+                guideScopeApertureIN->value() <= 1 ? primaryScopeApertureIN->value() : guideScopeApertureIN->value();
+
+        np = IUFindNumber(nvp, "GUIDER_FOCAL_LENGTH");
+        if (np)
+            np->value = guideScopeFocalIN->value() <= 1 ? primaryScopeFocalIN->value() : guideScopeFocalIN->value();
 
         ClientManager *clientManager = currentTelescope->getDriverInfo()->getClientManager();
 
         clientManager->sendNewNumber(nvp);
 
-        if (dirty)
-            currentTelescope->setConfig(SAVE_CONFIG);
+        currentTelescope->setConfig(SAVE_CONFIG);
+
+        //appendLogText(i18n("Saving telescope information..."));
     }
     else
         appendLogText(i18n("Failed to save telescope information."));
@@ -980,13 +966,13 @@ void Mount::enableAltitudeLimits(bool enable)
 void Mount::enableAltLimits()
 {
     //Only enable if it was already enabled before and the minAltLimit is currently disabled.
-    if (m_AltitudeLimitEnabled && minAltLimit->isEnabled() == false)
+    if (altLimitEnabled && minAltLimit->isEnabled() == false)
         enableAltitudeLimits(true);
 }
 
 void Mount::disableAltLimits()
 {
-    m_AltitudeLimitEnabled = enableLimitsCheck->isChecked();
+    altLimitEnabled = enableLimitsCheck->isChecked();
 
     enableAltitudeLimits(false);
 }
@@ -1002,13 +988,13 @@ void Mount::enableHourAngleLimits(bool enable)
 void Mount::enableHaLimits()
 {
     //Only enable if it was already enabled before and the minHaLimit is currently disabled.
-    if (m_HourAngleLimitEnabled && maxHaLimit->isEnabled() == false)
+    if (haLimitEnabled && maxHaLimit->isEnabled() == false)
         enableHourAngleLimits(true);
 }
 
 void Mount::disableHaLimits()
 {
-    m_HourAngleLimitEnabled = enableHaLimitCheck->isChecked();
+    haLimitEnabled = enableHaLimitCheck->isChecked();
 
     enableHourAngleLimits(false);
 }
@@ -1395,7 +1381,14 @@ bool Mount::executeMeridianFlip()
     }
 
     dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
-    double HA = rangeHA(lst.Hours() - currentTargetPosition->ra().Hours());
+    double HA = lst.Hours() - currentTargetPosition->ra().Hours();
+    if (HA > 12.0)
+    {
+        // no meridian flip necessary
+        qCInfo(KSTARS_EKOS_MOUNT) << "No Meridian flip: HA=" <<
+                                  dms(HA).toHMSString();
+        return false;
+    }
 
     // execute meridian flip
     qCInfo(KSTARS_EKOS_MOUNT) << "Meridian flip: slewing to RA=" <<
@@ -1654,30 +1647,30 @@ Mount::ParkingStatus Mount::getParkingStatus()
     if (currentTelescope->canPark() == false)
         return UNPARKING_OK;
 
-    auto parkSP = currentTelescope->getBaseDevice()->getSwitch("TELESCOPE_PARK");
+    ISwitchVectorProperty *parkSP = currentTelescope->getBaseDevice()->getSwitch("TELESCOPE_PARK");
 
-    if (!parkSP)
+    if (parkSP == nullptr)
         return PARKING_ERROR;
 
-    switch (parkSP->getState())
+    switch (parkSP->s)
     {
         case IPS_IDLE:
             // If mount is unparked on startup, state is OK and switch is UNPARK
-            if (parkSP->at(1)->getState() == ISS_ON)
+            if (parkSP->sp[1].s == ISS_ON)
                 return UNPARKING_OK;
             else
                 return PARKING_IDLE;
         //break;
 
         case IPS_OK:
-            if (parkSP->at(0)->getState() == ISS_ON)
+            if (parkSP->sp[0].s == ISS_ON)
                 return PARKING_OK;
             else
                 return UNPARKING_OK;
         //break;
 
         case IPS_BUSY:
-            if (parkSP->at(0)->getState() == ISS_ON)
+            if (parkSP->sp[0].s == ISS_ON)
                 return PARKING_BUSY;
             else
                 return UNPARKING_BUSY;
@@ -1685,7 +1678,7 @@ Mount::ParkingStatus Mount::getParkingStatus()
         case IPS_ALERT:
             // If mount replied with an error to the last un/park request,
             // assume state did not change in order to return a clear state
-            if (parkSP->at(0)->getState() == ISS_ON)
+            if (parkSP->sp[0].s == ISS_ON)
                 return PARKING_OK;
             else
                 return UNPARKING_OK;
@@ -1935,22 +1928,22 @@ void Mount::setGPS(ISD::GDInterface *newGPS)
 void Mount::syncGPS()
 {
     // We only update when location is OK
-    auto location = currentGPS->getBaseDevice()->getNumber("GEOGRAPHIC_COORD");
-    if (!location || location->getState() != IPS_OK)
+    INumberVectorProperty *location = currentGPS->getBaseDevice()->getNumber("GEOGRAPHIC_COORD");
+    if (location == nullptr || location->s != IPS_OK)
         return;
 
     // Sync name
     if (currentTelescope)
     {
-        auto activeDevices = currentTelescope->getBaseDevice()->getText("ACTIVE_DEVICES");
+        ITextVectorProperty *activeDevices = currentTelescope->getBaseDevice()->getText("ACTIVE_DEVICES");
         if (activeDevices)
         {
-            auto activeGPS = activeDevices->findWidgetByName("ACTIVE_GPS");
+            IText *activeGPS = IUFindText(activeDevices, "ACTIVE_GPS");
             if (activeGPS)
             {
-                if (activeGPS->getText() != currentGPS->getDeviceName())
+                if (activeGPS->text != currentGPS->getDeviceName())
                 {
-                    activeGPS->setText(currentGPS->getDeviceName().toLatin1().constData());
+                    IUSaveText(activeGPS, currentGPS->getDeviceName().toLatin1().constData());
                     currentTelescope->getDriverInfo()->getClientManager()->sendNewText(activeDevices);
                 }
             }
@@ -1960,10 +1953,10 @@ void Mount::syncGPS()
     // GPS Refresh should only be called once automatically.
     if (GPSInitialized == false)
     {
-        auto refreshGPS = currentGPS->getBaseDevice()->getSwitch("GPS_REFRESH");
+        ISwitchVectorProperty *refreshGPS = currentGPS->getBaseDevice()->getSwitch("GPS_REFRESH");
         if (refreshGPS)
         {
-            refreshGPS->at(0)->setState(ISS_ON);
+            refreshGPS->sp[0].s = ISS_ON;
             currentGPS->getDriverInfo()->getClientManager()->sendNewSwitch(refreshGPS);
             GPSInitialized = true;
         }

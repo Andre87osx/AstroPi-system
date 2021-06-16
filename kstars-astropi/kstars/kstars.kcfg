@@ -138,6 +138,7 @@
          <default>true</default>
       </entry>
    </group>
+
    <group name="indi">
     <entry name="INDIWindowWidth" type="UInt">
           <label>INDI window width</label>
@@ -195,20 +196,15 @@
          <whatsthis>The default location of saved FITS files</whatsthis>
          <default code="true">KSUtils::getDefaultPath("fitsDir")</default>
       </entry>
-      <entry name="serverTransferBufferSize" type="Int">
-         <label>INDI Server Transfer Buffer</label>
-         <whatsthis>Allows drivers to queue buffers not exceeding this size in MB</whatsthis>
-         <default>1024</default>
-      </entry>
-      <entry name="serverPortStart" type="Int">
+      <entry name="serverPortStart" type="String">
          <label>INDI Server Start Port</label>
          <whatsthis>INDI server will attempt to bind with ports starting from this port</whatsthis>
          <default>7624</default>
       </entry>
-      <entry name="serverPortEnd" type="Int">
+      <entry name="serverPortEnd" type="String">
          <label>INDI Server Final Port</label>
          <whatsthis>INDI server will attempt to bind with ports ending with this port</whatsthis>
-         <default>8623</default>
+         <default>9000</default>
       </entry>
       <entry name="filterAlias" type="StringList">
          <label>Aliases for filter wheel slots.</label>
@@ -1459,10 +1455,6 @@
       <label>Conserve CPU and memory by disabling all resource-intensive features in FITS Viewer</label>
       <default>KSUtils::isHardwareLimited()</default>
    </entry>
-   <entry name="NonLinearHistogram" type="Bool">
-      <label>Create histogram from non-linear auto-stretched image rather than linear raw image data.</label>
-      <default>true</default>
-   </entry>
    </group>
    <group name="WISettings">
       <entry name="BortleClass" type="UInt">
@@ -1553,12 +1545,6 @@
    </entry>
    <entry name="shutterlessCCDs" type="StringList">
       <label>List of CCDs without mechanical or electronic shutters.</label>
-   </entry>
-   <entry name="darkCameras" type="StringList">
-      <label>List of cameras that prefer dark subtraction noise removal method.</label>
-   </entry>
-   <entry name="defectCameras" type="StringList">
-      <label>List of cameras that prefer defect map noise removal method.</label>
    </entry>
    </group>
    <group name="Mount">
@@ -1808,9 +1794,6 @@
       <entry name="DefaultFocusFilterWheel" type="String">
          <label>Default focus module filter wheel.</label>
       </entry>
-      <entry name="DefaultFocusTemperatureSource" type="String">
-         <label>Default focus module temperature source.</label>
-      </entry>
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
@@ -1828,14 +1811,6 @@
          <label>Default Focuser tolerance value</label>
          <whatsthis>The tolerance specifies the percentage difference between the current focusing position and the minimum obtained during the focusing run. Adjustment of this value is necessary to prevent the focusing algorithm from oscillating back and forth.</whatsthis>
          <default>1</default>
-      </entry>
-      <entry name="FocusCaptureTimeout" type="UInt">
-         <whatsthis>Maximum time in seconds to wait for a captured image to be received before declaring a timeout.</whatsthis>
-         <default>120</default>
-      </entry>
-      <entry name="FocusMotionTimeout" type="UInt">
-         <whatsthis>Maximum time in seconds to wait for a focuser to move to desired position before declaring a timeout.</whatsthis>
-         <default>30</default>
       </entry>
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
@@ -2224,7 +2199,7 @@
       </entry>
       <entry name="GuideAlgorithm" type="UInt">
          <label>Which Algorithm to use track guide square (0 smart, 1 SEP, 2 fast, 3 threshold, 4 no threshold, 5 SEP multistar).</label>
-         <default>5</default>
+         <default>0</default>
       </entry>
       <entry name="PHD2Host" type="String">
          <label>Host name of external PHD2 service</label>
@@ -2733,48 +2708,6 @@
     <entry name="ShowHIPS" type="Bool">
        <label>Draw HiPS sources in the sky map?</label>
        <whatsthis>Toggle whether the HIPS sources are drawn in the sky map.</whatsthis>
-       <default>false</default>
-    </entry>
-   </group>
-   <group name="Terrain">
-    <entry name="TerrainSource" type="String">
-          <label>Terrain Filename.</label>
-          <whatsthis>Terrain source filename.</whatsthis>
-          <default>None</default>
-    </entry>
-    <entry name="TerrainSourceCorrectAz" type="Int">
-          <label>Terrain Azimuth Correction.</label>
-          <whatsthis>Terrain source azimuth correction.</whatsthis>
-          <default>0</default>
-    </entry>
-    <entry name="TerrainDownsampling" type="Int">
-          <label>Terrain Downsampling</label>
-          <whatsthis>Speed quality tradeoff for rendering the terrain image.</whatsthis>
-          <default>4</default>
-    </entry>
-    <entry name="TerrainPanning" type="Bool">
-          <label>Terrain While panning.</label>
-          <whatsthis>Redraw terrain while panning.</whatsthis>
-          <default>true</default>
-    </entry>
-    <entry name="ShowTerrain" type="Bool">
-       <label>Draw terrain</label>
-       <whatsthis>Toggle whether the terrain is drawn in the sky map.</whatsthis>
-       <default>false</default>
-    </entry>
-    <entry name="TerrainSkipSpeedup" type="Bool">
-       <label>Terrain Skip Speedup</label>
-       <whatsthis>Enable a one of the terrain drawing speedups.</whatsthis>
-       <default>true</default>
-    </entry>
-    <entry name="TerrainTransparencySpeedup" type="Bool">
-       <label>Terrain Transparency Speedup.</label>
-       <whatsthis>Enable a one of the terrain drawing speedups.</whatsthis>
-       <default>true</default>
-    </entry>
-    <entry name="TerrainSmoothPixels" type="Bool">
-       <label>Terrain Smooth Pixels.</label>
-       <whatsthis>Smooth pixels for a more pleasant, but slower rendering.</whatsthis>
        <default>false</default>
     </entry>
    </group>

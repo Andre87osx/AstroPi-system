@@ -192,7 +192,7 @@ void cgmath::getStarScreenPosition(double *dx, double *dy) const
     *dy = scr_star_pos.y;
 }
 
-bool cgmath::reset()
+bool cgmath::reset(void)
 {
     ticks = 0;
     channel_ticks[GUIDE_RA] = channel_ticks[GUIDE_DEC] = 0;
@@ -269,7 +269,7 @@ void cgmath::do_ticks(void)
 }
 
 //-------------------- Processing ---------------------------
-void cgmath::start()
+void cgmath::start(void)
 {
     ticks                   = 0;
     channel_ticks[GUIDE_RA] = channel_ticks[GUIDE_DEC] = 0;
@@ -282,6 +282,8 @@ void cgmath::start()
 
     // cleanup stat vars.
     sum = 0;
+
+    preview_mode = false;
 
     if (calibration.getFocalLength() > 0 && aperture > 0)
         createGuideLog();
@@ -301,6 +303,11 @@ void cgmath::start()
     gpg->reset();
 }
 
+void cgmath::stop(void)
+{
+    preview_mode = true;
+}
+
 void cgmath::abort()
 {
     guideStars.reset();
@@ -311,12 +318,12 @@ void cgmath::suspend(bool mode)
     suspended = mode;
 }
 
-bool cgmath::isSuspended() const
+bool cgmath::isSuspended(void) const
 {
     return suspended;
 }
 
-bool cgmath::isStarLost() const
+bool cgmath::isStarLost(void) const
 {
     return lost_star;
 }
@@ -326,13 +333,11 @@ void cgmath::setLostStar(bool is_lost)
     lost_star = is_lost;
 }
 
-float *cgmath::createFloatImage(const QSharedPointer<FITSData> &target) const
+float *cgmath::createFloatImage(FITSData *target) const
 {
-    QSharedPointer<FITSData> imageData;
-    if (target == nullptr)
-        imageData = guideView->imageData();
-    else
-        imageData = target;
+    FITSData *imageData = target;
+    if (imageData == nullptr)
+        imageData = guideView->getImageData();
 
     // #1 Convert to float array
     // We only process 1st plane if it is a color image
@@ -423,9 +428,9 @@ QVector<float *> cgmath::partitionImage() const
 {
     QVector<float *> regions;
 
-    const QSharedPointer<FITSData> &imageData = guideView->imageData();
+    FITSData *imageData = guideView->getImageData();
 
-    float *imgFloat = createFloatImage(QSharedPointer<FITSData>());
+    float *imgFloat = createFloatImage();
 
     if (imgFloat == nullptr)
         return regions;
@@ -480,7 +485,7 @@ Vector cgmath::findLocalStarPosition(void)
     if (square_alg_idx == SEP_MULTISTAR)
     {
         QRect trackingBox = guideView->getTrackingBox();
-        return guideStars.findGuideStar(guideView->imageData(), trackingBox, guideView);
+        return guideStars.findGuideStar(guideView->getImageData(), trackingBox, guideView);
     }
 
     if (useRapidGuide)
@@ -488,7 +493,7 @@ Vector cgmath::findLocalStarPosition(void)
         return Vector(rapidDX, rapidDY, 0);
     }
 
-    const QSharedPointer<FITSData> &imageData = guideView->imageData();
+    FITSData *imageData = guideView->getImageData();
 
     if (imageGuideEnabled)
     {
@@ -599,7 +604,7 @@ Vector cgmath::findLocalStarPosition(void) const
     if (trackingBox.isValid() == false)
         return Vector(-1, -1, -1);
 
-    const QSharedPointer<FITSData> &imageData = guideView->imageData();
+    FITSData *imageData = guideView->getImageData();
 
     if (imageData == nullptr)
     {
@@ -1080,7 +1085,7 @@ void cgmath::process_axes(void)
     }
 }
 
-void cgmath::performProcessing(Ekos::GuideState state, GuideLog *logger)
+void cgmath::performProcessing(GuideLog *logger, bool guiding)
 {
     if (suspended)
     {
@@ -1099,15 +1104,14 @@ void cgmath::performProcessing(Ekos::GuideState state, GuideLog *logger)
 
     Vector arc_star_pos, arc_reticle_pos;
 
-    // find guiding star location in the image
+    // find guiding star location in
     Vector star_pos;
     scr_star_pos = star_pos = findLocalStarPosition();
 
-    // If no star found, mark as lost star.
     if (star_pos.x == -1 || std::isnan(star_pos.x))
     {
         lost_star = true;
-        if (logger != nullptr && state == Ekos::GUIDE_GUIDING)
+        if (logger != nullptr && !preview_mode)
         {
             GuideLog::GuideData data;
             data.code = GuideLog::GuideData::NO_STAR_FOUND;
@@ -1119,12 +1123,10 @@ void cgmath::performProcessing(Ekos::GuideState state, GuideLog *logger)
     else
         lost_star = false;
 
-    // Emit the detected star center
     QVector3D starCenter(star_pos.x, star_pos.y, 0);
     emit newStarPosition(starCenter, true);
 
-    // If we're only calibrating, then we're done.
-    if (state == Ekos::GUIDE_CALIBRATING)
+    if (preview_mode)
         return;
 
     qCDebug(KSTARS_EKOS_GUIDE) << "################## BEGIN PROCESSING ##################";
@@ -1155,7 +1157,7 @@ void cgmath::performProcessing(Ekos::GuideState state, GuideLog *logger)
     qCDebug(KSTARS_EKOS_GUIDE) << "RA channel ticks: " << channel_ticks[GUIDE_RA]
                                << " DEC channel ticks: " << channel_ticks[GUIDE_DEC];
 
-    if (state == Ekos::GUIDE_GUIDING && (square_alg_idx == SEP_MULTISTAR))
+    if (guiding && (square_alg_idx == SEP_MULTISTAR))
     {
         double multiStarRADrift, multiStarDECDrift;
         if (guideStars.getDrift(sqrt(star_drift.x * star_drift.x + star_drift.y * star_drift.y),
@@ -1165,6 +1167,7 @@ void cgmath::performProcessing(Ekos::GuideState state, GuideLog *logger)
             qCDebug(KSTARS_EKOS_GUIDE) << "-------> MultiStar:      Diff RA: " << multiStarRADrift << " DEC: " << multiStarDECDrift;
             drift[GUIDE_RA][channel_ticks[GUIDE_RA]]   = multiStarRADrift;
             drift[GUIDE_DEC][channel_ticks[GUIDE_DEC]] = multiStarDECDrift;
+
         }
         else
         {
@@ -1178,13 +1181,13 @@ void cgmath::performProcessing(Ekos::GuideState state, GuideLog *logger)
     // make decision by axes
     process_axes();
 
-    if (state == Ekos::GUIDE_GUIDING)
+    if (guiding)
     {
         // process statistics
         calc_square_err();
 
-        // Emit the statistics
-        emitStats();
+        if (guiding)
+            emitStats();
 
         // finally process tickers
         do_ticks();
@@ -1450,7 +1453,7 @@ QList<Edge*> cgmath::PSFAutoFind(int extraEdgeAllowance)
     //usImage smoothed;
     //smoothed.CopyFrom(image);
     //Median3(smoothed);
-    const QSharedPointer<FITSData> smoothed(new FITSData(guideView->imageData()));
+    FITSData *smoothed = new FITSData(guideView->getImageData());
     smoothed->applyFilter(FITS_MEDIAN);
 
     int searchRegion = guideView->getTrackingBox().width();
@@ -1639,13 +1642,14 @@ repeat:
     }
 
     delete [] conv;
+    delete (smoothed);
 
     return centers;
 }
 
 QVector3D cgmath::selectGuideStar()
 {
-    return guideStars.selectGuideStar(guideView->imageData());
+    return guideStars.selectGuideStar(guideView->getImageData());
 }
 
 double cgmath::getGuideStarSNR()

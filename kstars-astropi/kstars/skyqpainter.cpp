@@ -42,7 +42,6 @@
 #include "skyobjects/supernova.h"
 #include "skyobjects/ksearthshadow.h"
 #include "hips/hipsrenderer.h"
-#include "terrain/terrainrenderer.h"
 
 namespace
 {
@@ -301,8 +300,6 @@ void SkyQPainter::drawSkyPolyline(LineList *list, SkipHashList *skipList, LineLi
     SkyList *points = list->points();
     bool isVisible, isVisibleLast;
 
-    if (points->size() == 0)
-        return;
     QPointF oLast = m_proj->toScreen(points->first().get(), true, &isVisibleLast);
     // & with the result of checkVisibility to clip away things below horizon
     isVisibleLast &= m_proj->checkVisibility(points->first().get());
@@ -663,20 +660,6 @@ bool SkyQPainter::drawHips()
     return rendered;
 }
 
-bool SkyQPainter::drawTerrain()
-{
-    int w = viewport().width();
-    int h = viewport().height();
-    QImage *terrainImage = new QImage(w, h, QImage::Format_ARGB32_Premultiplied);
-    TerrainRenderer *renderer = TerrainRenderer::Instance();
-    bool rendered = renderer->render(w, h, terrainImage, m_proj);
-    if (rendered)
-        drawImage(viewport(), *terrainImage);
-
-    delete (terrainImage);
-    return rendered;
-}
-
 bool SkyQPainter::drawDeepSkyObject(DeepSkyObject *obj, bool drawImage)
 {
     if (!m_proj->checkVisibility(obj))
@@ -928,11 +911,11 @@ void SkyQPainter::drawDeepSkySymbol(const QPointF &pos, int type, float size, fl
                 QFont f             = font();
                 const QString qMark = " ? ";
 
-#if QT_VERSION >= QT_VERSION_CHECK(5,11,0)
+                #if QT_VERSION >= QT_VERSION_CHECK(5,11,0)
                 double scaleFactor  = 0.8 * size / fontMetrics().horizontalAdvance(qMark);
-#else
+                #else
                 double scaleFactor  = 0.8 * size / fontMetrics().width(qMark);
-#endif
+                #endif
 
                 f.setPointSizeF(f.pointSizeF() * scaleFactor);
                 setFont(f);

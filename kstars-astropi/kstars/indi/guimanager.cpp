@@ -86,12 +86,6 @@ GUIManager::GUIManager(QWidget *parent) : QWidget(parent, Qt::Window)
     resize(Options::iNDIWindowWidth(), Options::iNDIWindowHeight());
 }
 
-GUIManager::~GUIManager()
-{
-    for (auto oneClient : qAsConst(clients))
-        oneClient->disconnect(this);
-}
-
 void GUIManager::changeAlwaysOnTop(Qt::ApplicationState state)
 {
     if (isVisible())
@@ -206,7 +200,7 @@ void GUIManager::removeClient(ClientManager *cm)
         {
             for (int i = 0; i < mainTabWidget->count(); i++)
             {
-                if (mainTabWidget->tabText(i).remove('&') == QString(gdv->name()))
+                if (mainTabWidget->tabText(i).remove('&') == QString(gdv->getBaseDevice()->getDeviceName()))
                 {
                     mainTabWidget->removeTab(i);
                     break;
@@ -215,6 +209,7 @@ void GUIManager::removeClient(ClientManager *cm)
 
             it.remove();
             gdv->deleteLater();
+            //break;
         }
     }
 
@@ -264,8 +259,8 @@ void GUIManager::buildDevice(DeviceInfo *di)
 
     INDI_D *gdm = new INDI_D(di->getBaseDevice(), cm);
 
-    connect(cm, &ClientManager::newINDIProperty, gdm, &INDI_D::buildProperty);
-    connect(cm, &ClientManager::removeINDIProperty, gdm, &INDI_D::removeProperty);
+    connect(cm, &ClientManager::newINDIProperty, gdm, &INDI_D::buildProperty, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::removeINDIProperty, gdm, &INDI_D::removeProperty, Qt::BlockingQueuedConnection);
     connect(cm, &ClientManager::newINDISwitch, gdm, &INDI_D::updateSwitchGUI);
     connect(cm, &ClientManager::newINDIText, gdm, &INDI_D::updateTextGUI);
     connect(cm, &ClientManager::newINDINumber, gdm, &INDI_D::updateNumberGUI);
@@ -274,7 +269,7 @@ void GUIManager::buildDevice(DeviceInfo *di)
 
     connect(cm, &ClientManager::newINDIMessage, gdm, &INDI_D::updateMessageLog);
 
-    mainTabWidget->addTab(gdm->getDeviceBox(), di->getDeviceName());
+    mainTabWidget->addTab(gdm->getDeviceBox(), di->getBaseDevice()->getDeviceName());
 
     guidevices.append(gdm);
 

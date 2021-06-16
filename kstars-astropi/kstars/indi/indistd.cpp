@@ -21,7 +21,6 @@
 #include "Options.h"
 #include "skymap.h"
 
-#include <indicom.h>
 #include <QImageReader>
 #include <QStatusBar>
 
@@ -57,8 +56,8 @@ GenericDevice::GenericDevice(DeviceInfo &idv, ClientManager *cm)
         {
             if (dType != KSTARS_UNKNOWN && baseDevice != nullptr && baseDevice->isConnected())
             {
-                auto tvp = baseDevice->getText("TIME_UTC");
-                if (tvp && tvp->getPermission() != IP_RO)
+                ITextVectorProperty *tvp = baseDevice->getText("TIME_UTC");
+                if (tvp && tvp->p != IP_RO)
                     updateTime();
             }
         }
@@ -90,37 +89,37 @@ const QString &GenericDevice::getDeviceName() const
     return m_Name;
 }
 
-void GenericDevice::registerProperty(INDI::Property prop)
+void GenericDevice::registerProperty(INDI::Property *prop)
 {
     if (!prop->getRegistered())
         return;
 
     const QString name = prop->getName();
-    //    if (properties.contains(name))
-    //        return;
+    if (properties.contains(name))
+        return;
 
-    //    properties[name] = prop;
+    properties[name] = prop;
 
     emit propertyDefined(prop);
 
     // In case driver already started
     if (name == "CONNECTION")
     {
-        auto svp = prop->getSwitch();
+        ISwitchVectorProperty *svp = prop->getSwitch();
 
-        if (!svp)
+        if (svp == nullptr)
             return;
 
         // Still connecting/disconnecting...
-        if (svp->getState() == IPS_BUSY)
+        if (svp->s == IPS_BUSY)
             return;
 
-        auto conSP = svp->findWidgetByName("CONNECT");
+        ISwitch *conSP = IUFindSwitch(svp, "CONNECT");
 
-        if (!conSP)
+        if (conSP == nullptr)
             return;
 
-        if (svp->getState() == IPS_OK && conSP->getState() == ISS_ON)
+        if (svp->s == IPS_OK && conSP->s == ISS_ON)
         {
             connected = true;
             emit Connected();
@@ -129,20 +128,20 @@ void GenericDevice::registerProperty(INDI::Property prop)
     }
     else if (name == "DRIVER_INFO")
     {
-        auto tvp = prop->getText();
+        ITextVectorProperty *tvp = prop->getText();
         if (tvp)
         {
-            auto tp = tvp->findWidgetByName("DRIVER_INTERFACE");
+            IText *tp = IUFindText(tvp, "DRIVER_INTERFACE");
             if (tp)
             {
-                driverInterface = static_cast<uint32_t>(atoi(tp->getText()));
+                driverInterface = static_cast<uint32_t>(atoi(tp->text));
                 emit interfaceDefined();
             }
 
-            tp = tvp->findWidgetByName("DRIVER_VERSION");
+            tp = IUFindText(tvp, "DRIVER_VERSION");
             if (tp)
             {
-                driverVersion = QString(tp->getText());
+                driverVersion = QString(tp->text);
             }
         }
     }
@@ -150,13 +149,13 @@ void GenericDevice::registerProperty(INDI::Property prop)
     {
         // Check if our current port is set to one of the system ports. This indicates that the port
         // is not mapped yet to a permenant designation
-        auto svp = prop->getSwitch();
-        auto port = baseDevice->getText("DEVICE_PORT");
+        ISwitchVectorProperty *svp = prop->getSwitch();
+        ITextVectorProperty *port = baseDevice->getText("DEVICE_PORT");
         if (svp && port)
         {
-            for (const auto &it: *svp)
+            for (int i = 0; i < svp->nsp; i++)
             {
-                if (it.isNameMatch(port->at(0)->getText()))
+                if (!strcmp(port->tp[0].text, svp->sp[i].name))
                 {
                     emit systemPortDetected();
                     break;
@@ -166,19 +165,19 @@ void GenericDevice::registerProperty(INDI::Property prop)
     }
     else if (name == "TIME_UTC" && Options::useTimeUpdate() && Options::useKStarsSource())
     {
-        const auto &tvp = prop->getText();
-        if (tvp && tvp->getPermission() != IP_RO)
+        ITextVectorProperty *tvp = prop->getText();
+        if (tvp && tvp->p != IP_RO)
             updateTime();
     }
     else if (name == "GEOGRAPHIC_COORD" && Options::useGeographicUpdate() && Options::useKStarsSource())
     {
-        const auto &nvp = prop->getNumber();
-        if (nvp && nvp->getPermission() != IP_RO)
+        INumberVectorProperty *nvp = prop->getNumber();
+        if (nvp && nvp->p != IP_RO)
             updateLocation();
     }
     else if (name == "WATCHDOG_HEARTBEAT")
     {
-        const auto &nvp = prop->getNumber();
+        INumberVectorProperty *nvp = prop->getNumber();
         if (nvp)
         {
             if (watchDogTimer == nullptr)
@@ -187,7 +186,7 @@ void GenericDevice::registerProperty(INDI::Property prop)
                 connect(watchDogTimer, SIGNAL(timeout()), this, SLOT(resetWatchdog()));
             }
 
-            if (connected && nvp->at(0)->getValue() > 0)
+            if (connected && nvp->np[0].value > 0)
             {
                 // Send immediately a heart beat
                 clientManager->sendNewNumber(nvp);
@@ -198,6 +197,7 @@ void GenericDevice::registerProperty(INDI::Property prop)
 
 void GenericDevice::removeProperty(const QString &name)
 {
+    properties.remove(name);
     emit propertyDeleted(name);
 }
 
@@ -222,8 +222,8 @@ void GenericDevice::processSwitch(ISwitchVectorProperty *svp)
 
             if (watchDogTimer != nullptr)
             {
-                auto nvp = baseDevice->getNumber("WATCHDOG_HEARTBEAT");
-                if (nvp && nvp->at(0)->getValue() > 0)
+                INumberVectorProperty *nvp = baseDevice->getNumber("WATCHDOG_HEARTBEAT");
+                if (nvp && nvp->np[0].value > 0)
                 {
                     // Send immediately
                     clientManager->sendNewNumber(nvp);
@@ -497,39 +497,52 @@ void GenericDevice::processBLOB(IBLOB *bp)
 
 bool GenericDevice::setConfig(INDIConfig tConfig)
 {
-    auto svp = baseDevice->getSwitch("CONFIG_PROCESS");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("CONFIG_PROCESS");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    const char *strConfig = nullptr;
+    ISwitch *sp = nullptr;
+
+    IUResetSwitch(svp);
 
     switch (tConfig)
     {
         case LOAD_LAST_CONFIG:
-            strConfig = "CONFIG_LOAD";
+            sp = IUFindSwitch(svp, "CONFIG_LOAD");
+            if (sp == nullptr)
+                return false;
+
+            IUResetSwitch(svp);
+            sp->s = ISS_ON;
             break;
 
         case SAVE_CONFIG:
-            strConfig = "CONFIG_SAVE";
+            sp = IUFindSwitch(svp, "CONFIG_SAVE");
+            if (sp == nullptr)
+                return false;
+
+            IUResetSwitch(svp);
+            sp->s = ISS_ON;
             break;
 
         case LOAD_DEFAULT_CONFIG:
-            strConfig = "CONFIG_DEFAULT";
+            sp = IUFindSwitch(svp, "CONFIG_DEFAULT");
+            if (sp == nullptr)
+                return false;
+
+            IUResetSwitch(svp);
+            sp->s = ISS_ON;
             break;
 
         case PURGE_CONFIG:
-            strConfig = "CONFIG_PURGE";
-            break;
-    }
+            sp = IUFindSwitch(svp, "CONFIG_PURGE");
+            if (sp == nullptr)
+                return false;
 
-    svp->reset();
-    if (strConfig)
-    {
-        auto sp = svp->findWidgetByName(strConfig);
-        if (!sp)
-            return false;
-        sp->setState(ISS_ON);
+            IUResetSwitch(svp);
+            sp->s = ISS_ON;
+            break;
     }
 
     clientManager->sendNewSwitch(svp);
@@ -562,17 +575,17 @@ void GenericDevice::updateTime()
     isoTS = KStars::Instance()->data()->ut().toString(Qt::ISODate).remove('Z');
 
     /* Update Date/Time */
-    auto timeUTC = baseDevice->getText("TIME_UTC");
+    ITextVectorProperty *timeUTC = baseDevice->getText("TIME_UTC");
 
     if (timeUTC)
     {
-        auto timeEle = timeUTC->findWidgetByName("UTC");
+        IText *timeEle = IUFindText(timeUTC, "UTC");
         if (timeEle)
-            timeEle->setText(isoTS.toLatin1().constData());
+            IUSaveText(timeEle, isoTS.toLatin1().constData());
 
-        auto offsetEle = timeUTC->findWidgetByName("OFFSET");
+        IText *offsetEle = IUFindText(timeUTC, "OFFSET");
         if (offsetEle)
-            offsetEle->setText(offset.toLatin1().constData());
+            IUSaveText(offsetEle, offset.toLatin1().constData());
 
         if (timeEle && offsetEle)
             clientManager->sendNewText(timeUTC);
@@ -592,29 +605,29 @@ void GenericDevice::updateLocation()
     else
         longNP = dms(geo->lng()->Degrees() + 360.0).Degrees();
 
-    auto nvp = baseDevice->getNumber("GEOGRAPHIC_COORD");
+    INumberVectorProperty *nvp = baseDevice->getNumber("GEOGRAPHIC_COORD");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return;
 
-    auto np = nvp->findWidgetByName("LONG");
+    INumber *np = IUFindNumber(nvp, "LONG");
 
-    if (!np)
+    if (np == nullptr)
         return;
 
-    np->setValue(longNP);
+    np->value = longNP;
 
-    np = nvp->findWidgetByName("LAT");
-    if (!np)
+    np = IUFindNumber(nvp, "LAT");
+    if (np == nullptr)
         return;
 
-    np->setValue(geo->lat()->Degrees());
+    np->value = geo->lat()->Degrees();
 
-    np = nvp->findWidgetByName("ELEV");
-    if (!np)
+    np = IUFindNumber(nvp, "ELEV");
+    if (np == nullptr)
         return;
 
-    np->setValue(geo->elevation());
+    np->value = geo->elevation();
 
     clientManager->sendNewNumber(nvp);
 }
@@ -646,14 +659,14 @@ bool GenericDevice::runCommand(int command, void *ptr)
             if (ptr == nullptr)
                 return false;
 
-            auto tvp = baseDevice->getText("DEVICE_PORT");
+            ITextVectorProperty *tvp = baseDevice->getText("DEVICE_PORT");
 
-            if (!tvp)
+            if (tvp == nullptr)
                 return false;
 
-            auto tp = tvp->findWidgetByName("PORT");
+            IText *tp = IUFindText(tvp, "PORT");
 
-            tp->setText((static_cast<QString *>(ptr))->toLatin1().constData());
+            IUSaveText(tp, (static_cast<QString *>(ptr))->toLatin1().constData());
 
             clientManager->sendNewText(tvp);
         }
@@ -665,9 +678,9 @@ bool GenericDevice::runCommand(int command, void *ptr)
             if (ptr == nullptr)
                 return false;
 
-            auto nvp = baseDevice->getNumber("FILTER_SLOT");
+            INumberVectorProperty *nvp = baseDevice->getNumber("FILTER_SLOT");
 
-            if (!nvp)
+            if (nvp == nullptr)
                 return false;
 
             int requestedFilter = *(static_cast<int *>(ptr));
@@ -675,7 +688,7 @@ bool GenericDevice::runCommand(int command, void *ptr)
             if (requestedFilter == nvp->np[0].value)
                 break;
 
-            nvp->at(0)->setValue(requestedFilter);
+            nvp->np[0].value = requestedFilter;
 
             clientManager->sendNewNumber(nvp);
         }
@@ -687,29 +700,28 @@ bool GenericDevice::runCommand(int command, void *ptr)
             if (ptr == nullptr)
                 return false;
 
-            auto tvp = baseDevice->getText("FILTER_NAME");
+            ITextVectorProperty *tvp = baseDevice->getText("FILTER_NAME");
 
-            if (!tvp)
+            if (tvp == nullptr)
                 return false;
 
             QStringList *requestedFilters = static_cast<QStringList*>(ptr);
 
-            if (requestedFilters->count() != tvp->count())
+            if (requestedFilters->count() != tvp->ntp)
                 return false;
 
             for (uint8_t i = 0; i < tvp->ntp; i++)
-                tvp->at(i)->setText(requestedFilters->at(i).toLatin1().constData());
+                IUSaveText(&tvp->tp[i], requestedFilters->at(i).toLatin1().constData());
             clientManager->sendNewText(tvp);
         }
         break;
 
         case INDI_CONFIRM_FILTER:
         {
-            auto svp = baseDevice->getSwitch("CONFIRM_FILTER_SET");
-            if (!svp)
+            ISwitchVectorProperty *svp = baseDevice->getSwitch("CONFIRM_FILTER_SET");
+            if (svp == nullptr)
                 return false;
-
-            svp->at(0)->setState(ISS_ON);
+            svp->sp[0].s = ISS_ON;
             clientManager->sendNewSwitch(svp);
         }
         break;
@@ -720,17 +732,17 @@ bool GenericDevice::runCommand(int command, void *ptr)
             if (ptr == nullptr)
                 return false;
 
-            auto nvp = baseDevice->getNumber("ABS_ROTATOR_ANGLE");
+            INumberVectorProperty *nvp = baseDevice->getNumber("ABS_ROTATOR_ANGLE");
 
-            if (!nvp)
+            if (nvp == nullptr)
                 return false;
 
             double requestedAngle = *(static_cast<double *>(ptr));
 
-            if (requestedAngle == nvp->at(0)->getValue())
+            if (requestedAngle == nvp->np[0].value)
                 break;
 
-            nvp->at(0)->setValue(requestedAngle);
+            nvp->np[0].value = requestedAngle;
 
             clientManager->sendNewNumber(nvp);
         }
@@ -742,17 +754,17 @@ bool GenericDevice::runCommand(int command, void *ptr)
             if (ptr == nullptr)
                 return false;
 
-            auto nvp = baseDevice->getNumber("ABS_ROTATOR_POSITION");
+            INumberVectorProperty *nvp = baseDevice->getNumber("ABS_ROTATOR_POSITION");
 
-            if (!nvp)
+            if (nvp == nullptr)
                 return false;
 
             int32_t requestedTicks = *(static_cast<int32_t *>(ptr));
 
-            if (requestedTicks == nvp->at(0)->getValue())
+            if (requestedTicks == nvp->np[0].value)
                 break;
 
-            nvp->at(0)->setValue(requestedTicks);
+            nvp->np[0].value = requestedTicks;
 
             clientManager->sendNewNumber(nvp);
         }
@@ -769,29 +781,29 @@ bool GenericDevice::setProperty(QObject *setPropCommand)
 
     //qDebug() << "We are trying to set value for property " << indiCommand->indiProperty << " and element" << indiCommand->indiElement << " and value " << indiCommand->elementValue;
 
-    auto pp = baseDevice->getProperty(indiCommand->indiProperty.toLatin1().constData());
+    INDI::Property *pp = baseDevice->getProperty(indiCommand->indiProperty.toLatin1().constData());
 
-    if (!pp)
+    if (pp == nullptr)
         return false;
 
     switch (indiCommand->propType)
     {
         case INDI_SWITCH:
         {
-            auto svp = pp->getSwitch();
+            ISwitchVectorProperty *svp = pp->getSwitch();
 
-            if (!svp)
+            if (svp == nullptr)
                 return false;
 
-            auto sp = svp->findWidgetByName(indiCommand->indiElement.toLatin1().constData());
+            ISwitch *sp = IUFindSwitch(svp, indiCommand->indiElement.toLatin1().constData());
 
-            if (!sp)
+            if (sp == nullptr)
                 return false;
 
-            if (svp->getRule() == ISR_1OFMANY || svp->getRule() == ISR_ATMOST1)
-                svp->reset();
+            if (svp->r == ISR_1OFMANY || svp->r == ISR_ATMOST1)
+                IUResetSwitch(svp);
 
-            sp->setState(indiCommand->elementValue.toInt() == 0 ? ISS_OFF : ISS_ON);
+            sp->s = indiCommand->elementValue.toInt() == 0 ? ISS_OFF : ISS_ON;
 
             //qDebug() << "Sending switch " << sp->name << " with status " << ((sp->s == ISS_ON) ? "On" : "Off");
             clientManager->sendNewSwitch(svp);
@@ -801,22 +813,22 @@ bool GenericDevice::setProperty(QObject *setPropCommand)
 
         case INDI_NUMBER:
         {
-            auto nvp = pp->getNumber();
+            INumberVectorProperty *nvp = pp->getNumber();
 
-            if (!nvp)
+            if (nvp == nullptr)
                 return false;
 
-            auto np = nvp->findWidgetByName(indiCommand->indiElement.toLatin1().constData());
+            INumber *np = IUFindNumber(nvp, indiCommand->indiElement.toLatin1().constData());
 
-            if (!np)
+            if (np == nullptr)
                 return false;
 
             double value = indiCommand->elementValue.toDouble();
 
-            if (value == np->getValue())
+            if (value == np->value)
                 return true;
 
-            np->setValue(value);
+            np->value = value;
 
             //qDebug() << "Sending switch " << sp->name << " with status " << ((sp->s == ISS_ON) ? "On" : "Off");
             clientManager->sendNewNumber(nvp);
@@ -833,19 +845,19 @@ bool GenericDevice::setProperty(QObject *setPropCommand)
 bool GenericDevice::getMinMaxStep(const QString &propName, const QString &elementName, double *min, double *max,
                                   double *step)
 {
-    auto nvp = baseDevice->getNumber(propName.toLatin1());
+    INumberVectorProperty *nvp = baseDevice->getNumber(propName.toLatin1());
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    auto np = nvp->findWidgetByName(elementName.toLatin1());
+    INumber *np = IUFindNumber(nvp, elementName.toLatin1());
 
-    if (!np)
+    if (np == nullptr)
         return false;
 
-    *min  = np->getMin();
-    *max  = np->getMax();
-    *step = np->getStep();
+    *min  = np->min;
+    *max  = np->max;
+    *step = np->step;
 
     return true;
 }
@@ -860,14 +872,20 @@ IPerm GenericDevice::getPermission(const QString &propName)
     return baseDevice->getPropertyPermission(propName.toLatin1().constData());
 }
 
-INDI::Property GenericDevice::getProperty(const QString &propName)
+INDI::Property *GenericDevice::getProperty(const QString &propName)
 {
-    return baseDevice->getProperty(propName.toLatin1().constData());
+    for (auto &oneProp : properties)
+    {
+        if (propName == QString(oneProp->getName()))
+            return oneProp;
+    }
+
+    return nullptr;
 }
 
 bool GenericDevice::setJSONProperty(const QString &propName, const QJsonArray &propElements)
 {
-    for (auto &oneProp : * (baseDevice->getProperties()))
+    for (auto &oneProp : properties)
     {
         if (propName == QString(oneProp->getName()))
         {
@@ -875,17 +893,17 @@ bool GenericDevice::setJSONProperty(const QString &propName, const QJsonArray &p
             {
                 case INDI_SWITCH:
                 {
-                    auto svp = oneProp->getSwitch();
-                    if (svp->getRule() == ISR_1OFMANY || svp->getRule() == ISR_ATMOST1)
-                        svp->reset();
+                    ISwitchVectorProperty *svp = oneProp->getSwitch();
+                    if (svp->r == ISR_1OFMANY || svp->r == ISR_ATMOST1)
+                        IUResetSwitch(svp);
 
                     for (auto oneElement : propElements)
                     {
                         QJsonObject oneElementObject = oneElement.toObject();
-                        auto sp = svp->findWidgetByName(oneElementObject["name"].toString().toLatin1().constData());
+                        ISwitch *sp = IUFindSwitch(svp, oneElementObject["name"].toString().toLatin1().constData());
                         if (sp)
                         {
-                            sp->setState(static_cast<ISState>(oneElementObject["state"].toInt()));
+                            sp->s = static_cast<ISState>(oneElementObject["state"].toInt());
                         }
                     }
 
@@ -895,20 +913,13 @@ bool GenericDevice::setJSONProperty(const QString &propName, const QJsonArray &p
 
                 case INDI_NUMBER:
                 {
-                    auto nvp = oneProp->getNumber();
-                    for (const auto &oneElement : propElements)
+                    INumberVectorProperty *nvp = oneProp->getNumber();
+                    for (auto oneElement : propElements)
                     {
                         QJsonObject oneElementObject = oneElement.toObject();
-                        auto np = nvp->findWidgetByName(oneElementObject["name"].toString().toLatin1().constData());
+                        INumber *np = IUFindNumber(nvp, oneElementObject["name"].toString().toLatin1().constData());
                         if (np)
-                        {
-                            double newValue = oneElementObject["value"].toDouble(std::numeric_limits<double>::quiet_NaN());
-                            if (std::isnan(newValue))
-                            {
-                                f_scansexa(oneElementObject["value"].toString().toLatin1().constData(), &newValue);
-                            }
-                            np->setValue(newValue);
-                        }
+                            np->value = oneElementObject["value"].toDouble();
                     }
 
                     clientManager->sendNewNumber(nvp);
@@ -917,13 +928,13 @@ bool GenericDevice::setJSONProperty(const QString &propName, const QJsonArray &p
 
                 case INDI_TEXT:
                 {
-                    auto tvp = oneProp->getText();
-                    for (const auto &oneElement : propElements)
+                    ITextVectorProperty *tvp = oneProp->getText();
+                    for (auto oneElement : propElements)
                     {
                         QJsonObject oneElementObject = oneElement.toObject();
-                        auto tp = tvp->findWidgetByName(oneElementObject["name"].toString().toLatin1().constData());
+                        IText *tp = IUFindText(tvp, oneElementObject["name"].toString().toLatin1().constData());
                         if (tp)
-                            tp->setText(oneElementObject["text"].toString().toLatin1().constData());
+                            IUSaveText(tp, oneElementObject["text"].toString().toLatin1().constData());
                     }
 
                     clientManager->sendNewText(tvp);
@@ -945,27 +956,39 @@ bool GenericDevice::setJSONProperty(const QString &propName, const QJsonArray &p
 
 bool GenericDevice::getJSONProperty(const QString &propName, QJsonObject &propObject, bool compact)
 {
-    for (auto &oneProp : * (baseDevice->getProperties()))
+    for (auto &oneProp : properties)
     {
         if (propName == QString(oneProp->getName()))
         {
             switch (oneProp->getType())
             {
                 case INDI_SWITCH:
-                    propertyToJson(oneProp->getSwitch(), propObject, compact);
+                {
+                    ISwitchVectorProperty *svp = oneProp->getSwitch();
+                    propertyToJson(svp, propObject, compact);
                     return true;
+                }
 
                 case INDI_NUMBER:
-                    propertyToJson(oneProp->getNumber(), propObject, compact);
+                {
+                    INumberVectorProperty *nvp = oneProp->getNumber();
+                    propertyToJson(nvp, propObject, compact);
                     return true;
+                }
 
                 case INDI_TEXT:
-                    propertyToJson(oneProp->getText(), propObject, compact);
+                {
+                    ITextVectorProperty *tvp = oneProp->getText();
+                    propertyToJson(tvp, propObject, compact);
                     return true;
+                }
 
                 case INDI_LIGHT:
-                    propertyToJson(oneProp->getLight(), propObject, compact);
+                {
+                    ILightVectorProperty *lvp = oneProp->getLight();
+                    propertyToJson(lvp, propObject, compact);
                     return true;
+                }
 
                 case INDI_BLOB:
                     // TODO
@@ -982,16 +1005,21 @@ bool GenericDevice::getJSONProperty(const QString &propName, QJsonObject &propOb
 
 bool GenericDevice::getJSONBLOB(const QString &propName, const QString &elementName, QJsonObject &blobObject)
 {
-    auto blobProperty = baseDevice->getProperty(propName.toLatin1().constData());
-    if (blobProperty == nullptr)
+    auto prop = std::find_if(properties.begin(), properties.end(), [propName](INDI::Property * oneProperty)
+    {
+        return (QString(oneProperty->getName()) == propName);
+    });
+
+    if (prop == properties.end())
         return false;
 
-    auto oneBLOB = blobProperty->getBLOB()->findWidgetByName(elementName.toLatin1().constData());
+    auto blobProperty = (*prop)->getBLOB();
+    IBLOB *oneBLOB = IUFindBLOB(blobProperty, elementName.toLatin1().constData());
     if (!oneBLOB)
         return false;
 
     // Now convert to base64 and send back.
-    QByteArray data = QByteArray::fromRawData(static_cast<const char *>(oneBLOB->getBlob()), oneBLOB->getBlobLen());
+    QByteArray data = QByteArray::fromRawData(static_cast<char *>(oneBLOB->blob), oneBLOB->bloblen);
 
     QString encoded = data.toBase64(QByteArray::Base64UrlEncoding);
     blobObject.insert("property", propName);
@@ -1004,7 +1032,7 @@ bool GenericDevice::getJSONBLOB(const QString &propName, const QString &elementN
 
 void GenericDevice::resetWatchdog()
 {
-    auto nvp = baseDevice->getNumber("WATCHDOG_HEARTBEAT");
+    INumberVectorProperty *nvp = baseDevice->getNumber("WATCHDOG_HEARTBEAT");
 
     if (nvp)
         // Send heartbeat to driver
@@ -1076,7 +1104,7 @@ void DeviceDecorator::processMessage(int messageID)
     interfacePtr->processMessage(messageID);
 }
 
-void DeviceDecorator::registerProperty(INDI::Property prop)
+void DeviceDecorator::registerProperty(INDI::Property * prop)
 {
     interfacePtr->registerProperty(prop);
 }
@@ -1126,12 +1154,12 @@ QString DeviceDecorator::getDriverVersion()
     return interfacePtr->getDriverVersion();
 }
 
-Properties DeviceDecorator::getProperties()
+const QHash<QString, INDI::Property *> &DeviceDecorator::getProperties()
 {
     return interfacePtr->getProperties();
 }
 
-INDI::Property DeviceDecorator::getProperty(const QString &propName)
+INDI::Property *DeviceDecorator::getProperty(const QString &propName)
 {
     return interfacePtr->getProperty(propName);
 }
@@ -1208,59 +1236,70 @@ bool ST4::doPulse(GuideDirection ra_dir, int ra_msecs, GuideDirection dec_dir, i
 
 bool ST4::doPulse(GuideDirection dir, int msecs)
 {
-    auto raPulse  = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_WE");
-    auto decPulse = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_NS");
-    INDI::PropertyView<INumber> *npulse   = nullptr;
-    INDI::WidgetView<INumber> *dirPulse   = nullptr;
+    INumberVectorProperty *raPulse  = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_WE");
+    INumberVectorProperty *decPulse = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_NS");
+    INumberVectorProperty *npulse   = nullptr;
+    INumber *dirPulse               = nullptr;
 
-    if (!raPulse || !decPulse)
+    if (raPulse == nullptr || decPulse == nullptr)
         return false;
 
     if (dir == RA_INC_DIR || dir == RA_DEC_DIR)
-    {
-        raPulse->at(0)->setValue(0);
-        raPulse->at(1)->setValue(0);
-    }
+        raPulse->np[0].value = raPulse->np[1].value = 0;
     else
-    {
-        decPulse->at(0)->setValue(0);
-        decPulse->at(1)->setValue(0);
-    }
+        decPulse->np[0].value = decPulse->np[1].value = 0;
 
     switch (dir)
     {
         case RA_INC_DIR:
+            dirPulse = IUFindNumber(raPulse, "TIMED_GUIDE_W");
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = raPulse;
-            dirPulse = npulse->findWidgetByName("TIMED_GUIDE_W");
             break;
 
         case RA_DEC_DIR:
+            dirPulse = IUFindNumber(raPulse, "TIMED_GUIDE_E");
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = raPulse;
-            dirPulse = npulse->findWidgetByName("TIMED_GUIDE_E");
             break;
 
         case DEC_INC_DIR:
+            if (swapDEC)
+                dirPulse = IUFindNumber(decPulse, "TIMED_GUIDE_S");
+            else
+                dirPulse = IUFindNumber(decPulse, "TIMED_GUIDE_N");
+
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = decPulse;
-            dirPulse = npulse->findWidgetByName(swapDEC ? "TIMED_GUIDE_S" : "TIMED_GUIDE_N");
             break;
 
         case DEC_DEC_DIR:
+            if (swapDEC)
+                dirPulse = IUFindNumber(decPulse, "TIMED_GUIDE_N");
+            else
+                dirPulse = IUFindNumber(decPulse, "TIMED_GUIDE_S");
+
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = decPulse;
-            dirPulse = npulse->findWidgetByName(swapDEC ? "TIMED_GUIDE_N" : "TIMED_GUIDE_S");
             break;
 
         default:
             return false;
     }
 
-    if (!dirPulse)
-        return false;
-
-    dirPulse->setValue(msecs);
+    dirPulse->value = msecs;
 
     clientManager->sendNewNumber(npulse);
 
-    //qDebug() << "Sending pulse for " << npulse->getName() << " in direction " << dirPulse->getName() << " for " << msecs << " ms ";
+    //qDebug() << "Sending pulse for " << npulse->name << " in direction " << dirPulse->name << " for " << msecs << " ms ";
 
     return true;
 }
@@ -1355,7 +1394,7 @@ void propertyToJson(ILightVectorProperty *lvp, QJsonObject &propObject, bool com
     }
 }
 
-void propertyToJson(INDI::Property prop, QJsonObject &propObject, bool compact)
+void propertyToJson(INDI::Property *prop, QJsonObject &propObject, bool compact)
 {
     switch (prop->getType())
     {

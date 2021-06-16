@@ -17,7 +17,6 @@
 
 #include <QString>
 #include <QList>
-#include <QPointer>
 
 class INDI_P;
 class INDI_D;
@@ -39,7 +38,7 @@ class INDI_G
         INDI_G(INDI_D *idv, const QString &inName);
         ~INDI_G();
 
-        bool addProperty(const INDI::Property newProperty);
+        bool addProperty(INDI::Property *newProperty);
 
         bool removeProperty(const QString &name);
         INDI_P *getProperty(const QString &name) const;
@@ -72,19 +71,17 @@ class INDI_G
         }
 
     private:
-        void resetLayout();
-
-        // Group name
+        /* Group name */
         QString name;
-        // Parent device
+        /* Parent device */
         INDI_D *dp {nullptr};
-        // Properties container
-        QPointer<QFrame> m_PropertiesContainer;
-        // Properties layout
-        QPointer<QVBoxLayout> m_PropertiesLayout;
-        // Vertical spacer
+        /* Properties container */
+        QFrame *m_PropertiesContainer {nullptr};
+        /* Properties layout */
+        QVBoxLayout *m_PropertiesLayout {nullptr};
+        /* Vertical spacer */
         QSpacerItem *m_VerticalSpacer {nullptr};
         QScrollArea *m_ScrollArea {nullptr};
+
         QList<INDI_P *> m_PropertiesList;
-        bool m_Dirty { false };
 };

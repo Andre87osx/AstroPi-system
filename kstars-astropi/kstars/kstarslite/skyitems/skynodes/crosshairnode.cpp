@@ -78,46 +78,44 @@ void CrosshairNode::update()
     //psky.setPen( QPen( QColor( m_KStarsData->colorScheme()->colorNamed("TargetColor" ) ) ) );
     float pxperdegree = Options::zoomFactor() / 57.3;
 
-    auto coordNP = bd->getNumber("EQUATORIAL_EOD_COORD");
+    INumberVectorProperty *coordNP = bd->getNumber("EQUATORIAL_EOD_COORD");
 
-    if (!coordNP)
+    if (coordNP == nullptr)
     {
         coordNP = bd->getNumber("HORIZONTAL_COORD");
-        if (!coordNP)
+        if (coordNP == NULL)
         {
             hide();
         }
         else
         {
-            auto np = coordNP->findWidgetByName("AZ");
+            INumber *np = IUFindNumber(coordNP, "AZ");
 
-            if (!np)
+            if (np == nullptr)
                 hide();
+            indi_sp.setAz(np->value);
 
-            indi_sp.setAz(np->getValue());
-
-            np = coordNP->findWidgetByName("ALT");
-            if (!np)
+            np = IUFindNumber(coordNP, "ALT");
+            if (np == nullptr)
                 hide();
-
-            indi_sp.setAlt(np->getValue());
+            indi_sp.setAlt(np->value);
             indi_sp.HorizontalToEquatorial(m_KStarsData->lst(), m_KStarsData->geo()->lat());
         }
     }
     else
     {
-        autonp = coordNP->findWidgetByName("RA");
+        INumber *np = IUFindNumber(coordNP, "RA");
 
-        if (!np )
+        if (np == nullptr)
             hide();
-
         indi_sp.setRA(np->value);
 
-        np = coordNP->findWidgetByName("DEC");
-        if (!np)
+        np = IUFindNumber(coordNP, "DEC");
+        if (np == nullptr)
+        {
             hide();
-
-        indi_sp.setDec(np->getValue());
+        }
+        indi_sp.setDec(np->value);
     }
 
     if (Options::useAltAz())

@@ -12,7 +12,6 @@
 #pragma once
 
 #include "indicommon.h"
-#include <libindi/indiproperty.h>
 
 #include <QObject>
 
@@ -49,7 +48,7 @@ class INDI_P : public QObject
 {
         Q_OBJECT
     public:
-        INDI_P(INDI_G *ipg, INDI::Property prop);
+        INDI_P(INDI_G *ipg, INDI::Property *prop);
         ~INDI_P();
 
         /* Draw state LED */
@@ -111,10 +110,6 @@ class INDI_P : public QObject
             return elementList;
         }
         bool isRegistered() const;
-        const INDI::Property getProperty() const
-        {
-            return dataProp;
-        }
 
     public slots:
         void processSetButton();
@@ -130,9 +125,9 @@ class INDI_P : public QObject
         void setBLOBOption(int state);
 
     private:
+        INDI::Property *dataProp { nullptr };
         /// Parent group
         INDI_G *pg { nullptr };
-        INDI::Property dataProp;
         QCheckBox *enableBLOBC { nullptr };
         /// Label widget
         std::unique_ptr<KSqueezedTextLabel> labelW;

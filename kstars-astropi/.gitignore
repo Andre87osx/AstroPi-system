@@ -81,7 +81,3 @@ doc/index.cache.bz2
 kstars/*adaptor.cpp
 kstars/*adaptor.h
 unitybuild_*.cpp
-/compile_commands.json
-.clangd
-.idea
-/cmake-build*

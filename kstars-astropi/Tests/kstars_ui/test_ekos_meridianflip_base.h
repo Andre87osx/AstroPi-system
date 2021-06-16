@@ -138,22 +138,17 @@ protected:
      * @param secsToMF seconds until the meridian will be crossed
      * @param calibrate execute initial guiding to calibrate the guider
      * @param initialFocus execute upfront focusing
-     * @param guideDeviation select "Abort if Guide Deviation"
      */
-    bool prepareCaptureTestcase(int secsToMF, bool calibrate, bool initialFocus, bool guideDeviation);
+    bool prepareCaptureTestcase(int secsToMF, bool calibrate, bool initialFocus);
 
     /**
      * @brief Prepare test data iterating over all combination of parameters.
-     * @param exptime exposure time of the test frames
-     * @param locationList variants of locations
-     * @param culminationList variants of upper or lower culmination (upper = true)
      * @param filterList variants of filter parameter tests
      * @param focusList variants with/without focus tests
      * @param autofocusList variants with/without HFR autofocus tests
      * @param ditherList variants with/without dithering tests
      */
-    void prepareTestData(double exptime, QList<QString> locationList, QList<bool> culminationList, QList<QString> filterList,
-                         QList<bool> focusList, QList<bool> autofocusList, QList<bool> ditherList);
+    void prepareTestData(QList<QString> filterList, QList<bool> focusList, QList<bool> autofocusList, QList<bool> ditherList);
 
     /**
      * @brief Check if astrometry files exist.
@@ -270,8 +265,6 @@ protected:
     bool autofocus_checked = false;
     // regular dithering on?
     bool dithering_checked = false;
-    // astrometry files available?
-    bool astrometry_available = true;
 
     /**
      * @brief Retrieve the current alignment status.

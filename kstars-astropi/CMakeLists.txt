@@ -1,15 +1,15 @@
 PROJECT(kstars CXX C)
 set (KStars_VERSION_MAJOR 3)
 set (KStars_VERSION_MINOR 5)
-set (KStars_VERSION_REVISION 4)
-set (KSTARS_BUILD_RELEASE "AstroPi - BETA")
+set (KStars_VERSION_REVISION 2)
+set (KSTARS_BUILD_RELEASE "AstroPi - Stable")
 set (CMAKE_CXX_STANDARD 11)
 
 # Build KStars Lite with -DBUILD_KSTARS_LITE=ON
 option(BUILD_KSTARS_LITE "Build KStars Lite" OFF)
 
 # Build KStars documentation
-option(BUILD_DOC "Build Documentation" OFF)
+option(BUILD_DOC "Build Documentation" ON)
 
 # Fetch translations with -DFETCH_TRANSLATIONS=ON
 option(FETCH_TRANSLATIONS "Fetch Translations" OFF)
@@ -203,7 +203,7 @@ if (ANDROID)
     set(INDI_INCLUDE_DIR ${CMAKE_BINARY_DIR}/packaging/android/indi/libs/indibase ${CMAKE_BINARY_DIR}/packaging/android/indi ${CMAKE_BINARY_DIR}/packaging/android/indi/libs)
     set(INDI_CLIENT_ANDROID_LIBRARIES ${CMAKE_BINARY_DIR}/packaging/android/indi/libindiclientqt.a)
 else ()
-    find_package(INDI 1.9.0)
+    find_package(INDI 1.7.1)
 endif ()
 MACRO_BOOL_TO_01(INDI_FOUND HAVE_INDI)
 set_package_properties(INDI PROPERTIES DESCRIPTION "Astronomical instrumentation control" URL "https://www.indilib.org" TYPE OPTIONAL PURPOSE "Support for controlling astronomical devices on Linux with KStars.")

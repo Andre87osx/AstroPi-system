@@ -59,9 +59,7 @@ class PHD2 : public GuideInterface
             GuidingDithered,
             LockPositionLost,
             Alert,
-            GuideParamChange,
-            ConfigurationChange
-
+            GuideParamChange
         };
         enum PHD2State
         {
@@ -199,29 +197,14 @@ class PHD2 : public GuideInterface
         bool calibrate() override; //Note PHD2 does not have a separate calibrate command.  This is unused.
         void setGuideView(FITSView *guideView);
 
-        QString getCurrentCamera()
-        {
-            return currentCamera;
-        }
-        QString getCurrentMount()
-        {
-            return currentMount;
-        }
-        QString getCurrentAuxMount()
-        {
-            return currentAuxMount;
-        }
+        QString getCurrentCamera(){ return currentCamera; }
+        QString getCurrentMount(){ return currentMount; }
+        QString getCurrentAuxMount(){ return currentAuxMount; }
 
-        bool isCurrentCameraNotInEkos()
-        {
-            return currentCameraIsNotInEkos;
-        }
-        void setCurrentCameraIsNotInEkos(bool enable)
-        {
-            currentCameraIsNotInEkos = enable;
-        }
+        bool isCurrentCameraNotInEkos(){ return currentCameraIsNotInEkos; }
+        void setCurrentCameraIsNotInEkos(bool enable) {currentCameraIsNotInEkos = enable;}
 
-    private slots:
+private slots:
 
         void readPHD2();
         void displayError(QAbstractSocket::SocketError socketError);
@@ -244,7 +227,7 @@ class PHD2 : public GuideInterface
 
         PHD2ResultType takeRequestFromList(const QJsonObject &response);
 
-        QPointer<QTcpSocket> tcpSocket;
+        QTcpSocket *tcpSocket { nullptr };
         int nextRpcId { 1 };
 
         QHash<QString, PHD2Event> events;                     // maps event name to event type
@@ -286,13 +269,6 @@ class PHD2 : public GuideInterface
         QString currentMount;
         QString currentAuxMount;
         bool currentCameraIsNotInEkos;
-
-        uint8_t m_PHD2ReconnectCounter {0};
-
-        // Wait this many milliseconds before trying to reconnect again to PHD2
-        static const uint32_t PHD2_RECONNECT_TIMEOUT {3000};
-        // Try to connect this many times before giving up.
-        static const uint8_t PHD2_RECONNECT_THRESHOLD {10};
 
 };
 

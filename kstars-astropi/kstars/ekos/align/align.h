@@ -143,13 +143,6 @@ class Align : public QWidget, public Ui::Align
             OBJECT_FIXED_GRID
         };
 
-        typedef enum
-        {
-            ALIGN_RESULT_SUCCESS,
-            ALIGN_RESULT_WARNING,
-            ALIGN_RESULT_FAILED
-        } AlignResult;
-
         /** @defgroup AlignDBusInterface Ekos DBus Interface - Align Module
              * Ekos::Align interface provides advanced scripting capabilities to solve images using online or offline astrometry.net
             */
@@ -214,7 +207,7 @@ class Align : public QWidget, public Ui::Align
              */
         Q_SCRIPTABLE int getLoadAndSlewStatus()
         {
-            return solveFromFile;
+            return loadSlewState;
         }
 
         /** DBUS interface function.
@@ -313,7 +306,7 @@ class Align : public QWidget, public Ui::Align
         /**
              * @brief Generate arguments we pass to the remote solver.
              */
-        QStringList generateRemoteArgs(const QSharedPointer<FITSData> &imageData);
+        QStringList generateRemoteArgs(FITSData *data = nullptr);
 
         /**
              * @brief Does our parser exist in the system?
@@ -484,9 +477,8 @@ class Align : public QWidget, public Ui::Align
              * @param ra Center RA in solved image, degrees.
              * @param dec Center DEC in solved image, degrees.
              * @param pixscale Image scale is arcsec/pixel
-             * @param eastToTheRight When the image is rotated, so that North is up, East would be to the right.
              */
-        void solverFinished(double orientation, double ra, double dec, double pixscale, bool eastToTheRight);
+        void solverFinished(double orientation, double ra, double dec, double pixscale);
 
         void solverComplete();
 
@@ -555,7 +547,6 @@ class Align : public QWidget, public Ui::Align
         void setPAHSlewDone();
         void setPAHCorrectionSelectionComplete();
         void zoomAlignView();
-        void setAlignZoom(double scale);
 
         // Align Settings
         QJsonObject getSettings() const;
@@ -579,19 +570,12 @@ class Align : public QWidget, public Ui::Align
 
         // Solver timeout
         void checkAlignmentTimeout();
-        void setAlignTableResult(AlignResult result);
 
         void updateTelescopeType(int index);
 
         // External View
         void showFITSViewer();
         void toggleAlignWidgetFullScreen();
-
-        /**
-         * @brief prepareCapture Set common settings for capture for align module
-         * @param targetChip target Chip
-         */
-        void prepareCapture(ISD::CCDChip *targetChip);
 
         // Polar Alignment Helper slots
 
@@ -769,7 +753,7 @@ class Align : public QWidget, public Ui::Align
         /**
              * @brief processPAHStage After solver is complete, handle PAH Stage processing
              */
-        void processPAHStage(double orientation, double ra, double dec, double pixscale, bool eastToTheRight);
+        void processPAHStage(double orientation, double ra, double dec, double pixscale);
 
         void resizeEvent(QResizeEvent *event) override;
 
@@ -816,8 +800,10 @@ class Align : public QWidget, public Ui::Align
         bool useGuideHead { false };
         /// Can the mount sync its coordinates to those set by Ekos?
         bool canSync { false };
-        // solveFromFile is true we load an image and solve it, no capture is done.
-        bool solveFromFile { false };
+        // LoadSlew mode is when we load an image and solve it, no capture is done.
+        //bool loadSlewMode;
+        /// If load and slew is solved successfully, coordinates obtained, slewed to target, and then captured, solved, and re-slewed to target again.
+        IPState loadSlewState { IPS_IDLE };
         // Target Position Angle of solver Load&Slew image to be used for rotator if necessary
         double loadSlewTargetPA { std::numeric_limits<double>::quiet_NaN() };
         double currentRotatorPA { -1 };
