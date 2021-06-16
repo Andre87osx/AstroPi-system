@@ -69,8 +69,6 @@ class TestSkyPoint : public QObject
 
         void compareSkyPointLibNova_data();
         void compareSkyPointLibNova();
-        
-        void testUpdateCoords();
 
     private:
         bool useRelativistic {false};

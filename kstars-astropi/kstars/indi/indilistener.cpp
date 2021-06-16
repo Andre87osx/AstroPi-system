@@ -131,12 +131,10 @@ void INDIListener::addClient(ClientManager *cm)
     clients.append(cm);
 
     connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice, Qt::BlockingQueuedConnection);
-    //connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice);
     connect(cm, &ClientManager::newINDIProperty, this, &INDIListener::registerProperty);
 
     connect(cm, &ClientManager::removeINDIDevice, this, &INDIListener::removeDevice);
-    //connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty, Qt::BlockingQueuedConnection);
-    connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty);
+    connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty, Qt::BlockingQueuedConnection);
 
     connect(cm, &ClientManager::newINDISwitch, this, &INDIListener::processSwitch);
     connect(cm, &ClientManager::newINDIText, this, &INDIListener::processText);
@@ -160,21 +158,21 @@ void INDIListener::removeClient(ClientManager *cm)
 
         if (cm->isDriverManaged(dv))
         {
-            //            // If we have multiple devices per driver, we need to remove them all
-            //            if (dv->getAuxInfo().value("mdpd", false).toBool() == true)
-            //            {
-            //                while (it != devices.end())
-            //                {
-            //                    if (dv->getDevice((*it)->getDeviceName()) != nullptr)
-            //                    {
-            //                        it = devices.erase(it);
-            //                    }
-            //                    else
-            //                        break;
-            //                }
-            //            }
-            //            else
-            //                it = devices.erase(it);
+            // If we have multiple devices per driver, we need to remove them all
+            if (dv->getAuxInfo().value("mdpd", false).toBool() == true)
+            {
+                while (it != devices.end())
+                {
+                    if (dv->getDevice((*it)->getDeviceName()) != nullptr)
+                    {
+                        it = devices.erase(it);
+                    }
+                    else
+                        break;
+                }
+            }
+            else
+                it = devices.erase(it);
 
             cm->removeManagedDriver(dv);
             cm->disconnect(this);
@@ -191,7 +189,7 @@ void INDIListener::processDevice(DeviceInfo *dv)
     ClientManager *cm = qobject_cast<ClientManager *>(sender());
     Q_ASSERT_X(cm, __FUNCTION__, "Client manager is not valid.");
 
-    qCDebug(KSTARS_INDI) << "INDIListener: New device" << dv->getDeviceName();
+    qCDebug(KSTARS_INDI) << "INDIListener: New device" << dv->getBaseDevice()->getDeviceName();
 
     ISD::GDInterface *gd = new ISD::GenericDevice(*dv, cm);
 
@@ -227,26 +225,26 @@ void INDIListener::removeDevice(const QString &deviceName)
             emit deviceRemoved(oneDevice);
             devices.removeOne(oneDevice);
             oneDevice->deleteLater();
-            return;
+            break;
         }
     }
 }
 
-void INDIListener::registerProperty(INDI::Property prop)
+void INDIListener::registerProperty(INDI::Property *prop)
 {
-    if (!prop.getRegistered())
+    if (!prop->getRegistered())
         return;
 
-    qCDebug(KSTARS_INDI) << "<" << prop.getDeviceName() << ">: <" << prop.getName() << ">";
+    qCDebug(KSTARS_INDI) << "<" << prop->getDeviceName() << ">: <" << prop->getName() << ">";
 
     for (auto oneDevice : devices)
     {
-        if (oneDevice->getDeviceName() == prop.getDeviceName())
+        if (oneDevice->getDeviceName() == prop->getDeviceName())
         {
-            if (prop.isNameMatch("ON_COORD_SET") ||
-                    prop.isNameMatch("EQUATORIAL_EOD_COORD") ||
-                    prop.isNameMatch("EQUATORIAL_COORD") ||
-                    prop.isNameMatch("HORIZONTAL_COORD"))
+            if (!strcmp(prop->getName(), "ON_COORD_SET") ||
+                    !strcmp(prop->getName(), "EQUATORIAL_EOD_COORD") ||
+                    !strcmp(prop->getName(), "EQUATORIAL_COORD") ||
+                    !strcmp(prop->getName(), "HORIZONTAL_COORD"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
                 {
@@ -257,7 +255,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
                 emit newTelescope(oneDevice);
             }
-            else if (prop.isNameMatch("CCD_EXPOSURE"))
+            else if (!strcmp(prop->getName(), "CCD_EXPOSURE"))
             {
                 // Only register a CCD device if the interface explicitly contains CCD_INTERFACE
                 // and only if the device type is not already known.
@@ -273,7 +271,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
                 emit newCCD(oneDevice);
             }
-            else if (prop.isNameMatch("FILTER_NAME"))
+            else if (!strcmp(prop->getName(), "FILTER_NAME"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN &&
                         !(oneDevice->getDriverInterface() & INDI::BaseDevice::CCD_INTERFACE))
@@ -285,7 +283,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
                 emit newFilter(oneDevice);
             }
-            else if (prop.isNameMatch("FOCUS_MOTION"))
+            else if (!strcmp(prop->getName(), "FOCUS_MOTION"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN &&
                         !(oneDevice->getDriverInterface() & INDI::BaseDevice::CCD_INTERFACE))
@@ -298,8 +296,8 @@ void INDIListener::registerProperty(INDI::Property prop)
                 emit newFocuser(oneDevice);
             }
 
-            else if (prop.isNameMatch("DOME_SHUTTER") ||
-                     prop.isNameMatch("DOME_MOTION"))
+            else if (!strcmp(prop->getName(), "DOME_SHUTTER") ||
+                     !strcmp(prop->getName(), "DOME_MOTION"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
                 {
@@ -310,7 +308,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
                 emit newDome(oneDevice);
             }
-            else if (prop.isNameMatch("WEATHER_STATUS"))
+            else if (!strcmp(prop->getName(), "WEATHER_STATUS"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
                 {
@@ -321,7 +319,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
                 emit newWeather(oneDevice);
             }
-            else if (prop.isNameMatch("CAP_PARK"))
+            else if (!strcmp(prop->getName(), "CAP_PARK"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
                 {
@@ -332,7 +330,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
                 emit newDustCap(oneDevice);
             }
-            else if (prop.isNameMatch("FLAT_LIGHT_CONTROL"))
+            else if (!strcmp(prop->getName(), "FLAT_LIGHT_CONTROL"))
             {
                 // If light box part of dust cap
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
@@ -357,7 +355,7 @@ void INDIListener::registerProperty(INDI::Property prop)
                 }
             }
 
-            if (prop.isNameMatch("TELESCOPE_TIMED_GUIDE_WE"))
+            if (!strcmp(prop->getName(), "TELESCOPE_TIMED_GUIDE_WE"))
             {
                 ISD::ST4 *st4Driver = new ISD::ST4(oneDevice->getBaseDevice(), oneDevice->getDriverInfo()->getClientManager());
                 st4Devices.append(st4Driver);

@@ -211,7 +211,7 @@ void Media::upload(FITSView * view)
     //            (imageData->isTempFile() == false))
     //        uuid = m_UUID;
 
-    const QSharedPointer<FITSData> imageData = view->imageData();
+    const FITSData * imageData = view->getImageData();
     QString resolution = QString("%1x%2").arg(imageData->width()).arg(imageData->height());
     QString sizeBytes = KFormat().formatByteSize(imageData->size());
     QVariant xbin(1), ybin(1), exposure(0), focal_length(0), gain(0), pixel_size(0), aperture(0);
@@ -230,10 +230,6 @@ void Media::upload(FITSView * view)
     {
         {"resolution", resolution},
         {"size", sizeBytes},
-        {"channels", imageData->channels()},
-        {"mean", imageData->getAverageMean()},
-        {"median", imageData->getAverageMedian()},
-        {"stddev", imageData->getAverageStdDev()},
         {"bin", QString("%1x%2").arg(xbin.toString()).arg(ybin.toString())},
         {"bpp", QString::number(imageData->bpp())},
         {"uuid", m_UUID},
@@ -284,14 +280,12 @@ void Media::sendUpdatedFrame(FITSView *view)
     QBuffer buffer(&jpegData);
     buffer.open(QIODevice::WriteOnly);
 
-    const QSharedPointer<FITSData> imageData = view->imageData();
+    const FITSData * imageData = view->getImageData();
 
     if (!imageData)
         return;
 
-    const int32_t width = imageData->width();
-    const int32_t height = imageData->height();
-    QString resolution = QString("%1x%2").arg(width).arg(height);
+    QString resolution = QString("%1x%2").arg(imageData->width()).arg(imageData->height());
     QString sizeBytes = KFormat().formatByteSize(imageData->size());
     QVariant xbin(1), ybin(1), exposure(0), focal_length(0), gain(0), pixel_size(0), aperture(0);
     imageData->getRecordValue("XBINNING", xbin);
@@ -309,10 +303,6 @@ void Media::sendUpdatedFrame(FITSView *view)
     {
         {"resolution", resolution},
         {"size", sizeBytes},
-        {"channels", imageData->channels()},
-        {"mean", imageData->getAverageMean()},
-        {"median", imageData->getAverageMedian()},
-        {"stddev", imageData->getAverageStdDev()},
         {"bin", QString("%1x%2").arg(xbin.toString()).arg(ybin.toString())},
         {"bpp", QString::number(imageData->bpp())},
         {"uuid", m_UUID},
@@ -337,31 +327,22 @@ void Media::sendUpdatedFrame(FITSView *view)
     if (correctionVector.isNull() == false)
     {
         scaledImage = view->getDisplayPixmap();
-        const double currentZoom = view->getCurrentZoom();
-        const double normalizedZoom = currentZoom / 100;
-        // If zoom level is not 100%, then scale.
-        if (fabs(normalizedZoom - 1) > 0.001)
-            scaledImage = view->getDisplayPixmap().scaledToWidth(view->zoomedWidth());
-        else
-            scaledImage = view->getDisplayPixmap();
-        // as we factor in the zoom level, we adjust center and length accordingly
-        QPointF center = 0.5 * correctionVector.p1() * normalizedZoom + 0.5 * correctionVector.p2() * normalizedZoom;
-        uint32_t length = qMax(correctionVector.length() / normalizedZoom, 100 / normalizedZoom);
-
+        QPointF center = 0.5 * correctionVector.p1() + 0.5 * correctionVector.p2();
+        uint32_t length = qMax(static_cast<uint32_t>(correctionVector.length()), 100u);
         QRect boundingRectable;
         boundingRectable.setSize(QSize(length * 2, length * 2));
         QPoint topLeft = (center - QPointF(length, length)).toPoint();
         boundingRectable.moveTo(topLeft);
         boundingRectable = boundingRectable.intersected(scaledImage.rect());
 
-        emit newBoundingRect(boundingRectable, scaledImage.size(), currentZoom);
+        emit newBoundingRect(boundingRectable, scaledImage.size());
 
         scaledImage = scaledImage.copy(boundingRectable);
     }
     else
     {
         scaledImage = view->getDisplayPixmap().scaledToWidth(HB_WIDTH / 2, Qt::FastTransformation);
-        emit newBoundingRect(QRect(), QSize(), 100);
+        emit newBoundingRect(QRect(), QSize());
     }
 
     scaledImage.save(&buffer, ext.toLatin1().constData(), HB_IMAGE_QUALITY);
@@ -391,7 +372,7 @@ void Media::sendVideoFrame(const QSharedPointer<QImage> &frame)
         {"resolution", resolution},
         {"ext", "jpg"}
     };
-    QByteArray meta = QJsonDocument(metadata).toJson(QJsonDocument::Compact);
+    QByteArray meta = QJsonDocument(metadata).toJson(QJsonDocument::Compact);;
     meta = meta.leftJustified(METADATA_PACKET, 0);
     buffer.write(meta);
 

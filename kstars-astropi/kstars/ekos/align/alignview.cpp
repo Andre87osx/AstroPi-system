@@ -40,21 +40,21 @@ void AlignView::drawOverlay(QPainter *painter, double scale)
     drawStarCircle(painter);
 }
 
-bool AlignView::injectWCS(double orientation, double ra, double dec, double pixscale, bool eastToTheRight, bool extras)
+bool AlignView::injectWCS(double orientation, double ra, double dec, double pixscale, bool extras)
 {
-    bool rc = m_ImageData->injectWCS(orientation, ra, dec, pixscale, eastToTheRight);
+    bool rc = imageData->injectWCS(orientation, ra, dec, pixscale);
     // If file fails to load, then no WCS data
     if (rc == false)
     {
-        qCritical(KSTARS_EKOS_ALIGN) << "Error creating WCS file:" << m_ImageData->getLastError();
+        qCritical(KSTARS_EKOS_ALIGN) << "Error creating WCS file:" << imageData->getLastError();
         emit wcsToggled(false);
         return false;
     }
 
-    if (wcsWatcher.isRunning() == false && m_ImageData->getWCSState() == FITSData::Idle)
+    if (wcsWatcher.isRunning() == false && imageData->getWCSState() == FITSData::Idle)
     {
         // Load WCS async
-        QFuture<bool> future = QtConcurrent::run(m_ImageData.data(), &FITSData::loadWCS, extras);
+        QFuture<bool> future = QtConcurrent::run(imageData.data(), &FITSData::loadWCS, extras);
         wcsWatcher.setFuture(future);
     }
 
@@ -75,7 +75,7 @@ void AlignView::reset()
 
 void AlignView::setCorrectionParams(const QPointF &from, const QPointF &to, const QPointF &altTo)
 {
-    if (m_ImageData.isNull())
+    if (imageData.isNull())
         return;
 
     correctionFrom = from;
@@ -83,13 +83,13 @@ void AlignView::setCorrectionParams(const QPointF &from, const QPointF &to, cons
     correctionAltTo = altTo;
     markerCrosshair = to;
 
-    updateFrame(true);
+    updateFrame();
 }
 
 void AlignView::setStarCircle(const QPointF &pixel)
 {
     starCircle = pixel;
-    updateFrame(true);
+    updateFrame();
 }
 
 void AlignView::drawTriangle(QPainter *painter)
@@ -124,7 +124,7 @@ void AlignView::drawTriangle(QPainter *painter)
     // In limited memory mode, WCS data is not loaded so no Equatorial Gridlines are drawn
     // so we have to at least draw the NCP/SCP locations
     if (Options::limitedResourcesMode() && !celestialPolePoint.isNull()
-            && m_ImageData->contains(celestialPolePoint))
+            && imageData->contains(celestialPolePoint))
     {
         QPen pen;
         pen.setWidth(2);
@@ -160,7 +160,7 @@ void AlignView::drawStarCircle(QPainter *painter)
 
 void AlignView::drawRaAxis(QPainter *painter)
 {
-    if (raAxis.isNull() || !m_ImageData->contains(raAxis))
+    if (raAxis.isNull() || !imageData->contains(raAxis))
         return;
 
     QPen pen(Qt::green);
@@ -188,13 +188,13 @@ void AlignView::drawRaAxis(QPainter *painter)
 void AlignView::setRaAxis(const QPointF &value)
 {
     raAxis = value;
-    updateFrame(true);
+    updateFrame();
 }
 
 void AlignView::setCelestialPole(const QPointF &value)
 {
     celestialPolePoint = value;
-    updateFrame(true);
+    updateFrame();
 }
 
 void AlignView::setRefreshEnabled(bool enable)
@@ -213,7 +213,7 @@ void AlignView::processMarkerSelection(int x, int y)
 
 void AlignView::holdOnToImage()
 {
-    keptImagePointer = m_ImageData;
+    keptImagePointer = imageData;
 }
 
 void AlignView::releaseImage()

@@ -86,11 +86,11 @@ void ComputeGBStretchParams(const StretchParams &newParams, StretchParams* param
 // In that case, it will use an identity stretch.
 void FITSView::doStretch(QImage *outputImage)
 {
-    if (outputImage->isNull() || m_ImageData.isNull())
+    if (outputImage->isNull() || imageData.isNull())
         return;
-    Stretch stretch(static_cast<int>(m_ImageData->width()),
-                    static_cast<int>(m_ImageData->height()),
-                    m_ImageData->channels(), m_ImageData->dataType());
+    Stretch stretch(static_cast<int>(imageData->width()),
+                    static_cast<int>(imageData->height()),
+                    imageData->channels(), imageData->getStatistics().dataType);
 
     StretchParams tempParams;
     if (!stretchImage)
@@ -98,7 +98,7 @@ void FITSView::doStretch(QImage *outputImage)
     else if (autoStretch)
     {
         // Compute new auto-stretch params.
-        stretchParams = stretch.computeParams(m_ImageData->getImageBuffer());
+        stretchParams = stretch.computeParams(imageData->getImageBuffer());
         tempParams = stretchParams;
     }
     else
@@ -106,13 +106,13 @@ void FITSView::doStretch(QImage *outputImage)
         tempParams = stretchParams;
 
     stretch.setParams(tempParams);
-    stretch.run(m_ImageData->getImageBuffer(), outputImage, m_PreviewSampling);
+    stretch.run(imageData->getImageBuffer(), outputImage, m_PreviewSampling);
 }
 
 // Store stretch parameters, and turn on stretching if it isn't already on.
 void FITSView::setStretchParams(const StretchParams &params)
 {
-    if (m_ImageData->channels() == 3)
+    if (imageData->channels() == 3)
         ComputeGBStretchParams(params, &stretchParams);
 
     stretchParams.grey_red = params.grey_red;
@@ -123,8 +123,8 @@ void FITSView::setStretchParams(const StretchParams &params)
     autoStretch = false;
     stretchImage = true;
 
-    if (m_ImageFrame && rescale(ZOOM_KEEP_LEVEL))
-        updateFrame(true);
+    if (image_frame != nullptr && rescale(ZOOM_KEEP_LEVEL))
+        updateFrame();
 }
 
 // Turn on or off stretching, and if on, use whatever parameters are currently stored.
@@ -133,8 +133,8 @@ void FITSView::setStretch(bool onOff)
     if (stretchImage != onOff)
     {
         stretchImage = onOff;
-        if (m_ImageFrame && rescale(ZOOM_KEEP_LEVEL))
-            updateFrame(true);
+        if (image_frame != nullptr && rescale(ZOOM_KEEP_LEVEL))
+            updateFrame();
     }
 }
 
@@ -143,11 +143,11 @@ void FITSView::setAutoStretchParams()
 {
     stretchImage = true;
     autoStretch = true;
-    if (m_ImageFrame && rescale(ZOOM_KEEP_LEVEL))
-        updateFrame(true);
+    if (image_frame != nullptr && rescale(ZOOM_KEEP_LEVEL))
+        updateFrame();
 }
 
-FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : QScrollArea(parent), m_ZoomFactor(1.2)
+FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : QScrollArea(parent), zoomFactor(1.2)
 {
     // stretchImage is whether to stretch or not--the stretch may or may not use automatically generated parameters.
     // The user may enter his/her own.
@@ -187,6 +187,7 @@ FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : 
 
     grabGesture(Qt::PinchGesture);
 
+    image_frame.reset(new FITSLabel(this));
     filter = filterType;
     mode   = fitsMode;
 
@@ -197,33 +198,14 @@ FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : 
 
     setBaseSize(740, 530);
 
-    m_ImageFrame = new FITSLabel(this);
-    m_ImageFrame->setMouseTracking(true);
-    connect(m_ImageFrame, SIGNAL(newStatus(QString, FITSBar)), this, SIGNAL(newStatus(QString, FITSBar)));
-    connect(m_ImageFrame, SIGNAL(pointSelected(int, int)), this, SLOT(processPointSelection(int, int)));
-    connect(m_ImageFrame, SIGNAL(markerSelected(int, int)), this, SLOT(processMarkerSelection(int, int)));
-
+    connect(image_frame.get(), SIGNAL(newStatus(QString, FITSBar)), this, SIGNAL(newStatus(QString, FITSBar)));
+    connect(image_frame.get(), SIGNAL(pointSelected(int, int)), this, SLOT(processPointSelection(int, int)));
+    connect(image_frame.get(), SIGNAL(markerSelected(int, int)), this, SLOT(processMarkerSelection(int, int)));
     connect(&wcsWatcher, SIGNAL(finished()), this, SLOT(syncWCSState()));
-
-    m_UpdateFrameTimer.setInterval(50);
-    m_UpdateFrameTimer.setSingleShot(true);
-    connect(&m_UpdateFrameTimer, &QTimer::timeout, [this]()
-    {
-        if (toggleStretchAction)
-            toggleStretchAction->setChecked(stretchImage);
-
-        // We employ two schemes for managing the image and its overlays, depending on the size of the image
-        // and whether we need to therefore conserve memory. The small-image strategy explicitly scales up
-        // the image, and writes overlays on the scaled pixmap. The large-image strategy uses a pixmap that's
-        // the size of the image itself, never scaling that up.
-        if (isLargeImage())
-            updateFrameLargeImage();
-        else
-            updateFrameSmallImage();
-    });
 
     connect(&fitsWatcher, &QFutureWatcher<bool>::finished, this, &FITSView::loadInFrame);
 
+    image_frame->setMouseTracking(true);
     setCursorMode(
         selectCursor); //This is the default mode because the Focus and Align FitsViews should not be in dragMouse mode
 
@@ -231,7 +213,7 @@ FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : 
     noImage.load(":/images/noimage.png");
     noImageLabel->setPixmap(noImage);
     noImageLabel->setAlignment(Qt::AlignCenter);
-    setWidget(noImageLabel);
+    this->setWidget(noImageLabel);
 
     redScopePixmap = QPixmap(":/icons/center_telescope_red.svg").scaled(32, 32, Qt::KeepAspectRatio, Qt::FastTransformation);
     magentaScopePixmap = QPixmap(":/icons/center_telescope_magenta.svg").scaled(32, 32, Qt::KeepAspectRatio,
@@ -254,7 +236,7 @@ void FITSView::updateMouseCursor()
     {
         if (horizontalScrollBar()->maximum() > 0 || verticalScrollBar()->maximum() > 0)
         {
-            if (!m_ImageFrame->getMouseButtonDown())
+            if (!image_frame->getMouseButtonDown())
                 viewport()->setCursor(Qt::PointingHandCursor);
             else
                 viewport()->setCursor(Qt::ClosedHandCursor);
@@ -291,9 +273,9 @@ void FITSView::setCursorMode(CursorMode mode)
 
     if (mode == scopeCursor && imageHasWCS())
     {
-        if (m_ImageData->getWCSState() == FITSData::Idle && !wcsWatcher.isRunning())
+        if (imageData->getWCSState() == FITSData::Idle && !wcsWatcher.isRunning())
         {
-            QFuture<bool> future = QtConcurrent::run(m_ImageData.data(), &FITSData::loadWCS, true);
+            QFuture<bool> future = QtConcurrent::run(imageData.data(), &FITSData::loadWCS, true);
             wcsWatcher.setFuture(future);
         }
     }
@@ -301,7 +283,7 @@ void FITSView::setCursorMode(CursorMode mode)
 
 void FITSView::resizeEvent(QResizeEvent * event)
 {
-    if (m_ImageData == nullptr && noImageLabel != nullptr)
+    if ((imageData == nullptr) && noImageLabel != nullptr)
     {
         noImageLabel->setPixmap(
             noImage.scaled(width() - 20, height() - 20, Qt::KeepAspectRatio, Qt::FastTransformation));
@@ -322,10 +304,10 @@ void FITSView::loadFile(const QString &inFilename, bool silent)
     bool setBayerParams = false;
 
     BayerParams param;
-    if ((m_ImageData != nullptr) && m_ImageData->hasDebayer())
+    if ((imageData != nullptr) && imageData->hasDebayer())
     {
         setBayerParams = true;
-        m_ImageData->getBayerParams(&param);
+        imageData->getBayerParams(&param);
     }
 
     // In case image is still loading, wait until it is done.
@@ -333,35 +315,20 @@ void FITSView::loadFile(const QString &inFilename, bool silent)
     // In case loadWCS is still running for previous image data, let's wait until it's over
     wcsWatcher.waitForFinished();
 
-    //    delete m_ImageData;
-    //    m_ImageData = nullptr;
+    //    delete imageData;
+    //    imageData = nullptr;
 
     filterStack.clear();
     filterStack.push(FITS_NONE);
     if (filter != FITS_NONE)
         filterStack.push(filter);
 
-    m_ImageData.reset(new FITSData(mode), &QObject::deleteLater);
+    imageData.reset(new FITSData(mode), &QObject::deleteLater);
 
     if (setBayerParams)
-        m_ImageData->setBayerParams(&param);
+        imageData->setBayerParams(&param);
 
-    fitsWatcher.setFuture(m_ImageData->loadFromFile(inFilename, silent));
-}
-
-void FITSView::clearData()
-{
-    if (!noImageLabel)
-    {
-        noImageLabel = new QLabel();
-        noImage.load(":/images/noimage.png");
-        noImageLabel->setPixmap(noImage);
-        noImageLabel->setAlignment(Qt::AlignCenter);
-    }
-
-    setWidget(noImageLabel);
-
-    m_ImageData.clear();
+    fitsWatcher.setFuture(imageData->loadFromFile(inFilename, silent));
 }
 
 bool FITSView::loadData(const QSharedPointer<FITSData> &data)
@@ -374,13 +341,19 @@ bool FITSView::loadData(const QSharedPointer<FITSData> &data)
     // In case loadWCS is still running for previous image data, let's wait until it's over
     wcsWatcher.waitForFinished();
 
+    //    if (imageData != nullptr)
+    //    {
+    //        delete imageData;
+    //        imageData = nullptr;
+    //    }
+
     filterStack.clear();
     filterStack.push(FITS_NONE);
     if (filter != FITS_NONE)
         filterStack.push(filter);
 
     // Takes control of the objects passed in.
-    m_ImageData = data;
+    imageData = data;
 
     return processData();
 }
@@ -388,36 +361,21 @@ bool FITSView::loadData(const QSharedPointer<FITSData> &data)
 bool FITSView::processData()
 {
     // Set current width and height
-    if (!m_ImageData)
+    if (!imageData)
         return false;
-
-    connect(m_ImageData.data(), &FITSData::dataChanged, [this]()
-    {
-        rescale(ZOOM_KEEP_LEVEL);
-        updateFrame();
-    });
-
-    currentWidth = m_ImageData->width();
-    currentHeight = m_ImageData->height();
+    currentWidth = imageData->width();
+    currentHeight = imageData->height();
 
     int image_width  = currentWidth;
     int image_height = currentHeight;
 
-    if (!m_ImageFrame)
-    {
-        m_ImageFrame = new FITSLabel(this);
-        m_ImageFrame->setMouseTracking(true);
-        connect(m_ImageFrame, SIGNAL(newStatus(QString, FITSBar)), this, SIGNAL(newStatus(QString, FITSBar)));
-        connect(m_ImageFrame, SIGNAL(pointSelected(int, int)), this, SLOT(processPointSelection(int, int)));
-        connect(m_ImageFrame, SIGNAL(markerSelected(int, int)), this, SLOT(processMarkerSelection(int, int)));
-    }
-    m_ImageFrame->setSize(image_width, image_height);
+    image_frame->setSize(image_width, image_height);
 
     // Init the display image
     // JM 2020.01.08: Disabling as proposed by Hy
     //initDisplayImage();
 
-    m_ImageData->applyFilter(filter);
+    imageData->applyFilter(filter);
 
     double availableRAM = 0;
     if (Options::adaptiveSampling() && (availableRAM = KSUtils::getAvailableRAM()) > 0)
@@ -435,7 +393,7 @@ bool FITSView::processData()
         else
             m_AdaptiveSampling = 4;
 
-        m_PreviewSampling = m_AdaptiveSampling;
+        m_PreviewSampling *= m_AdaptiveSampling;
     }
 
     // Rescale to fits window on first load
@@ -464,11 +422,11 @@ bool FITSView::processData()
 
     // Load WCS data now if selected and image contains valid WCS header
     if ((mode == FITS_NORMAL || mode == FITS_ALIGN) &&
-            m_ImageData->hasWCS() && m_ImageData->getWCSState() == FITSData::Idle &&
+            imageData->hasWCS() && imageData->getWCSState() == FITSData::Idle &&
             Options::autoWCS() &&
             !wcsWatcher.isRunning())
     {
-        QFuture<bool> future = QtConcurrent::run(m_ImageData.data(), &FITSData::loadWCS, true);
+        QFuture<bool> future = QtConcurrent::run(imageData.data(), &FITSData::loadWCS, true);
         wcsWatcher.setFuture(future);
     }
     else
@@ -485,8 +443,7 @@ bool FITSView::processData()
         QTimer::singleShot(100, this, SLOT(viewStarProfile()));
     }
 
-    // Fore immediate load of frame for first load.
-    updateFrame(true);
+    updateFrame();
     return true;
 }
 
@@ -495,13 +452,13 @@ void FITSView::loadInFrame()
     // Check if the loading was OK
     if (fitsWatcher.result() == false)
     {
-        m_LastError = m_ImageData->getLastError();
+        m_LastError = imageData->getLastError();
         emit failed();
         return;
     }
 
     // Notify if there is debayer data.
-    emit debayerToggled(m_ImageData->hasDebayer());
+    emit debayerToggled(imageData->hasDebayer());
 
     if (processData())
         emit loaded();
@@ -518,12 +475,12 @@ bool FITSView::saveImage(const QString &newFilename)
         return true;
     }
 
-    return m_ImageData->saveImage(newFilename);
+    return imageData->saveImage(newFilename);
 }
 
 bool FITSView::rescale(FITSZoom type)
 {
-    switch (m_ImageData->dataType())
+    switch (imageData->getStatistics().dataType)
     {
         case TBYTE:
             return rescale<uint8_t>(type);
@@ -565,7 +522,7 @@ void FITSView::enterEvent(QEvent * event)
 {
     Q_UNUSED(event)
 
-    if (floatingToolBar && m_ImageData)
+    if ((floatingToolBar != nullptr) && (imageData != nullptr))
     {
         QPointer<QGraphicsOpacityEffect> eff = new QGraphicsOpacityEffect(this);
         floatingToolBar->setGraphicsEffect(eff);
@@ -582,7 +539,7 @@ void FITSView::leaveEvent(QEvent * event)
 {
     Q_UNUSED(event)
 
-    if (floatingToolBar && m_ImageData)
+    if ((floatingToolBar != nullptr) && (imageData != nullptr))
     {
         QPointer<QGraphicsOpacityEffect> eff = new QGraphicsOpacityEffect(this);
         floatingToolBar->setGraphicsEffect(eff);
@@ -598,11 +555,14 @@ void FITSView::leaveEvent(QEvent * event)
 template <typename T>
 bool FITSView::rescale(FITSZoom type)
 {
-    if (!m_ImageData)
-        return false;
+    // JM 2020.01.08: Disabling as proposed by Hy
+    //    if (rawImage.isNull())
+    //        return false;
 
-    int image_width  = m_ImageData->width();
-    int image_height = m_ImageData->height();
+    if (!imageData)
+        return false;
+    int image_width  = imageData->width();
+    int image_height = imageData->height();
     currentWidth  = image_width;
     currentHeight = image_height;
 
@@ -656,20 +616,18 @@ bool FITSView::rescale(FITSZoom type)
     }
 
     initDisplayImage();
-    m_ImageFrame->setScaledContents(true);
+    image_frame->setScaledContents(true);
     doStretch(&rawImage);
-    setWidget(m_ImageFrame);
+    setWidget(image_frame.get());
 
     // This is needed by fitstab, even if the zoom doesn't change, to change the stretch UI.
     emit newStatus(QString("%1%").arg(currentZoom), FITS_ZOOM);
+
     return true;
 }
 
 void FITSView::ZoomIn()
 {
-    if (!m_ImageData)
-        return;
-
     if (currentZoom >= ZOOM_DEFAULT && Options::limitedResourcesMode())
     {
         emit newStatus(i18n("Cannot zoom in further due to active limited resources mode."), FITS_MESSAGE);
@@ -688,21 +646,19 @@ void FITSView::ZoomIn()
         emit actionUpdated("view_zoom_in", false);
     }
 
-    currentWidth  = m_ImageData->width() * (currentZoom / ZOOM_DEFAULT);
-    currentHeight = m_ImageData->height() * (currentZoom / ZOOM_DEFAULT);
+    if (!imageData) return;
+    currentWidth  = imageData->width() * (currentZoom / ZOOM_DEFAULT);
+    currentHeight = imageData->height() * (currentZoom / ZOOM_DEFAULT);
 
     cleanUpZoom();
 
-    updateFrame(true);
+    updateFrame();
 
     emit newStatus(QString("%1%").arg(currentZoom), FITS_ZOOM);
 }
 
 void FITSView::ZoomOut()
 {
-    if (!m_ImageData)
-        return;
-
     if (currentZoom <= ZOOM_DEFAULT)
         currentZoom -= ZOOM_LOW_INCR;
     else
@@ -716,25 +672,23 @@ void FITSView::ZoomOut()
 
     emit actionUpdated("view_zoom_in", true);
 
-    currentWidth  = m_ImageData->width() * (currentZoom / ZOOM_DEFAULT);
-    currentHeight = m_ImageData->height() * (currentZoom / ZOOM_DEFAULT);
+    if (!imageData) return;
+    currentWidth  = imageData->width() * (currentZoom / ZOOM_DEFAULT);
+    currentHeight = imageData->height() * (currentZoom / ZOOM_DEFAULT);
 
     cleanUpZoom();
 
-    updateFrame(true);
+    updateFrame();
 
     emit newStatus(QString("%1%").arg(currentZoom), FITS_ZOOM);
 }
 
 void FITSView::ZoomToFit()
 {
-    if (!m_ImageData)
-        return;
-
     if (rawImage.isNull() == false)
     {
         rescale(ZOOM_FIT_WINDOW);
-        updateFrame(true);
+        updateFrame();
     }
 }
 
@@ -746,8 +700,8 @@ void FITSView::setStarFilterRange(float const innerRadius, float const outerRadi
 
 int FITSView::filterStars()
 {
-    return starFilter.used() ? m_ImageData->filterStars(starFilter.innerRadius,
-            starFilter.outerRadius) : m_ImageData->getStarCenters().count();
+    return starFilter.used() ? imageData->filterStars(starFilter.innerRadius,
+            starFilter.outerRadius) : imageData->getStarCenters().count();
 }
 
 // isImageLarge() returns whether we use the large-image rendering strategy or the small-image strategy.
@@ -759,13 +713,13 @@ bool FITSView::isLargeImage()
 }
 
 // getScale() is related to the image and overlay rendering strategy used.
-// If we're using a pixmap appropriate for a large image, where we draw and render on a pixmap that's the image size
+// If we're using a pixmap apprpriate for a large image, where we draw and render on a pixmap that's the image size
 // and we let the QLabel deal with scaling and zooming, then the scale is 1.0.
 // With smaller images, where memory use is not as severe, we create a pixmap that's the size of the scaled image
 // and get scale returns the ratio of that pixmap size to the image size.
 double FITSView::getScale()
 {
-    return (isLargeImage() ? 1.0 : currentZoom / ZOOM_DEFAULT) / m_PreviewSampling;
+    return isLargeImage() ? 1.0 : currentZoom / ZOOM_DEFAULT;
 }
 
 // scaleSize() is only used with the large-image rendering strategy. It may increase the line
@@ -775,31 +729,22 @@ double FITSView::scaleSize(double size)
 {
     if (!isLargeImage())
         return size;
-    return (currentZoom > 100.0 ? size : std::round(size * 100.0 / currentZoom)) / m_PreviewSampling;
+    return currentZoom > 100.0 ? size : std::round(size * 100.0 / currentZoom);
 }
 
-void FITSView::updateFrame(bool now)
+void FITSView::updateFrame()
 {
-    // JM 2021-03-13: This timer is used to throttle updateFrame calls to improve performance
-    // If after 250ms no further update frames are called, then the actual update is triggered.
-    // JM 2021-03-16: When stretching in progress, immediately execute so that the user see the changes
-    // in real time
-    if (now)
-    {
-        if (toggleStretchAction)
-            toggleStretchAction->setChecked(stretchImage);
+    if (toggleStretchAction)
+        toggleStretchAction->setChecked(stretchImage);
 
-        // We employ two schemes for managing the image and its overlays, depending on the size of the image
-        // and whether we need to therefore conserve memory. The small-image strategy explicitly scales up
-        // the image, and writes overlays on the scaled pixmap. The large-image strategy uses a pixmap that's
-        // the size of the image itself, never scaling that up.
-        if (isLargeImage())
-            updateFrameLargeImage();
-        else
-            updateFrameSmallImage();
-    }
+    // We employ two schemes for managing the image and its overlays, depending on the size of the image
+    // and whether we need to therefore conserve memory. The small-image strategy explicitly scales up
+    // the image, and writes overlays on the scaled pixmap. The large-image strategy uses a pixmap that's
+    // the size of the image itself, never scaling that up.
+    if (isLargeImage())
+        updateFrameLargeImage();
     else
-        m_UpdateFrameTimer.start();
+        updateFrameSmallImage();
 }
 
 
@@ -815,10 +760,14 @@ void FITSView::updateFrameLargeImage()
     font.setPixelSize(scaleSize(FONT_SIZE));
     painter.setFont(font);
 
-    drawOverlay(&painter, 1.0 / m_PreviewSampling);
-    drawStarFilter(&painter, 1.0 / m_PreviewSampling);
-    m_ImageFrame->setPixmap(displayPixmap);
-    m_ImageFrame->resize(((m_PreviewSampling * currentZoom) / 100.0) * displayPixmap.size());
+    if (m_PreviewSampling == 1)
+    {
+        drawOverlay(&painter, 1.0);
+        drawStarFilter(&painter, 1.0);
+    }
+    image_frame->setPixmap(displayPixmap);
+
+    image_frame->resize(((m_PreviewSampling * currentZoom) / 100.0) * image_frame->pixmap()->size());
 }
 
 void FITSView::updateFrameSmallImage()
@@ -829,21 +778,21 @@ void FITSView::updateFrameSmallImage()
 
     QPainter painter(&displayPixmap);
 
-    //    if (m_PreviewSampling == 1)
-    //    {
-    drawOverlay(&painter, currentZoom / ZOOM_DEFAULT);
-    drawStarFilter(&painter, currentZoom / ZOOM_DEFAULT);
-    //}
-    m_ImageFrame->setPixmap(displayPixmap);
-    m_ImageFrame->resize(currentWidth, currentHeight);
+    if (m_PreviewSampling == 1)
+    {
+        drawOverlay(&painter, currentZoom / ZOOM_DEFAULT);
+        drawStarFilter(&painter, currentZoom / ZOOM_DEFAULT);
+    }
+    image_frame->setPixmap(displayPixmap);
+    image_frame->resize(currentWidth, currentHeight);
 }
 
 void FITSView::drawStarFilter(QPainter *painter, double scale)
 {
     if (!starFilter.used())
         return;
-    const double w = m_ImageData->width() * scale;
-    const double h = m_ImageData->height() * scale;
+    const double w = imageData->width() * scale;
+    const double h = imageData->height() * scale;
     double const diagonal = std::sqrt(w * w + h * h) / 2;
     int const innerRadius = std::lround(diagonal * starFilter.innerRadius);
     int const outerRadius = std::lround(diagonal * starFilter.outerRadius);
@@ -918,41 +867,41 @@ void drawClip(T *input_buffer, int num_channels, QPainter *painter, int width, i
 
 void FITSView::drawClipping(QPainter *painter)
 {
-    auto input = m_ImageData->getImageBuffer();
-    const int height = m_ImageData->height();
-    const int width = m_ImageData->width();
+    auto input = imageData->getImageBuffer();
+    const int height = imageData->height();
+    const int width = imageData->width();
     constexpr double FLOAT_CLIP = 60000;
     constexpr double SHORT_CLIP = 30000;
     constexpr double USHORT_CLIP = 60000;
     constexpr double BYTE_CLIP = 250;
-    switch (m_ImageData->dataType())
+    switch (imageData->getStatistics().dataType)
     {
         case TBYTE:
-            drawClip(reinterpret_cast<uint8_t const*>(input), m_ImageData->channels(), painter, width, height, BYTE_CLIP,
+            drawClip(reinterpret_cast<uint8_t const*>(input), imageData->channels(), painter, width, height, BYTE_CLIP,
                      scaleSize(1));
             break;
         case TSHORT:
-            drawClip(reinterpret_cast<short const*>(input), m_ImageData->channels(), painter, width, height, SHORT_CLIP,
+            drawClip(reinterpret_cast<short const*>(input), imageData->channels(), painter, width, height, SHORT_CLIP,
                      scaleSize(1));
             break;
         case TUSHORT:
-            drawClip(reinterpret_cast<unsigned short const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
+            drawClip(reinterpret_cast<unsigned short const*>(input), imageData->channels(), painter, width, height, USHORT_CLIP,
                      scaleSize(1));
             break;
         case TLONG:
-            drawClip(reinterpret_cast<long const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
+            drawClip(reinterpret_cast<long const*>(input), imageData->channels(), painter, width, height, USHORT_CLIP,
                      scaleSize(1));
             break;
         case TFLOAT:
-            drawClip(reinterpret_cast<float const*>(input), m_ImageData->channels(), painter, width, height, FLOAT_CLIP,
+            drawClip(reinterpret_cast<float const*>(input), imageData->channels(), painter, width, height, FLOAT_CLIP,
                      scaleSize(1));
             break;
         case TLONGLONG:
-            drawClip(reinterpret_cast<long long const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
+            drawClip(reinterpret_cast<long long const*>(input), imageData->channels(), painter, width, height, USHORT_CLIP,
                      scaleSize(1));
             break;
         case TDOUBLE:
-            drawClip(reinterpret_cast<double const*>(input), m_ImageData->channels(), painter, width, height, FLOAT_CLIP,
+            drawClip(reinterpret_cast<double const*>(input), imageData->channels(), painter, width, height, FLOAT_CLIP,
                      scaleSize(1));
             break;
         default:
@@ -962,14 +911,14 @@ void FITSView::drawClipping(QPainter *painter)
 
 void FITSView::ZoomDefault()
 {
-    if (m_ImageFrame)
+    if (image_frame != nullptr)
     {
         emit actionUpdated("view_zoom_out", true);
         emit actionUpdated("view_zoom_in", true);
 
         currentZoom   = ZOOM_DEFAULT;
-        currentWidth  = m_ImageData->width();
-        currentHeight = m_ImageData->height();
+        currentWidth  = imageData->width();
+        currentHeight = imageData->height();
 
         updateFrame();
 
@@ -1006,90 +955,6 @@ void FITSView::drawOverlay(QPainter * painter, double scale)
 
     if (showClipping)
         drawClipping(painter);
-
-    if (showMagnifyingGlass)
-        drawMagnifyingGlass(painter, scale);
-}
-
-// Draws a 100% resolution image rectangle around the mouse position.
-void FITSView::drawMagnifyingGlass(QPainter *painter, double scale)
-{
-    if (magnifyingGlassX >= 0 && magnifyingGlassY >= 0 &&
-            magnifyingGlassX < m_ImageData->width() &&
-            magnifyingGlassY < m_ImageData->height())
-    {
-        // Amount of magnification.
-        constexpr double magAmount = 8;
-        // Desired size in pixels of the magnification window.
-        constexpr int magWindowSize = 130;
-        // The distance from the mouse position to the magnifying glass rectangle, in the source image coordinates.
-        const int winXOffset = magWindowSize * 10.0 / currentZoom;
-        const int winYOffset = magWindowSize * 10.0 / currentZoom;
-        // Size of a side of the square of input to make a window that size.
-        const int inputDimension = magWindowSize * 100 / currentZoom;
-        // Size of the square drawn. Not the same, necessarily as the magWindowSize,
-        // since the output may be scaled (if isLargeImage()==true) to become screen pixels.
-        const int outputDimension = inputDimension * scale + .99;
-
-        // Where the source data (to be magnified) comes from.
-        int imgLeft = magnifyingGlassX - inputDimension / (2 * magAmount);
-        int imgTop = magnifyingGlassY - inputDimension / (2 * magAmount);
-
-        // Where we'll draw the magnifying glass rectangle.
-        int winLeft = magnifyingGlassX + winXOffset;
-        int winTop = magnifyingGlassY + winYOffset;
-
-        // Normally we place the magnifying glass rectangle to the right and below the mouse curson.
-        // However, if it would be rendered outside the image, put it on the other side.
-        int w = rawImage.width();
-        int h = rawImage.height();
-        const int rightLimit = std::min(w, static_cast<int>((horizontalScrollBar()->value() + width()) * 100 / currentZoom));
-        const int bottomLimit = std::min(h, static_cast<int>((verticalScrollBar()->value() + height()) * 100 / currentZoom));
-        if (winLeft + winXOffset + inputDimension > rightLimit)
-            winLeft -= (2 * winXOffset + inputDimension);
-        if (winTop + winYOffset + inputDimension > bottomLimit)
-            winTop -= (2 * winYOffset + inputDimension);
-
-        // Blacken the output where magnifying outside the source image.
-        if ((imgLeft < 0 ) ||
-                (imgLeft + inputDimension / magAmount >= w) ||
-                (imgTop < 0) ||
-                (imgTop + inputDimension / magAmount > h))
-        {
-            painter->setBrush(QBrush(Qt::black));
-            painter->drawRect(winLeft * scale, winTop * scale, outputDimension, outputDimension);
-            painter->setBrush(QBrush(Qt::transparent));
-        }
-
-        // Finally, draw the magnified image.
-        painter->drawImage(QRect(winLeft * scale, winTop * scale, outputDimension, outputDimension),
-                           rawImage,
-                           QRect(imgLeft, imgTop, inputDimension / magAmount, inputDimension / magAmount));
-        // Draw a white border.
-        painter->setPen(QPen(Qt::white, scaleSize(1)));
-        painter->drawRect(winLeft * scale, winTop * scale, outputDimension, outputDimension);
-    }
-}
-
-// x,y are the image coordinates where the magnifying glass is positioned.
-void FITSView::updateMagnifyingGlass(int x, int y)
-{
-    if (!m_ImageData)
-        return;
-
-    magnifyingGlassX = x;
-    magnifyingGlassY = y;
-    if (magnifyingGlassX == -1 && magnifyingGlassY == -1)
-    {
-        if (showMagnifyingGlass)
-            updateFrame(true);
-        showMagnifyingGlass = false;
-    }
-    else
-    {
-        showMagnifyingGlass = true;
-        updateFrame(true);
-    }
 }
 
 void FITSView::updateMode(FITSMode fmode)
@@ -1164,7 +1029,7 @@ void FITSView::drawStarCentroid(QPainter * painter, double scale)
 
     painter->setPen(QPen(Qt::red, scaleSize(2)));
 
-    for (auto const &starCenter : m_ImageData->getStarCenters())
+    for (auto const &starCenter : imageData->getStarCenters())
     {
         int const w  = std::round(starCenter->width) * scale;
 
@@ -1257,9 +1122,9 @@ This Method draws a large Crosshair in the center of the image, it is like a set
 
 void FITSView::drawCrosshair(QPainter * painter, double scale)
 {
-    if (!m_ImageData) return;
-    const int image_width = m_ImageData->width();
-    const int image_height = m_ImageData->height();
+    if (!imageData) return;
+    const int image_width = imageData->width();
+    const int image_height = imageData->height();
     const QPointF c   = QPointF((qreal)image_width / 2 * scale, (qreal)image_height / 2 * scale);
     const float midX  = (float)image_width / 2 * scale;
     const float midY  = (float)image_height / 2 * scale;
@@ -1296,8 +1161,8 @@ be in the center of the image.
 
 void FITSView::drawPixelGrid(QPainter * painter, double scale)
 {
-    const float width  = m_ImageData->width() * scale;
-    const float height = m_ImageData->height() * scale;
+    const float width  = imageData->width() * scale;
+    const float height = imageData->height() * scale;
     const float cX     = width / 2;
     const float cY     = height / 2;
     const float deltaX = width / 10;
@@ -1349,15 +1214,15 @@ void FITSView::drawPixelGrid(QPainter * painter, double scale)
 
 bool FITSView::imageHasWCS()
 {
-    if (m_ImageData != nullptr)
-        return m_ImageData->hasWCS();
+    if (imageData != nullptr)
+        return imageData->hasWCS();
     return false;
 }
 
 void FITSView::drawObjectNames(QPainter * painter, double scale)
 {
     painter->setPen(QPen(QColor(KStarsData::Instance()->colorScheme()->colorNamed("FITSObjectLabelColor"))));
-    foreach (FITSSkyObject * listObject, m_ImageData->getSkyObjects())
+    foreach (FITSSkyObject * listObject, imageData->getSkyObjects())
     {
         painter->drawRect(listObject->x() * scale - 5, listObject->y() * scale - 5, 10, 10);
         painter->drawText(listObject->x() * scale + 10, listObject->y() * scale + 10, listObject->skyObject()->name());
@@ -1373,12 +1238,12 @@ to draw gridlines at those specific RA and Dec values.
 
 void FITSView::drawEQGrid(QPainter * painter, double scale)
 {
-    const int image_width = m_ImageData->width();
-    const int image_height = m_ImageData->height();
+    const int image_width = imageData->width();
+    const int image_height = imageData->height();
 
-    if (m_ImageData->hasWCS() && m_ImageData->fullWCS())
+    if (imageData->hasWCS() && imageData->fullWCS())
     {
-        FITSImage::wcs_point * wcs_coord = m_ImageData->getWCSCoord();
+        FITSImage::wcs_point * wcs_coord = imageData->getWCSCoord();
         if (wcs_coord != nullptr)
         {
             const int size      = image_width * image_height;
@@ -1462,7 +1327,7 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
                 for (double targetDec = minDec; targetDec <= maxDec; targetDec += increment)
                 {
                     SkyPoint pointToGet(target / 15.0, targetDec);
-                    bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
+                    bool inImage = imageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
                     if (inImage)
                     {
                         QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
@@ -1498,10 +1363,10 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
                 for (double targetRA = minRA; targetRA <= maxRA; targetRA += increment)
                 {
                     SkyPoint pointToGet(targetRA / 15, targetDec * decConvert);
-                    bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
+                    bool inImage = imageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
                     if (inImage)
                     {
-                        QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
+                        QPointF pt(pixelPoint.x(), pixelPoint.y());
                         eqGridPoints.append(pt);
                     }
                 }
@@ -1519,7 +1384,7 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
             //This Section Draws the North Celestial Pole if present
             SkyPoint NCP(0, 90);
 
-            bool NCPtest = m_ImageData->wcsToPixel(NCP, pPoint, imagePoint);
+            bool NCPtest = imageData->wcsToPixel(NCP, pPoint, imagePoint);
             if (NCPtest)
             {
                 bool NCPinImage =
@@ -1536,7 +1401,7 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
             //This Section Draws the South Celestial Pole if present
             SkyPoint SCP(0, -90);
 
-            bool SCPtest = m_ImageData->wcsToPixel(SCP, pPoint, imagePoint);
+            bool SCPtest = imageData->wcsToPixel(SCP, pPoint, imagePoint);
             if (SCPtest)
             {
                 bool SCPinImage =
@@ -1555,8 +1420,8 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
 
 bool FITSView::pointIsInImage(QPointF pt, double scale)
 {
-    int image_width = m_ImageData->width();
-    int image_height = m_ImageData->height();
+    int image_width = imageData->width();
+    int image_height = imageData->height();
     return pt.x() < image_width * scale && pt.y() < image_height * scale && pt.x() > 0 && pt.y() > 0;
 }
 
@@ -1569,8 +1434,8 @@ QPointF FITSView::getPointForGridLabel(QPainter *painter, const QString &str, do
     int strWidth = fm.horizontalAdvance(str);
 #endif
     int strHeight = fm.height();
-    int image_width = m_ImageData->width();
-    int image_height = m_ImageData->height();
+    int image_width = imageData->width();
+    int image_height = imageData->height();
 
     //These get the maximum X and Y points in the list that are in the image
     QPointF maxXPt(image_width * scale / 2, image_height * scale / 2);
@@ -1652,7 +1517,7 @@ QPixmap &FITSView::getTrackingBoxPixmap(uint8_t margin)
     int w  = (trackingBox.width() + margin * 2) * scale;
     int h  = (trackingBox.height() + margin * 2) * scale;
 
-    trackingBoxPixmap = m_ImageFrame->grab(QRect(x1, y1, w, h));
+    trackingBoxPixmap = image_frame->grab(QRect(x1, y1, w, h));
     return trackingBoxPixmap;
 }
 
@@ -1721,14 +1586,14 @@ void FITSView::toggleEQGrid()
 {
     showEQGrid = !showEQGrid;
 
-    if (m_ImageData->getWCSState() == FITSData::Idle && !wcsWatcher.isRunning())
+    if (imageData->getWCSState() == FITSData::Idle && !wcsWatcher.isRunning())
     {
-        QFuture<bool> future = QtConcurrent::run(m_ImageData.data(), &FITSData::loadWCS, true);
+        QFuture<bool> future = QtConcurrent::run(imageData.data(), &FITSData::loadWCS, true);
         wcsWatcher.setFuture(future);
         return;
     }
 
-    if (m_ImageFrame)
+    if (image_frame != nullptr)
         updateFrame();
 }
 
@@ -1736,28 +1601,28 @@ void FITSView::toggleObjects()
 {
     showObjects = !showObjects;
 
-    if (m_ImageData->getWCSState() == FITSData::Idle && !wcsWatcher.isRunning())
+    if (imageData->getWCSState() == FITSData::Idle && !wcsWatcher.isRunning())
     {
-        QFuture<bool> future = QtConcurrent::run(m_ImageData.data(), &FITSData::loadWCS, true);
+        QFuture<bool> future = QtConcurrent::run(imageData.data(), &FITSData::loadWCS, true);
         wcsWatcher.setFuture(future);
         return;
     }
 
-    if (m_ImageFrame)
+    if (image_frame != nullptr)
         updateFrame();
 }
 
 void FITSView::toggleStars()
 {
     toggleStars(!markStars);
-    if (m_ImageFrame)
+    if (image_frame != nullptr)
         updateFrame();
 }
 
 void FITSView::toggleStretch()
 {
     stretchImage = !stretchImage;
-    if (m_ImageFrame && rescale(ZOOM_KEEP_LEVEL))
+    if (image_frame != nullptr && rescale(ZOOM_KEEP_LEVEL))
         updateFrame();
 }
 
@@ -1843,21 +1708,21 @@ void FITSView::viewStarProfile()
         if(mode == FITS_ALIGN || mode == FITS_NORMAL)
         {
             starProfileWidget->enableTrackingBox(true);
-            m_ImageData->setStarAlgorithm(ALGORITHM_CENTROID);
+            imageData->setStarAlgorithm(ALGORITHM_CENTROID);
             connect(starProfileWidget, SIGNAL(sampleSizeUpdated(int)), this, SLOT(resizeTrackingBox(int)));
         }
     }
-    QList<Edge *> starCenters = m_ImageData->getStarCentersInSubFrame(trackingBox);
+    QList<Edge *> starCenters = imageData->getStarCentersInSubFrame(trackingBox);
     if(starCenters.size() == 0)
     {
         // FIXME, the following does not work anymore.
-        //m_ImageData->findStars(&trackingBox, true);
+        //imageData->findStars(&trackingBox, true);
         // FIXME replacing it with this
-        m_ImageData->findStars(ALGORITHM_CENTROID, trackingBox).waitForFinished();
-        starCenters = m_ImageData->getStarCentersInSubFrame(trackingBox);
+        imageData->findStars(ALGORITHM_CENTROID, trackingBox).waitForFinished();
+        starCenters = imageData->getStarCentersInSubFrame(trackingBox);
     }
 
-    starProfileWidget->loadData(m_ImageData, trackingBox, starCenters);
+    starProfileWidget->loadData(imageData, trackingBox, starCenters);
     starProfileWidget->show();
     starProfileWidget->raise();
     if(markStars)
@@ -1877,44 +1742,46 @@ void FITSView::togglePixelGrid()
 QFuture<bool> FITSView::findStars(StarAlgorithm algorithm, const QRect &searchBox)
 {
     if(trackingBoxEnabled)
-        return m_ImageData->findStars(algorithm, trackingBox);
+        return imageData->findStars(algorithm, trackingBox);
     else
-        return m_ImageData->findStars(algorithm, searchBox);
+        return imageData->findStars(algorithm, searchBox);
 }
 
 void FITSView::toggleStars(bool enable)
 {
     markStars = enable;
 
-    if (markStars)
+    if (markStars && !imageData->areStarsSearched())
         searchStars();
 }
 
 void FITSView::searchStars()
 {
     QVariant frameType;
-    if (m_ImageData->areStarsSearched() || !m_ImageData || (m_ImageData->getRecordValue("FRAME", frameType)
-            && frameType.toString() != "Light"))
+    if (!imageData || (imageData->getRecordValue("FRAME", frameType) && frameType.toString() != "Light"))
         return;
 
-    QApplication::setOverrideCursor(Qt::WaitCursor);
-    emit newStatus(i18n("Finding stars..."), FITS_MESSAGE);
-    qApp->processEvents();
+    if (!imageData->areStarsSearched())
+    {
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        emit newStatus(i18n("Finding stars..."), FITS_MESSAGE);
+        qApp->processEvents();
 
 #ifdef HAVE_STELLARSOLVER
-    QVariantMap extractionSettings;
-    extractionSettings["optionsProfileIndex"] = Options::hFROptionsProfile();
-    extractionSettings["optionsProfileGroup"] = static_cast<int>(Ekos::HFRProfiles);
-    imageData()->setSourceExtractorSettings(extractionSettings);
+        QVariantMap extractionSettings;
+        extractionSettings["optionsProfileIndex"] = Options::hFROptionsProfile();
+        extractionSettings["optionsProfileGroup"] = static_cast<int>(Ekos::HFRProfiles);
+        getImageData()->setSourceExtractorSettings(extractionSettings);
 #endif
 
-    QFuture<bool> result = findStars(ALGORITHM_SEP);
-    result.waitForFinished();
-    if (result.result() && isVisible())
-    {
-        emit newStatus("", FITS_MESSAGE);
+        QFuture<bool> result = findStars(ALGORITHM_SEP);
+        result.waitForFinished();
+        if (result.result() && isVisible())
+        {
+            emit newStatus("", FITS_MESSAGE);
+        }
+        QApplication::restoreOverrideCursor();
     }
-    QApplication::restoreOverrideCursor();
 }
 
 void FITSView::processPointSelection(int x, int y)
@@ -2012,10 +1879,10 @@ void FITSView::initDisplayImage()
 {
     // Account for leftover when sampling. Thus a 5-wide image sampled by 2
     // would result in a width of 3 (samples 0, 2 and 4).
-    int w = (m_ImageData->width() + m_PreviewSampling - 1) / m_PreviewSampling;
-    int h = (m_ImageData->height() + m_PreviewSampling - 1) / m_PreviewSampling;
+    int w = (imageData->width() + m_PreviewSampling - 1) / m_PreviewSampling;
+    int h = (imageData->height() + m_PreviewSampling - 1) / m_PreviewSampling;
 
-    if (m_ImageData->channels() == 1)
+    if (imageData->channels() == 1)
     {
         rawImage = QImage(w, h, QImage::Format_Indexed8);
 
@@ -2082,15 +1949,15 @@ void FITSView::pinchTriggered(QPinchGesture * gesture)
 /*void FITSView::handleWCSCompletion()
 {
     //bool hasWCS = wcsWatcher.result();
-    if(m_ImageData->hasWCS())
+    if(imageData->hasWCS())
         this->updateFrame();
-    emit wcsToggled(m_ImageData->hasWCS());
+    emit wcsToggled(imageData->hasWCS());
 }*/
 
 void FITSView::syncWCSState()
 {
-    bool hasWCS    = m_ImageData->hasWCS();
-    bool wcsLoaded = m_ImageData->getWCSState() == FITSData::Success;
+    bool hasWCS    = imageData->hasWCS();
+    bool wcsLoaded = imageData->getWCSState() == FITSData::Success;
 
     if (hasWCS && wcsLoaded)
         this->updateFrame();

@@ -18,15 +18,8 @@
 #include <QTimer>
 #include <QApplication>
 #include <QtTest>
-#include <QSystemTrayIcon>
 
 class KStars;
-
-// Helper for on-screen test messages
-#define KTELL_BEGIN() do { KStarsUiTests::notifierBegin(); } while(false)
-#define KTELL_HIDE() do { KStarsUiTests::notifierHide(); } while(false)
-#define KTELL_END() do { KStarsUiTests::notifierEnd(); } while(false)
-#define KTELL(message) do { KStarsUiTests::notifierMessage(__FUNCTION__, message); } while(false)
 
 // We need to call a set of preliminary operations for each UI test, such as the KStars Wizard setup.
 // We also need QtCreator to detect our tests - that application scans class definitions for qExec calls.
@@ -51,19 +44,17 @@ extern void execute_tests();
         for (int i = 0; i < argc; i++) \
             if (!strcmp("-functions", argv[i])) \
                 return QTest::qExec(&tc, argc, argv); \
-        QApplication* app = new QApplication(argc, argv); \
+        QApplication app(argc, argv); \
         prepare_tests(); \
         int failure = 0; \
-        QTimer::singleShot(1000, app, [&] { \
-            qDebug("Starting wizard..."); \
+        QTimer::singleShot(1000, &app, [&] { \
+            qDebug("Starting tests..."); \
             failure |= run_wizards(argc, argv); \
             if (!failure) { \
-                KTELL_BEGIN(); \
-                failure |= QTest::qExec(&tc, app->arguments()); \
-                KTELL_END(); \
+                failure |= QTest::qExec(&tc, argc, argv); \
             } \
             qDebug("Tests are done."); \
-            app->quit(); \
+            app.quit(); \
         }); \
         execute_tests(); \
         return failure; }
@@ -79,13 +70,6 @@ class KStarsUiTests : public QObject
     Q_OBJECT
 public:
     explicit KStarsUiTests(QObject *parent = nullptr): QObject(parent) {};
-
-public:
-    static QSystemTrayIcon * m_Notifier;
-    static void notifierBegin();
-    static void notifierHide();
-    static void notifierMessage(QString, QString);
-    static void notifierEnd();
 
 private slots:
 

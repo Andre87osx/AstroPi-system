@@ -58,7 +58,6 @@
 #include "observinglist.h"
 #include "skymap.h"
 #include "hipscomponent.h"
-#include "terraincomponent.h"
 #endif
 
 #include <QApplication>
@@ -152,8 +151,6 @@ SkyMapComposite::SkyMapComposite(SkyComposite *parent) : SkyComposite(parent), m
     // Hips
     addComponent(m_HiPS = new HIPSComponent(this));
 
-    addComponent(m_Terrain = new TerrainComponent(this));
-
     addComponent(m_ArtificialHorizon = new ArtificialHorizonComponent(this), 110);
 
     m_internetResolvedCat = "_Internet_Resolved";
@@ -210,12 +207,9 @@ void SkyMapComposite::update(KSNumbers *num)
     //8. Deep sky
     //m_DeepSky->update( data, num );
     //9. Custom catalogs
-    if (!SkyMapDrawAbstract::drawLock())
-    {
-        m_CustomCatalogs->update(num);
-        m_internetResolvedComponent->update(num);
-        m_manualAdditionsComponent->update(num);
-    }
+    m_CustomCatalogs->update(num);
+    m_internetResolvedComponent->update(num);
+    m_manualAdditionsComponent->update(num);
     //10. Stars
     //m_Stars->update( data, num );
     //m_CLines->update( data, num );  // MUST follow stars.
@@ -379,9 +373,6 @@ void SkyMapComposite::draw(SkyPainter *skyp)
     m_Horizon->draw(skyp);
 
     m_skyMesh->inDraw(false);
-
-    // Draw terrain at the end.
-    m_Terrain->draw(skyp);
 
     // DEBUG Edit. Keywords: Trixel boundaries. Currently works only in QPainter mode
     // -jbb uncomment these to see trixel outlines:

@@ -16,7 +16,6 @@
 
 #include <QTableWidgetItem>
 
-class SchedulerJob;
 /**
  * @class SequenceJob
  * @short Sequence Job is a container for the details required to capture a series of images.
@@ -54,10 +53,9 @@ class SequenceJob : public QObject
         static QString const &ISOMarker;
 
         SequenceJob();
-        SequenceJob(XMLEle *root); //, SchedulerJob *schedJob);
         ~SequenceJob() = default;
 
-        CAPTUREResult capture(bool autofocusReady);
+        CAPTUREResult capture(bool noCaptureFilter, bool autofocusReady);
         void reset();
         void abort();
         void done();

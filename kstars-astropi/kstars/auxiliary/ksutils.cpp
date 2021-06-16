@@ -1115,27 +1115,21 @@ QString getDefaultPath(const QString &option)
     }
     else if (option == "indiServer")
     {
-#if defined(INDI_PREFIX)
-        return QString(INDI_PREFIX "/bin/indiserver");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/bin/indiserver";
 #endif
         return prefix + "/bin/indiserver";
     }
     else if (option == "INDIHubAgent")
     {
-#if defined(INDI_PREFIX)
-        return QString(INDI_PREFIX "/bin/indihub-agent");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/bin/indihub-agent";
 #endif
         return prefix + "/bin/indihub-agent";
     }
     else if (option == "indiDriversDir")
     {
-#if defined(INDI_PREFIX)
-        return QString(INDI_PREFIX "/share/indi");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/share/indi";
 #elif defined(Q_OS_LINUX)
         return prefix + "/share/indi";
@@ -1145,9 +1139,7 @@ QString getDefaultPath(const QString &option)
     }
     else if (option == "AstrometrySolverBinary")
     {
-#if defined(ASTROMETRY_PREFIX)
-        return QString(ASTROMETRY_PREFIX "/bin/solve-field");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/bin/solve-field";
 #elif defined(Q_OS_WIN)
         return QDir::homePath() + "/AppData/Local/cygwin_ansvr/lib/astrometry/bin/solve-field.exe";
@@ -1156,18 +1148,14 @@ QString getDefaultPath(const QString &option)
     }
     else if (option == "SextractorBinary")
     {
-#if defined(SEXTRACTOR_PREFIX)
-        return QString(SEXTRACTOR_PREFIX "/bin/sextractor");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/bin/sex";
 #endif
         return prefix + "/bin/sextractor";
     }
     else if (option == "AstrometryWCSInfo")
     {
-#if defined(ASTROMETRY_PREFIX)
-        return QString(ASTROMETRY_PREFIX "/bin/wcsinfo");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/bin/wcsinfo";
 #elif defined(Q_OS_WIN)
         return QDir::homePath() + "/AppData/Local/cygwin_ansvr/lib/astrometry/bin/wcsinfo.exe";
@@ -1176,9 +1164,7 @@ QString getDefaultPath(const QString &option)
     }
     else if (option == "AstrometryConfFile")
     {
-#if defined(ASTROMETRY_CONF_IN_PREFIX) && defined(ASTROMETRY_PREFIX)
-        return QString(ASTROMETRY_PREFIX "/etc/astrometry.cfg");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/etc/astrometry.cfg";
 #elif defined(Q_OS_WIN)
         return QDir::homePath() + "/AppData/Local/cygwin_ansvr/etc/astrometry/backend.cfg";
@@ -1189,9 +1175,7 @@ QString getDefaultPath(const QString &option)
     }
     else if (option == "AstrometryIndexFileLocation")
     {
-#if defined(ASTROMETRY_PREFIX)
-        return QString(ASTROMETRY_PREFIX "/share/astrometry");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Astrometry/";
 #endif
         return prefix + "/share/astrometry/";
@@ -1202,9 +1186,7 @@ QString getDefaultPath(const QString &option)
     }
     else if (option == "XplanetPath")
     {
-#if defined(XPLANET_PREFIX)
-        return QString(XPLANET_PREFIX "/bin/xplanet");
-#elif defined(Q_OS_OSX)
+#if defined(Q_OS_OSX)
         return "/usr/local/bin/xplanet";
 #endif
         return prefix + "/bin/xplanet";

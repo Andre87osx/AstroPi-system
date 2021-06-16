@@ -274,11 +274,6 @@ void KStars::initActions()
                 i18n("Switch to horizonal view (Horizontal &Coordinates)"))
             << QKeySequence("Space");
 
-    actionCollection()->addAction("toggle_terrain", this, SLOT(slotTerrain()))
-            << (Options::showTerrain() ? i18n("Hide terrain") :
-                i18n("Show terrain"))
-            << QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_T);
-
     actionCollection()->addAction("project_lambert", this, SLOT(slotMapProjection()))
             << i18n("&Lambert Azimuthal Equal-area") << QKeySequence("F5") << AddToGroup(projectionGroup)
             << Checked(Options::projection() == Projector::Lambert);

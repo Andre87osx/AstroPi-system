@@ -39,7 +39,6 @@
 #include "options/opscatalog.h"
 #include "options/opscolors.h"
 #include "options/opsguides.h"
-#include "options/opsterrain.h"
 #include "options/opssatellites.h"
 #include "options/opssolarsystem.h"
 #include "options/opssupernovae.h"
@@ -1036,7 +1035,6 @@ KConfigDialog* KStars::prepareOps()
 
     opcatalog     = new OpsCatalog();
     opguides      = new OpsGuides();
-    opterrain     = new OpsTerrain();
     opsolsys      = new OpsSolarSystem();
     opssatellites = new OpsSatellites();
     opssupernovae = new OpsSupernovae();
@@ -1059,10 +1057,6 @@ KConfigDialog* KStars::prepareOps()
 
     page = dialog->addPage(opguides, i18n("Guides"), "kstars_guides");
     page->setIcon(QIcon::fromTheme("kstars_guides"));
-
-    page = dialog->addPage(opterrain, i18n("Terrain"), "kstars_terrain");
-    page->setIcon(QIcon::fromTheme("kstars_terrain", QIcon(":/icons/kstars_terrain.png")));
-
 
     page = dialog->addPage(opcolors, i18n("Colors"), "kstars_colors");
     page->setIcon(QIcon::fromTheme("kstars_colors"));
@@ -1095,13 +1089,6 @@ KConfigDialog* KStars::prepareOps()
     page->setIcon(QIcon::fromTheme("kstars_advanced"));
 
     return dialog;
-}
-
-void KStars::syncOps()
-{
-    opterrain->syncOptions();
-    actionCollection()->action("toggle_terrain")
-    ->setText(Options::showTerrain() ? i18n("Hide Terrain") : i18n("Show Terrain"));
 }
 
 void KStars::slotApplyConfigChanges()
@@ -1205,7 +1192,7 @@ void KStars::slotOpenFITS()
     QUrl fileURL = QFileDialog::getOpenFileUrl(KStars::Instance(), i18n("Open Image"), path,
                    "Images (*.fits *.fits.fz *.fit *.fts "
                    "*.jpg *.jpeg *.png *.gif *.bmp "
-                   "*.cr2 *.cr3 *.crw *.nef *.raf *.dng *.arw *.orf)");
+                   "*.cr2 *.cr3 *.crw *.nef *.raf *.dng *.arw)");
     if (fileURL.isEmpty())
         return;
 
@@ -1784,15 +1771,6 @@ void KStars::slotFullScreen()
     {
         topLevelWidget()->setWindowState(topLevelWidget()->windowState() | Qt::WindowFullScreen); // set
     }
-}
-
-// Toggle to and from full screen mode
-void KStars::slotTerrain()
-{
-    Options::setShowTerrain(!Options::showTerrain());
-    actionCollection()->action("toggle_terrain")
-    ->setText(Options::showTerrain() ? i18n("Hide terrain") : i18n("Show terrain"));
-    KStars::Instance()->map()->forceUpdate();
 }
 
 void KStars::slotClearAllTrails()

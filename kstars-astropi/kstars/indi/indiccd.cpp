@@ -27,24 +27,58 @@
 #endif
 
 #include <KNotifications/KNotification>
-#include "ksnotification.h"
 #include <QImageReader>
 #include <QStatusBar>
 #include <QtConcurrent>
 
 #include <basedevice.h>
 
-const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw", "orf" };
-
-const QString &getFITSModeStringString(FITSMode mode)
-{
-    return FITSModes[mode];
-}
+const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw" };
 
 namespace
 {
+void addFITSKeywords(const QString &filename, const QString &filter_used)
+{
+#ifdef HAVE_CFITSIO
+    int status = 0;
+
+    if (filter_used.isEmpty() == false)
+    {
+        QString filt(filter_used);
+        QString key_comment("Filter name");
+        filt.replace(' ', '_');
+
+        fitsfile *fptr = nullptr;
+
+        // Use open diskfile as it does not use extended file names which has problems opening
+        // files with [ ] or ( ) in their names.
+        if (fits_open_diskfile(&fptr, filename.toLatin1(), READONLY, &status))
+        {
+            fits_report_error(stderr, status);
+            return;
+        }
+
+        if (fits_movabs_hdu(fptr, 1, IMAGE_HDU, &status))
+        {
+            fits_report_error(stderr, status);
+            return;
+        }
+
+        if (fits_update_key_str(fptr, "FILTER", filt.toLatin1().data(), key_comment.toLatin1().data(), &status))
+        {
+            fits_report_error(stderr, status);
+            return;
+        }
+
+        fits_flush_file(fptr, &status);
+        fits_close_file(fptr, &status);
+    }
+#endif
+}
+
 // Internal function to write an image blob to disk.
-bool WriteImageFileInternal(const QString &filename, char *buffer, const size_t size)
+bool WriteImageFileInternal(const QString &filename, char *buffer, const size_t size,
+                            bool add_fits_keywords, const QString &filter)
 {
     QFile file(filename);
     if (!file.open(QIODevice::WriteOnly))
@@ -63,6 +97,8 @@ bool WriteImageFileInternal(const QString &filename, char *buffer, const size_t 
                         QFileDevice::WriteUser |
                         QFileDevice::ReadGroup |
                         QFileDevice::ReadOther);
+    if (add_fits_keywords)
+        addFITSKeywords(filename, filter);
     return true;
 }
 }
@@ -126,7 +162,7 @@ void CCDChip::setImageView(FITSView *image, FITSMode imageType)
     }
 
     if (image)
-        imageData = image->imageData();
+        imageData = image->getImageData();
 }
 
 bool CCDChip::getFrameMinMax(int *minX, int *maxX, int *minY, int *maxY, int *minW, int *maxW, int *minH, int *maxH)
@@ -518,30 +554,30 @@ void CCDChip::setCanAbort(bool value)
     CanAbort = value;
 }
 
-const QSharedPointer<FITSData> &CCDChip::getImageData() const
+FITSData *CCDChip::getImageData() const
 {
     return imageData;
 }
 
 int CCDChip::getISOIndex() const
 {
-    auto isoProp = baseDevice->getSwitch("CCD_ISO");
+    ISwitchVectorProperty *isoProp = baseDevice->getSwitch("CCD_ISO");
 
-    if (!isoProp)
+    if (isoProp == nullptr)
         return -1;
 
-    return isoProp->findOnSwitchIndex();
+    return IUFindOnSwitchIndex(isoProp);
 }
 
 bool CCDChip::setISOIndex(int value)
 {
-    auto isoProp = baseDevice->getSwitch("CCD_ISO");
+    ISwitchVectorProperty *isoProp = baseDevice->getSwitch("CCD_ISO");
 
-    if (!isoProp)
+    if (isoProp == nullptr)
         return false;
 
-    isoProp->reset();
-    isoProp->at(value)->setState(ISS_ON);
+    IUResetSwitch(isoProp);
+    isoProp->sp[value].s = ISS_ON;
 
     clientManager->sendNewSwitch(isoProp);
 
@@ -552,13 +588,13 @@ QStringList CCDChip::getISOList() const
 {
     QStringList isoList;
 
-    auto isoProp = baseDevice->getSwitch("CCD_ISO");
+    ISwitchVectorProperty *isoProp = baseDevice->getSwitch("CCD_ISO");
 
-    if (!isoProp)
+    if (isoProp == nullptr)
         return isoList;
 
-    for (const auto &it : *isoProp)
-        isoList << it.getLabel();
+    for (int i = 0; i < isoProp->nsp; i++)
+        isoList << isoProp->sp[i].label;
 
     return isoList;
 }
@@ -879,7 +915,7 @@ CCD::~CCD()
         delete [] fileWriteBuffer;
 }
 
-void CCD::setBLOBManager(const char *device, INDI::Property prop)
+void CCD::setBLOBManager(const char *device, INDI::Property *prop)
 {
     if (!prop->getRegistered())
         return;
@@ -888,100 +924,100 @@ void CCD::setBLOBManager(const char *device, INDI::Property prop)
         emit newBLOBManager(prop);
 }
 
-void CCD::registerProperty(INDI::Property prop)
+void CCD::registerProperty(INDI::Property *prop)
 {
     if (isConnected())
         readyTimer.get()->start();
 
-    if (prop->isNameMatch("GUIDER_EXPOSURE"))
+    if (!strcmp(prop->getName(), "GUIDER_EXPOSURE"))
     {
         HasGuideHead = true;
         guideChip.reset(new CCDChip(this, CCDChip::GUIDE_CCD));
     }
-    else if (prop->isNameMatch("CCD_FRAME_TYPE"))
+    else if (!strcmp(prop->getName(), "CCD_FRAME_TYPE"))
     {
-        auto ccdFrame = prop->getSwitch();
+        ISwitchVectorProperty *ccdFrame = prop->getSwitch();
 
         primaryChip->clearFrameTypes();
 
-        for (const auto &it : *ccdFrame)
-            primaryChip->addFrameLabel(it.getLabel());
+        for (int i = 0; i < ccdFrame->nsp; i++)
+            primaryChip->addFrameLabel(ccdFrame->sp[i].label);
     }
-    else if (prop->isNameMatch("CCD_FRAME"))
+    else if (!strcmp(prop->getName(), "CCD_FRAME"))
     {
-        auto np = prop->getNumber();
-        if (np && np->getPermission() != IP_RO)
+        INumberVectorProperty *np = prop->getNumber();
+        if (np && np->p != IP_RO)
             primaryChip->setCanSubframe(true);
     }
-    else if (prop->isNameMatch("GUIDER_FRAME"))
+    else if (!strcmp(prop->getName(), "GUIDER_FRAME"))
     {
-        auto np = prop->getNumber();
-        if (np && np->getPermission() != IP_RO)
+        INumberVectorProperty *np = prop->getNumber();
+        if (np && np->p != IP_RO)
             guideChip->setCanSubframe(true);
     }
-    else if (prop->isNameMatch("CCD_BINNING"))
+    else if (!strcmp(prop->getName(), "CCD_BINNING"))
     {
-        auto np = prop->getNumber();
-        if (np && np->getPermission() != IP_RO)
+        INumberVectorProperty *np = prop->getNumber();
+        if (np && np->p != IP_RO)
             primaryChip->setCanBin(true);
     }
-    else if (prop->isNameMatch("GUIDER_BINNING"))
+    else if (!strcmp(prop->getName(), "GUIDER_BINNING"))
     {
-        auto np = prop->getNumber();
-        if (np && np->getPermission() != IP_RO)
+        INumberVectorProperty *np = prop->getNumber();
+        if (np && np->p != IP_RO)
             guideChip->setCanBin(true);
     }
-    else if (prop->isNameMatch("CCD_ABORT_EXPOSURE"))
+    else if (!strcmp(prop->getName(), "CCD_ABORT_EXPOSURE"))
     {
-        auto sp = prop->getSwitch();
-        if (sp && sp->getPermission() != IP_RO)
+        ISwitchVectorProperty *sp = prop->getSwitch();
+        if (sp && sp->p != IP_RO)
             primaryChip->setCanAbort(true);
     }
-    else if (prop->isNameMatch("GUIDER_ABORT_EXPOSURE"))
+    else if (!strcmp(prop->getName(), "GUIDER_ABORT_EXPOSURE"))
     {
-        auto sp = prop->getSwitch();
-        if (sp && sp->getPermission() != IP_RO)
+        ISwitchVectorProperty *sp = prop->getSwitch();
+        if (sp && sp->p != IP_RO)
             guideChip->setCanAbort(true);
     }
-    else if (prop->isNameMatch("CCD_TEMPERATURE"))
+    else if (!strcmp(prop->getName(), "CCD_TEMPERATURE"))
     {
-        auto np = prop->getNumber();
-        HasCooler = true;
-        CanCool   = (np->getPermission() != IP_RO);
+        INumberVectorProperty *np = prop->getNumber();
+        HasCooler                 = true;
+        CanCool                   = (np->p != IP_RO);
         if (np)
-            emit newTemperatureValue(np->at(0)->getValue());
+            emit newTemperatureValue(np->np[0].value);
     }
-    else if (prop->isNameMatch("CCD_COOLER"))
+    else if (!strcmp(prop->getName(), "CCD_COOLER"))
     {
         // Can turn cooling on/off
         HasCoolerControl = true;
     }
-    else if (prop->isNameMatch("CCD_VIDEO_STREAM"))
+    else if (!strcmp(prop->getName(), "CCD_VIDEO_STREAM"))
     {
         // Has Video Stream
         HasVideoStream = true;
     }
-    else if (prop->isNameMatch("CCD_TRANSFER_FORMAT"))
+    else if (!strcmp(prop->getName(), "CCD_TRANSFER_FORMAT"))
     {
-        auto sp = prop->getSwitch();
+        ISwitchVectorProperty *sp = prop->getSwitch();
         if (sp)
         {
-            auto format = sp->findWidgetByName("FORMAT_NATIVE");
-            if (format && format->getState() == ISS_ON)
+            ISwitch *format = IUFindSwitch(sp, "FORMAT_NATIVE");
+            if (format && format->s == ISS_ON)
                 transferFormat = FORMAT_NATIVE;
             else
                 transferFormat = FORMAT_FITS;
         }
     }
-    else if (prop->isNameMatch("CCD_EXPOSURE_PRESETS"))
+    else if (!strcmp(prop->getName(), "CCD_EXPOSURE_PRESETS"))
     {
-        auto svp = prop->getSwitch();
+        ISwitchVectorProperty *svp = prop->getSwitch();
         if (svp)
         {
             bool ok = false;
-            for (const auto &it : *svp)
+            for (int i = 0; i < svp->nsp; i++)
             {
-                QString key = QString(it.getLabel());
+                QString key = QString(svp->sp[i].label);
                 double value = key.toDouble(&ok);
                 if (!ok)
                 {
@@ -1013,37 +1049,37 @@ void CCD::registerProperty(INDI::Property prop)
             }
         }
     }
-    else if (prop->isNameMatch("CCD_EXPOSURE_LOOP"))
+    else if (!strcmp(prop->getName(), "CCD_EXPOSURE_LOOP"))
     {
-        auto sp = prop->getSwitch();
+        ISwitchVectorProperty *sp = prop->getSwitch();
         if (sp)
         {
-            auto looping = sp->findWidgetByName("LOOP_ON");
-            if (looping && looping->getState() == ISS_ON)
+            ISwitch *looping = IUFindSwitch(sp, "LOOP_ON");
+            if (looping && looping->s == ISS_ON)
                 IsLooping = true;
             else
                 IsLooping = false;
         }
     }
-    else if (prop->isNameMatch("TELESCOPE_TYPE"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_TYPE"))
     {
-        auto sp = prop->getSwitch();
+        ISwitchVectorProperty *sp = prop->getSwitch();
         if (sp)
         {
-            auto format = sp->findWidgetByName("TELESCOPE_PRIMARY");
-            if (format && format->getState() == ISS_ON)
+            ISwitch *format = IUFindSwitch(sp, "TELESCOPE_PRIMARY");
+            if (format && format->s == ISS_ON)
                 telescopeType = TELESCOPE_PRIMARY;
             else
                 telescopeType = TELESCOPE_GUIDE;
         }
     }
-    else if (prop->isNameMatch("CCD_WEBSOCKET_SETTINGS"))
+    else if (!strcmp(prop->getName(), "CCD_WEBSOCKET_SETTINGS"))
     {
-        auto np = prop->getNumber();
-        m_Media->setURL(QUrl(QString("ws://%1:%2").arg(clientManager->getHost()).arg(np->at(0)->getValue())));
+        INumberVectorProperty *np = prop->getNumber();
+        m_Media->setURL(QUrl(QString("ws://%1:%2").arg(clientManager->getHost()).arg(np->np[0].value)));
         m_Media->connectServer();
     }
-    else if (prop->isNameMatch("CCD1"))
+    else if (!strcmp(prop->getName(), "CCD1"))
     {
         IBLOBVectorProperty *bp = prop->getBLOB();
         primaryCCDBLOB = bp->bp;
@@ -1054,23 +1090,23 @@ void CCD::registerProperty(INDI::Property prop)
     {
         // Since gain is spread among multiple property depending on the camera providing it
         // we need to search in all possible number properties
-        auto controlNP = prop->getNumber();
+        INumberVectorProperty *controlNP = prop->getNumber();
         if (controlNP)
         {
-            for (auto &it : *controlNP)
+            for (int i = 0; i < controlNP->nnp; i++)
             {
-                QString name  = QString(it.getName()).toLower();
-                QString label = QString(it.getLabel()).toLower();
+                QString name  = QString(controlNP->np[i].name).toLower();
+                QString label = QString(controlNP->np[i].label).toLower();
 
                 if (name == "gain" || label == "gain")
                 {
-                    gainN = &it;
-                    gainPerm = controlNP->getPermission();
+                    gainN = controlNP->np + i;
+                    gainPerm = controlNP->p;
                 }
                 else if (name == "offset" || label == "offset")
                 {
-                    offsetN = &it;
-                    offsetPerm = controlNP->getPermission();
+                    offsetN = controlNP->np + i;
+                    offsetPerm = controlNP->p;
                 }
             }
         }
@@ -1212,7 +1248,7 @@ void CCD::processSwitch(ISwitchVectorProperty *svp)
             else
             {
                 // Only use CCD dimensions if we are receiving raw stream and not stream of images (i.e. mjpeg..etc)
-                auto rawBP = baseDevice->getBLOB("CCD1");
+                IBLOBVectorProperty *rawBP = baseDevice->getBLOB("CCD1");
                 if (rawBP)
                 {
                     int x = 0, y = 0, w = 0, h = 0;
@@ -1253,12 +1289,12 @@ void CCD::processSwitch(ISwitchVectorProperty *svp)
         if (recordOFF && recordOFF->s == ISS_ON)
         {
             emit videoRecordToggled(false);
-            KSNotification::event(QLatin1String("IndiServerMessage"), i18n("Video Recording Stopped"), KSNotification::EVENT_INFO);
+            KNotification::event(QLatin1String("RecordingStopped"), i18n("Video Recording Stopped"));
         }
         else
         {
             emit videoRecordToggled(true);
-            KSNotification::event(QLatin1String("IndiServerMessage"), i18n("Video Recording Started"), KSNotification::EVENT_INFO);
+            KNotification::event(QLatin1String("RecordingStarted"), i18n("Video Recording Started"));
         }
     }
     else if (!strcmp(svp->name, "TELESCOPE_TYPE"))
@@ -1430,12 +1466,14 @@ bool CCD::writeImageFile(const QString &filename, IBLOB *bp, bool is_fits)
         // Copy memory, and write file on a separate thread.
         // Probably too late to return an error if the file couldn't write.
         memcpy(fileWriteBuffer, bp->blob, bp->size);
-        fileWriteThread = QtConcurrent::run(WriteImageFileInternal, fileWriteFilename, fileWriteBuffer, bp->size);
-        //filter = "";
+        fileWriteThread = QtConcurrent::run(WriteImageFileInternal, fileWriteFilename,
+                                            fileWriteBuffer, bp->size, is_fits, filter);
+        filter = "";
     }
     else
     {
-        if (!WriteImageFileInternal(filename, static_cast<char*>(bp->blob), bp->size))
+        if (!WriteImageFileInternal(filename, static_cast<char*>(bp->blob), bp->size,
+                                    false, filter))
             return false;
     }
     return true;
@@ -1503,8 +1541,7 @@ void CCD::processBLOB(IBLOB *bp)
     else
     {
         targetChip = primaryChip.get();
-        qCDebug(KSTARS_INDI) << "Image received. Mode:" << getFITSModeStringString(targetChip->getCaptureMode()) << "Size:" <<
-                             bp->size;
+        qCDebug(KSTARS_INDI) << "processBLOB() mode " << targetChip->getCaptureMode();
     }
 
     // Create temporary name if ANY of the following conditions are met:
@@ -1803,33 +1840,33 @@ void CCD::StreamWindowHidden()
     if (baseDevice->isConnected())
     {
         // We can have more than one *_VIDEO_STREAM property active so disable them all
-        auto streamSP = baseDevice->getSwitch("CCD_VIDEO_STREAM");
+        ISwitchVectorProperty *streamSP = baseDevice->getSwitch("CCD_VIDEO_STREAM");
         if (streamSP)
         {
-            streamSP->reset();
-            streamSP->at(0)->setState(ISS_OFF);
-            streamSP->at(1)->setState(ISS_ON);
-            streamSP->setState(IPS_IDLE);
+            IUResetSwitch(streamSP);
+            streamSP->sp[0].s = ISS_OFF;
+            streamSP->sp[1].s = ISS_ON;
+            streamSP->s       = IPS_IDLE;
             clientManager->sendNewSwitch(streamSP);
         }
 
         streamSP = baseDevice->getSwitch("VIDEO_STREAM");
         if (streamSP)
         {
-            streamSP->reset();
-            streamSP->at(0)->setState(ISS_OFF);
-            streamSP->at(1)->setState(ISS_ON);
-            streamSP->setState(IPS_IDLE);
+            IUResetSwitch(streamSP);
+            streamSP->sp[0].s = ISS_OFF;
+            streamSP->sp[1].s = ISS_ON;
+            streamSP->s       = IPS_IDLE;
             clientManager->sendNewSwitch(streamSP);
         }
 
         streamSP = baseDevice->getSwitch("AUX_VIDEO_STREAM");
         if (streamSP)
         {
-            streamSP->reset();
-            streamSP->at(0)->setState(ISS_OFF);
-            streamSP->at(1)->setState(ISS_ON);
-            streamSP->setState(IPS_IDLE);
+            IUResetSwitch(streamSP);
+            streamSP->sp[0].s = ISS_OFF;
+            streamSP->sp[1].s = ISS_ON;
+            streamSP->s       = IPS_IDLE;
             clientManager->sendNewSwitch(streamSP);
         }
     }
@@ -1858,19 +1895,19 @@ bool CCD::setCoolerControl(bool enable)
     if (HasCoolerControl == false)
         return false;
 
-    auto coolerSP = baseDevice->getSwitch("CCD_COOLER");
+    ISwitchVectorProperty *coolerSP = baseDevice->getSwitch("CCD_COOLER");
 
-    if (!coolerSP)
+    if (coolerSP == nullptr)
         return false;
 
     // Cooler ON/OFF
-    auto coolerON  = coolerSP->findWidgetByName("COOLER_ON");
-    auto coolerOFF = coolerSP->findWidgetByName("COOLER_OFF");
-    if (!coolerON || !coolerOFF)
+    ISwitch *coolerON  = IUFindSwitch(coolerSP, "COOLER_ON");
+    ISwitch *coolerOFF = IUFindSwitch(coolerSP, "COOLER_OFF");
+    if (coolerON == nullptr || coolerOFF == nullptr)
         return false;
 
-    coolerON->setState(enable ? ISS_ON : ISS_OFF);
-    coolerOFF->setState(enable ? ISS_OFF : ISS_ON);
+    coolerON->s = enable ? ISS_ON : ISS_OFF;
+    coolerOFF->s = enable ? ISS_OFF : ISS_ON;
     clientManager->sendNewSwitch(coolerSP);
 
     return true;
@@ -2011,11 +2048,12 @@ CCD::UploadMode CCD::getUploadMode()
 
 bool CCD::setUploadMode(UploadMode mode)
 {
-    ISwitch *modeS = nullptr;
+    ISwitchVectorProperty *uploadModeSP = nullptr;
+    ISwitch *modeS                      = nullptr;
 
-    auto uploadModeSP = baseDevice->getSwitch("UPLOAD_MODE");
+    uploadModeSP = baseDevice->getSwitch("UPLOAD_MODE");
 
-    if (!uploadModeSP)
+    if (uploadModeSP == nullptr)
     {
         qWarning() << "No UPLOAD_MODE in CCD driver. Please update driver to INDI compliant CCD driver.";
         return false;
@@ -2024,31 +2062,31 @@ bool CCD::setUploadMode(UploadMode mode)
     switch (mode)
     {
         case UPLOAD_CLIENT:
-            modeS = uploadModeSP->findWidgetByName("UPLOAD_CLIENT");
-            if (!modeS)
+            modeS = IUFindSwitch(uploadModeSP, "UPLOAD_CLIENT");
+            if (modeS == nullptr)
                 return false;
             if (modeS->s == ISS_ON)
                 return true;
             break;
 
         case UPLOAD_BOTH:
-            modeS = uploadModeSP->findWidgetByName("UPLOAD_BOTH");
-            if (!modeS)
+            modeS = IUFindSwitch(uploadModeSP, "UPLOAD_BOTH");
+            if (modeS == nullptr)
                 return false;
             if (modeS->s == ISS_ON)
                 return true;
             break;
 
         case UPLOAD_LOCAL:
-            modeS = uploadModeSP->findWidgetByName("UPLOAD_LOCAL");
-            if (!modeS)
+            modeS = IUFindSwitch(uploadModeSP, "UPLOAD_LOCAL");
+            if (modeS == nullptr)
                 return false;
             if (modeS->s == ISS_ON)
                 return true;
             break;
     }
 
-    uploadModeSP->reset();
+    IUResetSwitch(uploadModeSP);
     modeS->s = ISS_ON;
 
     clientManager->sendNewSwitch(uploadModeSP);
@@ -2061,29 +2099,29 @@ bool CCD::getTemperature(double *value)
     if (HasCooler == false)
         return false;
 
-    auto temperatureNP = baseDevice->getNumber("CCD_TEMPERATURE");
+    INumberVectorProperty *temperatureNP = baseDevice->getNumber("CCD_TEMPERATURE");
 
-    if (!temperatureNP)
+    if (temperatureNP == nullptr)
         return false;
 
-    *value = temperatureNP->at(0)->getValue();
+    *value = temperatureNP->np[0].value;
 
     return true;
 }
 
 bool CCD::setTemperature(double value)
 {
-    auto nvp = baseDevice->getNumber("CCD_TEMPERATURE");
+    INumberVectorProperty *nvp = baseDevice->getNumber("CCD_TEMPERATURE");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    auto np = nvp->findWidgetByName("CCD_TEMPERATURE_VALUE");
+    INumber *np = IUFindNumber(nvp, "CCD_TEMPERATURE_VALUE");
 
-    if (!np)
+    if (np == nullptr)
         return false;
 
-    np->setValue(value);
+    np->value = value;
 
     clientManager->sendNewNumber(nvp);
 
@@ -2095,21 +2133,21 @@ bool CCD::setTransformFormat(CCD::TransferFormat format)
     if (format == transferFormat)
         return true;
 
-    auto svp = baseDevice->getSwitch("CCD_TRANSFER_FORMAT");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("CCD_TRANSFER_FORMAT");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    auto formatFITS   = svp->findWidgetByName("FORMAT_FITS");
-    auto formatNative = svp->findWidgetByName("FORMAT_NATIVE");
+    ISwitch *formatFITS   = IUFindSwitch(svp, "FORMAT_FITS");
+    ISwitch *formatNative = IUFindSwitch(svp, "FORMAT_NATIVE");
 
-    if (!formatFITS || !formatNative)
+    if (formatFITS == nullptr || formatNative == nullptr)
         return false;
 
     transferFormat = format;
 
-    formatFITS->setState(transferFormat == FORMAT_FITS ? ISS_ON : ISS_OFF);
-    formatNative->setState(transferFormat == FORMAT_FITS ? ISS_OFF : ISS_ON);
+    formatFITS->s   = (transferFormat == FORMAT_FITS) ? ISS_ON : ISS_OFF;
+    formatNative->s = (transferFormat == FORMAT_FITS) ? ISS_OFF : ISS_ON;
 
     clientManager->sendNewSwitch(svp);
 
@@ -2121,27 +2159,25 @@ bool CCD::setTelescopeType(TelescopeType type)
     if (type == telescopeType)
         return true;
 
-    auto svp = baseDevice->getSwitch("TELESCOPE_TYPE");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("TELESCOPE_TYPE");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    auto typePrimary = svp->findWidgetByName("TELESCOPE_PRIMARY");
-    auto typeGuide   = svp->findWidgetByName("TELESCOPE_GUIDE");
+    ISwitch *typePrimary = IUFindSwitch(svp, "TELESCOPE_PRIMARY");
+    ISwitch *typeGuide   = IUFindSwitch(svp, "TELESCOPE_GUIDE");
 
-    if (!typePrimary || !typeGuide)
+    if (typePrimary == nullptr || typeGuide == nullptr)
         return false;
 
     telescopeType = type;
 
-    if ( (telescopeType == TELESCOPE_PRIMARY && typePrimary->getState() == ISS_OFF) ||
-            (telescopeType == TELESCOPE_GUIDE && typeGuide->getState() == ISS_OFF))
-    {
-        typePrimary->setState(telescopeType == TELESCOPE_PRIMARY ? ISS_ON : ISS_OFF);
-        typeGuide->setState(telescopeType == TELESCOPE_PRIMARY ? ISS_OFF : ISS_ON);
-        clientManager->sendNewSwitch(svp);
-        setConfig(SAVE_CONFIG);
-    }
+    typePrimary->s = (telescopeType == TELESCOPE_PRIMARY) ? ISS_ON : ISS_OFF;
+    typeGuide->s   = (telescopeType == TELESCOPE_PRIMARY) ? ISS_OFF : ISS_ON;
+
+    clientManager->sendNewSwitch(svp);
+
+    setConfig(SAVE_CONFIG);
 
     return true;
 }
@@ -2151,17 +2187,17 @@ bool CCD::setVideoStreamEnabled(bool enable)
     if (HasVideoStream == false)
         return false;
 
-    auto svp = baseDevice->getSwitch("CCD_VIDEO_STREAM");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("CCD_VIDEO_STREAM");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
     // If already on and enable is set or vice versa no need to change anything we return true
-    if ((enable && svp->at(0)->getState() == ISS_ON) || (!enable && svp->at(1)->getState() == ISS_ON))
+    if ((enable && svp->sp[0].s == ISS_ON) || (!enable && svp->sp[1].s == ISS_ON))
         return true;
 
-    svp->at(0)->setState(enable ? ISS_ON : ISS_OFF);
-    svp->at(1)->setState(enable ? ISS_OFF : ISS_ON);
+    svp->sp[0].s = enable ? ISS_ON : ISS_OFF;
+    svp->sp[1].s = enable ? ISS_OFF : ISS_ON;
 
     clientManager->sendNewSwitch(svp);
 
@@ -2170,28 +2206,28 @@ bool CCD::setVideoStreamEnabled(bool enable)
 
 bool CCD::resetStreamingFrame()
 {
-    auto frameProp = baseDevice->getNumber("CCD_STREAM_FRAME");
+    INumberVectorProperty *frameProp = baseDevice->getNumber("CCD_STREAM_FRAME");
 
-    if (!frameProp)
+    if (frameProp == nullptr)
         return false;
 
-    auto xarg = frameProp->findWidgetByName("X");
-    auto yarg = frameProp->findWidgetByName("Y");
-    auto warg = frameProp->findWidgetByName("WIDTH");
-    auto harg = frameProp->findWidgetByName("HEIGHT");
+    INumber *xarg = IUFindNumber(frameProp, "X");
+    INumber *yarg = IUFindNumber(frameProp, "Y");
+    INumber *warg = IUFindNumber(frameProp, "WIDTH");
+    INumber *harg = IUFindNumber(frameProp, "HEIGHT");
 
     if (xarg && yarg && warg && harg)
     {
-        if (!std::fabs(xarg->getValue() - xarg->getMin()) &&
-                !std::fabs(yarg->getValue() - yarg->getMin()) &&
-                !std::fabs(warg->getValue() - warg->getMax()) &&
-                !std::fabs(harg->getValue() - harg->getMax()))
+        if (!std::fabs(xarg->value - xarg->min) &&
+                !std::fabs(yarg->value - yarg->min) &&
+                !std::fabs(warg->value - warg->max) &&
+                !std::fabs(harg->value - harg->max))
             return false;
 
-        xarg->setValue(xarg->getMin());
-        yarg->setValue(yarg->getMin());
-        warg->setValue(warg->getMax());
-        harg->setValue(harg->getMax());
+        xarg->value = xarg->min;
+        yarg->value = yarg->min;
+        warg->value = warg->max;
+        harg->value = harg->max;
 
         clientManager->sendNewNumber(frameProp);
         return true;
@@ -2202,23 +2238,22 @@ bool CCD::resetStreamingFrame()
 
 bool CCD::setStreamLimits(uint16_t maxBufferSize, uint16_t maxPreviewFPS)
 {
-    auto limitsProp = baseDevice->getNumber("LIMITS");
+    INumberVectorProperty *limitsProp = baseDevice->getNumber("CCD_STREAM_FRAME");
 
-    if (!limitsProp)
+    if (limitsProp == nullptr)
         return false;
 
-    auto bufferMax = limitsProp->findWidgetByName("LIMITS_BUFFER_MAX");
-    auto previewFPS = limitsProp->findWidgetByName("LIMITS_PREVIEW_FPS");
+    INumber *bufferMax = IUFindNumber(limitsProp, "LIMITS_BUFFER_MAX");
+    INumber *previewFPS = IUFindNumber(limitsProp, "LIMITS_PREVIEW_FPS");
 
     if (bufferMax && previewFPS)
     {
-        if(std::fabs(bufferMax->getValue() - maxBufferSize) > 0 || std::fabs(previewFPS->getValue() - maxPreviewFPS) > 0)
-        {
-            bufferMax->setValue(maxBufferSize);
-            previewFPS->setValue(maxPreviewFPS);
-            clientManager->sendNewNumber(limitsProp);
-        }
+        if(std::fabs(bufferMax->value - maxBufferSize) == 0 && std::fabs(previewFPS->value - maxPreviewFPS) == 0)
+            return true;
 
+        bufferMax->value = maxBufferSize;
+        previewFPS->value = maxPreviewFPS;
+        clientManager->sendNewNumber(limitsProp);
         return true;
     }
 
@@ -2227,29 +2262,27 @@ bool CCD::setStreamLimits(uint16_t maxBufferSize, uint16_t maxPreviewFPS)
 
 bool CCD::setStreamingFrame(int x, int y, int w, int h)
 {
-    auto frameProp = baseDevice->getNumber("CCD_STREAM_FRAME");
+    INumberVectorProperty *frameProp = baseDevice->getNumber("CCD_STREAM_FRAME");
 
-    if (!frameProp)
+    if (frameProp == nullptr)
         return false;
 
-    auto xarg = frameProp->findWidgetByName("X");
-    auto yarg = frameProp->findWidgetByName("Y");
-    auto warg = frameProp->findWidgetByName("WIDTH");
-    auto harg = frameProp->findWidgetByName("HEIGHT");
+    INumber *xarg = IUFindNumber(frameProp, "X");
+    INumber *yarg = IUFindNumber(frameProp, "Y");
+    INumber *warg = IUFindNumber(frameProp, "WIDTH");
+    INumber *harg = IUFindNumber(frameProp, "HEIGHT");
 
     if (xarg && yarg && warg && harg)
     {
-        if (!std::fabs(xarg->getValue() - x) &&
-                !std::fabs(yarg->getValue() - y) &&
-                !std::fabs(warg->getValue() - w) &&
-                !std::fabs(harg->getValue() - h))
+        if (!std::fabs(xarg->value - x) && !std::fabs(yarg->value - y) && !std::fabs(warg->value - w)
+                && !std::fabs(harg->value - h))
             return true;
 
         // N.B. We add offset since the X, Y are relative to whatever streaming frame is currently active
-        xarg->value = qBound(xarg->getMin(), static_cast<double>(x) + xarg->getValue(), xarg->getMax());
-        yarg->value = qBound(yarg->getMin(), static_cast<double>(y) + yarg->getValue(), yarg->getMax());
-        warg->value = qBound(warg->getMin(), static_cast<double>(w), warg->getMax());
-        harg->value = qBound(harg->getMin(), static_cast<double>(h), harg->getMax());
+        xarg->value = qBound(xarg->min, static_cast<double>(x) + xarg->value, xarg->max);
+        yarg->value = qBound(yarg->min, static_cast<double>(y) + yarg->value, yarg->max);
+        warg->value = qBound(warg->min, static_cast<double>(w), warg->max);
+        harg->value = qBound(harg->min, static_cast<double>(h), harg->max);
 
         clientManager->sendNewNumber(frameProp);
         return true;
@@ -2268,19 +2301,19 @@ bool CCD::isStreamingEnabled()
 
 bool CCD::setSERNameDirectory(const QString &filename, const QString &directory)
 {
-    auto tvp = baseDevice->getText("RECORD_FILE");
+    ITextVectorProperty *tvp = baseDevice->getText("RECORD_FILE");
 
-    if (!tvp)
+    if (tvp == nullptr)
         return false;
 
-    auto filenameT = tvp->findWidgetByName("RECORD_FILE_NAME");
-    auto dirT      = tvp->findWidgetByName("RECORD_FILE_DIR");
+    IText *filenameT = IUFindText(tvp, "RECORD_FILE_NAME");
+    IText *dirT      = IUFindText(tvp, "RECORD_FILE_DIR");
 
-    if (!filenameT || !dirT)
+    if (filenameT == nullptr || dirT == nullptr)
         return false;
 
-    filenameT->setText(filename.toLatin1().data());
-    dirT->setText(directory.toLatin1().data());
+    IUSaveText(filenameT, filename.toLatin1().data());
+    IUSaveText(dirT, directory.toLatin1().data());
 
     clientManager->sendNewText(tvp);
 
@@ -2289,40 +2322,40 @@ bool CCD::setSERNameDirectory(const QString &filename, const QString &directory)
 
 bool CCD::getSERNameDirectory(QString &filename, QString &directory)
 {
-    auto tvp = baseDevice->getText("RECORD_FILE");
+    ITextVectorProperty *tvp = baseDevice->getText("RECORD_FILE");
 
-    if (!tvp)
+    if (tvp == nullptr)
         return false;
 
-    auto filenameT = tvp->findWidgetByName("RECORD_FILE_NAME");
-    auto dirT      = tvp->findWidgetByName("RECORD_FILE_DIR");
+    IText *filenameT = IUFindText(tvp, "RECORD_FILE_NAME");
+    IText *dirT      = IUFindText(tvp, "RECORD_FILE_DIR");
 
-    if (!filenameT || !dirT)
+    if (filenameT == nullptr || dirT == nullptr)
         return false;
 
-    filename  = QString(filenameT->getText());
-    directory = QString(dirT->getText());
+    filename  = QString(filenameT->text);
+    directory = QString(dirT->text);
 
     return true;
 }
 
 bool CCD::startRecording()
 {
-    auto svp = baseDevice->getSwitch("RECORD_STREAM");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("RECORD_STREAM");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    auto recordON = svp->findWidgetByName("RECORD_ON");
+    ISwitch *recordON = IUFindSwitch(svp, "RECORD_ON");
 
-    if (!recordON)
+    if (recordON == nullptr)
         return false;
 
-    if (recordON->getState() == ISS_ON)
+    if (recordON->s == ISS_ON)
         return true;
 
-    svp->reset();
-    recordON->setState(ISS_ON);
+    IUResetSwitch(svp);
+    recordON->s = ISS_ON;
 
     clientManager->sendNewSwitch(svp);
 
@@ -2331,34 +2364,34 @@ bool CCD::startRecording()
 
 bool CCD::startDurationRecording(double duration)
 {
-    auto nvp = baseDevice->getNumber("RECORD_OPTIONS");
+    INumberVectorProperty *nvp = baseDevice->getNumber("RECORD_OPTIONS");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    auto durationN = nvp->findWidgetByName("RECORD_DURATION");
+    INumber *durationN = IUFindNumber(nvp, "RECORD_DURATION");
 
-    if (!durationN)
+    if (durationN == nullptr)
         return false;
 
-    auto svp = baseDevice->getSwitch("RECORD_STREAM");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("RECORD_STREAM");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    auto recordON = svp->findWidgetByName("RECORD_DURATION_ON");
+    ISwitch *recordON = IUFindSwitch(svp, "RECORD_DURATION_ON");
 
-    if (!recordON)
+    if (recordON == nullptr)
         return false;
 
-    if (recordON->getState() == ISS_ON)
+    if (recordON->s == ISS_ON)
         return true;
 
-    durationN->setValue(duration);
+    durationN->value = duration;
     clientManager->sendNewNumber(nvp);
 
-    svp->reset();
-    recordON->setState(ISS_ON);
+    IUResetSwitch(svp);
+    recordON->s = ISS_ON;
 
     clientManager->sendNewSwitch(svp);
 
@@ -2367,30 +2400,30 @@ bool CCD::startDurationRecording(double duration)
 
 bool CCD::startFramesRecording(uint32_t frames)
 {
-    auto nvp = baseDevice->getNumber("RECORD_OPTIONS");
+    INumberVectorProperty *nvp = baseDevice->getNumber("RECORD_OPTIONS");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    auto frameN = nvp->findWidgetByName("RECORD_FRAME_TOTAL");
-    auto svp = baseDevice->getSwitch("RECORD_STREAM");
+    INumber *frameN            = IUFindNumber(nvp, "RECORD_FRAME_TOTAL");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("RECORD_STREAM");
 
-    if (!frameN || !svp)
+    if (frameN == nullptr || svp == nullptr)
         return false;
 
-    auto recordON = svp->findWidgetByName("RECORD_FRAME_ON");
+    ISwitch *recordON = IUFindSwitch(svp, "RECORD_FRAME_ON");
 
-    if (!recordON)
+    if (recordON == nullptr)
         return false;
 
-    if (recordON->getState() == ISS_ON)
+    if (recordON->s == ISS_ON)
         return true;
 
-    frameN->setValue(frames);
+    frameN->value = frames;
     clientManager->sendNewNumber(nvp);
 
-    svp->reset();
-    recordON->setState(ISS_ON);
+    IUResetSwitch(svp);
+    recordON->s = ISS_ON;
 
     clientManager->sendNewSwitch(svp);
 
@@ -2399,22 +2432,22 @@ bool CCD::startFramesRecording(uint32_t frames)
 
 bool CCD::stopRecording()
 {
-    auto svp = baseDevice->getSwitch("RECORD_STREAM");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("RECORD_STREAM");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    auto recordOFF = svp->findWidgetByName("RECORD_OFF");
+    ISwitch *recordOFF = IUFindSwitch(svp, "RECORD_OFF");
 
-    if (!recordOFF)
+    if (recordOFF == nullptr)
         return false;
 
     // If already set
-    if (recordOFF->getState() == ISS_ON)
+    if (recordOFF->s == ISS_ON)
         return true;
 
-    svp->reset();
-    recordOFF->setState(ISS_ON);
+    IUResetSwitch(svp);
+    recordOFF->s = ISS_ON;
 
     clientManager->sendNewSwitch(svp);
 
@@ -2423,9 +2456,9 @@ bool CCD::stopRecording()
 
 bool CCD::setFITSHeader(const QMap<QString, QString> &values)
 {
-    auto tvp = baseDevice->getText("FITS_HEADER");
+    ITextVectorProperty *tvp = baseDevice->getText("FITS_HEADER");
 
-    if (!tvp)
+    if (tvp == nullptr)
         return false;
 
     QMapIterator<QString, QString> i(values);
@@ -2434,12 +2467,12 @@ bool CCD::setFITSHeader(const QMap<QString, QString> &values)
     {
         i.next();
 
-        auto headerT = tvp->findWidgetByName(i.key().toLatin1().data());
+        IText *headerT = IUFindText(tvp, i.key().toLatin1().data());
 
-        if (!headerT)
+        if (headerT == nullptr)
             continue;
 
-        headerT->setText(i.value().toLatin1().data());
+        IUSaveText(headerT, i.value().toLatin1().data());
     }
 
     clientManager->sendNewText(tvp);
@@ -2449,7 +2482,7 @@ bool CCD::setFITSHeader(const QMap<QString, QString> &values)
 
 bool CCD::setGain(double value)
 {
-    if (!gainN)
+    if (gainN == nullptr)
         return false;
 
     gainN->value = value;
@@ -2459,7 +2492,7 @@ bool CCD::setGain(double value)
 
 bool CCD::getGain(double *value)
 {
-    if (!gainN)
+    if (gainN == nullptr)
         return false;
 
     *value = gainN->value;
@@ -2469,7 +2502,7 @@ bool CCD::getGain(double *value)
 
 bool CCD::getGainMinMaxStep(double *min, double *max, double *step)
 {
-    if (!gainN)
+    if (gainN == nullptr)
         return false;
 
     *min  = gainN->min;
@@ -2481,7 +2514,7 @@ bool CCD::getGainMinMaxStep(double *min, double *max, double *step)
 
 bool CCD::setOffset(double value)
 {
-    if (!offsetN)
+    if (offsetN == nullptr)
         return false;
 
     offsetN->value = value;
@@ -2491,7 +2524,7 @@ bool CCD::setOffset(double value)
 
 bool CCD::getOffset(double *value)
 {
-    if (!offsetN)
+    if (offsetN == nullptr)
         return false;
 
     *value = offsetN->value;
@@ -2501,7 +2534,7 @@ bool CCD::getOffset(double *value)
 
 bool CCD::getOffsetMinMaxStep(double *min, double *max, double *step)
 {
-    if (!offsetN)
+    if (offsetN == nullptr)
         return false;
 
     *min  = offsetN->min;
@@ -2528,13 +2561,13 @@ bool CCD::setExposureLoopingEnabled(bool enable)
     // Set value immediately
     IsLooping = enable;
 
-    auto svp = baseDevice->getSwitch("CCD_EXPOSURE_LOOP");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("CCD_EXPOSURE_LOOP");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    svp->at(0)->setState(enable ? ISS_ON : ISS_OFF);
-    svp->at(1)->setState(enable ? ISS_OFF : ISS_ON);
+    svp->sp[0].s = enable ? ISS_ON : ISS_OFF;
+    svp->sp[1].s = enable ? ISS_OFF : ISS_ON;
     clientManager->sendNewSwitch(svp);
 
     return true;
@@ -2542,12 +2575,12 @@ bool CCD::setExposureLoopingEnabled(bool enable)
 
 bool CCD::setExposureLoopCount(uint32_t count)
 {
-    auto nvp = baseDevice->getNumber("CCD_EXPOSURE_LOOP_COUNT");
+    INumberVectorProperty *nvp = baseDevice->getNumber("CCD_EXPOSURE_LOOP_COUNT");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    nvp->at(0)->setValue(count);
+    nvp->np[0].value = count;
 
     clientManager->sendNewNumber(nvp);
 
@@ -2556,12 +2589,12 @@ bool CCD::setExposureLoopCount(uint32_t count)
 
 bool CCD::setStreamExposure(double duration)
 {
-    auto nvp = baseDevice->getNumber("STREAMING_EXPOSURE");
+    INumberVectorProperty *nvp = baseDevice->getNumber("STREAMING_EXPOSURE");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    nvp->at(0)->setValue(duration);
+    nvp->np[0].value = duration;
 
     clientManager->sendNewNumber(nvp);
 
@@ -2570,46 +2603,24 @@ bool CCD::setStreamExposure(double duration)
 
 bool CCD::getStreamExposure(double *duration)
 {
-    auto nvp = baseDevice->getNumber("STREAMING_EXPOSURE");
+    INumberVectorProperty *nvp = baseDevice->getNumber("STREAMING_EXPOSURE");
 
-    if (!nvp)
+    if (nvp == nullptr)
         return false;
 
-    *duration = nvp->at(0)->getValue();
+    *duration = nvp->np[0].value;
 
     return true;
 }
 
 bool CCD::isCoolerOn()
 {
-    auto svp = baseDevice->getSwitch("CCD_COOLER");
+    ISwitchVectorProperty *svp = baseDevice->getSwitch("CCD_COOLER");
 
-    if (!svp)
+    if (svp == nullptr)
         return false;
 
-    return (svp->at(0)->getState() == ISS_ON);
+    return (svp->sp[0].s == ISS_ON);
 }
 
-bool CCD::getTemperatureRegulation(double &ramp, double &threshold)
-{
-    auto regulation = baseDevice->getProperty("CCD_TEMP_RAMP");
-    if (!regulation->isValid())
-        return false;
-
-    ramp = regulation.getNumber()->at(0)->getValue();
-    threshold = regulation.getNumber()->at(1)->getValue();
-    return true;
-}
-
-bool CCD::setTemperatureRegulation(double ramp, double threshold)
-{
-    auto regulation = baseDevice->getProperty("CCD_TEMP_RAMP");
-    if (!regulation->isValid())
-        return false;
-
-    regulation.getNumber()->at(0)->setValue(ramp);
-    regulation.getNumber()->at(1)->setValue(threshold);
-    clientManager->sendNewNumber(regulation->getNumber());
-    return true;
-}
 }

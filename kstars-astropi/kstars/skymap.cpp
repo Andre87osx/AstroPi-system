@@ -497,22 +497,17 @@ void SkyMap::slotCopyCoordinates()
     }
     else
     {
-        // Empty point only have valid JNow RA/DE, not J2000 information.
-        SkyPoint emptyPoint = *clickedPoint();
-        // Now get J2000 from JNow but de-aberrating, de-nutating, de-preccessing
-        // This modifies emptyPoint, but the RA/DE are now missing and need
-        // to be repopulated.
-        emptyPoint.catalogueCoord(data->updateNum()->julianDay());
-        emptyPoint.setRA(clickedPoint()->ra());
-        emptyPoint.setDec(clickedPoint()->dec());
-        emptyPoint.EquatorialToHorizontal(data->lst(), data->geo()->lat());
+        //SkyPoint deprecessedPoint = clickedPoint()->deprecess(data->updateNum());
+        SkyPoint deprecessedPoint = clickedPoint()->catalogueCoord(data->updateNum()->julianDay());
+        deprecessedPoint.catalogueCoord(data->updateNum()->julianDay());
+        deprecessedPoint.EquatorialToHorizontal(data->lst(), data->geo()->lat());
 
-        J2000RA = emptyPoint.ra0();
-        J2000DE = emptyPoint.dec0();
-        JNowRA = emptyPoint.ra();
-        JNowDE = emptyPoint.dec();
-        Az = emptyPoint.az();
-        Alt = emptyPoint.alt();
+        J2000RA = deprecessedPoint.ra0();
+        J2000DE = deprecessedPoint.dec0();
+        JNowRA = deprecessedPoint.ra();
+        JNowDE = deprecessedPoint.dec();
+        Az = deprecessedPoint.az();
+        Alt = deprecessedPoint.alt();
     }
 
     QApplication::clipboard()->setText(i18nc("Equatorial & Horizontal Coordinates",
@@ -528,7 +523,7 @@ void SkyMap::slotCopyCoordinates()
 
 void SkyMap::slotCopyTLE()
 {
-
+    
     QString tle = "";
     if (clickedObject()->type() == SkyObject::SATELLITE)
     {
@@ -539,7 +534,7 @@ void SkyMap::slotCopyTLE()
     {
         tle = "NO TLE FOR OBJECT";
     }
-
+    
 
     QApplication::clipboard()->setText(tle);
 }

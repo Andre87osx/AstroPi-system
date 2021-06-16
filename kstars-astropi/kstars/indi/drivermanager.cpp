@@ -89,7 +89,7 @@ DriverManager::DriverManager(QWidget *parent) : QDialog(parent)
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
 #endif
 
-    currentPort = Options::serverPortStart() - 1;
+    currentPort = Options::serverPortStart().toInt() - 1;
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     ui                      = new DriverManagerUI(this);
@@ -493,7 +493,7 @@ void DriverManager::stopDevices(const QList<DriverInfo *> &dList)
     }
 
     // Reset current port
-    currentPort = Options::serverPortStart() - 1;
+    currentPort = Options::serverPortStart().toInt() - 1;
 
     updateMenuActions();
 }
@@ -815,13 +815,13 @@ int DriverManager::getINDIPort(int customPort)
     qWarning() << "INDI server is currently not supported on Windows.";
     return -1;
 #else
-    int lastPort = Options::serverPortEnd();
+    int lastPort = Options::serverPortEnd().toInt();
     bool success = false;
     currentPort++;
 
     // recycle
     if (currentPort > lastPort)
-        currentPort = Options::serverPortStart();
+        currentPort = Options::serverPortStart().toInt();
 
     QTcpServer temp_server;
 

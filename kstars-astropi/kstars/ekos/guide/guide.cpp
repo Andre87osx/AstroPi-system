@@ -717,7 +717,7 @@ void Guide::addCamera(ISD::GDInterface *newCCD)
     {
         connect(ccd, &ISD::CCD::newBLOBManager, [ccd, this](INDI::Property * prop)
         {
-            if (prop->isNameMatch("CCD1") ||  prop->isNameMatch("CCD2"))
+            if (!strcmp(prop->getName(), "CCD1") ||  !strcmp(prop->getName(), "CCD2"))
             {
                 ccd->setBLOBEnabled(false); //This will disable PHD2 external guide frames until it is properly connected.
                 currentCCD = ccd;
@@ -916,24 +916,29 @@ void Guide::checkCCD(int ccdNum)
 
 void Guide::syncCCDInfo()
 {
-    if (!currentCCD)
+    INumberVectorProperty *nvp = nullptr;
+
+    if (currentCCD == nullptr)
         return;
 
-    auto nvp = currentCCD->getBaseDevice()->getNumber(useGuideHead ? "GUIDER_INFO" : "CCD_INFO");
+    if (useGuideHead)
+        nvp = currentCCD->getBaseDevice()->getNumber("GUIDER_INFO");
+    else
+        nvp = currentCCD->getBaseDevice()->getNumber("CCD_INFO");
 
     if (nvp)
     {
-        auto np = nvp->findWidgetByName("CCD_PIXEL_SIZE_X");
+        INumber *np = IUFindNumber(nvp, "CCD_PIXEL_SIZE_X");
         if (np)
-            ccdPixelSizeX = np->getValue();
+            ccdPixelSizeX = np->value;
 
-        np = nvp->findWidgetByName( "CCD_PIXEL_SIZE_Y");
+        np = IUFindNumber(nvp, "CCD_PIXEL_SIZE_Y");
         if (np)
-            ccdPixelSizeY = np->getValue();
+            ccdPixelSizeY = np->value;
 
-        np = nvp->findWidgetByName("CCD_PIXEL_SIZE_Y");
+        np = IUFindNumber(nvp, "CCD_PIXEL_SIZE_Y");
         if (np)
-            ccdPixelSizeY = np->getValue();
+            ccdPixelSizeY = np->value;
     }
 
     updateGuideParams();
@@ -960,18 +965,18 @@ void Guide::syncTelescopeInfo()
     if (currentTelescope == nullptr || currentTelescope->isConnected() == false)
         return;
 
-    auto nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
+    INumberVectorProperty *nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
 
     if (nvp)
     {
-        auto np = nvp->findWidgetByName("TELESCOPE_APERTURE");
+        INumber *np = IUFindNumber(nvp, "TELESCOPE_APERTURE");
 
-        if (np && np->getValue() > 0)
-            primaryAperture = np->getValue();
+        if (np && np->value > 0)
+            primaryAperture = np->value;
 
-        np = nvp->findWidgetByName("GUIDER_APERTURE");
-        if (np && np->getValue() > 0)
-            guideAperture = np->getValue();
+        np = IUFindNumber(nvp, "GUIDER_APERTURE");
+        if (np && np->value > 0)
+            guideAperture = np->value;
 
         aperture = primaryAperture;
 
@@ -979,13 +984,13 @@ void Guide::syncTelescopeInfo()
         if (FOVScopeCombo->currentIndex() == ISD::CCD::TELESCOPE_GUIDE)
             aperture = guideAperture;
 
-        np = nvp->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
-        if (np && np->getValue() > 0)
-            primaryFL = np->getValue();
+        np = IUFindNumber(nvp, "TELESCOPE_FOCAL_LENGTH");
+        if (np && np->value > 0)
+            primaryFL = np->value;
 
-        np = nvp->findWidgetByName("GUIDER_FOCAL_LENGTH");
-        if (np && np->getValue() > 0)
-            guideFL = np->getValue();
+        np = IUFindNumber(nvp, "GUIDER_FOCAL_LENGTH");
+        if (np && np->value > 0)
+            guideFL = np->value;
 
         focal_length = primaryFL;
 
@@ -1199,7 +1204,14 @@ bool Guide::captureOneFrame()
 
     ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
 
-    prepareCapture(targetChip);
+    targetChip->setBatchMode(false);
+    targetChip->setCaptureMode(FITS_GUIDE);
+    targetChip->setFrameType(FRAME_LIGHT);
+
+    if (darkFrameCheck->isChecked())
+        targetChip->setCaptureFilter(FITS_NONE);
+    else
+        targetChip->setCaptureFilter(static_cast<FITSScale>(filterCombo->currentIndex()));
 
     guideView->setBaseSize(guideWidget->size());
     setBusy(true);
@@ -1210,6 +1222,8 @@ bool Guide::captureOneFrame()
         targetChip->setFrame(settings["x"].toInt(), settings["y"].toInt(), settings["w"].toInt(),
                              settings["h"].toInt());
     }
+
+    currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
 
     connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Guide::processData, Qt::UniqueConnection);
     qCDebug(KSTARS_EKOS_GUIDE) << "Capturing frame...";
@@ -1228,18 +1242,6 @@ bool Guide::captureOneFrame()
     targetChip->capture(finalExposure);
 
     return true;
-}
-
-void Guide::prepareCapture(ISD::CCDChip *targetChip)
-{
-    targetChip->setBatchMode(false);
-    targetChip->setCaptureMode(FITS_GUIDE);
-    targetChip->setFrameType(FRAME_LIGHT);
-    if (darkFrameCheck->isChecked())
-        targetChip->setCaptureFilter(FITS_NONE);
-    else
-        targetChip->setCaptureFilter(static_cast<FITSScale>(filterCombo->currentIndex()));
-    currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
 }
 
 bool Guide::abort()
@@ -1339,7 +1341,6 @@ void Guide::processCaptureTimeout()
         currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
         ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
         targetChip->abortExposure();
-        prepareCapture(targetChip);
         targetChip->capture(exposureIN->value());
         captureTimeout.start(exposureIN->value() * 1000 + CAPTURE_TIMEOUT_THRESHOLD);
     };
@@ -1357,7 +1358,6 @@ void Guide::processCaptureTimeout()
         else if (state == GUIDE_CALIBRATING)
             appendLogText(i18n("Exposure timeout. Aborting Calibration."));
 
-        captureTimeout.stop();
         abort();
         return;
     }
@@ -1667,9 +1667,9 @@ bool Guide::guide()
                 double x = starCenter.x();
                 double y = starCenter.y();
 
-                if(guideView->imageData() != nullptr)
+                if(guideView->getImageData() != nullptr)
                 {
-                    if(guideView->imageData()->width() > 50)
+                    if(guideView->getImageData()->width() > 50)
                     {
                         guideConnect = connect(this, &Guide::newStatus, this, [this, x, y](Ekos::GuideState newState)
                         {
@@ -2048,8 +2048,11 @@ void Guide::setStatus(Ekos::GuideState newState)
             break;
 
         case GUIDE_DITHERING_SETTLE:
-            appendLogText(i18np("Post-dither settling for %1 second...", "Post-dither settling for %1 seconds...",
-                                Options::ditherSettle()));
+            if (Options::ditherSettle() > 0)
+                appendLogText(i18np("Post-dither settling for %1 second...", "Post-dither settling for %1 seconds...",
+                                    Options::ditherSettle()));
+            if (guiderType == GUIDE_INTERNAL)
+                capture();
             break;
 
         case GUIDE_DITHERING_ERROR:
@@ -2160,9 +2163,9 @@ void Guide::syncTrackingBoxPosition()
     if(guiderType == GUIDE_PHD2)
     {
         //This way it won't set the tracking box on the Guide Star Image.
-        if(guideView->imageData() != nullptr)
+        if(guideView->getImageData() != nullptr)
         {
-            if(guideView->imageData()->width() < 50)
+            if(guideView->getImageData()->width() < 50)
             {
                 guideView->setTrackingBoxEnabled(false);
                 return;
@@ -2658,9 +2661,9 @@ void Guide::setTrackingStar(int x, int y)
     if(guiderType == GUIDE_PHD2)
     {
         //The Guide Star Image is 32 pixels across or less, so this guarantees it isn't that.
-        if(guideView->imageData() != nullptr)
+        if(guideView->getImageData() != nullptr)
         {
-            if(guideView->imageData()->width() > 50)
+            if(guideView->getImageData()->width() > 50)
                 phd2Guider->setLockPosition(starCenter.x(), starCenter.y());
         }
     }
@@ -2725,9 +2728,6 @@ void Guide::setAxisDelta(double ra, double de)
 
     profilePixmap = driftGraph->grab();
     emit newProfilePixmap(profilePixmap);
-
-    driftPlotPixmap = driftPlot->grab();
-    emit newDriftPlotPixmap(driftPlotPixmap);
 }
 
 void Guide::calibrationUpdate(GuideInterface::CalibrationUpdateType type, const QString &message,
@@ -3184,10 +3184,7 @@ bool Guide::executeOneOperation(GuideState operation)
                 uint16_t offsetX = 0;
                 uint16_t offsetY = 0;
 
-                if (settings["x"].isValid() &&
-                        settings["y"].isValid() &&
-                        settings["binx"].isValid() &&
-                        settings["biny"].isValid())
+                if (settings["x"].isValid() && settings["y"].isValid())
                 {
                     offsetX = settings["x"].toInt() / settings["binx"].toInt();
                     offsetY = settings["y"].toInt() / settings["biny"].toInt();
@@ -3202,14 +3199,16 @@ bool Guide::executeOneOperation(GuideState operation)
                     {
                         guideView->rescale(ZOOM_KEEP_LEVEL);
                         guideView->updateFrame();
+                        setCaptureComplete();
                     }
-                    setCaptureComplete();
+                    else
+                        abort();
                 });
                 connect(DarkLibrary::Instance(), &DarkLibrary::newLog, this, &Ekos::Guide::appendLogText);
                 actionRequired = true;
                 targetChip->setCaptureFilter(static_cast<FITSScale>(filterCombo->currentIndex()));
-                DarkLibrary::Instance()->denoise(targetChip, m_ImageData, exposureIN->value(), targetChip->getCaptureFilter(),
-                                                 offsetX, offsetY);
+                DarkLibrary::Instance()->captureAndSubtract(targetChip, m_ImageData, exposureIN->value(), targetChip->getCaptureFilter(),
+                        offsetX, offsetY);
             }
         }
         break;
@@ -4095,7 +4094,7 @@ QJsonObject Guide::getSettings() const
     settings.insert("dither_enabled", Options::ditherEnabled());
     settings.insert("dither_pixels", Options::ditherPixels());
     settings.insert("dither_frequency", static_cast<int>(Options::ditherFrames()));
-    settings.insert("gpg_enabled", Options::gPGEnabled());
+    settings.insert("gpg", Options::gPGEnabled());
 
     return settings;
 }
@@ -4193,7 +4192,7 @@ void Guide::setSettings(const QJsonObject &settings)
     Options::setDitherPixels(ditherPixels);
     const int ditherFrequency = settings["dither_frequency"].toInt(Options::ditherFrames());
     Options::setDitherFrames(ditherFrequency);
-    const bool gpg = settings["gpg_enabled"].toBool(Options::gPGEnabled());
+    const bool gpg = settings["gpg"].toBool(Options::gPGEnabled());
     Options::setGPGEnabled(gpg);
 
     init = true;

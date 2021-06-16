@@ -14,5 +14,4 @@ DeviceInfo::DeviceInfo(DriverInfo *parent, INDI::BaseDevice *ibd)
 {
     drv = parent;
     dp  = ibd;
-    m_Name = ibd->getDeviceName();
 }

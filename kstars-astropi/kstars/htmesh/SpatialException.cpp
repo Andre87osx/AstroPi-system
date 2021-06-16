@@ -38,7 +38,8 @@ const char *SpatialException::defaultstr[] = { "SDSS Science Archive",
 
 SpatialException::~SpatialException() throw()
 {
-    clear();
+    if (str_ != nullptr)
+        delete[] str_;
 }
 
 SpatialException::SpatialException(const char *cstr, int defIndex) throw()
@@ -58,7 +59,7 @@ SpatialException::SpatialException(const char *cstr, int defIndex) throw()
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
 }
 
@@ -74,7 +75,7 @@ SpatialException::SpatialException(const char *context, const char *because, int
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
 }
 
@@ -90,7 +91,7 @@ SpatialException::SpatialException(const SpatialException &oldX) throw()
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
 }
 
@@ -109,7 +110,7 @@ SpatialException &SpatialException::operator=(const SpatialException &oldX) thro
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
     return *this;
 }
@@ -135,8 +136,8 @@ int SpatialException::slen(const char *str) const
 
 void SpatialException::clear()
 {
-    delete[] str_;
-    str_ = nullptr;
+    if (str_)
+        delete[] str_;
 }
 /* --- SpatialUnimplemented methods --------------------------------------------- */
 
@@ -169,7 +170,7 @@ SpatialFailure::SpatialFailure(const char *context, const char *operation, const
 {
     try
     {
-        clear();
+        delete[] str_;
         if (!operation && !resource && !because)
         {
             if (!context)
@@ -204,7 +205,7 @@ SpatialFailure::SpatialFailure(const char *context, const char *operation, const
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
 }
 
@@ -242,7 +243,7 @@ SpatialBoundsError::SpatialBoundsError(const char *context, const char *array, i
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
 }
 
@@ -265,32 +266,31 @@ SpatialInterfaceError::SpatialInterfaceError(const char *context, const char *ar
 {
     try
     {
-        clear();
+        delete[] str_;
         str_  = new char[slen(context) + slen(argument) + slen(because) + 128];
         *str_ = '\0';
-        char * ptr = str_;
         if (!context)
             context = defaultstr[CONTEXT];
-        ptr += sprintf(ptr, "%s: ", context);
+        sprintf(str_, "%s: ", context);
         if (argument && because)
         {
-            ptr += sprintf(ptr, " argument \"%s\" is invalid because %s ", argument, because);
+            sprintf(str_, "%s argument \"%s\" is invalid because %s ", str_, argument, because);
         }
         else if (argument && !because)
         {
-            ptr += sprintf(ptr, " invalid argument \"%s\" ", argument);
+            sprintf(str_, "%s invalid argument \"%s\" ", str_, argument);
         }
         else if (!argument)
         {
             if (because)
-                ptr += sprintf(str_, " %s", because);
+                sprintf(str_, "%s %s", str_, because);
             else
-                ptr += sprintf(str_, " interface violation");
+                sprintf(str_, "%s interface violation", str_);
         }
     }
     catch (...)
     {
-        clear();
+        delete[] str_;
     }
 }
 

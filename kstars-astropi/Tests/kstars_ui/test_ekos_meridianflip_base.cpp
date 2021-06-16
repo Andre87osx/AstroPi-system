@@ -22,7 +22,6 @@
 
 #include "auxiliary/dms.h"
 #include "ksutils.h"
-#include "indicom.h"
 #include "ekos/guide/internalguide/gmath.h"
 #include "Options.h"
 
@@ -50,13 +49,12 @@ bool TestEkosMeridianFlipBase::startEkosProfile()
     else
         KWRAP_SUB(QVERIFY(setupEkosProfile("Simulators", false)));
     // start the profile
-    KWRAP_SUB(KTRY_EKOS_CLICK(processINDIB));
+    KTRY_EKOS_CLICK(processINDIB);
     // wait for the devices to come up
-    KWRAP_SUB(QTRY_VERIFY_WITH_TIMEOUT(Ekos::Manager::Instance()->indiStatus() == Ekos::Success, 10000));
+    QTest::qWait(15000);
 
     // set mount defaults
     KWRAP_SUB(QTRY_VERIFY_WITH_TIMEOUT(ekos->mountModule() != nullptr, 5000));
-    KWRAP_SUB(QTRY_VERIFY_WITH_TIMEOUT(Ekos::Manager::Instance()->mountModule()->slewStatus() != IPState::IPS_ALERT, 1000));
     // set primary scope to my favorite FSQ-85 with QE 0.73 Reducer
     KTRY_SET_DOUBLESPINBOX_SUB(ekos->mountModule(), primaryScopeFocalIN, 339.0);
     KTRY_SET_DOUBLESPINBOX_SUB(ekos->mountModule(), primaryScopeApertureIN, 85.0);
@@ -84,7 +82,7 @@ bool TestEkosMeridianFlipBase::startEkosProfile()
     {
         QWARN(QString("No astrometry index files found in %1").arg(
                   KSUtils::getAstrometryDataDirs().join(", ")).toStdString().c_str());
-        astrometry_available = false;
+        return false;
     }
     // switch to alignment module
     KWRAP_SUB(KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(ekos->alignModule(), 1000));
@@ -174,6 +172,9 @@ void TestEkosMeridianFlipBase::initTestCase()
         preparePHD2();
         startPHD2();
     }
+
+    // start the profile (depending on the selected guider)
+    QVERIFY(startEkosProfile());
 }
 
 bool TestEkosMeridianFlipBase::shutdownEkosProfile(QString guider)
@@ -216,6 +217,7 @@ bool TestEkosMeridianFlipBase::shutdownEkosProfile(QString guider)
 
 void TestEkosMeridianFlipBase::cleanupTestCase()
 {
+    QVERIFY(shutdownEkosProfile(m_Guider));
     if (m_Guider == "PHD2")
         cleanupPHD2();
     KTRY_CLOSE_EKOS();
@@ -237,17 +239,6 @@ void TestEkosMeridianFlipBase::init()
     expectedFocusStates.clear();
     expectedGuidingStates.clear();
     expectedMeridianFlipStates.clear();
-
-    // set geo location
-    KStarsData * const d = KStars::Instance()->data();
-    QVERIFY(d != nullptr);
-    QFETCH(QString, location);
-    GeoLocation * const geo = d->locationNamed(location);
-    QVERIFY(geo != nullptr);
-    d->setLocation(*geo);
-
-    // start the profile (depending on the selected guider)
-    QVERIFY(startEkosProfile());
 
     // switch to mount module
     KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(Ekos::Manager::Instance()->mountModule(), 1000);
@@ -272,9 +263,6 @@ void TestEkosMeridianFlipBase::cleanup()
     Ekos::Manager::Instance()->captureModule()->clearSequenceQueue();
     KTRY_GADGET(Ekos::Manager::Instance()->captureModule(), QTableWidget, queueTable);
     QTRY_VERIFY_WITH_TIMEOUT(queueTable->rowCount() == 0, 2000);
-
-    // shutdown profile and local INDI server
-    QVERIFY(shutdownEkosProfile(m_Guider));
 }
 
 
@@ -285,46 +273,35 @@ void TestEkosMeridianFlipBase::cleanup()
  *
  * ********************************************************************************* */
 
-void TestEkosMeridianFlipBase::prepareTestData(double exptime, QList<QString> locationList, QList<bool> culminationList, QList<QString> filterList,
-                                               QList<bool> focusList, QList<bool> autofocusList, QList<bool> ditherList)
+void TestEkosMeridianFlipBase::prepareTestData(QList<QString> filterList, QList<bool> focusList, QList<bool> autofocusList,
+        QList<bool> ditherList)
 {
 #if QT_VERSION < QT_VERSION_CHECK(5,9,0)
     QSKIP("Bypassing fixture test on old Qt");
-    Q_UNUSED(exptime)
-    Q_UNUSED(locationList)
-    Q_UNUSED(culminationList)
     Q_UNUSED(filterList)
     Q_UNUSED(focusList)
     Q_UNUSED(autofocusList)
     Q_UNUSED(ditherList)
 #else
-    QTest::addColumn<QString>("location"); /*!< locations the KStars test is running for */
-    QTest::addColumn<bool>("culmination"); /*!< upper culmination? */
-    QTest::addColumn<int>("count");        /*!< frame counts to capture */
-    QTest::addColumn<double>("exptime");   /*!< exposure time of a single frame */
-    QTest::addColumn<QString>("filters");  /*!< list of filters for the capture sequence */
-    QTest::addColumn<bool>("focus");       /*!< refocus every minute */
-    QTest::addColumn<bool>("autofocus");   /*!< refocus on HFR change */
-    QTest::addColumn<bool>("dither");      /*!< execute dithering after each capture */
+    QTest::addColumn<int>("count");       /*!< frame counts to capture */
+    QTest::addColumn<double>("exptime");  /*!< exposure time of a single frame */
+    QTest::addColumn<QString>("filters"); /*!< list of filters for the capture sequence */
+    QTest::addColumn<bool>("focus");      /*!< refocus every minute */
+    QTest::addColumn<bool>("autofocus");  /*!< refocus on HFR change */
+    QTest::addColumn<bool>("dither");     /*!< execute dithering after each capture */
 
-    KStarsData * const d = KStars::Instance()->data();
-    QVERIFY(d != nullptr);
-
-    for (QString location : locationList)
-        for (bool culmination : culminationList)
-            for (bool focus : focusList)
-                for (bool autofocus : autofocusList)
-                    for (bool dither : ditherList)
-                        for(QString filter :  filterList)
-                        {
-                            int count = 6 / (QString(filter).count(",") + 1);
-                            // both focus==true && autofocus==true does not make sense
-                            if (focus == false || autofocus == false)
-                                QTest::newRow(QString("%7: %1x%2, foc=%3, af=%4, di=%5, culmination=%8, guider=%6").arg(count).arg(filter)
-                                              .arg(focus ? "yes" : "no").arg(autofocus ? "yes" : "no").arg(dither ? "yes" : "no")
-                                              .arg(m_Guider).arg(location).arg(culmination ? "upper" : "lower").toLocal8Bit())
-                                        << location << culmination << count << exptime << filter << focus << autofocus << dither;
-                        }
+    for (bool focus : focusList)
+        for (bool autofocus : autofocusList)
+            for (bool dither : ditherList)
+                for(QString filter :  filterList)
+                {
+                    int count = 6 / (QString(filter).count(",") + 1);
+                    // both focus==true && autofocus==true does not make sense
+                    if (focus == false || autofocus == false)
+                        QTest::newRow(QString("%6: %1x%2, foc=%3, af=%4, di=%5").arg(count).arg(filter).arg(focus ? "yes" : "no").arg(
+                                          autofocus ? "yes" : "no").arg(dither ? "yes" : "no").arg(m_Guider).toLocal8Bit()) << count << 18.0 << filter << focus <<
+                                                  autofocus << dither;
+                }
 #endif
 }
 
@@ -343,24 +320,15 @@ bool TestEkosMeridianFlipBase::positionMountForMF(int secsToMF, bool fast)
 
     dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
 
-    // upper or lower culmination?
-    QFETCH(bool, culmination);
-    double meridianRA = lst.Hours() + (culmination ? 0.0 : 12.0);
-
-    // calculate a feasible declination depending to the location's latitude
-    // for the upper culmination, we use an azimuth of 45 deg, for the lower culmination half way between pole and horizont
-    double lat = KStarsData::Instance()->geo()->lat()->Degrees();
-    double dec = culmination ? (lat-45) : (90-lat/2);
-
     if (fast)
     {
         // reset mount model
         Ekos::Manager::Instance()->mountModule()->resetModel();
         // sync to a point close before the meridian to speed up slewing
-        mount->sync(range24(meridianRA + delta + 0.002), dec);
+        mount->sync(lst.Hours() + delta + 0.002, 21.0);
     }
     // now slew very close before the meridian
-    mount->slew(range24(meridianRA + delta), dec);
+    mount->slew(lst.Hours() + delta, 21.0);
     // wait a certain time until the mount slews
     QTest::qWait(3000);
     // wait until the mount is tracking
@@ -374,14 +342,13 @@ bool TestEkosMeridianFlipBase::positionMountForMF(int secsToMF, bool fast)
 }
 
 
-bool TestEkosMeridianFlipBase::prepareCaptureTestcase(int secsToMF, bool calibrate, bool initialFocus, bool guideDeviation)
+bool TestEkosMeridianFlipBase::prepareCaptureTestcase(int secsToMF, bool calibrate, bool initialFocus)
 {
 #if QT_VERSION < QT_VERSION_CHECK(5,9,0)
     QSKIP("Bypassing fixture test on old Qt");
     Q_UNUSED(secsToMF)
     Q_UNUSED(calibrate)
     Q_UNUSED(initialFocus)
-    Q_UNUSED(guideDeviation)
 #else
     // switch to capture module
     KWRAP_SUB(KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(Ekos::Manager::Instance()->captureModule(), 1000));
@@ -415,9 +382,6 @@ bool TestEkosMeridianFlipBase::prepareCaptureTestcase(int secsToMF, bool calibra
     QFETCH(bool, dither);
     dithering_checked = dither;
     Options::setDitherEnabled(dither);
-
-    // set guide deviation guard
-    KTRY_SET_CHECKBOX_SUB(Ekos::Manager::Instance()->captureModule(), limitGuideDeviationS, guideDeviation);
 
     if (calibrate)
     {
@@ -525,24 +489,25 @@ bool TestEkosMeridianFlipBase::stopAligning()
 
 bool TestEkosMeridianFlipBase::startCapturing()
 {
-    QFETCH(double, exptime);
     // Now we can estimate how many captures will happen before the meridian flip.
-    int t2mf = std::max(secondsToMF(), 0);
+    int t2mf = secondsToMF();
+    if (t2mf > 0)
+    {
+        // Ensure that the first autofocus event takes place after the flip
+        if (autofocus_checked)
+            Options::setInSequenceCheckFrames(static_cast<uint>(1 + t2mf / 18));
 
-    // Ensure that the first autofocus event takes place after the flip
-    if (autofocus_checked)
-        Options::setInSequenceCheckFrames(static_cast<uint>(1 + t2mf / exptime));
-
-    // Ensure that dithering takes place after the flip
-    if (dithering_checked)
-        Options::setDitherFrames(static_cast<uint>(1 + t2mf / exptime));
+        // Ensure that dithering takes place after the flip
+        if (dithering_checked)
+            Options::setDitherFrames(static_cast<uint>(1 + t2mf / 18));
+    }
 
     // switch to the capture module
     KWRAP_SUB(KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(Ekos::Manager::Instance()->captureModule(), 1000));
 
     // check if capture is in a stopped state
     KWRAP_SUB(QVERIFY(getCaptureStatus() == Ekos::CAPTURE_IDLE || getCaptureStatus() == Ekos::CAPTURE_ABORTED
-                      || getCaptureStatus() == Ekos::CAPTURE_SUSPENDED|| getCaptureStatus() == Ekos::CAPTURE_COMPLETE));
+                      || getCaptureStatus() == Ekos::CAPTURE_COMPLETE));
 
     // press start
     expectedCaptureStates.enqueue(Ekos::CAPTURE_CAPTURING);
@@ -592,10 +557,6 @@ bool TestEkosMeridianFlipBase::startFocusing()
     // absolute position 40000
     KTRY_SET_SPINBOX_SUB(Ekos::Manager::Instance()->focusModule(), absTicksSpin, 40000);
     KTRY_CLICK_SUB(Ekos::Manager::Instance()->focusModule(), startGotoB);
-    // initial step size 15000
-    KTRY_SET_SPINBOX_SUB(Ekos::Manager::Instance()->focusModule(), stepIN, 15000);
-    // suspend guiding while focusing
-    KTRY_SET_CHECKBOX_SUB(Ekos::Manager::Instance()->focusModule(), suspendGuideCheck, true);
     // wait one second for settling
     QTest::qWait(1000);
     // start focusing
@@ -703,7 +664,7 @@ int TestEkosMeridianFlipBase::secondsToMF()
 {
     const QString flipmsg = Ekos::Manager::Instance()->mountModule()->meridianFlipStatusText->text();
 
-    QRegExp mfPattern("Meridian flip in (\\d+):(\\d+):(\\d+)");
+    QRegExp mfPattern("(\\d+)h:(\\d+)m:(\\d+)s");
 
     int pos = mfPattern.indexIn(flipmsg);
     if (pos > -1)

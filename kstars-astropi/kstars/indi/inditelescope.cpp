@@ -54,49 +54,49 @@ Telescope::Telescope(GDInterface *iPtr) : DeviceDecorator(iPtr)
     qDBusRegisterMetaType<ISD::Telescope::PierSide>();
 }
 
-void Telescope::registerProperty(INDI::Property prop)
+void Telescope::registerProperty(INDI::Property *prop)
 {
     if (isConnected())
         readyTimer.start();
 
-    if (prop->isNameMatch("TELESCOPE_INFO"))
+    if (!strcmp(prop->getName(), "TELESCOPE_INFO"))
     {
-        auto ti = prop->getNumber();
+        INumberVectorProperty *ti = prop->getNumber();
 
-        if (!ti)
+        if (ti == nullptr)
             return;
 
         bool aperture_ok = false, focal_ok = false;
         double temp = 0;
 
-        auto aperture = ti->findWidgetByName("TELESCOPE_APERTURE");
-        if (aperture && aperture->getValue() == 0)
+        INumber *aperture = IUFindNumber(ti, "TELESCOPE_APERTURE");
+        if (aperture && aperture->value == 0)
         {
             if (getDriverInfo()->getAuxInfo().contains("TELESCOPE_APERTURE"))
             {
                 temp = getDriverInfo()->getAuxInfo().value("TELESCOPE_APERTURE").toDouble(&aperture_ok);
                 if (aperture_ok)
                 {
-                    aperture->setValue(temp);
-                    auto g_aperture = ti->findWidgetByName("GUIDER_APERTURE");
-                    if (g_aperture && g_aperture->getValue() == 0)
-                        g_aperture->setValue(aperture->getValue());
+                    aperture->value     = temp;
+                    INumber *g_aperture = IUFindNumber(ti, "GUIDER_APERTURE");
+                    if (g_aperture && g_aperture->value == 0)
+                        g_aperture->value = aperture->value;
                 }
             }
         }
 
-        auto focal_length = ti->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
-        if (focal_length && focal_length->getValue() == 0)
+        INumber *focal_length = IUFindNumber(ti, "TELESCOPE_FOCAL_LENGTH");
+        if (focal_length && focal_length->value == 0)
         {
             if (getDriverInfo()->getAuxInfo().contains("TELESCOPE_FOCAL_LENGTH"))
             {
                 temp = getDriverInfo()->getAuxInfo().value("TELESCOPE_FOCAL_LENGTH").toDouble(&focal_ok);
                 if (focal_ok)
                 {
-                    focal_length->setValue(temp);
-                    auto g_focal = ti->findWidgetByName("GUIDER_FOCAL_LENGTH");
-                    if (g_focal && g_focal->getValue() == 0)
-                        g_focal->setValue(focal_length->getValue());
+                    focal_length->value = temp;
+                    INumber *g_focal    = IUFindNumber(ti, "GUIDER_FOCAL_LENGTH");
+                    if (g_focal && g_focal->value == 0)
+                        g_focal->value = focal_length->value;
                 }
             }
         }
@@ -104,22 +104,22 @@ void Telescope::registerProperty(INDI::Property prop)
         if (aperture_ok && focal_ok)
             clientManager->sendNewNumber(ti);
     }
-    else if (prop->isNameMatch("ON_COORD_SET"))
+    else if (!strcmp(prop->getName(), "ON_COORD_SET"))
     {
         m_canGoto = IUFindSwitch(prop->getSwitch(), "TRACK") != nullptr;
         m_canSync = IUFindSwitch(prop->getSwitch(), "SYNC") != nullptr;
     }
     // Telescope Park
-    else if (prop->isNameMatch("TELESCOPE_PARK"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_PARK"))
     {
-        auto svp = prop->getSwitch();
+        ISwitchVectorProperty *svp = prop->getSwitch();
 
         if (svp)
         {
-            auto sp = svp->findWidgetByName("PARK");
+            ISwitch *sp = IUFindSwitch(svp, "PARK");
             if (sp)
             {
-                if ((sp->getState() == ISS_ON) && svp->getState() == IPS_OK)
+                if ((sp->s == ISS_ON) && svp->s == IPS_OK)
                 {
                     m_ParkStatus = PARK_PARKED;
                     emit newParkStatus(m_ParkStatus);
@@ -131,7 +131,7 @@ void Telescope::registerProperty(INDI::Property prop)
                     if (unParkAction)
                         unParkAction->setEnabled(true);
                 }
-                else if ((sp->getState() == ISS_OFF) && svp->getState() == IPS_OK)
+                else if ((sp->s == ISS_OFF) && svp->s == IPS_OK)
                 {
                     m_ParkStatus = PARK_UNPARKED;
                     emit newParkStatus(m_ParkStatus);
@@ -146,62 +146,62 @@ void Telescope::registerProperty(INDI::Property prop)
             }
         }
     }
-    else if (prop->isNameMatch("TELESCOPE_PIER_SIDE"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_PIER_SIDE"))
     {
-        auto svp = prop->getSwitch();
-        int currentSide = svp->findOnSwitchIndex();
+        ISwitchVectorProperty *svp = prop->getSwitch();
+        int currentSide = IUFindOnSwitchIndex(svp);
         if (currentSide != m_PierSide)
         {
             m_PierSide = static_cast<PierSide>(currentSide);
             emit pierSideChanged(m_PierSide);
         }
     }
-    else if (prop->isNameMatch("ALIGNMENT_POINTSET_ACTION") || prop->isNameMatch("ALIGNLIST"))
+    else if (!strcmp(prop->getName(), "ALIGNMENT_POINTSET_ACTION") || !strcmp(prop->getName(), "ALIGNLIST"))
         m_hasAlignmentModel = true;
-    else if (prop->isNameMatch("TELESCOPE_TRACK_STATE"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_TRACK_STATE"))
         m_canControlTrack = true;
-    else if (prop->isNameMatch("TELESCOPE_TRACK_MODE"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_TRACK_MODE"))
     {
         m_hasTrackModes = true;
-        auto svp = prop->getSwitch();
-        for (int i = 0; i < svp->count(); i++)
+        ISwitchVectorProperty *svp = prop->getSwitch();
+        for (int i = 0; i < svp->nsp; i++)
         {
-            if (svp->at(i)->isNameMatch("TRACK_SIDEREAL"))
+            if (!strcmp(svp->sp[i].name, "TRACK_SIDEREAL"))
                 TrackMap[TRACK_SIDEREAL] = i;
-            else if (svp->at(i)->isNameMatch("TRACK_SOLAR"))
+            else if (!strcmp(svp->sp[i].name, "TRACK_SOLAR"))
                 TrackMap[TRACK_SOLAR] = i;
-            else if (svp->at(i)->isNameMatch("TRACK_LUNAR"))
+            else if (!strcmp(svp->sp[i].name, "TRACK_LUNAR"))
                 TrackMap[TRACK_LUNAR] = i;
-            else if (svp->at(i)->isNameMatch("TRACK_CUSTOM"))
+            else if (!strcmp(svp->sp[i].name, "TRACK_CUSTOM"))
                 TrackMap[TRACK_CUSTOM] = i;
         }
     }
-    else if (prop->isNameMatch("TELESCOPE_TRACK_RATE"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_TRACK_RATE"))
         m_hasCustomTrackRate = true;
-    else if (prop->isNameMatch("TELESCOPE_ABORT_MOTION"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_ABORT_MOTION"))
         m_canAbort = true;
-    else if (prop->isNameMatch("TELESCOPE_PARK_OPTION"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_PARK_OPTION"))
         m_hasCustomParking = true;
-    else if (prop->isNameMatch("TELESCOPE_SLEW_RATE"))
+    else if (!strcmp(prop->getName(), "TELESCOPE_SLEW_RATE"))
     {
         m_hasSlewRates = true;
-        auto svp = prop->getSwitch();
+        ISwitchVectorProperty *svp = prop->getSwitch();
         if (svp)
         {
             m_slewRates.clear();
-            for (const auto &it: *svp)
-                m_slewRates << it.getLabel();
+            for (int i = 0; i < svp->nsp; i++)
+                m_slewRates << svp->sp[i].label;
         }
     }
-    else if (prop->isNameMatch("EQUATORIAL_EOD_COORD"))
+    else if (!strcmp(prop->getName(), "EQUATORIAL_EOD_COORD"))
     {
         m_isJ2000 = false;
     }
-    else if (prop->isNameMatch("SAT_TRACKING_STAT"))
+    else if (!strcmp(prop->getName(), "SAT_TRACKING_STAT"))
     {
-        m_canTrackSatellite = true;
+        m_canTrackSatellite = true;        
     }
-    else if (prop->isNameMatch("EQUATORIAL_COORD"))
+    else if (!strcmp(prop->getName(), "EQUATORIAL_COORD"))
     {
         m_isJ2000 = true;
     }
@@ -301,10 +301,19 @@ void Telescope::processSwitch(ISwitchVectorProperty *svp)
             if (svp->s == IPS_ALERT)
             {
                 // First, inform everyone watch this that an error occurred.
+                m_ParkStatus = PARK_ERROR;
                 emit newParkStatus(PARK_ERROR);
-                // JM 2021-03-08: Reset parking internal state to either PARKED or UNPARKED.
-                // Whatever the current switch is set to
-                m_ParkStatus = (sp->s == ISS_ON) ? PARK_PARKED : PARK_UNPARKED;
+
+                // JM 2020-05-27: Retain status and let whatever process process decide what to do after the error.
+                // If alert, set park status to whatever it was opposite to. That is, if it was parking and failed
+                // then we set status to unparked since it did not successfully complete parking.
+                //                if (m_ParkStatus == PARK_PARKING)
+                //                    m_ParkStatus = PARK_UNPARKED;
+                //                else if (m_ParkStatus == PARK_UNPARKING)
+                //                    m_ParkStatus = PARK_PARKED;
+
+                //                emit newParkStatus(m_ParkStatus);
+
                 KSNotification::event(QLatin1String("MountParkingFailed"), i18n("Mount parking failed"), KSNotification::EVENT_ALERT);
             }
             else if (svp->s == IPS_BUSY && sp->s == ISS_ON && m_ParkStatus != PARK_PARKING)
@@ -432,25 +441,25 @@ void Telescope::processText(ITextVectorProperty *tvp)
     {
         if ((tvp->s == IPS_OK) && (m_TLEIsSetForTracking))
         {
-            auto trajWindow = baseDevice->getText("SAT_PASS_WINDOW");
-            if (!trajWindow)
+            ITextVectorProperty *trajWindow = baseDevice->getText("SAT_PASS_WINDOW");
+            if (trajWindow == nullptr)
             {
                 qCDebug(KSTARS_INDI) << "Property SAT_PASS_WINDOW not found";
             }
             else
-            {
-                auto trajStart = trajWindow->findWidgetByName("SAT_PASS_WINDOW_START");
-                auto trajEnd = trajWindow->findWidgetByName("SAT_PASS_WINDOW_END");
-
-                if (!trajStart || !trajEnd)
-                {
+            {    
+                IText *trajStart = IUFindText(trajWindow, "SAT_PASS_WINDOW_START");
+                IText *trajEnd = IUFindText(trajWindow, "SAT_PASS_WINDOW_END");
+                
+                if (trajStart == nullptr || trajEnd == nullptr)
+                {   
                     qCDebug(KSTARS_INDI) << "Start or end in SAT_PASS_WINDOW not found";
                 }
                 else
                 {
-                    trajStart->setText(g_satPassStart.toString(Qt::ISODate).toLocal8Bit().data());
-                    trajEnd->setText(g_satPassEnd.toString(Qt::ISODate).toLocal8Bit().data());
-
+                    IUSaveText(trajStart, g_satPassStart.toString(Qt::ISODate).toLocal8Bit().data());
+                    IUSaveText(trajEnd, g_satPassEnd.toString(Qt::ISODate).toLocal8Bit().data());
+            
                     clientManager->sendNewText(trajWindow);
                     m_windowIsSetForTracking = true;
                 }
@@ -461,18 +470,18 @@ void Telescope::processText(ITextVectorProperty *tvp)
     {
         if ((tvp->s == IPS_OK) && (m_TLEIsSetForTracking) && (m_windowIsSetForTracking))
         {
-            auto trackSwitchV  = baseDevice->getSwitch("SAT_TRACKING_STAT");
+            ISwitchVectorProperty *trackSwitchV  = baseDevice->getSwitch("SAT_TRACKING_STAT");
             if (!trackSwitchV)
-            {
+            {   
                 qCDebug(KSTARS_INDI) << "Property SAT_TRACKING_STAT not found";
             }
             else
             {
-                auto trackSwitch = trackSwitchV->findWidgetByName("SAT_TRACK");
+                ISwitch *trackSwitch = IUFindSwitch(trackSwitchV, "SAT_TRACK");
                 if (trackSwitch)
                 {
-                    trackSwitchV->reset();
-                    trackSwitch->setState(ISS_ON);
+                    IUResetSwitch(trackSwitchV);
+                    trackSwitch->s = ISS_ON;
 
                     clientManager->sendNewSwitch(trackSwitchV);
                     m_TLEIsSetForTracking = false;
@@ -486,33 +495,36 @@ void Telescope::processText(ITextVectorProperty *tvp)
 
 bool Telescope::canGuide()
 {
-    auto raPulse  = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_WE");
-    auto decPulse = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_NS");
+    INumberVectorProperty *raPulse  = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_WE");
+    INumberVectorProperty *decPulse = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_NS");
 
-    return raPulse && decPulse;
+    if (raPulse && decPulse)
+        return true;
+    else
+        return false;
 }
 
 
 bool Telescope::canPark()
 {
-    auto parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
+    ISwitchVectorProperty *parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
 
-    if (!parkSP)
+    if (parkSP == nullptr)
         return false;
 
-    auto parkSW = parkSP->findWidgetByName("PARK");
+    ISwitch *parkSW = IUFindSwitch(parkSP, "PARK");
 
     return (parkSW != nullptr);
 }
 
 bool Telescope::isSlewing()
 {
-    auto EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
+    INumberVectorProperty *EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
 
-    if (!EqProp)
+    if (EqProp == nullptr)
         return false;
 
-    return (EqProp->getState() == IPS_BUSY);
+    return (EqProp->s == IPS_BUSY);
 }
 
 bool Telescope::isInMotion()
@@ -528,53 +540,65 @@ bool Telescope::doPulse(GuideDirection ra_dir, int ra_msecs, GuideDirection dec_
     bool raOK  = doPulse(ra_dir, ra_msecs);
     bool decOK = doPulse(dec_dir, dec_msecs);
 
-    return raOK && decOK;
+    if (raOK && decOK)
+        return true;
+    else
+        return false;
 }
 
 bool Telescope::doPulse(GuideDirection dir, int msecs)
 {
-    auto raPulse  = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_WE");
-    auto decPulse = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_NS");
-    INDI::PropertyView<INumber> *npulse   = nullptr;
-    INDI::WidgetView<INumber>   *dirPulse = nullptr;
+    INumberVectorProperty *raPulse  = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_WE");
+    INumberVectorProperty *decPulse = baseDevice->getNumber("TELESCOPE_TIMED_GUIDE_NS");
+    INumberVectorProperty *npulse   = nullptr;
+    INumber *dirPulse               = nullptr;
 
-    if (!raPulse || !decPulse)
+    if (raPulse == nullptr || decPulse == nullptr)
         return false;
 
     switch (dir)
     {
         case RA_INC_DIR:
+            dirPulse = IUFindNumber(raPulse, "TIMED_GUIDE_W");
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = raPulse;
-            dirPulse = npulse->findWidgetByName("TIMED_GUIDE_W");
             break;
 
         case RA_DEC_DIR:
+            dirPulse = IUFindNumber(raPulse, "TIMED_GUIDE_E");
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = raPulse;
-            dirPulse = npulse->findWidgetByName("TIMED_GUIDE_E");
             break;
 
         case DEC_INC_DIR:
+            dirPulse = IUFindNumber(decPulse, "TIMED_GUIDE_N");
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = decPulse;
-            dirPulse = npulse->findWidgetByName("TIMED_GUIDE_N");
             break;
 
         case DEC_DEC_DIR:
+            dirPulse = IUFindNumber(decPulse, "TIMED_GUIDE_S");
+            if (dirPulse == nullptr)
+                return false;
+
             npulse = decPulse;
-            dirPulse = npulse->findWidgetByName("TIMED_GUIDE_S");
             break;
 
         default:
             return false;
     }
 
-    if (!dirPulse)
-        return false;
-
-    dirPulse->setValue(msecs);
+    dirPulse->value = msecs;
 
     clientManager->sendNewNumber(npulse);
 
-    //qDebug() << "Sending pulse for " << npulse->getName() << " in direction " << dirPulse->getName() << " for " << msecs << " ms " << endl;
+    //qDebug() << "Sending pulse for " << npulse->name << " in direction " << dirPulse->name << " for " << msecs << " ms " << endl;
 
     return true;
 }
@@ -663,8 +687,8 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
     double currentRA = 0, currentDEC = 0, currentAlt = 0, currentAz = 0, targetAlt = 0;
     bool useJ2000(false);
 
-    auto EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
-    if (!EqProp)
+    INumberVectorProperty *EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
+    if (EqProp == nullptr)
     {
         // J2000 Property
         EqProp = baseDevice->getNumber("EQUATORIAL_COORD");
@@ -672,23 +696,22 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
             useJ2000 = true;
     }
 
-    auto HorProp = baseDevice->getNumber("HORIZONTAL_COORD");
+    INumberVectorProperty *HorProp = baseDevice->getNumber("HORIZONTAL_COORD");
 
-    if (EqProp && EqProp->getPermission() == IP_RO)
+    if (EqProp && EqProp->p == IP_RO)
         EqProp = nullptr;
 
-    if (HorProp && HorProp->getPermission() == IP_RO)
+    if (HorProp && HorProp->p == IP_RO)
         HorProp = nullptr;
 
     //qDebug() << "Skymap click - RA: " << scope_target->ra().toHMSString() << " DEC: " << scope_target->dec().toDMSString();
 
     if (EqProp)
     {
-        RAEle = EqProp->findWidgetByName("RA");
+        RAEle = IUFindNumber(EqProp, "RA");
         if (!RAEle)
             return false;
-
-        DecEle = EqProp->findWidgetByName("DEC");
+        DecEle = IUFindNumber(EqProp, "DEC");
         if (!DecEle)
             return false;
 
@@ -894,26 +917,26 @@ bool Telescope::Slew(double ra, double dec)
 
 bool Telescope::Slew(SkyPoint *ScopeTarget)
 {
-    auto motionSP = baseDevice->getSwitch("ON_COORD_SET");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("ON_COORD_SET");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    auto slewSW = motionSP->findWidgetByName("TRACK");
+    ISwitch *slewSW = IUFindSwitch(motionSP, "TRACK");
 
-    if (!slewSW)
-        slewSW = motionSP->findWidgetByName("SLEW");
+    if (slewSW == nullptr)
+        slewSW = IUFindSwitch(motionSP, "SLEW");
 
-    if (!slewSW)
+    if (slewSW == nullptr)
         return false;
 
-    if (slewSW->getState() != ISS_ON)
+    if (slewSW->s != ISS_ON)
     {
-        motionSP->reset();
-        slewSW->setState(ISS_ON);
+        IUResetSwitch(motionSP);
+        slewSW->s = ISS_ON;
         clientManager->sendNewSwitch(motionSP);
 
-        qCDebug(KSTARS_INDI) << "ISD:Telescope: " << slewSW->getName();
+        qCDebug(KSTARS_INDI) << "ISD:Telescope: " << slewSW->name;
     }
 
     return sendCoords(ScopeTarget);
@@ -931,20 +954,20 @@ bool Telescope::Sync(double ra, double dec)
 
 bool Telescope::Sync(SkyPoint *ScopeTarget)
 {
-    auto motionSP = baseDevice->getSwitch("ON_COORD_SET");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("ON_COORD_SET");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    auto syncSW = motionSP->findWidgetByName("SYNC");
+    ISwitch *syncSW = IUFindSwitch(motionSP, "SYNC");
 
-    if (!syncSW)
+    if (syncSW == nullptr)
         return false;
 
-    if (syncSW->getState() != ISS_ON)
+    if (syncSW->s != ISS_ON)
     {
-        motionSP->reset();
-        syncSW->setState(ISS_ON);
+        IUResetSwitch(motionSP);
+        syncSW->s = ISS_ON;
         clientManager->sendNewSwitch(motionSP);
 
         qCDebug(KSTARS_INDI) << "ISD:Telescope: Syncing...";
@@ -955,19 +978,19 @@ bool Telescope::Sync(SkyPoint *ScopeTarget)
 
 bool Telescope::Abort()
 {
-    auto motionSP = baseDevice->getSwitch("TELESCOPE_ABORT_MOTION");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("TELESCOPE_ABORT_MOTION");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    auto abortSW = motionSP->findWidgetByName("ABORT");
+    ISwitch *abortSW = IUFindSwitch(motionSP, "ABORT");
 
-    if (!abortSW)
+    if (abortSW == nullptr)
         return false;
 
     qCDebug(KSTARS_INDI) << "ISD:Telescope: Aborted." << endl;
 
-    abortSW->setState(ISS_ON);
+    abortSW->s = ISS_ON;
     clientManager->sendNewSwitch(motionSP);
 
     inCustomParking = false;
@@ -977,20 +1000,20 @@ bool Telescope::Abort()
 
 bool Telescope::Park()
 {
-    auto parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
+    ISwitchVectorProperty *parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
 
-    if (!parkSP)
+    if (parkSP == nullptr)
         return false;
 
-    auto parkSW = parkSP->findWidgetByName("PARK");
+    ISwitch *parkSW = IUFindSwitch(parkSP, "PARK");
 
-    if (!parkSW)
+    if (parkSW == nullptr)
         return false;
 
     qCDebug(KSTARS_INDI) << "ISD:Telescope: Parking..." << endl;
 
-    parkSP->reset();
-    parkSW->setState(ISS_ON);
+    IUResetSwitch(parkSP);
+    parkSW->s = ISS_ON;
     clientManager->sendNewSwitch(parkSP);
 
     return true;
@@ -998,20 +1021,20 @@ bool Telescope::Park()
 
 bool Telescope::UnPark()
 {
-    auto parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
+    ISwitchVectorProperty *parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
 
-    if (!parkSP)
+    if (parkSP == nullptr)
         return false;
 
-    auto parkSW = parkSP->findWidgetByName("UNPARK");
+    ISwitch *parkSW = IUFindSwitch(parkSP, "UNPARK");
 
-    if (!parkSW)
+    if (parkSW == nullptr)
         return false;
 
     qCDebug(KSTARS_INDI) << "ISD:Telescope: UnParking..." << endl;
 
-    parkSP->reset();
-    parkSW->setState(ISS_ON);
+    IUResetSwitch(parkSP);
+    parkSW->s = ISS_ON;
     clientManager->sendNewSwitch(parkSP);
 
     return true;
@@ -1019,56 +1042,59 @@ bool Telescope::UnPark()
 
 bool Telescope::getEqCoords(double *ra, double *dec)
 {
-    auto EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
-    if (!EqProp)
+    INumberVectorProperty *EqProp = nullptr;
+    INumber *RAEle                = nullptr;
+    INumber *DecEle               = nullptr;
+
+    EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
+    if (EqProp == nullptr)
     {
         EqProp = baseDevice->getNumber("EQUATORIAL_COORD");
-        if (!EqProp)
+        if (EqProp == nullptr)
             return false;
     }
 
-    auto RAEle = EqProp->findWidgetByName("RA");
+    RAEle = IUFindNumber(EqProp, "RA");
     if (!RAEle)
         return false;
-
-    auto DecEle = EqProp->findWidgetByName("DEC");
+    DecEle = IUFindNumber(EqProp, "DEC");
     if (!DecEle)
         return false;
 
-    *ra  = RAEle->getValue();
-    *dec = DecEle->getValue();
+    *ra  = RAEle->value;
+    *dec = DecEle->value;
 
     return true;
 }
 
 bool Telescope::MoveNS(TelescopeMotionNS dir, TelescopeMotionCommand cmd)
 {
-    auto motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_NS");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_NS");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    auto motionNorth = motionSP->findWidgetByName("MOTION_NORTH");
-    auto motionSouth = motionSP->findWidgetByName("MOTION_SOUTH");
+    ISwitch *motionNorth = IUFindSwitch(motionSP, "MOTION_NORTH");
+    ISwitch *motionSouth = IUFindSwitch(motionSP, "MOTION_SOUTH");
 
-    if (!motionNorth || !motionSouth)
+    if (motionNorth == nullptr || motionSouth == nullptr)
         return false;
 
     // If same direction, return
-    if (dir == MOTION_NORTH && motionNorth->getState() == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
+    if (dir == MOTION_NORTH && motionNorth->s == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
         return true;
 
-    if (dir == MOTION_SOUTH && motionSouth->getState() == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
+    if (dir == MOTION_SOUTH && motionSouth->s == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
         return true;
 
-    motionSP->reset();
+    IUResetSwitch(motionSP);
 
     if (cmd == MOTION_START)
     {
         if (dir == MOTION_NORTH)
-            motionNorth->setState(ISS_ON);
+            motionNorth->s = ISS_ON;
         else
-            motionSouth->setState(ISS_ON);
+            motionSouth->s = ISS_ON;
     }
 
     clientManager->sendNewSwitch(motionSP);
@@ -1078,12 +1104,12 @@ bool Telescope::MoveNS(TelescopeMotionNS dir, TelescopeMotionCommand cmd)
 
 bool Telescope::StopWE()
 {
-    auto motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_WE");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_WE");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    motionSP->reset();
+    IUResetSwitch(motionSP);
 
     clientManager->sendNewSwitch(motionSP);
 
@@ -1092,12 +1118,12 @@ bool Telescope::StopWE()
 
 bool Telescope::StopNS()
 {
-    auto motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_NS");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_NS");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    motionSP->reset();
+    IUResetSwitch(motionSP);
 
     clientManager->sendNewSwitch(motionSP);
 
@@ -1106,32 +1132,32 @@ bool Telescope::StopNS()
 
 bool Telescope::MoveWE(TelescopeMotionWE dir, TelescopeMotionCommand cmd)
 {
-    auto motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_WE");
+    ISwitchVectorProperty *motionSP = baseDevice->getSwitch("TELESCOPE_MOTION_WE");
 
-    if (!motionSP)
+    if (motionSP == nullptr)
         return false;
 
-    auto motionWest = motionSP->findWidgetByName("MOTION_WEST");
-    auto motionEast = motionSP->findWidgetByName("MOTION_EAST");
+    ISwitch *motionWest = IUFindSwitch(motionSP, "MOTION_WEST");
+    ISwitch *motionEast = IUFindSwitch(motionSP, "MOTION_EAST");
 
-    if (!motionWest || !motionEast)
+    if (motionWest == nullptr || motionEast == nullptr)
         return false;
 
     // If same direction, return
-    if (dir == MOTION_WEST && motionWest->getState() == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
+    if (dir == MOTION_WEST && motionWest->s == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
         return true;
 
-    if (dir == MOTION_EAST && motionEast->getState() == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
+    if (dir == MOTION_EAST && motionEast->s == ((cmd == MOTION_START) ? ISS_ON : ISS_OFF))
         return true;
 
-    motionSP->reset();
+    IUResetSwitch(motionSP);
 
     if (cmd == MOTION_START)
     {
         if (dir == MOTION_WEST)
-            motionWest->setState(ISS_ON);
+            motionWest->s = ISS_ON;
         else
-            motionEast->setState(ISS_ON);
+            motionEast->s = ISS_ON;
     }
 
     clientManager->sendNewSwitch(motionSP);
@@ -1141,19 +1167,19 @@ bool Telescope::MoveWE(TelescopeMotionWE dir, TelescopeMotionCommand cmd)
 
 bool Telescope::setSlewRate(int index)
 {
-    auto slewRateSP = baseDevice->getSwitch("TELESCOPE_SLEW_RATE");
+    ISwitchVectorProperty *slewRateSP = baseDevice->getSwitch("TELESCOPE_SLEW_RATE");
 
-    if (!slewRateSP)
+    if (slewRateSP == nullptr)
         return false;
 
-    if (index < 0 || index > slewRateSP->count())
+    if (index < 0 || index > slewRateSP->nsp)
         return false;
-    else if (slewRateSP->findOnSwitchIndex() == index)
+    else if (IUFindOnSwitchIndex(slewRateSP) == index)
         return true;
 
-    slewRateSP->reset();
+    IUResetSwitch(slewRateSP);
 
-    slewRateSP->at(index)->setState(ISS_ON);
+    slewRateSP->sp[index].s = ISS_ON;
 
     clientManager->sendNewSwitch(slewRateSP);
 
@@ -1164,12 +1190,12 @@ bool Telescope::setSlewRate(int index)
 
 int Telescope::getSlewRate() const
 {
-    auto slewRateSP = baseDevice->getSwitch("TELESCOPE_SLEW_RATE");
+    ISwitchVectorProperty *slewRateSP = baseDevice->getSwitch("TELESCOPE_SLEW_RATE");
 
-    if (!slewRateSP)
+    if (slewRateSP == nullptr)
         return -1;
 
-    return slewRateSP->findOnSwitchIndex();
+    return IUFindOnSwitchIndex(slewRateSP);
 }
 
 void Telescope::setAltLimits(double minAltitude, double maxAltitude)
@@ -1181,12 +1207,13 @@ void Telescope::setAltLimits(double minAltitude, double maxAltitude)
 bool Telescope::setAlignmentModelEnabled(bool enable)
 {
     bool wasExecuted                   = false;
+    ISwitchVectorProperty *alignSwitch = nullptr;
 
     // For INDI Alignment Subsystem
-    auto alignSwitch = baseDevice->getSwitch("ALIGNMENT_SUBSYSTEM_ACTIVE");
+    alignSwitch = baseDevice->getSwitch("ALIGNMENT_SUBSYSTEM_ACTIVE");
     if (alignSwitch)
     {
-        alignSwitch->at(0)->setState(enable ? ISS_ON : ISS_OFF);
+        alignSwitch->sp[0].s = enable ? ISS_ON : ISS_OFF;
         clientManager->sendNewSwitch(alignSwitch);
         wasExecuted = true;
     }
@@ -1195,13 +1222,13 @@ bool Telescope::setAlignmentModelEnabled(bool enable)
     alignSwitch = baseDevice->getSwitch("ALIGNMODE");
     if (alignSwitch)
     {
-        alignSwitch->reset();
+        IUResetSwitch(alignSwitch);
         // For now, always set alignment mode to NSTAR on enable.
         if (enable)
-            alignSwitch->at(2)->setState(ISS_ON);
+            alignSwitch->sp[2].s = ISS_ON;
         // Otherwise, set to NO ALIGN
         else
-            alignSwitch->at(0)->setState(ISS_ON);
+            alignSwitch->sp[0].s = ISS_ON;
 
         clientManager->sendNewSwitch(alignSwitch);
         wasExecuted = true;
@@ -1211,20 +1238,20 @@ bool Telescope::setAlignmentModelEnabled(bool enable)
 }
 
 bool Telescope::setSatelliteTLEandTrack(QString tle, const KStarsDateTime satPassStart, const KStarsDateTime satPassEnd)
-{
-    auto tleTextVec = baseDevice->getText("SAT_TLE_TEXT");
+{    
+    ITextVectorProperty *tleTextVec = baseDevice->getText("SAT_TLE_TEXT");
     if (!tleTextVec)
-    {
+    {   
         qCDebug(KSTARS_INDI) << "Property SAT_TLE_TEXT not found";
         return false;
     }
-
-    auto tleText = tleTextVec->findWidgetByName("TLE");
+    
+    IText *tleText = IUFindText(tleTextVec, "TLE");
     if (!tleText)
         return false;
-
-    tleText->setText(tle.toLocal8Bit().data());
-
+    
+    IUSaveText(tleText, tle.toLocal8Bit().data());
+    
     clientManager->sendNewText(tleTextVec);
     m_TLEIsSetForTracking = true;
     g_satPassStart = satPassStart;
@@ -1236,16 +1263,16 @@ bool Telescope::setSatelliteTLEandTrack(QString tle, const KStarsDateTime satPas
 
 bool Telescope::clearParking()
 {
-    auto parkSwitch  = baseDevice->getSwitch("TELESCOPE_PARK_OPTION");
+    ISwitchVectorProperty *parkSwitch  = baseDevice->getSwitch("TELESCOPE_PARK_OPTION");
     if (!parkSwitch)
         return false;
 
-    auto clearParkSW = parkSwitch->findWidgetByName("PARK_PURGE_DATA");
+    ISwitch *clearParkSW = IUFindSwitch(parkSwitch, "PARK_PURGE_DATA");
     if (!clearParkSW)
         return false;
 
-    parkSwitch->reset();
-    clearParkSW->setState(ISS_ON);
+    IUResetSwitch(parkSwitch);
+    clearParkSW->s = ISS_ON;
 
     clientManager->sendNewSwitch(parkSwitch);
     return true;
@@ -1256,15 +1283,15 @@ bool Telescope::clearAlignmentModel()
     bool wasExecuted = false;
 
     // Note: Should probably use INDI Alignment Subsystem Client API in the future?
-    auto clearSwitch  = baseDevice->getSwitch("ALIGNMENT_POINTSET_ACTION");
-    auto commitSwitch = baseDevice->getSwitch("ALIGNMENT_POINTSET_COMMIT");
+    ISwitchVectorProperty *clearSwitch  = baseDevice->getSwitch("ALIGNMENT_POINTSET_ACTION");
+    ISwitchVectorProperty *commitSwitch = baseDevice->getSwitch("ALIGNMENT_POINTSET_COMMIT");
     if (clearSwitch && commitSwitch)
     {
-        clearSwitch->reset();
+        IUResetSwitch(clearSwitch);
         // ALIGNMENT_POINTSET_ACTION.CLEAR
-        clearSwitch->at(4)->setState(ISS_ON);
+        clearSwitch->sp[4].s = ISS_ON;
         clientManager->sendNewSwitch(clearSwitch);
-        commitSwitch->at(0)->setState(ISS_ON);
+        commitSwitch->sp[0].s = ISS_ON;
         clientManager->sendNewSwitch(commitSwitch);
         wasExecuted = true;
     }
@@ -1274,8 +1301,8 @@ bool Telescope::clearAlignmentModel()
     if (clearSwitch)
     {
         // ALIGNLISTCLEAR
-        clearSwitch->reset();
-        clearSwitch->at(1)->setState(ISS_ON);
+        IUResetSwitch(clearSwitch);
+        clearSwitch->sp[1].s = ISS_ON;
         clientManager->sendNewSwitch(clearSwitch);
         wasExecuted = true;
     }
@@ -1285,7 +1312,9 @@ bool Telescope::clearAlignmentModel()
 
 Telescope::Status Telescope::status()
 {
-    auto EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
+    INumberVectorProperty *EqProp = nullptr;
+
+    EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
     if (EqProp == nullptr)
     {
         EqProp = baseDevice->getNumber("EQUATORIAL_COORD");
@@ -1321,8 +1350,8 @@ Telescope::Status Telescope::status()
 
         case IPS_BUSY:
         {
-            auto parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
-            if (parkSP && parkSP->getState() == IPS_BUSY)
+            ISwitchVectorProperty *parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
+            if (parkSP && parkSP->s == IPS_BUSY)
                 return MOUNT_PARKING;
             else
                 return MOUNT_SLEWING;
@@ -1367,23 +1396,24 @@ const QString Telescope::getStatusString(Telescope::Status status)
 
 QString Telescope::getManualMotionString() const
 {
+    ISwitchVectorProperty *movementSP = nullptr;
     QString NSMotion, WEMotion;
 
-    auto movementSP = baseDevice->getSwitch("TELESCOPE_MOTION_NS");
+    movementSP = baseDevice->getSwitch("TELESCOPE_MOTION_NS");
     if (movementSP)
     {
-        if (movementSP->at(MOTION_NORTH)->getState() == ISS_ON)
+        if (movementSP->sp[MOTION_NORTH].s == ISS_ON)
             NSMotion = 'N';
-        else if (movementSP->at(MOTION_SOUTH)->getState() == ISS_ON)
+        else if (movementSP->sp[MOTION_SOUTH].s == ISS_ON)
             NSMotion = 'S';
     }
 
     movementSP = baseDevice->getSwitch("TELESCOPE_MOTION_WE");
     if (movementSP)
     {
-        if (movementSP->at(MOTION_WEST)->getState() == ISS_ON)
+        if (movementSP->sp[MOTION_WEST].s == ISS_ON)
             WEMotion = 'W';
-        else if (movementSP->at(MOTION_EAST)->getState() == ISS_ON)
+        else if (movementSP->sp[MOTION_EAST].s == ISS_ON)
             WEMotion = 'E';
     }
 
@@ -1392,18 +1422,18 @@ QString Telescope::getManualMotionString() const
 
 bool Telescope::setTrackEnabled(bool enable)
 {
-    auto trackSP = baseDevice->getSwitch("TELESCOPE_TRACK_STATE");
-    if (!trackSP)
+    ISwitchVectorProperty *trackSP = baseDevice->getSwitch("TELESCOPE_TRACK_STATE");
+    if (trackSP == nullptr)
         return false;
 
-    auto trackON  = trackSP->findWidgetByName("TRACK_ON");
-    auto trackOFF = trackSP->findWidgetByName("TRACK_OFF");
+    ISwitch *trackON  = IUFindSwitch(trackSP, "TRACK_ON");
+    ISwitch *trackOFF = IUFindSwitch(trackSP, "TRACK_OFF");
 
-    if (!trackON || !trackOFF)
+    if (trackON == nullptr || trackOFF == nullptr)
         return false;
 
-    trackON->setState(enable ? ISS_ON : ISS_OFF);
-    trackOFF->setState(enable ? ISS_OFF : ISS_ON);
+    trackON->s = enable ? ISS_ON : ISS_OFF;
+    trackOFF->s = enable ? ISS_OFF : ISS_ON;
 
     clientManager->sendNewSwitch(trackSP);
 
@@ -1417,15 +1447,14 @@ bool Telescope::isTracking()
 
 bool Telescope::setTrackMode(uint8_t index)
 {
-    auto trackModeSP = baseDevice->getSwitch("TELESCOPE_TRACK_MODE");
-    if (!trackModeSP)
+    ISwitchVectorProperty *trackModeSP = baseDevice->getSwitch("TELESCOPE_TRACK_MODE");
+    if (trackModeSP == nullptr)
         return false;
-
     if (index >= trackModeSP->nsp)
         return false;
 
-    trackModeSP->reset();
-    trackModeSP->at(index)->setState(ISS_ON);
+    IUResetSwitch(trackModeSP);
+    trackModeSP->sp[index].s = ISS_ON;
 
     clientManager->sendNewSwitch(trackModeSP);
 
@@ -1434,29 +1463,29 @@ bool Telescope::setTrackMode(uint8_t index)
 
 bool Telescope::getTrackMode(uint8_t &index)
 {
-    auto trackModeSP = baseDevice->getSwitch("TELESCOPE_TRACK_MODE");
-    if (!trackModeSP)
+    ISwitchVectorProperty *trackModeSP = baseDevice->getSwitch("TELESCOPE_TRACK_MODE");
+    if (trackModeSP == nullptr)
         return false;
 
-    index = trackModeSP->findOnSwitchIndex();
+    index = IUFindOnSwitchIndex(trackModeSP);
 
     return true;
 }
 
 bool Telescope::setCustomTrackRate(double raRate, double deRate)
 {
-    auto trackRateNP = baseDevice->getNumber("TELESCOPE_TRACK_RATE");
-    if (!trackRateNP)
+    INumberVectorProperty *trackRateNP = baseDevice->getNumber("TELESCOPE_TRACK_RATE");
+    if (trackRateNP == nullptr)
         return false;
 
-    auto raRateN = trackRateNP->findWidgetByName("TRACK_RATE_RA");
-    auto deRateN = trackRateNP->findWidgetByName("TRACK_RATE_DE");
+    INumber *raRateN = IUFindNumber(trackRateNP, "TRACK_RATE_RA");
+    INumber *deRateN = IUFindNumber(trackRateNP, "TRACK_RATE_DE");
 
-    if (!raRateN || !deRateN)
+    if (raRateN == nullptr || deRateN == nullptr)
         return false;
 
-    raRateN->setValue(raRate);
-    deRateN->setValue(deRate);
+    raRateN->value = raRate;
+    deRateN->value = deRate;
 
     clientManager->sendNewNumber(trackRateNP);
 
@@ -1465,18 +1494,18 @@ bool Telescope::setCustomTrackRate(double raRate, double deRate)
 
 bool Telescope::getCustomTrackRate(double &raRate, double &deRate)
 {
-    auto trackRateNP = baseDevice->getNumber("TELESCOPE_TRACK_RATE");
-    if (!trackRateNP)
+    INumberVectorProperty *trackRateNP = baseDevice->getNumber("TELESCOPE_TRACK_RATE");
+    if (trackRateNP == nullptr)
         return false;
 
-    auto raRateN = trackRateNP->findWidgetByName("TRACK_RATE_RA");
-    auto deRateN = trackRateNP->findWidgetByName("TRACK_RATE_DE");
+    INumber *raRateN = IUFindNumber(trackRateNP, "TRACK_RATE_RA");
+    INumber *deRateN = IUFindNumber(trackRateNP, "TRACK_RATE_DE");
 
-    if (!raRateN || !deRateN)
+    if (raRateN == nullptr || deRateN == nullptr)
         return false;
 
-    raRate = raRateN->getValue();
-    deRate = deRateN->getValue();
+    raRate = raRateN->value;
+    deRate = deRateN->value;
 
     return true;
 
@@ -1484,12 +1513,12 @@ bool Telescope::getCustomTrackRate(double &raRate, double &deRate)
 
 bool Telescope::sendParkingOptionCommand(ParkOptionCommand command)
 {
-    auto parkOptionsSP = baseDevice->getSwitch("TELESCOPE_PARK_OPTION");
-    if (!parkOptionsSP)
+    ISwitchVectorProperty *parkOptionsSP = baseDevice->getSwitch("TELESCOPE_PARK_OPTION");
+    if (parkOptionsSP == nullptr)
         return false;
 
-    parkOptionsSP->reset();
-    parkOptionsSP->at(command)->setState(ISS_ON);
+    IUResetSwitch(parkOptionsSP);
+    parkOptionsSP->sp[command].s = ISS_ON;
     clientManager->sendNewSwitch(parkOptionsSP);
 
     return true;

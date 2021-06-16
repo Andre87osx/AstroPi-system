@@ -66,23 +66,22 @@ void TestEkosCaptureCount::cleanupScheduler()
 
 void TestEkosCaptureCount::testSchedulerCapture()
 {
-    KTELL("Expect captures and an idle signal at the end");
-    m_CaptureHelper->expectedCaptureStates.enqueue(Ekos::CAPTURE_CAPTURING);
-    expectedSchedulerStates.enqueue(Ekos::SCHEDULER_IDLE);
-
-    KTELL("Prepare scheduler captures");
+    // prepare captured frames
     QVERIFY(prepareScheduledCapture(SchedulerJob::FINISH_REPEAT));
 
-    KTELL("Start scheduler job");
+    // start scheduler job
     KTRY_CLICK(Ekos::Manager::Instance()->schedulerModule(), startB);
+    // expect a idle signal at the end
+    expectedSchedulerStates.enqueue(Ekos::SCHEDULER_IDLE);
 
-    KTELL("Ensure that the scheduler has started capturing");
-    QTRY_VERIFY_WITH_TIMEOUT(m_CaptureHelper->expectedCaptureStates.size() == 0, 120000);
+    // ensure that the scheduler has started capturing
+    m_CaptureHelper->expectedCaptureStates.enqueue(Ekos::CAPTURE_CAPTURING);
+    QTRY_VERIFY_WITH_TIMEOUT(m_CaptureHelper->expectedCaptureStates.size() == 0, 10000);
 
-    KTELL("Wait for Scheduler to finish capturing");
+    // wait for finish capturing
     KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT(expectedSchedulerStates, 120000);
 
-    KTELL("Verify whether all frames are captured as expected");
+    // verify whether all frames are captured as expected
     QVERIFY2(checkCapturedFrames(), "Capturing did not produce the expected amount of frames.");
 }
 
@@ -100,25 +99,18 @@ void TestEkosCaptureCount::testSchedulerCaptureInfiteLooping()
 
 void TestEkosCaptureCount::testSchedulerCapture_data()
 {
-#ifdef LONG_TEST
-    prepareTestData(0.1, "Red:2,Green:2,Blue:2", "Red:2,Green:1,Blue:2", "Green:1");
-    prepareTestData(0.1, "Red:2,Green:2,Blue:2", "Red:3,Green:1,Blue:2", "Green:1");
-    prepareTestData(0.1, "Red:1,Red:1,Green:1,Green:1,Blue:1,Blue:1", "Red:2,Green:1,Blue:2", "Green:1");
-    prepareTestData(0.1, "Red:1,Green:1,Blue:1,Red:1,Green:1,Blue:1", "Red:2,Green:1,Blue:2", "Green:1");
-    prepareTestData(0.1, "Red:1,Green:1,Blue:1", "Red:3,Green:1,Blue:3", "Green:2", 3);
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:4,Green:1,Blue:1", "Luminance:1,Red:1");
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "", "Luminance:10,Red:2,Green:2,Blue:2", 2);
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:15,Red:1,Green:2,Blue:2", "Red:1", 2);
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:15,Red:2,Green:3,Blue:3", "Red:1", 3);
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:15,Red:3,Green:3,Blue:2", "Blue:1", 3);
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:5,Red:1,Green:1,Blue:1", "Luminance:10,Red:2,Green:2,Blue:2", 3);
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:2,Red:1,Green:1,Blue:1", "Luminance:13,Red:2,Green:2,Blue:2", 3);
-#else
-    prepareTestData(0.1, "Red:2,Green:2,Blue:2", "Red:2,Green:1,Blue:2", "Green:1");
-    prepareTestData(0.1, "Red:1,Green:1,Blue:1,Red:1,Green:1,Blue:1", "Red:2,Green:1,Blue:2", "Green:1");
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:4,Green:1,Blue:1", "Luminance:1,Red:1");
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:5,Red:1,Green:1,Blue:1", "Luminance:10,Red:2,Green:2,Blue:2", 3);
-#endif
+    prepareTestData(1.0, "Red:2,Green:2,Blue:2", "Red:2,Green:1,Blue:2", "Green:1");
+    prepareTestData(1.0, "Red:2,Green:2,Blue:2", "Red:3,Green:1,Blue:2", "Green:1");
+    prepareTestData(1.0, "Red:1,Red:1,Green:1,Green:1,Blue:1,Blue:1", "Red:2,Green:1,Blue:2", "Green:1");
+    prepareTestData(1.0, "Red:1,Green:1,Blue:1,Red:1,Green:1,Blue:1", "Red:2,Green:1,Blue:2", "Green:1");
+    prepareTestData(1.0, "Red:1,Green:1,Blue:1", "Red:3,Green:1,Blue:3", "Green:2", 3);
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:4,Green:1,Blue:1", "Luminance:1,Red:1");
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "", "Luminance:10,Red:2,Green:2,Blue:2", 2);
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:15,Red:1,Green:2,Blue:2", "Red:1", 2);
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:15,Red:2,Green:3,Blue:3", "Red:1", 3);
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:15,Red:3,Green:3,Blue:2", "Blue:1", 3);
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:5,Red:1,Green:1,Blue:1", "Luminance:10,Red:2,Green:2,Blue:2", 3);
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:2,Red:1,Green:1,Blue:1", "Luminance:13,Red:2,Green:2,Blue:2", 3);
 }
 
 void TestEkosCaptureCount::testCaptureWithCaptureFramesMap_data()
@@ -129,8 +121,8 @@ void TestEkosCaptureCount::testCaptureWithCaptureFramesMap_data()
 
 void TestEkosCaptureCount::testSchedulerCaptureInfiteLooping_data()
 {
-    prepareTestData(0.1, "Luminance:2", "Luminance:2", "");
-    prepareTestData(0.1, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:5,Green:1,Blue:1", "");
+    prepareTestData(1.0, "Luminance:2", "Luminance:2", "");
+    prepareTestData(1.0, "Luminance:3,Red:1,Green:1,Blue:1,Luminance:2", "Luminance:5,Green:1,Blue:1", "");
 }
 
 /* *********************************************************************************
@@ -239,7 +231,7 @@ bool TestEkosCaptureCount::executeCapturing()
     KWRAP_SUB(QVERIFY2(checkCapturedFrames(), "Capturing did not produce the expected amount of frames."));
 
     // wait for shutdown
-    QTest::qWait(500);
+    QTest::qWait(5000);
     return true;
 }
 
@@ -251,10 +243,9 @@ bool TestEkosCaptureCount::startEkosProfile()
 
     KWRAP_SUB(QVERIFY(m_CaptureHelper->setupEkosProfile("Simulators", false)));
     // start the profile
-    KWRAP_SUB(KTRY_EKOS_CLICK(processINDIB));
+    KTRY_EKOS_CLICK(processINDIB);
     // wait for the devices to come up
-    KWRAP_SUB(QTRY_VERIFY_WITH_TIMEOUT(Ekos::Manager::Instance()->indiStatus() == Ekos::Success, 10000));
-    //QTest::qWait(10000);
+    QTest::qWait(10000);
 
     // Everything completed successfully
     return true;

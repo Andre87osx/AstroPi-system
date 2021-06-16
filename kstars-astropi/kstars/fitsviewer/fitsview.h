@@ -23,7 +23,6 @@
 #include <QPixmap>
 #include <QScrollArea>
 #include <QStack>
-#include <QTimer>
 #include <QPointer>
 
 #ifdef WIN32
@@ -71,26 +70,21 @@ class FITSView : public QScrollArea
          */
         bool loadData(const QSharedPointer<FITSData> &data);
 
-        /**
-         * @brief clearView Reset view to NO IMAGE
-         */
-        void clearData();
-
         // Save FITS
         bool saveImage(const QString &newFilename);
         // Rescale image lineary from image_buffer, fit to window if desired
         bool rescale(FITSZoom type);
 
-        const QSharedPointer<FITSData> &imageData() const
+        // Access functions
+        FITSData *getImageData() const
         {
-            return m_ImageData;
+            return imageData.data();
         }
-
         double getCurrentZoom() const
         {
             return currentZoom;
         }
-        const QImage &getDisplayImage() const
+        QImage getDisplayImage() const
         {
             return rawImage;
         }
@@ -131,7 +125,6 @@ class FITSView : public QScrollArea
         void drawEQGrid(QPainter *, double scale);
         void drawObjectNames(QPainter *painter, double scale);
         void drawPixelGrid(QPainter *painter, double scale);
-        void drawMagnifyingGlass(QPainter *painter, double scale);
 
         bool isImageStretched();
         bool isCrosshairShown();
@@ -142,7 +135,7 @@ class FITSView : public QScrollArea
         bool imageHasWCS();
 
         // Setup the graphics.
-        void updateFrame(bool now = false);
+        void updateFrame();
 
         bool isTelescopeActive();
 
@@ -169,11 +162,6 @@ class FITSView : public QScrollArea
         {
             return currentHeight;
         }
-        double ZoomFactor() const
-        {
-            return m_ZoomFactor;
-        }
-
 
         // Star Detection
         QFuture<bool> findStars(StarAlgorithm algorithm = ALGORITHM_CENTROID, const QRect &searchBox = QRect());
@@ -247,15 +235,9 @@ class FITSView : public QScrollArea
         void setPreviewSampling(uint8_t value)
         {
             if (value == 0)
-            {
                 m_PreviewSampling = m_AdaptiveSampling;
-                m_StretchingInProgress = false;
-            }
             else
-            {
                 m_PreviewSampling = value * m_AdaptiveSampling;
-                m_StretchingInProgress = true;
-            }
         }
 
     public slots:
@@ -265,7 +247,6 @@ class FITSView : public QScrollArea
         void ZoomOut();
         void ZoomDefault();
         void ZoomToFit();
-        void updateMagnifyingGlass(int x, int y);
 
         // Grids
         void toggleEQGrid();
@@ -321,7 +302,7 @@ class FITSView : public QScrollArea
         /// Cross hair
         QPointF markerCrosshair;
         /// Pointer to FITSData object
-        QSharedPointer<FITSData> m_ImageData;
+        QSharedPointer<FITSData> imageData;
         /// Current zoom level
         double currentZoom { 0 };
         // The maximum percent zoom. The value is recalculated in the constructor
@@ -337,17 +318,19 @@ class FITSView : public QScrollArea
         void updateFrameSmallImage();
         bool drawHFR(QPainter * painter, const QString &hfr, int x, int y);
 
-        QPointer<QLabel> noImageLabel;
+        QLabel *noImageLabel { nullptr };
         QPixmap noImage;
-        QPointer<FITSLabel> m_ImageFrame;
+
         QVector<QPointF> eqGridPoints;
+
+        std::unique_ptr<FITSLabel> image_frame;
 
         /// Current width due to zoom
         uint16_t currentWidth { 0 };
         /// Current height due to zoom
         uint16_t currentHeight { 0 };
         /// Image zoom factor
-        const double m_ZoomFactor;
+        const double zoomFactor;
 
         // Original full-size image
         QImage rawImage;
@@ -378,7 +361,6 @@ class FITSView : public QScrollArea
 
         // Resolution for display. Sampling=2 means display every other sample.
         uint8_t m_PreviewSampling { 1 };
-        bool m_StretchingInProgress { false};
         // Adaptive sampling is based on available RAM
         uint8_t m_AdaptiveSampling {1};
 
@@ -401,7 +383,6 @@ class FITSView : public QScrollArea
         FITSMode mode;
         FITSScale filter;
         QString m_LastError;
-        QTimer m_UpdateFrameTimer;
 
         QStack<FITSScale> filterStack;
 
@@ -424,10 +405,6 @@ class FITSView : public QScrollArea
         QAction *toggleProfileAction { nullptr };
         QAction *toggleStretchAction { nullptr };
 
-        // State for the magnifying glass overlay.
-        int magnifyingGlassX { -1 };
-        int magnifyingGlassY { -1 };
-        bool showMagnifyingGlass { false };
 
         //Star Profile Viewer
 #ifdef HAVE_DATAVISUALIZATION

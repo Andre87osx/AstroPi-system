@@ -113,7 +113,7 @@ void TestEkosMeridianFlip::testGuidingMF()
 void TestEkosMeridianFlip::testCaptureMF()
 {
     // set up the capture sequence
-    QVERIFY(prepareCaptureTestcase(10, false, true, false));
+    QVERIFY(prepareCaptureTestcase(10, false, true));
 
     // start capturing
     QVERIFY(startCapturing());
@@ -143,7 +143,7 @@ void TestEkosMeridianFlip::testCaptureMF()
 void TestEkosMeridianFlip::testCaptureMFAbortWaiting()
 {
     // set up the capture sequence
-    QVERIFY(prepareCaptureTestcase(10, false, false, false));
+    QVERIFY(prepareCaptureTestcase(10, false, false));
 
     // start capturing
     QVERIFY(startCapturing());
@@ -170,7 +170,7 @@ void TestEkosMeridianFlip::testCaptureMFAbortWaiting()
 void TestEkosMeridianFlip::testCaptureMFAbortFlipping()
 {
     // set up the capture sequence
-    QVERIFY(prepareCaptureTestcase(10, false, false, false));
+    QVERIFY(prepareCaptureTestcase(10, false, false));
 
     // start capturing
     QVERIFY(startCapturing());
@@ -201,7 +201,7 @@ void TestEkosMeridianFlip::testCaptureMFAbortFlipping()
 void TestEkosMeridianFlip::testCaptureGuidingMF()
 {
     // set up the capture sequence
-    QVERIFY(prepareCaptureTestcase(15, true, true, false));
+    QVERIFY(prepareCaptureTestcase(15, true, true));
 
     // start guiding
     QVERIFY(startGuiding(2.0));
@@ -235,11 +235,8 @@ void TestEkosMeridianFlip::testCaptureGuidingMF()
 
 void TestEkosMeridianFlip::testCaptureAlignMF()
 {
-    if (!astrometry_available)
-        QSKIP("No astrometry files available to run test");
-
     // set up the capture sequence
-    QVERIFY(prepareCaptureTestcase(45, false, true, false));
+    QVERIFY(prepareCaptureTestcase(45, false, true));
 
     // start alignment
     QVERIFY(startAligning(5.0));
@@ -270,11 +267,8 @@ void TestEkosMeridianFlip::testCaptureAlignMF()
 
 void TestEkosMeridianFlip::testCaptureAlignGuidingMF()
 {
-    if (!astrometry_available)
-        QSKIP("No astrometry files available to run test");
-
     // set up the capture sequence
-    QVERIFY(prepareCaptureTestcase(40, true, true, false));
+    QVERIFY(prepareCaptureTestcase(40, true, true));
 
     // start alignment
     QVERIFY(startAligning(5.0));
@@ -323,7 +317,7 @@ void TestEkosMeridianFlip::testCaptureAlignGuidingMF()
 
 void TestEkosMeridianFlip::testSimpleMF_data()
 {
-    prepareTestData(18.0, {"Greenwich", "Reykjavik", "San Diego", "Hilo", "Hong Kong", "Dubai"}, {true, false}, {"Luminance"}, {false}, {false}, {false});
+    prepareTestData({"Luminance"}, {false}, {false}, {false});
 }
 
 void TestEkosMeridianFlip::testSimpleMFDelay_data()
@@ -333,18 +327,18 @@ void TestEkosMeridianFlip::testSimpleMFDelay_data()
 
 void TestEkosMeridianFlip::testGuidingMF_data()
 {
-    prepareTestData(18.0, {"Greenwich"}, {true}, {"Luminance"}, {false}, {false}, {false});
+    prepareTestData({"Luminance"}, {false}, {false}, {false});
 }
 
 void TestEkosMeridianFlip::testCaptureMF_data()
 {
-    prepareTestData(18.0, {"Greenwich"}, {true}, {"Luminance", "Red,Green,Blue,Red,Green,Blue"}, {false, true}, {false, true}, {false});
+    prepareTestData({"Luminance", "Red,Green,Blue,Red,Green,Blue"}, {false, true}, {false, true}, {false});
 }
 
 void TestEkosMeridianFlip::testCaptureMFAbortWaiting_data()
 {
     // no tests for focusing and dithering
-    prepareTestData(18.0, {"Greenwich"}, {true}, {"Luminance", "Red,Green,Blue,Red,Green,Blue"}, {false}, {false}, {false});
+    prepareTestData({"Luminance", "Red,Green,Blue,Red,Green,Blue"}, {false}, {false}, {false});
 }
 
 void TestEkosMeridianFlip::testCaptureMFAbortFlipping_data()
@@ -354,7 +348,7 @@ void TestEkosMeridianFlip::testCaptureMFAbortFlipping_data()
 
 void TestEkosMeridianFlip::testCaptureGuidingMF_data()
 {
-    prepareTestData(18.0, {"Greenwich"}, {true}, {"Luminance", "Red,Green,Blue,Red,Green,Blue"}, {false, true}, {false, true}, {false, true});
+    prepareTestData({"Luminance", "Red,Green,Blue,Red,Green,Blue"}, {false, true}, {false, true}, {false, true});
 }
 
 void TestEkosMeridianFlip::testCaptureAlignMF_data()

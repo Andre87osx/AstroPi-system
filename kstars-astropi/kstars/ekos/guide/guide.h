@@ -500,7 +500,6 @@ class Guide : public QWidget, public Ui::Guide
         void newImage(FITSView *view);
         void newStarPixmap(QPixmap &);
         void newProfilePixmap(QPixmap &);
-        void newDriftPlotPixmap(QPixmap &);
 
         // Immediate deviations in arcsecs
         void newAxisDelta(double ra, double de);
@@ -559,12 +558,6 @@ class Guide : public QWidget, public Ui::Guide
          * @param name CCD to enable to disable. If empty (default), then action is applied to all CCDs.
          */
         void setExternalGuiderBLOBEnabled(bool enable);
-
-        /**
-         * @brief prepareCapture Set common settings for capture for guide module
-         * @param targetChip target Chip
-         */
-        void prepareCapture(ISD::CCDChip *targetChip);
 
         /**
          * @brief setRMSVisibility Decides which RMS plot is visible.
@@ -668,8 +661,6 @@ class Guide : public QWidget, public Ui::Guide
 
         // Profile Pixmap
         QPixmap profilePixmap;
-        // drift plot
-        QPixmap driftPlotPixmap;
 
         // Flag to start auto calibration followed immediately by guiding
         //bool autoCalibrateGuide { false };
