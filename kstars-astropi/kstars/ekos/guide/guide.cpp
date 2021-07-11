@@ -36,6 +36,8 @@
 
 #include "ui_manualdither.h"
 
+#include <random>
+
 #define CAPTURE_TIMEOUT_THRESHOLD 30000
 
 namespace
@@ -159,6 +161,9 @@ Guide::Guide() : QWidget()
     //This allows the current guideSubframe option to be loaded.
     if(guiderType == GUIDE_PHD2)
         setExternalGuiderBLOBEnabled(!Options::guideSubframeEnabled());
+
+    // Initialize non guided dithering random generator.
+    resetNonGuidedDither();
 
     //Note:  This is to prevent a button from being called the default button
     //and then executing when the user hits the enter key such as when on a Text Box
@@ -717,7 +722,7 @@ void Guide::addCamera(ISD::GDInterface *newCCD)
     {
         connect(ccd, &ISD::CCD::newBLOBManager, [ccd, this](INDI::Property * prop)
         {
-            if (!strcmp(prop->getName(), "CCD1") ||  !strcmp(prop->getName(), "CCD2"))
+            if (prop->isNameMatch("CCD1") ||  prop->isNameMatch("CCD2"))
             {
                 ccd->setBLOBEnabled(false); //This will disable PHD2 external guide frames until it is properly connected.
                 currentCCD = ccd;
@@ -916,29 +921,24 @@ void Guide::checkCCD(int ccdNum)
 
 void Guide::syncCCDInfo()
 {
-    INumberVectorProperty *nvp = nullptr;
-
-    if (currentCCD == nullptr)
+    if (!currentCCD)
         return;
 
-    if (useGuideHead)
-        nvp = currentCCD->getBaseDevice()->getNumber("GUIDER_INFO");
-    else
-        nvp = currentCCD->getBaseDevice()->getNumber("CCD_INFO");
+    auto nvp = currentCCD->getBaseDevice()->getNumber(useGuideHead ? "GUIDER_INFO" : "CCD_INFO");
 
     if (nvp)
     {
-        INumber *np = IUFindNumber(nvp, "CCD_PIXEL_SIZE_X");
+        auto np = nvp->findWidgetByName("CCD_PIXEL_SIZE_X");
         if (np)
-            ccdPixelSizeX = np->value;
+            ccdPixelSizeX = np->getValue();
 
-        np = IUFindNumber(nvp, "CCD_PIXEL_SIZE_Y");
+        np = nvp->findWidgetByName( "CCD_PIXEL_SIZE_Y");
         if (np)
-            ccdPixelSizeY = np->value;
+            ccdPixelSizeY = np->getValue();
 
-        np = IUFindNumber(nvp, "CCD_PIXEL_SIZE_Y");
+        np = nvp->findWidgetByName("CCD_PIXEL_SIZE_Y");
         if (np)
-            ccdPixelSizeY = np->value;
+            ccdPixelSizeY = np->getValue();
     }
 
     updateGuideParams();
@@ -965,18 +965,18 @@ void Guide::syncTelescopeInfo()
     if (currentTelescope == nullptr || currentTelescope->isConnected() == false)
         return;
 
-    INumberVectorProperty *nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
+    auto nvp = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
 
     if (nvp)
     {
-        INumber *np = IUFindNumber(nvp, "TELESCOPE_APERTURE");
+        auto np = nvp->findWidgetByName("TELESCOPE_APERTURE");
 
-        if (np && np->value > 0)
-            primaryAperture = np->value;
+        if (np && np->getValue() > 0)
+            primaryAperture = np->getValue();
 
-        np = IUFindNumber(nvp, "GUIDER_APERTURE");
-        if (np && np->value > 0)
-            guideAperture = np->value;
+        np = nvp->findWidgetByName("GUIDER_APERTURE");
+        if (np && np->getValue() > 0)
+            guideAperture = np->getValue();
 
         aperture = primaryAperture;
 
@@ -984,13 +984,13 @@ void Guide::syncTelescopeInfo()
         if (FOVScopeCombo->currentIndex() == ISD::CCD::TELESCOPE_GUIDE)
             aperture = guideAperture;
 
-        np = IUFindNumber(nvp, "TELESCOPE_FOCAL_LENGTH");
-        if (np && np->value > 0)
-            primaryFL = np->value;
+        np = nvp->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
+        if (np && np->getValue() > 0)
+            primaryFL = np->getValue();
 
-        np = IUFindNumber(nvp, "GUIDER_FOCAL_LENGTH");
-        if (np && np->value > 0)
-            guideFL = np->value;
+        np = nvp->findWidgetByName("GUIDER_FOCAL_LENGTH");
+        if (np && np->getValue() > 0)
+            guideFL = np->getValue();
 
         focal_length = primaryFL;
 
@@ -1204,14 +1204,7 @@ bool Guide::captureOneFrame()
 
     ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
 
-    targetChip->setBatchMode(false);
-    targetChip->setCaptureMode(FITS_GUIDE);
-    targetChip->setFrameType(FRAME_LIGHT);
-
-    if (darkFrameCheck->isChecked())
-        targetChip->setCaptureFilter(FITS_NONE);
-    else
-        targetChip->setCaptureFilter(static_cast<FITSScale>(filterCombo->currentIndex()));
+    prepareCapture(targetChip);
 
     guideView->setBaseSize(guideWidget->size());
     setBusy(true);
@@ -1222,8 +1215,6 @@ bool Guide::captureOneFrame()
         targetChip->setFrame(settings["x"].toInt(), settings["y"].toInt(), settings["w"].toInt(),
                              settings["h"].toInt());
     }
-
-    currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
 
     connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Guide::processData, Qt::UniqueConnection);
     qCDebug(KSTARS_EKOS_GUIDE) << "Capturing frame...";
@@ -1242,6 +1233,18 @@ bool Guide::captureOneFrame()
     targetChip->capture(finalExposure);
 
     return true;
+}
+
+void Guide::prepareCapture(ISD::CCDChip *targetChip)
+{
+    targetChip->setBatchMode(false);
+    targetChip->setCaptureMode(FITS_GUIDE);
+    targetChip->setFrameType(FRAME_LIGHT);
+    if (darkFrameCheck->isChecked())
+        targetChip->setCaptureFilter(FITS_NONE);
+    else
+        targetChip->setCaptureFilter(static_cast<FITSScale>(filterCombo->currentIndex()));
+    currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
 }
 
 bool Guide::abort()
@@ -1341,6 +1344,7 @@ void Guide::processCaptureTimeout()
         currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
         ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
         targetChip->abortExposure();
+        prepareCapture(targetChip);
         targetChip->capture(exposureIN->value());
         captureTimeout.start(exposureIN->value() * 1000 + CAPTURE_TIMEOUT_THRESHOLD);
     };
@@ -1358,6 +1362,7 @@ void Guide::processCaptureTimeout()
         else if (state == GUIDE_CALIBRATING)
             appendLogText(i18n("Exposure timeout. Aborting Calibration."));
 
+        captureTimeout.stop();
         abort();
         return;
     }
@@ -1667,9 +1672,9 @@ bool Guide::guide()
                 double x = starCenter.x();
                 double y = starCenter.y();
 
-                if(guideView->getImageData() != nullptr)
+                if(guideView->imageData() != nullptr)
                 {
-                    if(guideView->getImageData()->width() > 50)
+                    if(guideView->imageData()->width() > 50)
                     {
                         guideConnect = connect(this, &Guide::newStatus, this, [this, x, y](Ekos::GuideState newState)
                         {
@@ -1714,7 +1719,7 @@ bool Guide::dither()
 {
     if (Options::ditherNoGuiding() && state == GUIDE_IDLE)
     {
-        ditherDirectly();
+        nonGuidedDither();
         return true;
     }
 
@@ -1773,7 +1778,15 @@ void Guide::setCaptureStatus(CaptureState newState)
         case CAPTURE_DITHERING:
             dither();
             break;
-
+        case CAPTURE_IDLE:
+        case CAPTURE_ABORTED:
+            // We need to reset the non guided dithering status every time a new capture task is started (and not for every single capture).
+            // The non dithering logic is a bit convoluted and controlled by the Capture module,
+            // which calls Guide::setCaptureStatus(CAPTURE_DITHERING) when it wants guide to dither. 
+            // It actually calls newStatus(CAPTURE_DITHERING) in Capture::checkDithering(), but manager.cpp in Manager::connectModules() connects that to Guide::setCaptureStatus()).
+            // So the only way to reset the non guided dithering prior to a new capture task is to put it here, when the Capture status moves to IDLE or ABORTED state.
+            resetNonGuidedDither();
+            break;
         default:
             break;
     }
@@ -2048,11 +2061,8 @@ void Guide::setStatus(Ekos::GuideState newState)
             break;
 
         case GUIDE_DITHERING_SETTLE:
-            if (Options::ditherSettle() > 0)
-                appendLogText(i18np("Post-dither settling for %1 second...", "Post-dither settling for %1 seconds...",
-                                    Options::ditherSettle()));
-            if (guiderType == GUIDE_INTERNAL)
-                capture();
+            appendLogText(i18np("Post-dither settling for %1 second...", "Post-dither settling for %1 seconds...",
+                                Options::ditherSettle()));
             break;
 
         case GUIDE_DITHERING_ERROR:
@@ -2163,9 +2173,9 @@ void Guide::syncTrackingBoxPosition()
     if(guiderType == GUIDE_PHD2)
     {
         //This way it won't set the tracking box on the Guide Star Image.
-        if(guideView->getImageData() != nullptr)
+        if(guideView->imageData() != nullptr)
         {
-            if(guideView->getImageData()->width() < 50)
+            if(guideView->imageData()->width() < 50)
             {
                 guideView->setTrackingBoxEnabled(false);
                 return;
@@ -2661,9 +2671,9 @@ void Guide::setTrackingStar(int x, int y)
     if(guiderType == GUIDE_PHD2)
     {
         //The Guide Star Image is 32 pixels across or less, so this guarantees it isn't that.
-        if(guideView->getImageData() != nullptr)
+        if(guideView->imageData() != nullptr)
         {
-            if(guideView->getImageData()->width() > 50)
+            if(guideView->imageData()->width() > 50)
                 phd2Guider->setLockPosition(starCenter.x(), starCenter.y());
         }
     }
@@ -2728,6 +2738,9 @@ void Guide::setAxisDelta(double ra, double de)
 
     profilePixmap = driftGraph->grab();
     emit newProfilePixmap(profilePixmap);
+
+    driftPlotPixmap = driftPlot->grab();
+    emit newDriftPlotPixmap(driftPlotPixmap);
 }
 
 void Guide::calibrationUpdate(GuideInterface::CalibrationUpdateType type, const QString &message,
@@ -3184,7 +3197,10 @@ bool Guide::executeOneOperation(GuideState operation)
                 uint16_t offsetX = 0;
                 uint16_t offsetY = 0;
 
-                if (settings["x"].isValid() && settings["y"].isValid())
+                if (settings["x"].isValid() &&
+                        settings["y"].isValid() &&
+                        settings["binx"].isValid() &&
+                        settings["biny"].isValid())
                 {
                     offsetX = settings["x"].toInt() / settings["binx"].toInt();
                     offsetY = settings["y"].toInt() / settings["biny"].toInt();
@@ -3199,16 +3215,14 @@ bool Guide::executeOneOperation(GuideState operation)
                     {
                         guideView->rescale(ZOOM_KEEP_LEVEL);
                         guideView->updateFrame();
-                        setCaptureComplete();
                     }
-                    else
-                        abort();
+                    setCaptureComplete();
                 });
                 connect(DarkLibrary::Instance(), &DarkLibrary::newLog, this, &Ekos::Guide::appendLogText);
                 actionRequired = true;
                 targetChip->setCaptureFilter(static_cast<FITSScale>(filterCombo->currentIndex()));
-                DarkLibrary::Instance()->captureAndSubtract(targetChip, m_ImageData, exposureIN->value(), targetChip->getCaptureFilter(),
-                        offsetX, offsetY);
+                DarkLibrary::Instance()->denoise(targetChip, m_ImageData, exposureIN->value(), targetChip->getCaptureFilter(),
+                                                 offsetX, offsetY);
             }
         }
         break;
@@ -3309,29 +3323,57 @@ void Guide::setExternalGuiderBLOBEnabled(bool enable)
 
 }
 
-void Guide::ditherDirectly()
+void Guide::resetNonGuidedDither()
+{
+    // reset non guided dither total drift
+    nonGuidedDitherRaOffsetMsec = 0;
+    nonGuidedDitherDecOffsetMsec = 0;
+    qCDebug(KSTARS_EKOS_GUIDE) << "Reset non guiding dithering position";
+
+    // initialize random generator if not done before 
+    if (!isNonGuidedDitherInitialized)
+    {
+        auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+        nonGuidedPulseGenerator.seed(seed); 
+        isNonGuidedDitherInitialized = true;
+        qCDebug(KSTARS_EKOS_GUIDE) << "Initialize non guiding dithering random generator";
+    }   
+}
+
+void Guide::nonGuidedDither()
 {
     double ditherPulse = Options::ditherNoGuidingPulse();
 
-    // Randomize pulse length. It is equal to 50% of pulse length + random value up to 50%
-    // e.g. if ditherPulse is 500ms then final pulse is = 250 + rand(0 to 250)
-    int ra_msec  = static_cast<int>((static_cast<double>(rand()) / RAND_MAX) * ditherPulse / 2.0 +  ditherPulse / 2.0);
-    int ra_polarity = (rand() % 2 == 0) ? 1 : -1;
-
-    int de_msec  = static_cast<int>((static_cast<double>(rand()) / RAND_MAX) * ditherPulse / 2.0 +  ditherPulse / 2.0);
-    int de_polarity = (rand() % 2 == 0) ? 1 : -1;
+    // Randomize dithering position up to +/-dithePulse distance from original
+    std::uniform_int_distribution<int> newPos(-ditherPulse, +ditherPulse);  
+    
+    // Calculate the pulse needed to move to the new position, then save the new position and apply the pulse
+    
+    // for ra
+    const int newRaOffsetMsec = newPos(nonGuidedPulseGenerator);
+    const int raPulse = nonGuidedDitherRaOffsetMsec - newRaOffsetMsec;
+    nonGuidedDitherRaOffsetMsec = newRaOffsetMsec;
+    const int raMsec  = std::abs(raPulse);
+    const int raPolarity = (raPulse >= 0 ? 1: -1);
+    
+    // and for dec
+    const int newDecOffsetMsec = newPos(nonGuidedPulseGenerator);
+    const int decPulse = nonGuidedDitherDecOffsetMsec - newDecOffsetMsec;
+    nonGuidedDitherDecOffsetMsec = newDecOffsetMsec;
+    const int decMsec  = std::abs(decPulse);
+    const int decPolarity = (decPulse >= 0 ? 1: -1);
 
     qCInfo(KSTARS_EKOS_GUIDE) << "Starting non-guiding dither...";
-    qCDebug(KSTARS_EKOS_GUIDE) << "dither ra_msec:" << ra_msec << "ra_polarity:" << ra_polarity << "de_msec:" << de_msec <<
-                               "de_polarity:" << de_polarity;
+    qCDebug(KSTARS_EKOS_GUIDE) << "dither ra_msec:" << raMsec << "ra_polarity:" << raPolarity << "de_msec:" << decMsec <<
+                               "de_polarity:" << decPolarity;
 
-    bool rc = sendPulse(ra_polarity > 0 ? RA_INC_DIR : RA_DEC_DIR, ra_msec, de_polarity > 0 ? DEC_INC_DIR : DEC_DEC_DIR,
-                        de_msec);
+    bool rc = sendPulse(raPolarity > 0 ? RA_INC_DIR : RA_DEC_DIR, raMsec, decPolarity > 0 ? DEC_INC_DIR : DEC_DEC_DIR,
+                        decMsec);
 
     if (rc)
     {
         qCInfo(KSTARS_EKOS_GUIDE) << "Non-guiding dither successful.";
-        QTimer::singleShot( (ra_msec > de_msec ? ra_msec : de_msec) + Options::ditherSettle() * 1000 + 100, [this]()
+        QTimer::singleShot( (raMsec > decMsec ? raMsec : decMsec) + Options::ditherSettle() * 1000 + 100, [this]()
         {
             emit newStatus(GUIDE_DITHERING_SUCCESS);
             state = GUIDE_IDLE;
@@ -4094,7 +4136,7 @@ QJsonObject Guide::getSettings() const
     settings.insert("dither_enabled", Options::ditherEnabled());
     settings.insert("dither_pixels", Options::ditherPixels());
     settings.insert("dither_frequency", static_cast<int>(Options::ditherFrames()));
-    settings.insert("gpg", Options::gPGEnabled());
+    settings.insert("gpg_enabled", Options::gPGEnabled());
 
     return settings;
 }
@@ -4192,7 +4234,7 @@ void Guide::setSettings(const QJsonObject &settings)
     Options::setDitherPixels(ditherPixels);
     const int ditherFrequency = settings["dither_frequency"].toInt(Options::ditherFrames());
     Options::setDitherFrames(ditherFrequency);
-    const bool gpg = settings["gpg"].toBool(Options::gPGEnabled());
+    const bool gpg = settings["gpg_enabled"].toBool(Options::gPGEnabled());
     Options::setGPGEnabled(gpg);
 
     init = true;

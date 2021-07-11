@@ -45,6 +45,10 @@ class TextureManager : public QObject
      */
     static const QImage &getImage(const QString &name);
 
+    /**
+     * Clear the cache and discover the directories to load textures from.
+     */
+    static void discoverTextureDirs();
 #ifdef HAVE_OPENGL
     /**
      *  Bind OpenGL texture. Acts similarly to getImage but does
@@ -69,6 +73,9 @@ class TextureManager : public QObject
     static TextureManager *m_p;
     // List of named textures
     QHash<QString, QImage> m_textures;
+
+    // List of texture directories
+    std::vector<QString> m_texture_directories;
 
     // Prohibit copying
     TextureManager(const TextureManager &);
