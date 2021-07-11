@@ -7,7 +7,7 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ####### AstroPi update system ########
 # DECLARE INDI VERSION
-INDI_V=1.9.0
+INDI_V=1.9.1
 ######################################
 ans=$(zenity  --list  --title="AstroPi System" --width=350 --height=250 --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist  --column "Pick" --column "Option" TRUE "Check for update" FALSE "Setup my WiFi" FALSE "Disable/Enable AstroPi hotspot" FALSE "Install/Upgrade INDI and Driver" FALSE "Install/Upgrade Kstars AstroPi"); 
 if [ "$ans" == "Check for update" ];
