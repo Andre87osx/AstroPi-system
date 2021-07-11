@@ -19,6 +19,8 @@
 #include <QTimer>
 #include <QtDBus>
 
+#include <random>
+
 class QProgressIndicator;
 class QTabWidget;
 
@@ -491,7 +493,7 @@ class Guide : public QWidget, public Ui::Guide
 
         void processCaptureTimeout();
 
-        void ditherDirectly();
+        void nonGuidedDither();
 
     signals:
         void newLog(const QString &text);
@@ -500,6 +502,7 @@ class Guide : public QWidget, public Ui::Guide
         void newImage(FITSView *view);
         void newStarPixmap(QPixmap &);
         void newProfilePixmap(QPixmap &);
+        void newDriftPlotPixmap(QPixmap &);
 
         // Immediate deviations in arcsecs
         void newAxisDelta(double ra, double de);
@@ -558,6 +561,12 @@ class Guide : public QWidget, public Ui::Guide
          * @param name CCD to enable to disable. If empty (default), then action is applied to all CCDs.
          */
         void setExternalGuiderBLOBEnabled(bool enable);
+
+        /**
+         * @brief prepareCapture Set common settings for capture for guide module
+         * @param targetChip target Chip
+         */
+        void prepareCapture(ISD::CCDChip *targetChip);
 
         /**
          * @brief setRMSVisibility Decides which RMS plot is visible.
@@ -661,6 +670,8 @@ class Guide : public QWidget, public Ui::Guide
 
         // Profile Pixmap
         QPixmap profilePixmap;
+        // drift plot
+        QPixmap driftPlotPixmap;
 
         // Flag to start auto calibration followed immediately by guiding
         //bool autoCalibrateGuide { false };
@@ -701,5 +712,20 @@ class Guide : public QWidget, public Ui::Guide
         // The scales of these zoom levels are defined in Guide::zoomX().
         static constexpr int defaultXZoomLevel = 3;
         int driftGraphZoomLevel {defaultXZoomLevel};
+
+        
+        // The accumulated non-guided dither offsets (in milliseconds) in the RA and DEC directions.   
+        int nonGuidedDitherRaOffsetMsec = 0, nonGuidedDitherDecOffsetMsec = 0;
+
+        // Random generator for non guided dithering
+        std::mt19937 nonGuidedPulseGenerator;
+        
+        // Flag to check if random generator for non guided dithering is initialized.
+        bool isNonGuidedDitherInitialized = false;
+
+        // Reset non guided dithering properties and initialize the random generator seed if not already done.
+        // Should be called in Guide::Guide() for initial seed initialization, and then in setCaptureStatus to reset accumulated drift
+        // every time a capture task is completed or aborted.
+        void resetNonGuidedDither();
 };
 }

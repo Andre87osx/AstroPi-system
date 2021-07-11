@@ -83,12 +83,24 @@ class Manager : public QDialog, public Ui::Manager
         Q_OBJECT
         Q_CLASSINFO("D-Bus Interface", "org.kde.kstars.Ekos")
 
-        Q_SCRIPTABLE Q_PROPERTY(CommunicationStatus indiStatus READ indiStatus NOTIFY indiStatusChanged)
-        Q_SCRIPTABLE Q_PROPERTY(CommunicationStatus ekosStatus READ ekosStatus NOTIFY ekosStatusChanged)
-        Q_SCRIPTABLE Q_PROPERTY(CommunicationStatus settleStatus READ settleStatus NOTIFY settleStatusChanged)
+        Q_SCRIPTABLE Q_PROPERTY(Ekos::CommunicationStatus indiStatus READ indiStatus NOTIFY indiStatusChanged)
+        Q_SCRIPTABLE Q_PROPERTY(Ekos::CommunicationStatus ekosStatus READ ekosStatus NOTIFY ekosStatusChanged)
+        Q_SCRIPTABLE Q_PROPERTY(Ekos::CommunicationStatus settleStatus READ settleStatus NOTIFY settleStatusChanged)
         Q_SCRIPTABLE Q_PROPERTY(bool ekosLiveStatus READ ekosLiveStatus NOTIFY ekosLiveStatusChanged)
         Q_SCRIPTABLE Q_PROPERTY(QStringList logText READ logText NOTIFY newLog)
 
+        enum class EkosModule
+        {
+            Setup,
+            Scheduler,
+            Analyze,
+            Capture,
+            Focus,
+            Mount,
+            Align,
+            Guide,
+            Observatory,
+        };
     public:
         static Manager *Instance();
         static void release();
@@ -233,7 +245,7 @@ class Manager : public QDialog, public Ui::Manager
             return m_indiStatus;
         }
 
-        Q_SCRIPTABLE CommunicationStatus indiStatus()
+        Q_SCRIPTABLE Ekos::CommunicationStatus indiStatus()
         {
             return m_indiStatus;
         }
@@ -248,7 +260,7 @@ class Manager : public QDialog, public Ui::Manager
             return m_ekosStatus;
         }
 
-        Q_SCRIPTABLE CommunicationStatus ekosStatus()
+        Q_SCRIPTABLE Ekos::CommunicationStatus ekosStatus()
         {
             return m_ekosStatus;
         }
@@ -257,7 +269,7 @@ class Manager : public QDialog, public Ui::Manager
          * DBUS interface function.
          * @return Settle status (0 Idle, 1 Pending, 2 Started, 3 Error)
          */
-        Q_SCRIPTABLE CommunicationStatus settleStatus()
+        Q_SCRIPTABLE Ekos::CommunicationStatus settleStatus()
         {
             return m_settleStatus;
         }
@@ -357,7 +369,7 @@ class Manager : public QDialog, public Ui::Manager
         void cleanDevices(bool stopDrivers = true);
 
         void processNewDevice(ISD::GDInterface *);
-        void processNewProperty(INDI::Property *);
+        void processNewProperty(INDI::Property);
         void processDeleteProperty(const QString &name);
 
         void processNewNumber(INumberVectorProperty *nvp);
@@ -428,12 +440,15 @@ class Manager : public QDialog, public Ui::Manager
         void updateFocusStarPixmap(QPixmap &starPixmap);
         void updateFocusProfilePixmap(QPixmap &profilePixmap);
         void updateCurrentHFR(double newHFR, int position);
+        void updateFocusDetailView();
 
         // Guide Summary
         void updateGuideStatus(GuideState status);
         void updateGuideStarPixmap(QPixmap &starPix);
         void updateGuideProfilePixmap(QPixmap &profilePix);
+        void updateGuidePlotPixmap(QPixmap &plotPix);
         void updateSigmas(double ra, double de);
+        void updateGuideDetailView();
 
     private:
         explicit Manager(QWidget *parent);
@@ -453,6 +468,7 @@ class Manager : public QDialog, public Ui::Manager
 
         void loadDrivers();
         void loadProfiles();
+        int addModuleTab(EkosModule module, QWidget *tab, const QIcon &icon);
 
         /**
          * @brief syncActiveDevices Syncs ACTIVE_DEVICES such as ACTIVE_TELESCOPE and ACTIVE_CCD
@@ -559,10 +575,18 @@ class Manager : public QDialog, public Ui::Manager
         // Focus Summary
         QProgressIndicator *focusPI { nullptr };
         std::unique_ptr<QPixmap> focusStarPixmap;
+        std::unique_ptr<QPixmap> focusProfilePixmap;
+        int currentFocusPixmapIndex = 0;
+        const QString focusDetailViewTooltips[2] = {"Focus Profile", "Focus Star"};
+
 
         // Guide Summary
         QProgressIndicator *guidePI { nullptr };
         std::unique_ptr<QPixmap> guideStarPixmap;
+        std::unique_ptr<QPixmap> guideProfilePixmap;
+        std::unique_ptr<QPixmap> guidePlotPixmap;
+        int currentGuidePixmapIndex = 0;
+        const QString guideDetailViewTooltips[3] = {"Guide Profile", "Guide Plot", "Guide Star"};
 
         ProfileInfo *currentProfile { nullptr };
         bool profileWizardLaunched { false };

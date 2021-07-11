@@ -831,6 +831,22 @@
            </widget>
           </item>
           <item>
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Preferred</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
            <widget class="QPushButton" name="mosaicB">
             <property name="enabled">
              <bool>false</bool>
@@ -854,7 +870,7 @@
              </size>
             </property>
             <property name="toolTip">
-             <string>Create mosaic job. You must add a job before creating a mosaic job.</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Open the Mosaic Tool.&lt;/p&gt;&lt;p align=&quot;justify&quot;&gt;The Mosaic Tool requires a target with valid coordinates in the left panel, and a valid sequence file.&lt;/p&gt;&lt;p align=&quot;justify&quot;&gt;The target will be used as center for the mosaic and the sequence will be assigned to all tiles of the mosaic.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
              <string/>
@@ -866,6 +882,9 @@
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Expanding</enum>
+            </property>
             <property name="sizeHint" stdset="0">
              <size>
               <width>40</width>
@@ -873,6 +892,40 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="queueAppendB">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>32</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>32</width>
+              <height>32</height>
+             </size>
+            </property>
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Load schedule from file and append jobs to queue.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="statusTip">
+             <string/>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
           </item>
           <item>
            <widget class="QPushButton" name="queueLoadB">
@@ -898,7 +951,7 @@
              </size>
             </property>
             <property name="toolTip">
-             <string>Load schedule from file</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;justify&quot;&gt;Load schedule from file and replace jobs from queue.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="statusTip">
              <string/>
@@ -1575,7 +1628,7 @@ font-weight:bold;
              <string> °</string>
             </property>
             <property name="minimum">
-             <double>00.000000000000000</double>
+             <double>-15.000000000000000</double>
             </property>
             <property name="maximum">
              <double>89.900000000000006</double>
@@ -1657,6 +1710,9 @@ font-weight:bold;
           </item>
           <item row="3" column="1">
            <widget class="QLabel" name="nightTime">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Astronomical dawn and dusk for the Scheduler job currently selected, or for today if no job is selected.&lt;/p&gt;&lt;p&gt;- The first value is &lt;span style=&quot; font-weight:600;&quot;&gt;dusk&lt;/span&gt;, specifically the next local time the Sun sets below an altitude of -18° after the job starts.&lt;/p&gt;&lt;p&gt;- The second value is &lt;span style=&quot; font-weight:600;&quot;&gt;dawn&lt;/span&gt;, specifically the next local time the Sun rises higher than an altitude of -18° after the job starts.&lt;/p&gt;&lt;p&gt;A warning symbol indicates the Sun will not travel below the astronomical dusk boundary after the job starts, and that dawn and dusk times are calculated from its minimal altitude. In that situation, the Twilight restriction prevents job execution unless the Ekos Dawn Offset and Dusk Offset options are configured appropriately.&lt;/p&gt;&lt;p&gt;Note that the Ekos Pre-Dawn Offset option virtually advances dawn by a default of 30 minutes and will thus prevent a job from starting just before that moment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string/>
             </property>

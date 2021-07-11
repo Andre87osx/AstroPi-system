@@ -24,13 +24,11 @@
 #include "detaildialog.h"
 #include "skymap.h"
 #include "skyobjects/skyobject.h"
-#include "skyobjects/deepskyobject.h"
 #include "skycomponents/starcomponent.h"
-#include "skycomponents/syncedcatalogcomponent.h"
 #include "skycomponents/skymapcomposite.h"
 #include "tools/nameresolver.h"
 #include "skyobjectlistmodel.h"
-
+#include "catalogscomponent.h"
 #include <KMessageBox>
 
 #include <QSortFilterProxyModel>
@@ -39,7 +37,7 @@
 #include <QComboBox>
 #include <QLineEdit>
 
-FindDialog * FindDialog::m_Instance = nullptr;
+FindDialog *FindDialog::m_Instance = nullptr;
 
 FindDialogUI::FindDialogUI(QWidget *parent) : QFrame(parent)
 {
@@ -71,7 +69,10 @@ FindDialog *FindDialog::Instance()
     return m_Instance;
 }
 
-FindDialog::FindDialog(QWidget *parent) : QDialog(parent), timer(nullptr), m_targetObject(nullptr)
+FindDialog::FindDialog(QWidget *parent)
+    : QDialog(parent), timer(nullptr),
+      m_targetObject(nullptr), m_manager{ CatalogsDB::dso_db_path() }
+
 {
 #ifdef Q_OS_OSX
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
@@ -152,7 +153,6 @@ FindDialog::FindDialog(QWidget *parent) : QDialog(parent), timer(nullptr), m_tar
     QTimer::singleShot(0, this, SLOT(init()));
 
     listFiltered = false;
-
 }
 
 void FindDialog::init()
@@ -298,6 +298,13 @@ void FindDialog::filterByType()
 void FindDialog::filterList()
 {
     QString SearchText = processSearchText();
+    const auto &objs   = m_manager.find_objects_by_name(SearchText, 10);
+    for (const auto &obj : objs)
+    {
+        KStarsData::Instance()->skyComposite()->catalogsComponent()->insertStaticObject(
+            obj);
+    }
+
     sortModel->setFilterFixedString(SearchText);
     ui->InternetSearchButton->setText(i18n("or search the Internet for %1", SearchText));
     filterByType();
@@ -306,7 +313,8 @@ void FindDialog::filterList()
     //Select the first item in the list that begins with the filter string
     if (!SearchText.isEmpty())
     {
-        QStringList mItems = fModel->filter(QRegExp('^' + SearchText, Qt::CaseInsensitive));
+        QStringList mItems =
+            fModel->filter(QRegExp('^' + SearchText, Qt::CaseInsensitive));
         mItems.sort();
 
         if (mItems.size())
@@ -316,7 +324,8 @@ void FindDialog::filterList()
 
             if (selectItem.isValid())
             {
-                ui->SearchList->selectionModel()->select(selectItem, QItemSelectionModel::ClearAndSelect);
+                ui->SearchList->selectionModel()->select(
+                    selectItem, QItemSelectionModel::ClearAndSelect);
                 ui->SearchList->scrollTo(selectItem);
                 ui->SearchList->setCurrentIndex(selectItem);
 
@@ -324,7 +333,7 @@ void FindDialog::filterList()
             }
         }
         ui->InternetSearchButton->setEnabled(!mItems.contains(
-                SearchText)); // Disable searching the internet when an exact match for SearchText exists in KStars
+            SearchText)); // Disable searching the internet when an exact match for SearchText exists in KStars
     }
     else
         ui->InternetSearchButton->setEnabled(false);
@@ -408,15 +417,23 @@ void FindDialog::finishProcessing(SkyObject *selObj, bool resolve)
 {
     if (!selObj && resolve)
     {
-        CatalogEntryData cedata = NameResolver::resolveName(processSearchText());
-        DeepSkyObject *dso = nullptr;
+        const auto &cedata = NameResolver::resolveName(processSearchText());
 
-        if (!std::isnan(cedata.ra) && !std::isnan(cedata.dec))
+        if (cedata.first)
         {
-            dso = KStarsData::Instance()->skyComposite()->internetResolvedComponent()->addObject(cedata);
-            if (dso)
-                qDebug() << dso->ra0().toHMSString() << ";" << dso->dec0().toDMSString();
-            selObj = dso;
+            m_manager.add_object(CatalogsDB::user_catalog_id, cedata.second);
+            const auto &added_object =
+                m_manager.get_object(cedata.second.getId(), CatalogsDB::user_catalog_id);
+
+            if (added_object.first)
+            {
+                CatalogObject *dso = &KStarsData::Instance()
+                                          ->skyComposite()
+                                          ->catalogsComponent()
+                                          ->insertStaticObject(added_object.second);
+
+                selObj = dso;
+            }
         }
     }
     m_targetObject = selObj;
@@ -439,7 +456,9 @@ void FindDialog::finishProcessing(SkyObject *selObj, bool resolve)
                 case SkyObject::SUPERNOVA_REMNANT:
                 case SkyObject::GALAXY:
                     if (selObj->name() != selObj->longname())
-                        m_HistoryCombo->addItem(QString("%1 (%2)").arg(selObj->name()).arg(selObj->longname()));
+                        m_HistoryCombo->addItem(QString("%1 (%2)")
+                                                    .arg(selObj->name())
+                                                    .arg(selObj->longname()));
                     else
                         m_HistoryCombo->addItem(QString("%1").arg(selObj->longname()));
                     break;

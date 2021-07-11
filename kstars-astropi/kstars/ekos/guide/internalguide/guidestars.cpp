@@ -45,11 +45,9 @@ constexpr double HFR_MARGIN = 2.0;
  be successful.
  */
 
-// This adds quite a bit to the debug log, so disabling it in normal circumstances.
-// #define GUIDESTARS_DEBUG
-
 namespace
 {
+
 QString logHeader(const QString &label)
 {
     return QString("%1 %2 %3 %4 %5 %6 %7")
@@ -125,7 +123,7 @@ void GuideStars::setupStarCorrespondence(const QList<Edge> &neighbors, int guide
 
 // Calls SEP to generate a set of star detections and score them,
 // then calls selectGuideStars(detections, scores) to select the guide star.
-QVector3D GuideStars::selectGuideStar(FITSData *imageData)
+QVector3D GuideStars::selectGuideStar(const QSharedPointer<FITSData> &imageData)
 {
     if (imageData == nullptr)
         return QVector3D(-1, -1, -1);
@@ -267,7 +265,7 @@ void GuideStars::plotStars(GuideView *guideView, const QRect &trackingBox)
 // Find the guide star using the starCorrespondence algorithm (looking for
 // the other reference stars in the same relative position as when the guide star was selected).
 // If this method fails, it backs off to looking in the tracking box for the highest scoring star.
-Vector GuideStars::findGuideStar(FITSData *imageData, const QRect &trackingBox, GuideView *guideView)
+Vector GuideStars::findGuideStar(const QSharedPointer<FITSData> &imageData, const QRect &trackingBox, GuideView *guideView)
 {
     // Don't accept reference stars whose position is more than this many pixels from expected.
     constexpr double maxStarAssociationDistance = 10;
@@ -296,7 +294,15 @@ Vector GuideStars::findGuideStar(FITSData *imageData, const QRect &trackingBox, 
         if (detectedStars.empty())
             return Vector(-1, -1, -1);
 
-        starCorrespondence.find(detectedStars, maxStarAssociationDistance, &starMap);
+        // Allow it to guide even if the main guide star isn't detected (as long as enough reference stars are).
+        constexpr int maxMissingGuideStars = 5;
+        starCorrespondence.setAllowMissingGuideStar(
+            allowMissingGuideStar &&
+            missedGuideStars < maxMissingGuideStars);
+
+        // Star correspondence can run quicker if it knows the image size.
+        starCorrespondence.setImageSize(imageData->width(), imageData->height());
+        Vector position = starCorrespondence.find(detectedStars, maxStarAssociationDistance, &starMap);
 
         // Is there a correspondence to the guide star
         // Should we also weight distance to the tracking box?
@@ -308,11 +314,26 @@ Vector GuideStars::findGuideStar(FITSData *imageData, const QRect &trackingBox, 
                 double SNR = skyBackground.SNR(star.sum, star.numPixels);
                 guideStarSNR = SNR;
                 guideStarMass = star.sum;
+                missedGuideStars = 0;
                 qCDebug(KSTARS_EKOS_GUIDE) << "StarCorrespondence found " << i << "at" << star.x << star.y << "SNR" << SNR;
                 if (guideView != nullptr)
                     plotStars(guideView, trackingBox);
                 return Vector(star.x, star.y, 0);
             }
+        }
+        // None of the stars matched the guide star, but it's possible star correspondence
+        // invented a guide star position.
+        if (position.x >= 0 && position.y >= 0)
+        {
+            // For now we're returning an snr of 0
+            double SNR = 0;
+            guideStarSNR = SNR;
+            guideStarMass = 0;
+            missedGuideStars++;
+            qCDebug(KSTARS_EKOS_GUIDE) << "StarCorrespondence invented at" << position.x << position.y << "SNR" << SNR;
+            if (guideView != nullptr)
+                plotStars(guideView, trackingBox);
+            return position;
         }
     }
 
@@ -362,7 +383,7 @@ SSolver::Parameters GuideStars::getStarExtractionParameters(int num)
 }
 
 // This is the interface to star detection.
-int GuideStars::findAllSEPStars(FITSData *imageData, QList<Edge *> *sepStars, int num)
+int GuideStars::findAllSEPStars(const QSharedPointer<FITSData> &imageData, QList<Edge *> *sepStars, int num)
 {
     if (imageData == nullptr)
         return 0;
@@ -386,15 +407,6 @@ int GuideStars::findAllSEPStars(FITSData *imageData, QList<Edge *> *sepStars, in
     }
 
     edges.clear();
-
-#ifdef GUIDESTARS_DEBUG
-    logStars("Detected", "Star", skyBackground,
-             sepStars->count(),
-             [&sepStars](int i) -> const Edge&
-    {
-        return *(sepStars->at(i));
-    }, "", nullptr);
-#endif
     return sepStars->count();
 }
 
@@ -417,7 +429,7 @@ double GuideStars::findMinDistance(int index, const QList<Edge*> &stars)
 
 // Returns a list of 'num' stars, sorted according to evaluateSEPStars().
 // If the region-of-interest rectange is not null, it only returns scores in that area.
-void GuideStars::findTopStars(FITSData *imageData, int num, QList<Edge> *stars,
+void GuideStars::findTopStars(const QSharedPointer<FITSData> &imageData, int num, QList<Edge> *stars,
                               const double maxHFR, const QRect *roi,
                               QList<double> *outputScores, QList<double> *minDistances)
 {
@@ -616,23 +628,18 @@ bool GuideStars::getDrift(double oneStarDrift, double reticle_x, double reticle_
                     .arg(logStar("    Ref:", getStarMap(i), bg, ref))
                     .arg(driftRA, 5, 'f', 2).arg(driftDEC, 5, 'f', 2);
         }
-#ifdef GUIDESTARS_DEBUG
-        else
-        {
-            qCDebug(KSTARS_EKOS_GUIDE) << QString("%1 -- NOT ASSOCIATED").arg(logStar("MultiStar", i, bg, star));
-        }
-#endif
     }
 
-    if (numStarsProcessed == 0 || !guideStarProcessed)
+    if (numStarsProcessed == 0 || (!allowMissingGuideStar && !guideStarProcessed))
         return false;
 
     // Filter out reference star drifts that are too different from the guide-star drift.
     QVector<double> raDriftsKeep, decDriftsKeep;
     for (int i = 0; i < raDrifts.size(); ++i)
     {
-        if ((fabs(raDrifts[i] - guideStarRADrift) < 2.0) &&
-                (fabs(decDrifts[i] - guideStarDECDrift) < 2.0))
+        if ((allowMissingGuideStar && !guideStarProcessed) ||
+                ((fabs(raDrifts[i] - guideStarRADrift) < 2.0) &&
+                 (fabs(decDrifts[i] - guideStarDECDrift) < 2.0)))
         {
             driftRASum += raDrifts[i];
             driftDECSum += decDrifts[i];

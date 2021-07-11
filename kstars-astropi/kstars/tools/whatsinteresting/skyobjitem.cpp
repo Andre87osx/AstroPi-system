@@ -17,7 +17,7 @@
 
 #include "skyobjitem.h"
 
-#include "deepskyobject.h"
+#include "catalogobject.h"
 #include "ksfilereader.h"
 #include "kspaths.h"
 #include "ksplanetbase.h"
@@ -106,8 +106,9 @@ void SkyObjItem::setPosition(SkyObject *so)
     else
     {
         KStarsData *data  = KStarsData::Instance();
-        KStarsDateTime ut = data->geo()->LTtoUT(KStarsDateTime(QDateTime::currentDateTime().toLocalTime()));
-        SkyPoint sp       = so->recomputeCoords(ut, data->geo());
+        KStarsDateTime ut = data->geo()->LTtoUT(
+            KStarsDateTime(QDateTime::currentDateTime().toLocalTime()));
+        SkyPoint sp = so->recomputeCoords(ut, data->geo());
 
         //check altitude of object at this time.
         sp.EquatorialToHorizontal(data->lst(), data->geo()->lat());
@@ -119,30 +120,41 @@ void SkyObjItem::setPosition(SkyObject *so)
 
     if (rounded_altitude <= 0)
         m_Position = "<span style='color:red'>" +
-                     xi18n("NOT VISIBLE: About %1 degrees below the %2 horizon", -rounded_altitude,
-                           KSUtils::toDirectionString(azimuth)) +
+                     xi18n("NOT VISIBLE: About %1 degrees below the %2 horizon",
+                           -rounded_altitude, KSUtils::toDirectionString(azimuth)) +
                      "</span>";
     else
         m_Position = "<span style='color:yellow'>" +
-                     xi18n("Now visible: About %1 degrees above the %2 horizon", rounded_altitude,
-                           KSUtils::toDirectionString(azimuth)) +
+                     xi18n("Now visible: About %1 degrees above the %2 horizon",
+                           rounded_altitude, KSUtils::toDirectionString(azimuth)) +
                      "</span>";
 }
 
+QString findImage(const QString &prefix, const SkyObject &obj, const QString &suffix)
+{
+    static const auto base =
+        KSPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QDirIterator search(
+        base,
+        QStringList() << prefix + obj.name().toLower().remove(' ').remove('/') + suffix,
+        QDir::Files, QDirIterator::Subdirectories);
+
+    return search.hasNext() ? QUrl::fromLocalFile(search.next()).url() : "";
+}
 QString SkyObjItem::getImageURL(bool preferThumb) const
 {
-    QString thumbURL = QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation,
-                                                           "thumb-" + m_So->name().toLower().remove(' ') + ".png"))
-                           .url();
-    QString fullSizeURL = QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation,
-                                                              "image-" + m_So->name().toLower().remove(' ') + ".png"))
-                              .url();
-    QString wikiImageURL =
+    const auto &thumbURL = findImage("thumb-", *m_So, ".png");
+
+    const auto &fullSizeURL = findImage("image-", *m_So, ".png");
+    const auto &wikiImageURL =
         QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation,
-                                            "descriptions/wikiImage-" + m_So->name().toLower().remove(' ') + ".png"))
+                                            "descriptions/wikiImage-" +
+                                                m_So->name().toLower().remove(' ') +
+                                                ".png"))
             .url();
     QString XPlanetURL =
-        QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation, "xplanet/" + m_So->name() + ".png"))
+        QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation,
+                                            "xplanet/" + m_So->name() + ".png"))
             .url();
 
     //First try to return the preferred file
@@ -172,7 +184,13 @@ QString SkyObjItem::getImageURL(bool preferThumb) const
 QString SkyObjItem::getSummary(bool includeDescription) const
 {
     if (includeDescription)
-        return m_So->typeName() + "<BR>" + getRADE() + "<BR>" + getAltAz() + "<BR><BR>" + loadObjectDescription();
+    {
+        QString description = loadObjectDescription();
+        if(description.indexOf(".") > 0) //This will shorten the description in the list to just a sentence, whereas in the larger space of the Object Information Summary, it is a full paragraph.
+           return m_So->typeName() + "<BR>" + getRADE() + "<BR>" + getAltAz() + "<BR><BR>" + description.left(description.indexOf(".") + 1);
+        else
+            return m_So->typeName() + "<BR>" + getRADE() + "<BR>" + getAltAz() + "<BR><BR>" + description;
+    }
     else
         return m_So->typeName() + "<BR>" + getRADE() + "<BR>" + getAltAz();
 }
@@ -186,7 +204,7 @@ QString SkyObjItem::getSurfaceBrightness() const
       * brightness obtained in mag * arcminutes^-2
       */
 
-    DeepSkyObject *dso = dynamic_cast<DeepSkyObject*>(m_So);
+    auto *dso = dynamic_cast<CatalogObject*>(m_So);
     float SB           = m_So->mag();
 
     if (dso != nullptr)
@@ -209,7 +227,7 @@ QString SkyObjItem::getSize() const
         case Galaxy:
         case Cluster:
         case Nebula:
-            return QLocale().toString(((DeepSkyObject *)m_So)->a(), 'f', 2) + "\"";
+            return QLocale().toString(((CatalogObject *)m_So)->a(), 'f', 2) + "\"";
         case Planet:
             return QLocale().toString(((KSPlanetBase *)m_So)->angSize(), 'f', 2) + "\"";
         default:
