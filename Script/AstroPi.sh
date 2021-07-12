@@ -83,6 +83,7 @@ echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
 echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
 (( $? != 0 )) && zenity --error --text="Non sono riuscito ad aggiornare i dati. Contatta il supporto\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 zenity --info --width=400 --height=200 --text "La nuova rete WiFi è stata inserita, riavvia il sistema."
+exit
 
 elif [ "$ans" == "Disable/Enable AstroPi hotspot" ];
 then
@@ -209,6 +210,7 @@ if [ $exit_status -eq 1 ]; then
 zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 else
 zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System"
+exit 0
 fi
 
 elif [ "$ans" == "Install/Upgrade Kstars AstroPi" ];
