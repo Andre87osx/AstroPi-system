@@ -517,7 +517,7 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     for (auto &button : qButtons)
         button->setAutoDefault(false);
 
-    savedOptionsProfiles = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("SavedAlignProfiles.ini");
+    savedOptionsProfiles = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QString("SavedAlignProfiles.ini");
     if(QFile(savedOptionsProfiles).exists())
         m_StellarSolverProfiles = StellarSolver::loadSavedOptionsProfiles(savedOptionsProfiles);
     else
@@ -3056,23 +3056,28 @@ void Align::prepareCapture(ISD::CCDChip *targetChip)
 
 bool Align::detectStarsPAHRefresh(QList<Edge> *stars, int num, int x, int y, int *starIndex)
 {
+    const QSharedPointer<FITSData> imageData = alignView->imageData();
     stars->clear();
     *starIndex = -1;
+
+    if (imageData == nullptr)
+        return 0;
 
     // Use the solver settings from the align tab for for "polar-align refresh" star detection.
     QVariantMap settings;
     settings["optionsProfileIndex"] = Options::solveOptionsProfile();
     settings["optionsProfileGroup"] = static_cast<int>(Ekos::AlignProfiles);
-    m_ImageData->setSourceExtractorSettings(settings);
+    imageData->setSourceExtractorSettings(settings);
 
-    QElapsedTimer timer;
-    m_ImageData->findStars(ALGORITHM_SEP).waitForFinished();
+    QTime timer;
+    timer.restart();
+    imageData->findStars(ALGORITHM_SEP).waitForFinished();
 
     QString debugString = QString("PAA Refresh: Detected %1 stars (%2s)")
-                          .arg(m_ImageData->getStarCenters().size()).arg(timer.elapsed() / 1000.0, 5, 'f', 3);
+                          .arg(imageData->getStarCenters().size()).arg(timer.elapsed() / 1000.0, 5, 'f', 3);
     qCDebug(KSTARS_EKOS_ALIGN) << debugString;
 
-    QList<Edge *> detectedStars = m_ImageData->getStarCenters();
+    QList<Edge *> detectedStars = imageData->getStarCenters();
     // Let's sort detectedStars by flux, starting with widest
     std::sort(detectedStars.begin(), detectedStars.end(), [](const Edge * edge1, const Edge * edge2) -> bool { return edge1->sum > edge2->sum;});
 
@@ -3298,6 +3303,7 @@ void Align::startSolving()
     // This is needed because they might have directories stored in the config file.
     // So we can't just use the options folder list.
     QStringList astrometryDataDirs = KSUtils::getAstrometryDataDirs();
+    const QSharedPointer<FITSData> &data = alignView->imageData();
     disconnect(alignView, &FITSView::loaded, this, &Align::startSolving);
 
     if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
@@ -3340,9 +3346,7 @@ void Align::startSolving()
             else
                 solver->deleteLater();
         }
-        if (!m_ImageData)
-            m_ImageData = alignView->imageData();
-        m_StellarSolver.reset(new StellarSolver(SSolver::SOLVE, m_ImageData->getStatistics(), m_ImageData->getImageBuffer()));
+        m_StellarSolver.reset(new StellarSolver(SSolver::SOLVE, data->getStatistics(), data->getImageBuffer()));
         m_StellarSolver->setProperty("ExtractorType", Options::solveSextractorType());
         m_StellarSolver->setProperty("SolverType", Options::solverType());
         connect(m_StellarSolver.get(), &StellarSolver::ready, this, &Align::solverComplete);
@@ -3395,7 +3399,7 @@ void Align::startSolving()
         if (solveFromFile)
         {
             FITSImage::Solution solution;
-            m_ImageData->parseSolution(solution);
+            data->parseSolution(solution);
 
             if (solution.pixscale > 0)
                 m_StellarSolver->setSearchScale(solution.pixscale * 0.8,
@@ -3456,7 +3460,7 @@ void Align::startSolving()
     {
         // This should run only for load&slew. For regular solve, we don't get here
         // as the image is read and solved server-side.
-        remoteParser->startSolver(m_ImageData->filename(), generateRemoteArgs(m_ImageData), false);
+        remoteParser->startSolver(data->filename(), generateRemoteArgs(data), false);
     }
 
     // Kick off timer
@@ -5594,6 +5598,7 @@ void Align::calculatePAHError()
     // Hold on to the imageData so we can use it during the refresh phase.
     alignView->holdOnToImage();
 
+    const QSharedPointer<FITSData> imageData = alignView->imageData();
     if (!polarAlign.findAxis())
     {
         appendLogText(i18n("PAA: Failed to find RA Axis center."));
@@ -5620,17 +5625,17 @@ void Align::calculatePAHError()
     PAHOrigErrorAlt->setText(altError.toDMSString());
     PAHOrigErrorAz->setText(azError.toDMSString());
 
-    setupCorrectionGraphics(QPointF(m_ImageData->width() / 2, m_ImageData->height() / 2));
+    setupCorrectionGraphics(QPointF(imageData->width() / 2, imageData->height() / 2));
 
     // Find Celestial pole location and mount's RA axis
     SkyPoint CP(0, (hemisphere == NORTH_HEMISPHERE) ? 90 : -90);
     QPointF imagePoint, celestialPolePoint;
-    m_ImageData->wcsToPixel(CP, celestialPolePoint, imagePoint);
-    if (m_ImageData->contains(celestialPolePoint))
+    imageData->wcsToPixel(CP, celestialPolePoint, imagePoint);
+    if (imageData->contains(celestialPolePoint))
     {
         alignView->setCelestialPole(celestialPolePoint);
         QPointF raAxis;
-        if (polarAlign.findCorrectedPixel(m_ImageData, celestialPolePoint, &raAxis))
+        if (polarAlign.findCorrectedPixel(imageData, celestialPolePoint, &raAxis))
             alignView->setRaAxis(raAxis);
     }
 
@@ -5799,7 +5804,7 @@ void Align::setWCSToggled(bool result)
         }
 
         polarAlign.reset();
-        polarAlign.addPoint(m_ImageData);
+        polarAlign.addPoint(alignView->imageData());
 
         m_PAHStage = PAH_FIRST_ROTATE;
         emit newPAHStage(m_PAHStage);
@@ -5841,20 +5846,22 @@ void Align::setWCSToggled(bool result)
             emit newPAHMessage(secondRotateText->text());
         }
 
-        polarAlign.addPoint(m_ImageData);
+        polarAlign.addPoint(alignView->imageData());
 
         rotatePAH();
     }
     else if (m_PAHStage == PAH_THIRD_CAPTURE)
     {
+        const QSharedPointer<FITSData> &imageData = alignView->imageData();
+
         // Critical error
         if (result == false)
         {
-            appendLogText(i18n("Failed to process World Coordinate System: %1. Try again.", m_ImageData->getLastError()));
+            appendLogText(i18n("Failed to process World Coordinate System: %1. Try again.", imageData->getLastError()));
             return;
         }
 
-        polarAlign.addPoint(m_ImageData);
+        polarAlign.addPoint(imageData);
 
         // We have 3 points which uniquely defines a circle with its center representing the RA Axis
         // We have celestial pole location. So correction vector is just the vector between these two points
