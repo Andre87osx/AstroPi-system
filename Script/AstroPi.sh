@@ -125,13 +125,10 @@ echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev l
 # =================================================================
 echo "15"
 echo "# Checking INDI Core..." ; sleep 2
-if [ ! -d $HOME/.Projects ]; then echo "$password" | sudo -S mkdir $HOME/.Projects; fi
-if [ -d $HOME/.Projects/indi-"$INDI_V" ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/indi-"$INDI_V"; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects ]; then mkdir $HOME/.Projects; fi
 cd $HOME/.Projects
 echo "$password" | sudo -S wget -c https://github.com/indilib/indi/archive/refs/tags/v"$INDI_V".tar.gz -O - | sudo tar -xz -C $HOME/.Projects
-if [ ! -d $HOME/.Projects/indi-cmake ]; then echo "$password" | sudo -S mkdir $HOME/.Projects/indi-cmake; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects/indi-cmake ]; then mkdir $HOME/.Projects/indi-cmake; fi
 cd $HOME/.Projects/indi-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -143,13 +140,9 @@ echo "$password" | sudo -S make install
 # =================================================================
 echo "25"
 echo "# Checking INDI 3rd Party Library" ; sleep 2
-if [ ! -d $HOME/.Projects ]; then echo "$password" | sudo -S mkdir $HOME/.Projects; fi
-if [ -d $HOME/.Projects/indi-3rdparty-"$INDI_V" ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/indi-3rdparty-"$INDI_V"; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
 cd $HOME/.Projects
 echo "$password" | sudo -S wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$INDI_V".tar.gz -O - | sudo tar -xz -C $HOME/.Projects
-if [ ! -d $HOME/.Projects/indi3rdlib-cmake ]; then echo "$password" | sudo -S  mkdir $HOME/.Projects/indi3rdlib-cmake; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects/indi3rdlib-cmake ]; then mkdir $HOME/.Projects/indi3rdlib-cmake; fi
 cd $HOME/.Projects/indi3rdlib-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 $HOME/.Projects/indi-3rdparty-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -161,8 +154,7 @@ echo "$password" | sudo -S make install
 # =================================================================
 echo "50"
 echo "# Controllo la versione di INDI 3rd Party Driver" ; sleep 2
-if [ ! -d $HOME/.Projects/indi3rd-cmake ]; then echo "$password" | sudo -S mkdir -p $HOME/.Projects/indi3rd-cmake; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects/indi3rd-cmake ]; then mkdir -p $HOME/.Projects/indi3rd-cmake; fi
 cd $HOME/.Projects/indi3rd-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-3rdparty-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -174,13 +166,9 @@ echo "$password" | sudo -S make install
 # =================================================================
 echo "75"
 echo "# Checking Stellarsolver" ; sleep 2
-if [ ! -d $HOME/.Projects ]; then echo "$password" | sudo -S mkdir $HOME/.Projects; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
-if [ -d $HOME/.Projects/stellarsolver ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/stellarsolver; fi
 cd $HOME/.Projects
 git clone https://github.com/rlancaste/stellarsolver.git
-if [ ! -d $HOME/.Projects/stellarsolver-cmake ]; then echo "$password" | sudo -S mkdir $HOME/.Projects/stellarsolver-cmake; fi
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects/stellarsolver-cmake ]; then mkdir $HOME/.Projects/stellarsolver-cmake; fi
 cd $HOME/.Projects/stellarsolver-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.Projects/stellarsolver
 (( $? != 0 )) && zenity --error --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -191,7 +179,8 @@ echo "$password" | sudo -S make install
 
 # =================================================================
 echo "90"
-echo "# Quasi fatto!" ; sleep 2
+echo "# Removing the temporary files" ; sleep 2
+echo "$password" | sudo -S rm -rf $HOME/.Projects
 
 # =================================================================
 echo "# All finished." ; sleep 2
@@ -220,9 +209,7 @@ then
 # =================================================================
 echo "5"
 echo "# Controllo Kstars AstroPi" ; sleep 2
-if [ -d $HOME/.Projects/kstars-cmake ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects/kstars-cmake; fi
-echo "$password" | sudo -S mkdir -p $HOME/.Projects/kstars-cmake
-echo "$password" | sudo -S chmod 777 -R $HOME/.Projects
+if [ ! -d $HOME/.Projects ]; then mkdir -p $HOME/.Projects/kstars-cmake; fi
 cd $HOME/.Projects/kstars-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
 (( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
@@ -237,7 +224,8 @@ echo "$password" | sudo -S make install
 (( $? != 0 )) && zenity --error --text="Errore Make Install Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 # =================================================================
 echo "75"
-echo "# Yet a moment..." ; sleep 2
+echo "# Removing the temporary files" ; sleep 2
+echo "$password" | sudo -S rm -rf $HOME/.Projects
 
 # =================================================================
 echo "# All finished." ; sleep 2
@@ -256,6 +244,6 @@ exit_status=$?
 if [ $exit_status -eq 1 ]; then 
 zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 else
-zenity --info --text="Kstars AstroPi allredy installed" --width=300 --title="AstroPi System"
+zenity --info --text="Kstars AstroPi allredy installed" --width=300 --title="AstroPi System" && exit 0
 fi
 fi
