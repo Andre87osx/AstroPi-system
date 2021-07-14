@@ -134,6 +134,8 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 make -j $(expr $(nproc) + 2)
 (( $? != 0 )) && zenity --error --text="Errore Make INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+make -j $(expr $(nproc) + 2)
+(( $? != 0 )) && zenity --error --text="Errore Make INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S make install
 (( $? != 0 )) && zenity --error --text="Errore Make Instal INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
@@ -146,6 +148,8 @@ if [ ! -d $HOME/.Projects/indi3rdlib-cmake ]; then mkdir $HOME/.Projects/indi3rd
 cd $HOME/.Projects/indi3rdlib-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 $HOME/.Projects/indi-3rdparty-"$INDI_V"
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+make -j $(expr $(nproc) + 2)
+(( $? != 0 )) && zenity --error --text="Errore Make INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 make -j $(expr $(nproc) + 2)
 (( $? != 0 )) && zenity --error --text="Errore Make INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S make install
@@ -216,6 +220,8 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.Astro
 # =================================================================
 echo "25"
 echo "# installo / Aggiorno Kstars AstroPi" ; sleep 2
+make -j $(expr $(nproc) + 2)
+(( $? != 0 )) && zenity --error --text="Errore Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 make -j $(expr $(nproc) + 2)
 (( $? != 0 )) && zenity --error --text="Errore Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 # =================================================================
