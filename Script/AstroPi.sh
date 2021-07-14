@@ -26,6 +26,8 @@ echo "$password" | sudo -S sh -c 'echo 256 > /sys/module/usbcore/parameters/usbf
 (( $? != 0 )) && zenity --error --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S apt-mark hold kstars-bleeding
 (( $? != 0 )) && zenity --error --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+if [ -d $HOME/.Projects ]; then echo "$password" | sudo -S rm -rf $HOME/.Projects; fi
+(( $? != 0 )) && zenity --error --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
 # =================================================================
 echo "25"
