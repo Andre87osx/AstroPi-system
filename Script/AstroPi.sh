@@ -164,6 +164,8 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug $HOME/.Projects/indi-
 (( $? != 0 )) && zenity --error --text="Errore CMake INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 make -j $(expr $(nproc) + 2)
 (( $? != 0 )) && zenity --error --text="Errore Make INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+make -j $(expr $(nproc) + 2)
+(( $? != 0 )) && zenity --error --text="Errore Make INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S make install
 (( $? != 0 )) && zenity --error --text="Errore Make Instal INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
@@ -176,6 +178,8 @@ if [ ! -d $HOME/.Projects/stellarsolver-cmake ]; then mkdir $HOME/.Projects/stel
 cd $HOME/.Projects/stellarsolver-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.Projects/stellarsolver
 (( $? != 0 )) && zenity --error --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+make -j $(expr $(nproc) + 2)
+(( $? != 0 )) && zenity --error --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 make -j $(expr $(nproc) + 2)
 (( $? != 0 )) && zenity --error --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 echo "$password" | sudo -S make install
