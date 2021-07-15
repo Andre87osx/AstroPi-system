@@ -227,9 +227,10 @@ cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.Astro
 echo "25"
 echo "# installo / Aggiorno Kstars AstroPi" ; sleep 2
 make -j $(expr $(nproc) + 2)
-(( $? != 0 )) && zenity --error --text="Errore Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+(( $? != 0 )) && zenity --error --text="Error Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+sleep 60
 make -j $(expr $(nproc) + 2)
-(( $? != 0 )) && zenity --error --text="Errore Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+(( $? != 0 )) && zenity --error --text="Error Make2 Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 # =================================================================
 echo "50"
 echo "$password" | sudo -S make install
