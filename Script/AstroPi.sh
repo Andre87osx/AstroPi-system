@@ -71,6 +71,7 @@ zenity --error --text="Something went wrong. Contact support at\n<b>https://gith
 else
 zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
 fi 
+exit
 
 elif [ "$ans" == "Setup my WiFi" ];
 then 
@@ -93,20 +94,21 @@ then
   if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ];
   then
     echo "$password" | sudo -S systemctl disable autohotspot
-    (( $? != 0 )) && zenity --error --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+    (( $? != 0 )) && zenity --error --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
     echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
-    (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-    zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disabled</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi"
-
+    (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+    zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disabled</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" && exit 0
+    exit
   else
 # Enable AstroPi auto hotspot
 #######################################  
     echo "$password" | sudo -S echo "nohook wpa_supplicant" >> /etc/dhcpcd.conf
-    (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+    (( $? != 0 )) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
     echo "$password" | sudo -S systemctl enable autohotspot.service
-    (( $? != 0 )) && zenity --error --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-    zenity --info --width=300 --height=200 --text " The auto hotspot service is now <b>active</b>. In the absence of wifi, hotspots will be generated directly from AstroPi"
+    (( $? != 0 )) && zenity --error --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+    zenity --info --width=300 --height=200 --text " The auto hotspot service is now <b>active</b>. In the absence of wifi, hotspots will be generated directly from AstroPi" && exit 0
 fi
+exit
 
 elif [ "$ans" == "Install/Upgrade INDI and Driver" ];
 then
@@ -213,6 +215,7 @@ zenity --error --text="Something went wrong. Contact support at\n<b>https://gith
 else
 zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
 fi
+exit
 
 elif [ "$ans" == "Install/Upgrade Kstars AstroPi" ];
 then
@@ -260,6 +263,6 @@ if [ $exit_status -eq 1 ]; then
 zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 else
 zenity --info --text="Kstars AstroPi allredy installed" --width=300 --title="AstroPi System" && exit 0
-fi
 exit
+fi
 fi
