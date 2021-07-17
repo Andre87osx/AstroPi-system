@@ -226,14 +226,14 @@ echo "# Controllo Kstars AstroPi" ; sleep 2
 if [ ! -d $HOME/.Projects ]; then mkdir -p $HOME/.Projects/kstars-cmake; fi
 cd $HOME/.Projects/kstars-cmake
 cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo $HOME/.AstroPi-system/kstars-astropi
-(( $? != 0 )) && zenity --error --text="Errore CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+(( $? != 0 )) && zenity --error --text="Error CMake  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 # =================================================================
 echo "25"
 echo "# installo / Aggiorno Kstars AstroPi" ; sleep 2
-make -j $(expr $(nproc) + 2)
+make -j2
 (( $? != 0 )) && zenity --error --text="Error Make Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-sleep 60
-make -j $(expr $(nproc) + 2)
+sleep 90
+make -j2
 (( $? != 0 )) && zenity --error --text="Error Make2 Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 # =================================================================
 echo "50"
