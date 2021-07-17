@@ -22,8 +22,7 @@ jobs:
     - uses: actions/checkout@v2
 
     - name: pre_config
-      run: sudo add-apt-repository ppa:mutlaqja/ppa & sudo apt update & sudo apt -y --no-install-recommends install libindi1 libindi-dev libindi-data indi-bin xplanet gsc phd2 libstellarsolver libstellarsolver-dev
-      
+# vuoto      
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
