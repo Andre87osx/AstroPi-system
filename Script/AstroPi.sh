@@ -234,7 +234,7 @@ elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
         echo "5"
         echo "# Check Kstars AstroPi"
         sleep 2s
-        if [ ! -d "$HOME"/.Projects ]; then mkdir -p "$HOME"/.Projects/kstars-cmake; fi
+        if [ ! -d "$HOME"/.Projects/kstars-cmake ]; then mkdir -p "$HOME"/.Projects/kstars-cmake; fi
         cd "$HOME"/.Projects/kstars-cmake || exit
         cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$HOME"/.AstroPi-system/kstars-astropi
         (($? != 0)) && zenity --error --text="Error <b>CMake</b>  Kstars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
