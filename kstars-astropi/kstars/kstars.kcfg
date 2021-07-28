@@ -1475,11 +1475,11 @@
     </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLeftIcons" type="Bool">
        <label>Ekos modules icons are placed to the left of pages</label>
-       <default>false</default>
+       <default>true</default>
     </entry>
     <entry name="RememberCredentials" type="Bool">
        <label>Remember Ekos Live credentials.</label>
@@ -1498,7 +1498,7 @@
     </entry>
       <entry name="independentWindowEkos" type="Bool">
          <label>Make Ekos window independent of KStars main window</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="profile" type="String">
          <label>Ekos drivers profile</label>
