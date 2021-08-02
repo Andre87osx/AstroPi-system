@@ -106,11 +106,11 @@ elif [ "$ans" == "Disable/Enable AstroPi hotspot" ]; then
         # Disable AstroPi auto hotspot
         #######################################
     if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
-        echo "$password" | sudo -S systemctl disable autohotspot
+        echo "$password" | sudo -S systemctl disable autohotspot.service
         (($? != 0)) && zenity --error --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
         (($? != 0)) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disabled</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" && exit 0
+        zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disable</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" && exit 0
 
     else
         # Enable AstroPi auto hotspot
