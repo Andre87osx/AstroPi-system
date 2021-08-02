@@ -85,17 +85,17 @@ elif [ "$ans" == "Setup my WiFi" ]; then
     WIFI=$(zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
         --add-entry="Enter the SSID of the wifi network to be added." \
         --add-password="Enter the password of selected wifi network")
-    SSID=$(echo "$WIFI" | cut -d'|' -f1)
-    PSK=$(echo "$WIFI" | cut -d'|' -f2)
     case $? in
     0)
-    	echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
+    	SSID=$(echo "$WIFI" | cut -d'|' -f1)
+	PSK=$(echo "$WIFI" | cut -d'|' -f2)
+	echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
         echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
         (($? != 0)) && zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         zenity --info --width=400 --height=200 --text "New WiFi has been created, reboot AstroPi." && exit 0
 	;;
     1)
-        zenity --info --width=400 --height=200 --text "No changes have been made to your current configuration" && exit 0
+	zenity --info --width=400 --height=200 --text "No changes have been made to your current configuration" && exit 0
 	;;
     -1)
         zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
