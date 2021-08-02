@@ -15,8 +15,8 @@ ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-l
     TRUE "Check for update" \
     FALSE "Setup my WiFi" \
     FALSE "Disable/Enable AstroPi hotspot" \
-    FALSE "Install/Upgrade INDI and Driver" \
-    FALSE "Install/Upgrade Kstars AstroPi")
+    FALSE "Install INDI and Driver $INDI_V" \
+    FALSE "Install Kstars AstroPi $KSTARS_V")
 
 if [ "$ans" == "Check for update" ]; then
     (
