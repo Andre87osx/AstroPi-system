@@ -37,9 +37,8 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: make -j4 && sleep 60s && make -j4
 
-    - name: Test
+    - name: Install Kstars AstroPi
       working-directory: ${{github.workspace}}/build
-      # Execute tests defined by the CMake configuration.  
-      # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --rerun-failed --output-on-failure
+      # Install all project Kstars AstroPi 
+      run: sudo make install
       
