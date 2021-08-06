@@ -1,0 +1,11 @@
+[Unit]
+Description=Automatically AstroPi Hotspot
+After=multi-user.target
+[Service]
+Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/$USER/.Xauthority"
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/autohotspot
+[Install]
+WantedBy=multi-user.target

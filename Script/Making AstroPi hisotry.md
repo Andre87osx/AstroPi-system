@@ -279,7 +279,6 @@ dhcp-range=10.0.0.50,10.0.0.150,12h
 ```
 
 - Edit interfaces
-- 
 ```
 sudo nano /etc/network/interfaces
 ```
@@ -310,12 +309,13 @@ Past this
 ```
 ##################################
 [Unit]
-Description=Automatically generates an internet Hotspot when a valid ssid is not in range
+Description=Generates an internet Hotspot
 After=multi-user.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/bin/autohotspot
+Environment=DISPLAY=:0
 [Install]
 WantedBy=multi-user.target
 
@@ -349,10 +349,10 @@ wifidev="wlan0" #device name to use. Default is wlan0.
 IFSdef=$IFS
 cnt=0
 #These four lines capture the wifi networks the RPi is setup to use
-wpassid=$(awk '/ssid="/{ print $0 }' /etc/wpa_supplicant/wpa_supplicant.conf | awk -F'ssid=' '{ print $2 }' | sed 's/\r//g'| awk 'BEGIN{ORS=","} {print}' | sed 's/\"/''/g' | sed 's/,$//')
-IFS=","
-ssids=($wpassid)
-IFS=$IFSdef #reset back to defaults
+#wpassid=$(awk '/ssid="/{ print $0 }' /etc/wpa_supplicant/wpa_supplicant.conf | awk -F'ssid=' '{ print $2 }' | sed 's/\r//g'| awk 'BEGIN{ORS=","} {print}' | sed 's/\"/''/g' | sed 's/,$//')
+#IFS=","
+#ssids=($wpassid)
+#IFS=$IFSdef #reset back to defaults
 
 
 #Note:If you only want to check for certain SSIDs
@@ -362,7 +362,7 @@ IFS=$IFSdef #reset back to defaults
 
 #Enter the Routers Mac Addresses for hidden SSIDs, seperated by spaces ie 
 #( '11:22:33:44:55:66' 'aa:bb:cc:dd:ee:ff' ) 
-mac=()
+mac=('11:22:33:44:55:66')
 
 ssidsmac=("${ssids[@]}" "${mac[@]}") #combines ssid and MAC for checking
 
