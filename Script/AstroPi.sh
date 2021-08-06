@@ -54,7 +54,7 @@ if [ "$ans" == "Check for update" ]; then
 
         # =================================================================
         echo "75"
-        echo "# Processing..."
+        echo "# Updating all AstroPi script"
 	echo "$password" | sudo -S cp $HOME/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
         (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 	echo "$password" | sudo -S cp $HOME/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
