@@ -20,6 +20,33 @@ wifidev="wlan0" #device name to use. Default is wlan0.
 
 IFSdef=$IFS
 cnt=0
+date=$(date +"date : %Y/%m/%d and time : %H:%M:%S")
+
+setupSysTime()
+{
+sysTime=$(env DISPLAY=:0.0 zenity --forms --width=400 --height=200 --title="AstroPi system" --text="<b>Set-up manually date and time</b>" \
+		        --add-entry="Date yyyy-mm-dd" \
+		        --add-entry="Time hh:mm:ss"
+	       )
+
+case $? in
+  0)
+    day=$(echo "$sysTime" | cut -d'|' -f1)
+		hour=$(echo "$sysTime" | cut -d'|' -f2)
+		echo $password | sudo -s date -s "'$day" "$hour'"
+		case $? in
+      0) zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent $date" && exit
+			;;
+			1) zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong by updating the date and time\nCurrent $date" && exit
+			;;
+			esac
+  ;;
+	1) zenity --info --width=400 --height=200  --title="AstroPi system" --text="No changes to your watch!"
+	;;
+	-1) zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong"
+	;;
+	esac
+}
 
 createAdHocNetwork()
 {
@@ -68,20 +95,20 @@ chksys()
 chksys
 
 #Create AstroPi Hotspot
-    if systemctl status hostapd | grep "(running)" >/dev/null 2>&1
-      then
-          echo "Hostspot already active"
-          env DISPLAY=:0.0 zenity --info --text="Check date and time before start kstars AstroPi"
-     elif { wpa_cli status | grep "$wifidev"; } >/dev/null 2>&1
-      then
+if systemctl status hostapd | grep "(running)" >/dev/null 2>&1
+       then
+           echo "Hostspot already active"
+	         setupSysTime
+   elif { wpa_cli status | grep "$wifidev"; } >/dev/null 2>&1
+       then
           echo "Cleaning wifi files and Activating Hotspot"
           wpa_cli terminate >/dev/null 2>&1
           ip addr flush "$wifidev"
           ip link set dev "$wifidev" down
           rm -r /var/run/wpa_supplicant >/dev/null 2>&1
           createAdHocNetwork
-          env DISPLAY=:0.0 zenity --info --text="Check date and time before start kstars AstroPi"
-      else #"No SSID, activating Hotspot"
+	        setupSysTime
+   else #"No SSID, activating Hotspot"
           createAdHocNetwork
-          env DISPLAY=:0.0 zenity --info --text="Check date and time before start kstars AstroPi"
-      fi
+	        setupSysTime
+fi
