@@ -1,6 +1,6 @@
 [Unit]
 Description=Automatically AstroPi Hotspot
-After=graphical.target
+After=multi-user.target
 
 [Service]
 Type=oneshot
