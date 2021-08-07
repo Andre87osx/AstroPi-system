@@ -71,7 +71,7 @@ chksys
     if systemctl status hostapd | grep "(running)" >/dev/null 2>&1
       then
           echo "Hostspot already active"
-          zenity --info --text="Check date and time before start kstars AstroPi"
+          env DISPLAY=:0.0 zenity --info --text="Check date and time before start kstars AstroPi"
      elif { wpa_cli status | grep "$wifidev"; } >/dev/null 2>&1
       then
           echo "Cleaning wifi files and Activating Hotspot"
@@ -80,8 +80,8 @@ chksys
           ip link set dev "$wifidev" down
           rm -r /var/run/wpa_supplicant >/dev/null 2>&1
           createAdHocNetwork
-          zenity --info --text="Check date and time before start kstars AstroPi"
+          env DISPLAY=:0.0 zenity --info --text="Check date and time before start kstars AstroPi"
       else #"No SSID, activating Hotspot"
           createAdHocNetwork
-          zenity --info --text="Check date and time before start kstars AstroPi"
+          env DISPLAY=:0.0 zenity --info --text="Check date and time before start kstars AstroPi"
       fi
