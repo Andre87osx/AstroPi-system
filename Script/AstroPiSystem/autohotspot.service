@@ -5,7 +5,7 @@ Description=Automatically AstroPi Hotspot
 Type=oneshot
 RemainAfterExit=yes
 Environment="DISPLAY=:0"
-Environment="XAUTHORITY=/home/$USER/.Xauthority"
+Environment="XAUTHORITY=/home/astropi/.Xauthority"
 ExecStart=/usr/bin/autohotspot
 
 [Install]
