@@ -24,7 +24,7 @@ date=$(date +"date : %Y/%m/%d and time : %H:%M:%S")
 
 setupSysTime()
 {
-	sysTime=$( zenity --forms --width=400 --height=200 --title="AstroPi system" --text="<b>Set-up manually date and time</b>" \
+	sysTime=$(env DISPLAY=:0.0 zenity --forms --width=400 --height=200 --title="AstroPi system" --text="<b>Set-up manually date and time</b>" \
 		--add-entry="Date yyyy-mm-dd" \
 		--add-entry="Time hh:mm:ss"
 		)
