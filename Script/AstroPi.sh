@@ -31,9 +31,9 @@ if [ "$ans" == "Check for update" ]; then
 	    echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
         fi
         (($? != 0)) && zenity --error --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        echo "$password" | sudo -S sh -c 'echo 256 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+        echo "$password" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
         (($? != 0)) && zenity --error --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        echo "$password" | sudo -S apt-mark hold kstars-bleeding
+        echo "$password" | sudo -S apt-mark hold kstars-bleeding indi-full libindi-dev
         (($? != 0)) && zenity --error --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         if [ -d "$HOME"/.Projects ]; then echo "$password" | sudo -S rm -rf "$HOME"/.Projects; fi
         (($? != 0)) && zenity --error --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
