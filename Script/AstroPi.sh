@@ -8,7 +8,7 @@
 ####### AstroPi update system ########
 # DECLARE VERSION'S
 INDI_V=1.9.1
-KSTARS_V=3.5.4v1.0
+KSTARS_V=3.5.4v1.1
 ######################################
 
 ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
