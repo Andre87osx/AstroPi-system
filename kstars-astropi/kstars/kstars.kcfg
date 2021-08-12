@@ -334,25 +334,25 @@
       <entry name="Longitude" type="Double">
          <label>Geographic Longitude, in degrees.</label>
          <whatsthis>The longitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>0.0</default>
+         <default>07.686</default>
       </entry>
       <entry name="Latitude" type="Double">
          <label>Geographic Latitude, in degrees.</label>
          <whatsthis>The latitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>51.468</default>
+         <default>45.070</default>
       </entry>
       <entry name="Elevation" type="Double">
          <label>Elevation above sea level of geographic location, in meters.</label>
-         <default>-10.0</default>
+         <default>434.15</default>
       </entry>
       <entry name="TimeZone" type="Double">
          <label>Time Zone offset of geographic location, in hours.</label>
-         <default>0.0</default>
+         <default>1.0</default>
       </entry>
       <entry name="DST" type="String">
          <label>Two-letter code for daylight savings time rule used by geographic location.</label>
          <whatsthis>Two-letter code that determines the dates on which daylight savings time begins and ends (you can view the rules by pressing the "Explain DST Rules" button in the Geographic Location window).</whatsthis>
-         <default>--</default>
+         <default>EU</default>
       </entry>
    </group>
 
