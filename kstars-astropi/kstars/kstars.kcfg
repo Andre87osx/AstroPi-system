@@ -813,7 +813,7 @@
       <entry name="StarDensity" type="Int">
          <label>Density of stars in the field of view</label>
          <whatsthis>Sets the density of stars in the field of view</whatsthis>
-         <default>5</default>
+         <default>6</default>
       </entry>
 
       <!--                <entry name="MagLimitDrawStarZoomOut" type="Double">
@@ -1734,7 +1734,7 @@
       </entry>
       <entry name="AdaptiveSampling" type="Bool">
          <label>Automatically down sample images based on available resources.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="useSummaryPreview" type="Bool">
          <label>Display every image captured sequence image in the Ekos summary screen preview window.</label>
