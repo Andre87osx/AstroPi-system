@@ -334,25 +334,25 @@
       <entry name="Longitude" type="Double">
          <label>Geographic Longitude, in degrees.</label>
          <whatsthis>The longitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>0.0</default>
+         <default>07.686</default>
       </entry>
       <entry name="Latitude" type="Double">
          <label>Geographic Latitude, in degrees.</label>
          <whatsthis>The latitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>51.468</default>
+         <default>45.070</default>
       </entry>
       <entry name="Elevation" type="Double">
          <label>Elevation above sea level of geographic location, in meters.</label>
-         <default>-10.0</default>
+         <default>434.15</default>
       </entry>
       <entry name="TimeZone" type="Double">
          <label>Time Zone offset of geographic location, in hours.</label>
-         <default>0.0</default>
+         <default>1.0</default>
       </entry>
       <entry name="DST" type="String">
          <label>Two-letter code for daylight savings time rule used by geographic location.</label>
          <whatsthis>Two-letter code that determines the dates on which daylight savings time begins and ends (you can view the rules by pressing the "Explain DST Rules" button in the Geographic Location window).</whatsthis>
-         <default>--</default>
+         <default>EU</default>
       </entry>
    </group>
 
@@ -524,7 +524,7 @@
       <entry name="ShowCLines" type="Bool">
          <label>Draw constellation lines in the sky map?</label>
          <whatsthis>Toggle whether constellation lines are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowConstellationArt" type="Bool">
          <label>Draw constellation art in the sky map?</label>
@@ -554,12 +554,12 @@
       <entry name="AutoSelectGrid" type="Bool">
          <label>Draw grids according to active coordinate system?</label>
          <whatsthis>Coordinate grids will automatically change according to active coordinate system.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowEquatorialGrid" type="Bool">
          <label>Draw equatorial coordinate grid in the sky map?</label>
          <whatsthis>Toggle whether the equatorial coordinate grid is drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowHorizontalGrid" type="Bool">
          <label>Draw horizontal coordinate grid in the sky map?</label>
@@ -813,7 +813,7 @@
       <entry name="StarDensity" type="Int">
          <label>Density of stars in the field of view</label>
          <whatsthis>Sets the density of stars in the field of view</whatsthis>
-         <default>5</default>
+         <default>6</default>
       </entry>
 
       <!--                <entry name="MagLimitDrawStarZoomOut" type="Double">
@@ -1335,12 +1335,12 @@
       <entry name="RegularLogging" type="Bool">
          <label>Enable Regular Logging</label>
          <whatsthis>Checking this option causes KStars to generate regular debug information.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="DisableLogging" type="Bool">
          <label>Disable Verbose Logging</label>
          <whatsthis>Checking this option causes KStars to stop generating ANY debug information.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="LogToDefault" type="Bool">
          <label>Log debug message to default output</label>
@@ -1726,15 +1726,15 @@
       </entry>
       <entry name="AutoStretch" type="Bool">
          <label>Perform auto stretch on captured images in FITS Viewer.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="StretchPreviewSampling" type="UInt">
          <label>Set the coarseness of the preview shown when sliding the fitsviewer's stretch parameter sliders. 1 is full resolution, but can be slow, 4 would be coarse resolution and fast.</label>
-         <default>4</default>
+         <default>3</default>
       </entry>
       <entry name="AdaptiveSampling" type="Bool">
          <label>Automatically down sample images based on available resources.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="useSummaryPreview" type="Bool">
          <label>Display every image captured sequence image in the Ekos summary screen preview window.</label>
@@ -1838,12 +1838,12 @@
       <entry name="FocusXBin" type="UInt">
          <label>Default CCD X binning in focus mode</label>
          <whatsthis>Set horizontal binning of CCD camera while in focus mode.</whatsthis>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusYBin" type="UInt">
          <label>Default CCD Y binning in focus mode</label>
          <whatsthis>Set vertical binning of CCD camera while in focus mode.</whatsthis>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusSubFrame" type="Bool">
          <label>Subframe the focus star during the autofocus procedure.</label>
@@ -2486,7 +2486,7 @@
       </entry>
       <entry name="ResetMountModelOnAlignFail" type="Bool">
          <label>Reset mount model in case of alignment failure.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ResetMountModelBeforeJob" type="Bool">
          <label>Reset mount model before starting each job.</label>
@@ -2603,7 +2603,7 @@
     </entry>
     <entry name="AnalyzeTemperature" type="Bool">
       <whatsthis>Display the ambient temperature on the Analyze Statistics Plot.</whatsthis>
-      <default>false</default>
+      <default>true</default>
     </entry>
     <entry name="AnalyzeNumStars" type="Bool">
       <whatsthis>Display NumStars on the Analyze Statistics Plot.</whatsthis>

@@ -597,3 +597,48 @@ pcmanfm --set-wallpaper="/home/astropi/.AstroPi-system/Loghi&background/AstroPi_
 
 X MOD LX PANNEL 
 /home/astropi/.config/lxpanel/LXDE-pi/panels
+
+##############################################################
+Switching the kernel to 64-bit
+Prerequisites
+This assumes you are on the latest Raspbian Buster with all the updates installed.
+
+You can check whether you’re on Buster or not with:
+
+lsb_release -a
+Which will output something like:
+
+Distributor ID: Raspbian
+Description:    Raspbian GNU/Linux 10 (buster)
+Release:        10
+Codename:       buster
+And you want to install all updates with:
+
+sudo apt update
+sudo apt upgrade
+Now to verify the 64-bit kernel exists:
+
+ls /boot/kernel8.img
+If it exists, it will simply print out the path to it. Otherwise, it will tell you: No such file or directory.
+
+Switching
+Now that we made sure we’re up to date and the 64-bit kernel exists, let’s switch to it!
+
+Edit /boot/config.txt with your favorite editor, for example nano:
+
+sudo nano /boot/config.txt
+Go to the very end of the file and add this line:
+
+arm_64bit=1
+Hit CTRL + X, confirm to save with Y, and hit enter twice.
+
+Now reboot to boot with the new, 64-bit kernel!
+
+sudo systemctl reboot
+Verifying
+Verify you are running the 64-bit kernel with:
+
+uname -a
+Which will output something like:
+
+Linux raspberrypi 4.19.97-v8+ #1294 SMP PREEMPT Thu Jan 30 13:27:08 GMT 2020 aarch64 GNU/Linux
