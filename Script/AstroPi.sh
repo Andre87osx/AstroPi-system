@@ -284,6 +284,10 @@ elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
         echo "5"
         echo "# Check Kstars AstroPi"
         sleep 2s
+	if [ ! -d "$HOME"/.indi/logs ]; then mkdir -p "$HOME"/.indi/logs; fi
+	(($? != 0)) && zenity --error --text="Error <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+	if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
+	(($? != 0)) && zenity --error --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         if [ ! -d "$HOME"/.Projects/kstars-cmake ]; then mkdir -p "$HOME"/.Projects/kstars-cmake; fi
         cd "$HOME"/.Projects/kstars-cmake || exit
         cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$HOME"/.AstroPi-system/kstars-astropi
