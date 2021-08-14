@@ -15,35 +15,43 @@ wifidev="wlan0" #device name to use. Default is wlan0.
 #FUNCIONS#############################
 chksysHotSpot()
 {
-    #After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
-    #the issue and also checks dnsmasq is ok so the hotspot can be generated.
-    #Check Hostapd is unmasked and disabled raspberryconnecy.com
-    if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
-	systemctl unmask hostapd.service >/dev/null 2>&1
-    fi
-    if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
-	systemctl disable hostapd.service >/dev/null 2>&1
-	systemctl stop hostapd >/dev/null 2>&1
-    fi
-    #Check dnsmasq is disabled
-    if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
-	systemctl unmask dnsmasq >/dev/null 2>&1
-    fi
-    if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
-	systemctl disable dnsmasq >/dev/null 2>&1
-	systemctl stop dnsmasq >/dev/null 2>&1
-    fi
+	#After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
+	#the issue and also checks dnsmasq is ok so the hotspot can be generated.
+	#Check Hostapd is unmasked and disabled raspberryconnecy.com
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ; then
+		systemctl unmask hostapd.service >/dev/null 2>&1
+	fi
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ; then
+		systemctl disable hostapd.service >/dev/null 2>&1
+		systemctl stop hostapd >/dev/null 2>&1
+	fi
+	#Check dnsmasq is disabled
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ; then
+		systemctl unmask dnsmasq >/dev/null 2>&1
+	fi
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ; then
+		systemctl disable dnsmasq >/dev/null 2>&1
+		systemctl stop dnsmasq >/dev/null 2>&1
+	fi
 }
 KillHotspot()
 {
-    echo "Shutting Down Hotspot"
-    ip link set dev "$wifidev" down
-    systemctl stop hostapd
-    systemctl stop dnsmasq
-    ip addr flush dev "$wifidev"
-    ip link set dev "$wifidev" up
-    dhcpcd  -n "$wifidev" >/dev/null 2>&1
+	echo "Shutting Down Hotspot"
+	ip link set dev "$wifidev" down
+	systemctl stop hostapd
+	systemctl stop dnsmasq
+	ip addr flush dev "$wifidev"
+	ip link set dev "$wifidev" up
+	dhcpcd  -n "$wifidev" >/dev/null 2>&1
 }
+chkARM_64()
+{
+	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
+		#Nothing
+	else
+		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt	
+}
+
 ######################################
 ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
     TRUE "Check for update" \
@@ -89,6 +97,7 @@ if [ "$ans" == "Check for update" ]; then
         # =================================================================
         echo "75"
         echo "# Updating all AstroPi script"
+	sleep 2s
 	echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
         (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 	echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
@@ -97,11 +106,10 @@ if [ "$ans" == "Check for update" ]; then
         (($? != 0)) && zenity --error --text="Something went wrong in <b>Check system HotSpot</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
         # =================================================================
-        echo "# All finished."
+	echo "100"
+	echo "# Check ARM_64 bit"
         sleep 2s
-        echo "100"
-        # Attualmente vuoto!
-
+	chkARM_64
     ) |
         zenity --progress \
             --title="AstroPi System" \
