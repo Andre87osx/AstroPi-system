@@ -18,18 +18,18 @@ chksysHotSpot()
 	#After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
 	#the issue and also checks dnsmasq is ok so the hotspot can be generated.
 	#Check Hostapd is unmasked and disabled raspberryconnecy.com
-	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ; then
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
 		systemctl unmask hostapd.service >/dev/null 2>&1
 	fi
-	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ; then
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
 		systemctl disable hostapd.service >/dev/null 2>&1
 		systemctl stop hostapd >/dev/null 2>&1
 	fi
 	#Check dnsmasq is disabled
-	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ; then
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
 		systemctl unmask dnsmasq >/dev/null 2>&1
 	fi
-	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ; then
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
 		systemctl disable dnsmasq >/dev/null 2>&1
 		systemctl stop dnsmasq >/dev/null 2>&1
 	fi
