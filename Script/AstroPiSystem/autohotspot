@@ -27,25 +27,26 @@ setupSysTime()
 sysTime=$(env DISPLAY=:0.0 zenity --forms --width=400 --height=200 --title="AstroPi system" --text="<b>Set-up manually date and time</b>" \
 		        --add-entry="Date yyyy-mm-dd" \
 		        --add-entry="Time hh:mm:ss"
-	       )
+			)
 
 case $? in
-  0)
-    day=$(echo "$sysTime" | cut -d'|' -f1)
-		hour=$(echo "$sysTime" | cut -d'|' -f2)
-		echo $password | sudo -s date -s "'$day" "$hour'"
-		case $? in
-      0) zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent $date" && exit
-			;;
-			1) zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong by updating the date and time\nCurrent $date" && exit
-			;;
-			esac
-  ;;
+	0)
+        day=$(echo "$sysTime" | cut -d'|' -f1)
+	hour=$(echo "$sysTime" | cut -d'|' -f2)
+	echo $password | sudo -s date -s "'$day" "$hour'"
+	case $? in
+		0) 
+		zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent $date" && exit
+		;;
+		1) zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong by updating the date and time\nCurrent $date" && exit
+		;;
+	esac
+	;;
 	1) zenity --info --width=400 --height=200  --title="AstroPi system" --text="No changes to your watch!"
 	;;
 	-1) zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong"
 	;;
-	esac
+esac
 }
 
 createAdHocNetwork()
@@ -59,56 +60,19 @@ createAdHocNetwork()
     systemctl start hostapd
 }
 
-KillHotspot()
-{
-    echo "Shutting Down Hotspot"
-    ip link set dev "$wifidev" down
-    systemctl stop hostapd
-    systemctl stop dnsmasq
-    ip addr flush dev "$wifidev"
-    ip link set dev "$wifidev" up
-    dhcpcd  -n "$wifidev" >/dev/null 2>&1
-}
-
-chksys()
-{
-    #After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
-    #the issue and also checks dnsmasq is ok so the hotspot can be generated.
-    #Check Hostapd is unmasked and disabled
-    if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
-	systemctl unmask hostapd.service >/dev/null 2>&1
-    fi
-    if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
-	systemctl disable hostapd.service >/dev/null 2>&1
-	systemctl stop hostapd >/dev/null 2>&1
-    fi
-    #Check dnsmasq is disabled
-    if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
-	systemctl unmask dnsmasq >/dev/null 2>&1
-    fi
-    if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
-	systemctl disable dnsmasq >/dev/null 2>&1
-	systemctl stop dnsmasq >/dev/null 2>&1
-    fi
-}
-
-chksys
-
 #Create AstroPi Hotspot
-if systemctl status hostapd | grep "(running)" >/dev/null 2>&1
-       then
-           echo "Hostspot already active"
-	         setupSysTime
-   elif { wpa_cli status | grep "$wifidev"; } >/dev/null 2>&1
-       then
-          echo "Cleaning wifi files and Activating Hotspot"
-          wpa_cli terminate >/dev/null 2>&1
-          ip addr flush "$wifidev"
-          ip link set dev "$wifidev" down
-          rm -r /var/run/wpa_supplicant >/dev/null 2>&1
-          createAdHocNetwork
-	        setupSysTime
+if systemctl status hostapd | grep "(running)" >/dev/null 2>&1; then
+        echo "Hostspot already active"
+	    setupSysTime
+    elif { wpa_cli status | grep "$wifidev"; } >/dev/null 2>&1; then
+        echo "Cleaning wifi files and Activating Hotspot"
+        wpa_cli terminate >/dev/null 2>&1
+        ip addr flush "$wifidev"
+        ip link set dev "$wifidev" down
+        rm -r /var/run/wpa_supplicant >/dev/null 2>&1
+        createAdHocNetwork
+	setupSysTime
    else #"No SSID, activating Hotspot"
-          createAdHocNetwork
-	        setupSysTime
+        createAdHocNetwork
+	setupSysTime
 fi
