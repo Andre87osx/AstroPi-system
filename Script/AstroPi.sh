@@ -9,8 +9,42 @@
 # DECLARE VERSION'S
 INDI_V=1.9.1
 KSTARS_V=3.5.4v1.1
+wifidev="wlan0" #device name to use. Default is wlan0.
+#use the command: iw dev ,to see wifi interface name
 ######################################
-
+#FUNCIONS#############################
+chksysHotSpot()
+{
+    #After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
+    #the issue and also checks dnsmasq is ok so the hotspot can be generated.
+    #Check Hostapd is unmasked and disabled raspberryconnecy.com
+    if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
+	systemctl unmask hostapd.service >/dev/null 2>&1
+    fi
+    if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
+	systemctl disable hostapd.service >/dev/null 2>&1
+	systemctl stop hostapd >/dev/null 2>&1
+    fi
+    #Check dnsmasq is disabled
+    if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
+	systemctl unmask dnsmasq >/dev/null 2>&1
+    fi
+    if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
+	systemctl disable dnsmasq >/dev/null 2>&1
+	systemctl stop dnsmasq >/dev/null 2>&1
+    fi
+}
+KillHotspot()
+{
+    echo "Shutting Down Hotspot"
+    ip link set dev "$wifidev" down
+    systemctl stop hostapd
+    systemctl stop dnsmasq
+    ip addr flush dev "$wifidev"
+    ip link set dev "$wifidev" up
+    dhcpcd  -n "$wifidev" >/dev/null 2>&1
+}
+######################################
 ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
     TRUE "Check for update" \
     FALSE "Setup my WiFi" \
@@ -26,9 +60,9 @@ if [ "$ans" == "Check for update" ]; then
         sleep 2s
         FILE=/etc/apt/sources.list.d/astroberry.list
         if [ ! -f "$FILE" ]; then
-	    echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
+	        echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
             wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
-	    echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+	        echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
         fi
         (($? != 0)) && zenity --error --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         echo "$password" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
@@ -55,10 +89,12 @@ if [ "$ans" == "Check for update" ]; then
         # =================================================================
         echo "75"
         echo "# Updating all AstroPi script"
-	echo "$password" | sudo -S cp $HOME/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
+	    echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
         (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-	echo "$password" | sudo -S cp $HOME/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
+	    echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
         (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+        chksysHotSpot
+        (($? != 0)) && zenity --error --text="Something went wrong in <b>Check system HotSpot</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
         # =================================================================
         echo "# All finished."
@@ -89,20 +125,20 @@ elif [ "$ans" == "Setup my WiFi" ]; then
         --add-entry="Enter the SSID of the wifi network to be added." \
         --add-password="Enter the password of selected wifi network")
     case $? in
-    0)
+        0)
     	SSID=$(echo "$WIFI" | cut -d'|' -f1)
-	PSK=$(echo "$WIFI" | cut -d'|' -f2)
-	echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
+	    PSK=$(echo "$WIFI" | cut -d'|' -f2)
+	    echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
         echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
         (($? != 0)) && zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         zenity --info --width=400 --height=200 --text "New WiFi has been created, reboot AstroPi." && exit 0
-	;;
-    1)
-	zenity --info --width=400 --height=200 --text "No changes have been made to your current configuration" && exit 0
-	;;
-    -1)
+	    ;;
+        1)
+	    zenity --info --width=400 --height=200 --text "No changes have been made to your current configuration" && exit 0
+	    ;;
+        -1)
         zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-	;;
+	    ;;
     esac
 
 elif [ "$ans" == "Disable/Enable AstroPi hotspot" ]; then
@@ -114,7 +150,8 @@ elif [ "$ans" == "Disable/Enable AstroPi hotspot" ]; then
         echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
         (($? != 0)) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
         zenity --info --width=300 --height=200 --text "The auto hotspot service is now <b>disable</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" && exit 0
-
+        KillHotspot
+        
     else
         # Enable AstroPi auto hotspot
         #######################################
@@ -200,7 +237,7 @@ elif [ "$ans" == "Install INDI and Driver $INDI_V" ]; then
         echo "# Checking Stellarsolver"
         sleep 2s
         if [ ! -d "$HOME"/.Projects ]; then mkdir "$HOME"/.Projects; fi
-        cd $HOME/.Projects || exit
+        cd "$HOME"/.Projects || exit
         git clone https://github.com/rlancaste/stellarsolver.git
         if [ ! -d "$HOME"/.Projects/stellarsolver-cmake ]; then mkdir -p "$HOME"/.Projects/stellarsolver-cmake; fi
         cd "$HOME"/.Projects/stellarsolver-cmake || exit
