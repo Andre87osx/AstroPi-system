@@ -17,7 +17,7 @@ chksysHotSpot()
 {
 	#After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
 	#the issue and also checks dnsmasq is ok so the hotspot can be generated.
-	#Check Hostapd is unmasked and disabled raspberryconnecy.com
+	#Check Hostapd is unmasked and disabled raspberryconnet.com
 	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
 		systemctl unmask hostapd.service >/dev/null 2>&1
 	fi
