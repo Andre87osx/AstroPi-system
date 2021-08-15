@@ -340,4 +340,3 @@ elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
 	        zenity --info --text="Kstars AstroPi $KSTARS_V allredy installed" --width=300 --title="AstroPi System" && exit 0
 	fi
 fi 
-exit
