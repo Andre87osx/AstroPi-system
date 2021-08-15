@@ -112,7 +112,7 @@ if [ "$ans" == "Check for update" ]; then
 	echo "100"
 	echo "# Check ARM_64 bit"
         sleep 2s
-	chkARM_64
+	# chkARM_64 ## NOT WORK
     ) |
         zenity --progress \
             --title="AstroPi System" \
