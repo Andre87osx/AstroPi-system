@@ -51,7 +51,8 @@ chkARM_64()
 		true
 	else
 		echo "$password" | sudo -S chmod 775 /boot/config.txt
-		echo -e "arm_64bit=1" | sudo tee -a /boot/config.txt
+		echo "$password" | sudo -S sed -i '/arm_64bit=1/d' /boot/config.txt
+
 	fi
 }
 
@@ -112,7 +113,7 @@ if [ "$ans" == "Check for update" ]; then
 	echo "100"
 	echo "# Check ARM_64 bit"
         sleep 2s
-	# chkARM_64 ## NOT WORK
+	chkARM_64
     ) |
         zenity --progress \
             --title="AstroPi System" \
