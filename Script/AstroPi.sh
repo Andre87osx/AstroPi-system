@@ -49,7 +49,8 @@ chkARM_64()
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		#Nothing
 	else
-		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt	
+		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt
+	fi
 }
 
 ######################################
