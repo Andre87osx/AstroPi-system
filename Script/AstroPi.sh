@@ -50,7 +50,7 @@ chkARM_64()
 		#Nothing
 		true
 	else
-		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt
+		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt 2>&1
 	fi
 }
 
