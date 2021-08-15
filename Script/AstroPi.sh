@@ -50,8 +50,8 @@ chkARM_64()
 		#Nothing
 		true
 	else
-		echo "$password" | sudo -S chmod 775 /boot/config.txt
-		echo "$password" | sudo -S sed -i '/arm_64bit=1/d' /boot/config.txt
+		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>enable ARM_64 bit</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
 	fi
 }
@@ -113,7 +113,7 @@ if [ "$ans" == "Check for update" ]; then
 	echo "100"
 	echo "# Check ARM_64 bit"
         sleep 2s
-	chkARM_64
+	echo "$password" | sudo -S chkARM_64
     ) |
         zenity --progress \
             --title="AstroPi System" \
