@@ -1,6 +1,8 @@
+# Ekos
+
 > Ekos è uno strumento avanzato di controllo e automazione dell'osservatorio con particolare attenzione all'astrofiografia. Si basa su una struttura modulare estensibile per eseguire attività di astrofifotografia comuni. Ciò include GOTO altamente accurati che utilizzano il risolutore Stellar Solver, la capacità di misurare e correggere gli errori di allineamento polare, la messa a fuoco automatica e le funzionalità di guida automatica, l'acquisizione di immagini singole o stack di immagini con supporto della ruota filtro. Ekos è parte integrante di Kstars KStars come tutti i sui moduli (non servono altre applicazioni esterne).
 
-# Installazione di Ekos
+## Anteprima di Ekos
 Ekos Astrophotography Tool è organizzato in diversi moduli. Un modulo è un insieme di funzioni e attività per un particolare passaggio nell'astrofotografia e/o nell'acquisizione dei dati. Attualmente, i seguenti moduli sono inclusi in Ekos, ogni modulo ha la sua scheda e icona nell'interfaccia utente grafica come illustrato nello screenshot qui sotto:
 
 ### Modulo riepilogativo e installazione
@@ -21,15 +23,15 @@ Per ottenere un'astrofiografia a lunga esposizione, è necessaria una guida per 
 ### Modulo montaggio
 Il controllo del montaggio può essere effettuato tramite Sky Map in modo interattivo o tramite il Pannello di controllo del montaggio nel modulo di montaggio. Configura le proprietà del telescopio (lunghezza focale e apertura) sia per il telescopio di imaging primario che per l'ambito guida. Tuttavia, si consiglia di selezionare i telescopi nel profilo dell'apparecchiatura e di non modificare i valori direttamente nel modulo di montaggio.
 
-# Creazione guidata profilo
+## Creazione guidata profilo
 La Creazione guidata profilo è uno strumento pratico per configurare l'apparecchiatura per la prima volta. Dovrebbe essere popup automaticamente la prima volta che si esegue KStars. Seguire le istruzioni guidate per configurare il primo profilo dell'apparecchiatura.
 
-- Pagina di saluto
-Profile Wizard Welcome
-La prima schermata di saluto contiene alcuni collegamenti per saperne di più su Ekos e INDI. Fare clic su Avanti per continuare.
+ - Pagina di saluto
+ Profile Wizard Welcome
+ La prima schermata di saluto contiene alcuni collegamenti per saperne di più su Ekos e INDI. Fare clic su Avanti per continuare.
 
-- Pagina Posizione attrezzatura
-Successivamente, ti verrà presentata la pagina della posizione dell'attrezzatura. La selezione dipende da dove l'apparecchiatura è collegata a:
+ - Pagina Posizione attrezzatura
+ Successivamente, ti verrà presentata la pagina della posizione dell'attrezzatura. La selezione dipende da dove l'apparecchiatura è collegata a:
 
 - L'apparecchiatura è collegata al PC:selezionare questa opzione se Ekos è in esecuzione su StellarMate (tramite HDMI o VNC), PC(Windows®/Linux®) o Mac® OS.
 
