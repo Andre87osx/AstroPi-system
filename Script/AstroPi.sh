@@ -51,7 +51,7 @@ chkARM_64()
 		true
 	else
 		echo "$password" | sudo -S chmod 775 /boot/config.txt
-		echo -e "arm_64bit=1" | sudo tee /boot/config.txt
+		echo -e "arm_64bit=1" | sudo tee -a /boot/config.txt
 	fi
 }
 
