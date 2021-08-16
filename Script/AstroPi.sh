@@ -34,6 +34,7 @@ chksysHotSpot()
 		systemctl stop dnsmasq >/dev/null 2>&1
 	fi
 }
+
 KillHotspot()
 {
 	echo "Shutting Down Hotspot"
@@ -44,16 +45,117 @@ KillHotspot()
 	ip link set dev "$wifidev" up
 	dhcpcd  -n "$wifidev" >/dev/null 2>&1
 }
+
 chkARM_64()
 {
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		#Nothing
 		true
 	else
-		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt
+		# NOT WORK
+		#echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt # CHK
+		echo "$password" | sudo -S sh -c 'echo arm_64bit=1 >> /boot/config.txt'
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>enable ARM_64 bit</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
 
 	fi
+}
+
+sysUpgrade()
+{
+	(
+		# =================================================================
+		echo "5"
+		echo "# Preparing update"
+		sleep 2s
+		SOURCES=/etc/apt/sources.list.d/astroberry.list
+		if [ ! -f "$SOURCES" ]; then
+			echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d # CHK
+			wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
+			echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+		fi
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+		echo "$password" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+		echo "$password" | sudo -S apt-mark hold kstars-bleeding indi-full libindi-dev
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+		if [ -d "$HOME"/.Projects ]; then echo "$password" | sudo -S rm -rf "$HOME"/.Projects; fi
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+
+		# =================================================================
+		echo "25"
+		echo "# Run Software Updater..."
+		sleep 2s
+		echo "$password" | sudo -S apt-get update && sudo apt-get -y dist-upgrade && sudo apt -y full-upgrade
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating system AstroPi</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+
+		# =================================================================
+		echo "50"
+		echo "# Remove unnecessary libraries"
+		sleep 2s
+		echo "$password" | sudo -S apt -y autoremove
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+
+		# =================================================================
+		echo "75"
+		echo "# Updating all AstroPi script"
+		sleep 2s
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+		chksysHotSpot
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>Check system HotSpot</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+
+		# =================================================================
+		echo "100"
+		echo "# Check ARM_64 bit"
+		sleep 2s
+		chkARM_64
+		
+		) | zenity --progress \
+		--title="AstroPi System" \
+		--text="AstroPi System" \
+		--percentage=1 \
+		--auto-close \
+		--width=300 \
+		--auto-kill
+		
+		case $? in
+		0)
+			zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
+		;;
+		2)	
+			zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 2
+		;;
+		-1)
+			zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 2
+		;;
+		esac
+}
+
+setupWiFi()
+{
+	# Setup WiFi in wpa_supplicant
+	#######################################
+	WIFI=$(zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
+		--add-entry="Enter the SSID of the wifi network to be added." \
+		--add-password="Enter the password of selected wifi network")
+	case $? in
+	0)
+		SSID=$(echo "$WIFI" | cut -d'|' -f1)
+		PSK=$(echo "$WIFI" | cut -d'|' -f2)
+		echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
+        	echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
+        	(($? != 0)) && zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+        	zenity --info --width=400 --height=200 --text "New WiFi has been created, reboot AstroPi." && exit 0
+	;;
+        1)
+		zenity --info --width=400 --height=200 --text "No changes have been made to your current configuration" && exit 0
+	;;
+        -1)
+        	zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+	;;
+	esac
 }
 
 ######################################
@@ -65,92 +167,12 @@ ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-l
     FALSE "Install Kstars AstroPi $KSTARS_V")
 
 if [ "$ans" == "Check for update" ]; then
-    (
-        # =================================================================
-        echo "5"
-        echo "# Preparing update"
-        sleep 2s
-        FILE=/etc/apt/sources.list.d/astroberry.list
-        if [ ! -f "$FILE" ]; then
-		echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
-		wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
-		echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
-        fi
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        echo "$password" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        echo "$password" | sudo -S apt-mark hold kstars-bleeding indi-full libindi-dev
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        if [ -d "$HOME"/.Projects ]; then echo "$password" | sudo -S rm -rf "$HOME"/.Projects; fi
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
+	sysUpgrade
+	
 
-        # =================================================================
-        echo "25"
-        echo "# Run Software Updater..."
-        sleep 2s
-        echo "$password" | sudo -S apt-get update && sudo apt-get -y dist-upgrade && sudo apt -y full-upgrade
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating system AstroPi</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-
-        # =================================================================
-        echo "50"
-        echo "# Remove unnecessary libraries"
-        sleep 2s
-        echo "$password" | sudo -S apt -y autoremove
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-
-        # =================================================================
-        echo "75"
-        echo "# Updating all AstroPi script"
-	sleep 2s
-	echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-	echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        chksysHotSpot
-        (($? != 0)) && zenity --error --text="Something went wrong in <b>Check system HotSpot</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-
-        # =================================================================
-	echo "100"
-	echo "# Check ARM_64 bit"
-        sleep 2s
-	echo "$password" | sudo -S chkARM_64
-    ) |
-        zenity --progress \
-            --title="AstroPi System" \
-            --text="AstroPi System" \
-            --percentage=1 \
-            --auto-close \
-            --width=300 \
-            --auto-kill
-
-	if [ $? != 0 ]; then
-		zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-		else
-        	zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
-	fi
 
 elif [ "$ans" == "Setup my WiFi" ]; then
-    # Setup WiFi in wpa_supplicant
-    #######################################
-    WIFI=$(zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
-		--add-entry="Enter the SSID of the wifi network to be added." \
-		--add-password="Enter the password of selected wifi network")
-    case $? in
-        0)
-		SSID=$(echo "$WIFI" | cut -d'|' -f1)
-		PSK=$(echo "$WIFI" | cut -d'|' -f2)
-		echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
-        	echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
-        	(($? != 0)) && zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-        	zenity --info --width=400 --height=200 --text "New WiFi has been created, reboot AstroPi." && exit 0
-	;;
-        1)
-		zenity --info --width=400 --height=200 --text "No changes have been made to your current configuration" && exit 0
-	;;
-        -1)
-        	zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit
-	;;
-	esac
+	setupWiFi
 
 elif [ "$ans" == "Disable/Enable AstroPi hotspot" ]; then
         # Disable AstroPi auto hotspot
