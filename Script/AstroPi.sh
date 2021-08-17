@@ -391,13 +391,12 @@ ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-l
 			chkKstars
 		
 		fi
-		exit 0
 	;;
 	1)
 	#error text
 	echo "Error"
 	;;
-	-1
+	-1)
 	echo "Error"
 	;;
 	esac
