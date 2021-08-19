@@ -49,13 +49,9 @@ KillHotspot()
 chkARM_64()
 {
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
-		#Nothing
-		true
+		zenity --info --text="Your system is already 64 bit" --width=300 --title="AstroPi System"
 	else
-		# NOT WORK
-		#echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt # CHK
-		echo "$password" | sudo -S sh -c 'echo arm_64bit=1 >> /boot/config.txt'
-		(($? != 0)) && zenity --error --text="Something went wrong in <b>enable ARM_64 bit</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+		zenity --error --text="your system is NOT 64 bit. your system is NOT 64 bit. Some features may experience slowdowns or crashes\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 
 	fi
 }
@@ -124,11 +120,11 @@ sysUpgrade()
 		0)
 			zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
 		;;
-		2)	
+		1)	
 			zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 		;;
 		-1)
-			zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+			zenity --error --text="Something went wrong, some processes were not terminated. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 		;;
 		esac
 }
@@ -400,6 +396,4 @@ ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-l
 	echo "Error"
 	;;
 	esac
-exit 0
-	
 	
