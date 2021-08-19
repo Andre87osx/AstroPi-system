@@ -48,10 +48,10 @@ KillHotspot()
 
 chkARM_64()
 {
-	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
+	if find . | grep -q 'arm_64bit=1' '/boot/config.txt'; then
 		zenity --info --text="Your system is already 64 bit" --width=300 --title="AstroPi System"
 	else
-		zenity --error --text="your system is NOT 64 bit. your system is NOT 64 bit. Some features may experience slowdowns or crashes\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
+		zenity --error --text="your system is NOT 64 bit. your system is NOT 64 bit. Some features may experience slowdowns or crashes\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System"
 
 	fi
 }
