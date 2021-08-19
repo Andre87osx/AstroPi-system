@@ -18,9 +18,7 @@ export DISPLAY=":0"
 wifidev="wlan0" #device name to use. Default is wlan0.
 #use the command: iw dev ,to see wifi interface name 
 
-IFSdef=$IFS
 cnt=0
-date=$(date +"date : %Y/%m/%d and time : %H:%M:%S")
 
 setupSysTime()
 {
