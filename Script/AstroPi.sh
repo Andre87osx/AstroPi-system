@@ -26,13 +26,13 @@ KillHotspot()
 	dhcpcd  -n "$wifidev" >/dev/null 2>&1
 }
 
-chkARM_64()
+chkARM64()
 {
+	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
-		zenity --info --text="Your system is already 64 bit" --width=300 --title="AstroPi System"
+		zenity --info --text="Your system is already 64 bit \n$sysinfo" --width=300 --title="AstroPi System"
 	else
-		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt
-		zenity --error --text="your system is NOT 64 bit. your system is NOT 64 bit. Some features may experience slowdowns or crashes\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System"
+		zenity --error --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System"
 
 	fi
 }
@@ -85,6 +85,8 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		echo "100"
 		echo "# Check ARM_64 bit"
 		sleep 2s
+		zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
+
 		
 		) | zenity --progress \
 		--title="AstroPi System" \
@@ -94,17 +96,6 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		--width=300 \
 		--auto-kill
 		
-		case $? in
-		0)
-			zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System" && exit 0
-		;;
-		1)	
-			zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
-		;;
-		-1)
-			zenity --error --text="Something went wrong, some processes were not terminated. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
-		;;
-		esac
 }
 
 setupWiFi()
@@ -352,7 +343,7 @@ ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-l
 	0)
 		if [ "$ans" == "Check for update" ]; then
 			sysUpgrade
-			chkARM_64
+			chkARM64
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
 			setupWiFi
