@@ -13,27 +13,7 @@ wifidev="wlan0" #device name to use. Default is wlan0.
 #use the command: iw dev ,to see wifi interface name
 ######################################
 #FUNCIONS#############################
-chksysHotSpot()
-{
-	#After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
-	#the issue and also checks dnsmasq is ok so the hotspot can be generated.
-	#Check Hostapd is unmasked and disabled raspberryconnet.com
-	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
-		systemctl unmask hostapd.service >/dev/null 2>&1
-	fi
-	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
-		systemctl disable hostapd.service >/dev/null 2>&1
-		systemctl stop hostapd >/dev/null 2>&1
-	fi
-	#Check dnsmasq is disabled
-	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
-		systemctl unmask dnsmasq >/dev/null 2>&1
-	fi
-	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
-		systemctl disable dnsmasq >/dev/null 2>&1
-		systemctl stop dnsmasq >/dev/null 2>&1
-	fi
-}
+
 
 KillHotspot()
 {
@@ -48,9 +28,10 @@ KillHotspot()
 
 chkARM_64()
 {
-	if find . | grep -q 'arm_64bit=1' '/boot/config.txt'; then
+	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		zenity --info --text="Your system is already 64 bit" --width=300 --title="AstroPi System"
 	else
+		echo "$password" | sudo -S echo "arm_64bit=1" >>/boot/config.txt
 		zenity --error --text="your system is NOT 64 bit. your system is NOT 64 bit. Some features may experience slowdowns or crashes\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System"
 
 	fi
@@ -58,12 +39,12 @@ chkARM_64()
 
 sysUpgrade()
 {
+SOURCES=/etc/apt/sources.list.d/astroberry.list
 	(
 		# =================================================================
 		echo "5"
 		echo "# Preparing update"
 		sleep 2s
-		SOURCES=/etc/apt/sources.list.d/astroberry.list
 		if [ ! -f "$SOURCES" ]; then
 			echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d # CHK
 			wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
@@ -99,14 +80,11 @@ sysUpgrade()
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
-		chksysHotSpot
-		(($? != 0)) && zenity --error --text="Something went wrong in <b>Check system HotSpot</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
-
+		
 		# =================================================================
 		echo "100"
 		echo "# Check ARM_64 bit"
 		sleep 2s
-		chkARM_64
 		
 		) | zenity --progress \
 		--title="AstroPi System" \
@@ -136,8 +114,9 @@ setupWiFi()
 	WIFI=$(zenity --forms --width=400 --height=200 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
 		--add-entry="Enter the SSID of the wifi network to be added." \
 		--add-password="Enter the password of selected wifi network")
-	case $? in
-	0)
+	
+	case "$?" in
+	0)	
 		SSID=$(echo "$WIFI" | cut -d'|' -f1)
 		PSK=$(echo "$WIFI" | cut -d'|' -f2)
 		echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
@@ -264,11 +243,11 @@ chkINDI()
 	echo "$password" | sudo -S make install
 	(($? != 0)) && zenity --error --text="Error Make Instal Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 
-		# =================================================================
-		echo "90"
-		echo "# Removing the temporary files"
-		sleep 2s
-		# echo "$password" | sudo -S rm -rf "$HOME"/.Projects
+	# =================================================================
+	echo "90"
+	echo "# Removing the temporary files"
+	sleep 2s
+	echo "$password" | sudo -S rm -rf "$HOME"/.Projects
 
         # =================================================================
         echo "# All finished."
@@ -373,6 +352,7 @@ ans=$(zenity --list --title="AstroPi System" --width=350 --height=250 --cancel-l
 	0)
 		if [ "$ans" == "Check for update" ]; then
 			sysUpgrade
+			chkARM_64
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
 			setupWiFi
