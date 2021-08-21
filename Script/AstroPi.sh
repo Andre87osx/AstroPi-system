@@ -339,12 +339,13 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 			chkKstars
 		
 		fi
+		exit 0
 	;;
 	1)
-	exit
+	exit 0
 	;;
 	-1)
-	exit
+	exit 0
 	;;
 	esac
 	
