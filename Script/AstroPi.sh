@@ -79,7 +79,10 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/.Update.sh "$HOME"
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi .Update.sh script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi-system "$HOME"
+		if [ -f "$HOME""/AstroPi system updater" ]; then
+			echo "$password" | sudo -S rm -rf "$HOME""/AstroPi system updater"
+		fi
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop "$HOME"
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		
 		# =================================================================
