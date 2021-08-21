@@ -55,7 +55,7 @@ case $? in
 	date -s "$day"
 	date -s "$hour"
 	case $? in
-		0) zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent $date" && exit
+		0) zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent day and time: $day $hour" && exit
 		;;
 		1) zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong by updating the date and time\nCurrent day and time: $day $hour" && exit
 		;;
