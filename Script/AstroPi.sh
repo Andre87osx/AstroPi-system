@@ -145,7 +145,7 @@ chkHotspot()
 		echo "$password" | sudo -S systemctl enable autohotspot.service
 		(($? != 0)) && zenity --error --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		zenity --info --text "The auto hotspot service is now <b>active</b>. Connect to AstroPi wifi and use VNC AstroPi hotspot connection" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
-	fi && exit 0 || exit 1
+	fi
 }
 
 chkINDI()
@@ -338,7 +338,8 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 		elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
 			chkKstars
 		
-		fi && exit 0 || exit 1
+		fi
+		exit
 	;;
 	1)
 	exit 0
