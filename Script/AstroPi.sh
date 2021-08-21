@@ -131,7 +131,7 @@ chkHotspot()
 {
         # Disable AstroPi auto hotspot
         #######################################
-	if [ "$StatHotSpot" == Disable ]; then
+	if [ "$StatHotSpot" = Disable ]; then
 		echo "$password" | sudo -S systemctl disable autohotspot.service
 		(($? != 0)) && zenity --error --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
