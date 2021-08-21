@@ -27,9 +27,9 @@ chkARM64()
 {
 	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
-		zenity --info --text="Your system is already 64 bit \n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V"
+		zenity --info --text="Your system is already 64 bit \n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	else
-		zenity --error --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V"
+		zenity --error --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 	fi
 }
@@ -244,7 +244,7 @@ chkINDI()
 	echo "100"
 	echo "# All finished."
         sleep 2s
-	zenity --info --text="INDI and Driver has been updated to version $INDI_V" --width=300 --title="AstroPi System $ASTROPI_V"
+	zenity --info --text="INDI and Driver has been updated to version $INDI_V" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
     ) |
         zenity --progress \
@@ -298,7 +298,7 @@ chkKstars()
 	echo "100"
 	echo "# All finished."
 	sleep 2s
-	zenity --info --text="Kstars AstroPi $KSTARS_V allredy installed" --width=300 --title="AstroPi System $ASTROPI_V"
+	zenity --info --text="Kstars AstroPi $KSTARS_V allredy installed" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 
  ) |
