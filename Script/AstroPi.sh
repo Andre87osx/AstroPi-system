@@ -82,7 +82,7 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		echo "100"
 		echo "# Check ARM_64 bit"
 		sleep 2s
-		zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System $ASTROPI_V"
+		zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 		) | zenity --progress \
 		--title="AstroPi System $ASTROPI_V" \
@@ -111,7 +111,7 @@ setupWiFi()
         	echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
         	case $? in
 		0)
-		zenity --info --text "New WiFi has been created, reboot AstroPi." --width=300 --title="AstroPi System $ASTROPI_V"
+		zenity --info --text "New WiFi has been created, reboot AstroPi." --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 		;;
 		1)
 		zenity --error --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
@@ -145,7 +145,7 @@ chkHotspot()
 		echo "$password" | sudo -S systemctl enable autohotspot.service
 		(($? != 0)) && zenity --error --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		zenity --info --text "The auto hotspot service is now <b>active</b>. Connect to AstroPi wifi and use VNC AstroPi hotspot connection" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
-	fi
+	fi && exit 0 || exit 1
 }
 
 chkINDI()
