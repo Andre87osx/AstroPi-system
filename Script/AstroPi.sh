@@ -325,21 +325,25 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 		if [ "$ans" == "Check for update" ]; then
 			sysUpgrade
 			chkARM64
+			exit
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
 			setupWiFi
+			exit
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
 			chkHotspot
+			exit
 
 		elif [ "$ans" == "Install INDI and Driver $INDI_V" ]; then
 			chkINDI
+			exit
 
 		elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
 			chkKstars
+			exit
 		
 		fi
-		exit 0
 	;;
 	1)
 	exit 0
