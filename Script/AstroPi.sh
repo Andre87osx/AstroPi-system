@@ -82,7 +82,7 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		if [ -f "$HOME""/AstroPi system updater" ]; then
 			echo "$password" | sudo -S rm -rf "$HOME""/AstroPi system updater"
 		fi
-		cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop "$HOME"
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop /usr/share/applications
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		
 		# =================================================================
