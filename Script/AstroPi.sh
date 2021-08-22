@@ -29,7 +29,7 @@ chkARM64()
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		zenity --info --text="Your system is already 64 bit \n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	else
-		zenity --error --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
+		zenity --warning --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 	fi
 }
@@ -77,18 +77,17 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/.Update.sh "$HOME"
+		cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/.Update.sh "$HOME"
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi .Update.sh script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		if [ -f "$HOME""/AstroPi system updater" ]; then
 			echo "$password" | sudo -S rm -rf "$HOME""/AstroPi system updater"
 		fi
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop "$HOME"
+		cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop "$HOME"
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		
 		# =================================================================
 		echo "100"
-		echo "# Check ARM_64 bit"
-		sleep 2s
+		echo "# One meore second"
 		zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 		) | zenity --progress \
