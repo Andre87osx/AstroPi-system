@@ -1,15 +1,12 @@
 [Desktop Entry]
 Type=Application
 Name=AstroPi-system
-Name[en_GB]=AstroPi-system
-Name[it_IT]=AstroPi-system
 GenericName=AstroPi-system
-GenericName[en_GB]=AstroPi-system
 Comment=Update AstroPi and application
-Comment[en_GB]=Update AstroPi and application
 Icon=/home/astropi/.AstroPi-system/Loghi&background/solar-system.svg
-Exec=/home/astropi/.Update.sh
-NotShowIn=GNOME;XFCE;
-StartupNotify=true
-Categories=Utility;
+Exec=/usr/bin/.Update.sh
+Terminal=false
+NotShowIn=GNOME;XFCE
+StartupNotify=false
+Categories=Utility
 NoDisplay=false
