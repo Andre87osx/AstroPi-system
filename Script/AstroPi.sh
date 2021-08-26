@@ -88,6 +88,10 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/.Updater.sh /usr/bin/.Update.sh
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating .Update.sh</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
+		pcmanfm --set-wallpaper="$HOME/.AstroPi-system/Loghi&background/AstroPi_wallpaper.png"
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>change wallpaper</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/panels "$HOME"/.config/lxpanel/LXDE-pi/panels
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 
 		# =================================================================
 		echo "100"
