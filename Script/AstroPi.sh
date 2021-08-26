@@ -10,7 +10,7 @@
 # DECLARE VERSION'S
 INDI_V=1.9.1
 KSTARS_V=3.5.4v1.1
-ASTROPI_V=v.1.1
+ASTROPI_V=v.1.2
 #####################################
 wifidev="wlan0" #device name to use. Default is wlan0.
 #use the command: iw dev ,to see wifi interface name
