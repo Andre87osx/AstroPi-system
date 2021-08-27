@@ -58,8 +58,8 @@ zenity --info --title="AstroPi System" --text="I prepare the files to run the la
 	echo "75"
 	echo "# Make sure that the script are executable"
 	sleep 2s
-        chmod +x $HOME/.AstroPi-system/Script/*.sh
-        chmod +x $HOME/.AstroPi-system/Script/AstroPiSystem/*.sh
+        chmod +x "$WorkDir"/Script/*.sh
+        chmod +x "$WorkDir"/AstroPiSystem/*.sh
 			
 	# =================================================================
 	echo "100"
@@ -78,9 +78,9 @@ zenity --info --title="AstroPi System" --text="I prepare the files to run the la
 
 # I export the password to the script AstroPi.sh
 export password
-/$HOME/.AstroPi-system/Script/AstroPi.sh
+"$WorkDir"/Script/AstroPi.sh
 
 # launch AstroPi.sh
-echo "$password" | sudo -S /$HOME/.AstroPi-system/Script/AstroPi.sh
+echo "$password" | sudo -S "$WorkDir"/Script/AstroPi.sh
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 exit 0
