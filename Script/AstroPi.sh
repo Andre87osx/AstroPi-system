@@ -10,7 +10,7 @@
 # DECLARE VERSION'S
 INDI_V=1.9.1
 KSTARS_V=3.5.4v1.1
-ASTROPI_V=v.1.1
+ASTROPI_V=v.1.2
 #####################################
 wifidev="wlan0" #device name to use. Default is wlan0.
 #use the command: iw dev ,to see wifi interface name
@@ -20,8 +20,7 @@ else
 	StatHotSpot=Enable
 fi
 
-######################################
-#FUNCIONS#############################
+#############FUNCIONS#################
 
 chkARM64()
 {
@@ -29,7 +28,7 @@ chkARM64()
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		zenity --info --text="Your system is already 64 bit \n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	else
-		zenity --error --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
+		zenity --warning --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 	fi
 }
@@ -77,11 +76,26 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
-		
+		if [ -f "$HOME"/AstroPi system updater" ]; then
+			echo "$password" | sudo -S rm -rf "$HOME"/AstroPi system updater"
+		fi
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
+		echo "$password" | sudo -S chmod +x /usr/share/applications/AstroPi.desktop
+		if [ -f "$HOME"/.Update.sh ]; then
+			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
+		fi
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/.Updater.sh /usr/bin/.Update.sh
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating .Update.sh</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
+		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
+		pcmanfm --set-wallpaper="$HOME/.AstroPi-system/Loghi&background/AstroPi_wallpaper.png"
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>change wallpaper</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
+		(($? != 0)) && zenity --error --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
+
 		# =================================================================
 		echo "100"
-		echo "# Check ARM_64 bit"
-		sleep 2s
+		echo "# One meore second"
 		zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 		) | zenity --progress \
@@ -325,21 +339,25 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 		if [ "$ans" == "Check for update" ]; then
 			sysUpgrade
 			chkARM64
+			exit
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
 			setupWiFi
+			exit
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
 			chkHotspot
+			exit
 
 		elif [ "$ans" == "Install INDI and Driver $INDI_V" ]; then
 			chkINDI
+			exit
 
 		elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
 			chkKstars
+			exit
 		
 		fi
-		exit 0
 	;;
 	1)
 	exit 0
