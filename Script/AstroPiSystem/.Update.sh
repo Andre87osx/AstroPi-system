@@ -22,7 +22,7 @@ echo "$password" | sudo -S chmod +x "$WorkDir"/Script/*.sh
 (( $? != 0 )) && zenity --error --text="<b>Incorrect user password</b>\n\nError in AstroPi System" --width=300 --title="AstroPi - user password required" && exit 1
 
 # Information window for the waiting time
-# zenity --info --title="AstroPi System" --text="I prepare the files to run the latest version of AstroPi System.\n<b>The operation can last a few minutes</b>" --width=300
+zenity --info --title="AstroPi System" --text="I prepare the files to run the latest version of AstroPi System.\n<b>The operation can last a few minutes</b>" --width=300
 
 # =========================================================================
 # Check the AstroPi git for update.
@@ -38,20 +38,22 @@ echo "$password" | sudo -S chmod +x "$WorkDir"/Script/*.sh
 		#zenity --info --text="All file have been successfully updated" --width=300 --title="AstroPi System"
         ;;
         1)
-		echo "$password" | sudo -S rm -rf "$WorkDir"
-		cd "$HOME" || exit
-		git clone https://github.com/Andre87osx/AstroPi-system.git
-		mv $HOME/AstroPi-system $HOME/.AstroPi-system
-		git -C "$WorkDir" pull
+		#echo "$password" | sudo -S rm -rf "$WorkDir"
+		#cd "$HOME" || exit
+		#git clone https://github.com/Andre87osx/AstroPi-system.git
+		#mv $HOME/AstroPi-system $HOME/.AstroPi-system
+		#git -C "$WorkDir" pull
 		# zenity --info --text="All file have been successfully updated" --width=300 --title="AstroPi System"
+		exit 1
         ;;
         -1)
-		echo "$password" | sudo -S rm -rf "$WorkDir"
-		cd "$HOME" || exit
-		git clone https://github.com/Andre87osx/AstroPi-system.git
-		mv $HOME/AstroPi-system $HOME/.AstroPi-system
-		git -C "$WorkDir" pull
+		#echo "$password" | sudo -S rm -rf "$WorkDir"
+		#cd "$HOME" || exit
+		#git clone https://github.com/Andre87osx/AstroPi-system.git
+		#mv $HOME/AstroPi-system $HOME/.AstroPi-system
+		#git -C "$WorkDir" pull
 		# zenity --info --text="All file have been successfully updated" --width=300 --title="AstroPi System"
+		exit 1
         ;;
         esac
 
