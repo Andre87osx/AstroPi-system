@@ -33,6 +33,13 @@ chkARM64()
 	fi
 }
 
+SysCleanUp()
+{
+	echo "$password" | sudo -S apt-get clean
+	cd 
+	git repack -a -d
+}
+
 sysUpgrade()
 {
 SOURCES=/etc/apt/sources.list.d/astroberry.list
@@ -92,7 +99,7 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>change wallpaper</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
-		
+
 		# =================================================================
 		echo "100"
 		echo "# One meore second"
@@ -260,14 +267,14 @@ chkINDI()
         sleep 2s
 	zenity --info --text="INDI and Driver has been updated to version $INDI_V" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
-) |
-	zenity --progress \
-		--title="AstroPi System  $ASTROPI_V" \
-		--text="AstroPi System  $ASTROPI_V" \
-		--percentage=0 \
-		--auto-close \
-		--width=300 \
-		--auto-kill
+    ) |
+        zenity --progress \
+            --title="AstroPi System  $ASTROPI_V" \
+            --text="AstroPi System  $ASTROPI_V" \
+            --percentage=0 \
+            --auto-close \
+            --width=300 \
+            --auto-kill
 
 }
 
@@ -314,6 +321,7 @@ chkKstars()
 	sleep 2s
 	zenity --info --text="Kstars AstroPi $KSTARS_V allredy installed" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
+
  ) |
 	zenity --progress \
 		--title="AstroPi System  $ASTROPI_V" \
@@ -338,7 +346,6 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 		if [ "$ans" == "Check for update" ]; then
 			sysUpgrade
 			chkARM64
-			lxpanelctl restart
 			exit
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
@@ -366,5 +373,4 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 	exit 0
 	;;
 	esac
-	exit 0
-	
+exit 0
