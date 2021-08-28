@@ -347,6 +347,7 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 		if [ "$ans" == "Check for update" ]; then
 			sysUpgrade
 			chkARM64
+			lxpanelctl restart
 			exit
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
