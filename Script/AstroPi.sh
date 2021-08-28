@@ -14,6 +14,7 @@ ASTROPI_V=v.1.2
 #####################################
 wifidev="wlan0" #device name to use. Default is wlan0.
 #use the command: iw dev ,to see wifi interface name
+WorkDir="$HOME"/.AstroPi-system
 if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
 	StatHotSpot=Disable
 else
@@ -36,8 +37,8 @@ chkARM64()
 SysCleanUp()
 {
 	echo "$password" | sudo -S apt-get clean
-	cd 
-	git repack -a -d
+	cd "$WorkDir"
+	( git repack -a -d ) | zenity --progress
 }
 
 sysUpgrade()
