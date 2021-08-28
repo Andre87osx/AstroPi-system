@@ -27,14 +27,14 @@ chkARM64()
 {
 	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
-		zenity --info --text="Your system is already 64 bit \n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
+		zenity --info --text="Your system is already 64 bit.\n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	else
 		zenity --warning --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
 	fi
 }
 
-SysCleanUp()
+SysClean()
 {
 	echo "$password" | sudo -S apt-get clean
 	cd "$WorkDir"
@@ -322,7 +322,6 @@ chkKstars()
 	sleep 2s
 	zenity --info --text="Kstars AstroPi $KSTARS_V allredy installed" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 
-
  ) |
 	zenity --progress \
 		--title="AstroPi System  $ASTROPI_V" \
@@ -335,10 +334,11 @@ chkKstars()
 }
 
 ######################################
-ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300 --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
+ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=350 --height=300 --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
 	FALSE "Setup my WiFi" \
 	FALSE "$StatHotSpot AstroPi hotspot" \
 	FALSE "Check for update" \
+	FALSE "System Cleaning" \	
 	FALSE "Install INDI and Driver $INDI_V" \
 	FALSE "Install Kstars AstroPi $KSTARS_V")
     
@@ -365,14 +365,17 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=400 --height=300
 		elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
 			chkKstars
 			exit
+		elif [ "$ans" == "System Cleaning" ]; then
+			SysClean
+			exit
 		
 		fi
 	;;
 	1)
-	exit 0
+	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	;;
 	-1)
-	exit 0
+	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	;;
 	esac
 exit 0
