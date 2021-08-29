@@ -43,9 +43,8 @@ sysClean()
 
 chkUsr()
 {
-if [ `whoami` = 'root' ]
-  then
-    su - astropi
+if [ `whoami` = 'root' ]; then
+	su - astropi
 fi
 }
 
