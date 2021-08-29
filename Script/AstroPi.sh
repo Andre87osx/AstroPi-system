@@ -41,6 +41,14 @@ sysClean()
 	( git repack -a -d ) | zenity --progress
 }
 
+chkUsr()
+{
+if [ `whoami` = 'root' ]
+  then
+    su - astropi
+fi
+}
+
 sysUpgrade()
 {
 SOURCES=/etc/apt/sources.list.d/astroberry.list
@@ -345,27 +353,33 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=350 --height=300
 	case $? in
 	0)
 		if [ "$ans" == "Check for update" ]; then
+			chkUsr
 			sysUpgrade
 			chkARM64
 			lxpanelctl restart
 			exit
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
+			chkUsr
 			setupWiFi
 			exit
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
+			chkUsr
 			chkHotspot
 			exit
 
 		elif [ "$ans" == "Install INDI and Driver $INDI_V" ]; then
+			chkUsr
 			chkINDI
 			exit
 
 		elif [ "$ans" == "Install Kstars AstroPi $KSTARS_V" ]; then
+			chkUsr
 			chkKstars
 			exit
 		elif [ "$ans" == "System Cleaning" ]; then
+			chkUsr
 			sysClean
 			exit
 		
