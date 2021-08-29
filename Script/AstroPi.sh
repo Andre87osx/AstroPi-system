@@ -34,10 +34,10 @@ chkARM64()
 	fi
 }
 
-SysClean()
+sysClean()
 {
 	echo "$password" | sudo -S apt-get clean
-	cd "$WorkDir"
+	cd "$WorkDir" || exit
 	( git repack -a -d ) | zenity --progress
 }
 
@@ -366,7 +366,7 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=350 --height=300
 			chkKstars
 			exit
 		elif [ "$ans" == "System Cleaning" ]; then
-			SysClean
+			sysClean
 			exit
 		
 		fi
