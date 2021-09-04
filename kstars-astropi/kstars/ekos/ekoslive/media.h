@@ -122,7 +122,7 @@ class Media : public QObject
         bool m_sendBlobs { true};
 
         // Image width for high-bandwidth setting
-        static const uint16_t HB_WIDTH = 960;
+        static const uint16_t HB_WIDTH = 1280;
         // Image high bandwidth image quality (jpg)
         static const uint8_t HB_IMAGE_QUALITY = 90;
         // Video high bandwidth video quality (jpg)
@@ -139,5 +139,9 @@ class Media : public QObject
 
         // Binary Metadata Size
         static const uint16_t METADATA_PACKET = 512;
+
+        // HIPS Tile Width and Height
+        static const uint16_t HIPS_TILE_WIDTH = 512;
+        static const uint16_t HIPS_TILE_HEIGHT = 512;
 };
 }

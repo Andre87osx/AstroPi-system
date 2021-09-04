@@ -95,7 +95,7 @@ DriverManager::DriverManager(QWidget *parent) : QDialog(parent)
     ui                      = new DriverManagerUI(this);
     mainLayout->addWidget(ui);
     setLayout(mainLayout);
-    setWindowTitle(i18n("Device Manager"));
+    setWindowTitle(i18nc("@title:window", "Device Manager"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
     mainLayout->addWidget(buttonBox);
@@ -428,7 +428,7 @@ bool DriverManager::startDevices(QList<DriverInfo *> &dList)
             QPointer<QMessageBox> msgBox = new QMessageBox();
             msgBox->setAttribute(Qt::WA_DeleteOnClose);
             msgBox->setStandardButtons(QMessageBox::Ok);
-            msgBox->setWindowTitle(i18n("Error"));
+            msgBox->setWindowTitle(i18nc("@title:window", "Error"));
             msgBox->setText(i18n("Connection to INDI server locally on port %1 failed.", port));
             msgBox->setModal(false);
             msgBox->setIcon(QMessageBox::Critical);
@@ -751,7 +751,7 @@ bool DriverManager::connectRemoteHost(DriverInfo *dv)
         QMessageBox *msgBox = new QMessageBox();
         msgBox->setAttribute(Qt::WA_DeleteOnClose);
         msgBox->setStandardButtons(QMessageBox::Ok);
-        msgBox->setWindowTitle(i18n("Error"));
+        msgBox->setWindowTitle(i18nc("@title:window", "Error"));
         msgBox->setText(
             i18n("Connection to INDI server at host %1 with port %2 failed.", dv->getHost(), dv->getPort()));
         KSNotification::event(QLatin1String("ConnectionFailed"), msgBox->text(), KSNotification::EVENT_ALERT);
@@ -863,7 +863,7 @@ bool DriverManager::readINDIHosts()
     QString hName, hHost, hPort;
 
     lastGroup = nullptr;
-    file.setFileName(KSPaths::locate(QStandardPaths::GenericDataLocation, indiFile));
+    file.setFileName(KSPaths::locate(QStandardPaths::AppDataLocation, indiFile));
     if (file.fileName().isEmpty() || !file.open(QIODevice::ReadOnly))
     {
         delLilXML(xmlParser);
@@ -942,7 +942,7 @@ bool DriverManager::readXMLDrivers()
     QString driverName;
 
     // This is the XML file shipped with KStars that contains all supported INDI drivers.
-    /*QString indiDriversXML = KSPaths::locate(QStandardPaths::GenericDataLocation, "indidrivers.xml");
+    /*QString indiDriversXML = KSPaths::locate(QStandardPaths::AppDataLocation, "indidrivers.xml");
     if (indiDriversXML.isEmpty() == false)
         processXMLDriver(indiDriversXML);
     */
@@ -957,7 +957,7 @@ bool DriverManager::readXMLDrivers()
 
     if (indiDir.cd(driversDir) == false)
     {
-        KSNotification::error(i18n("Unable to find INDI Drivers directory: %1\nPlease make sure to set the correct "
+        KSNotification::error(i18n("Unable to find INDI drivers directory: %1\nPlease make sure to set the correct "
                                    "path in KStars configuration",
                                    driversDir));
         return false;
@@ -976,7 +976,7 @@ bool DriverManager::readXMLDrivers()
         //        if (fileInfo.fileName() == "drivers.xml")
         //        {
         //            // Let first attempt to load the local version of drivers.xml
-        //            driverName = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "drivers.xml";
+        //            driverName = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("drivers.xml");
 
         //            // If found, we continue, otherwise, we load the system file
         //            if (driverName.isEmpty() == false && QFile(driverName).exists())
@@ -1374,7 +1374,7 @@ void DriverManager::addINDIHost()
     QDialog hostConfDialog;
     Ui::INDIHostConf hostConf;
     hostConf.setupUi(&hostConfDialog);
-    hostConfDialog.setWindowTitle(i18n("Add Host"));
+    hostConfDialog.setWindowTitle(i18nc("@title:window", "Add Host"));
     bool portOk = false;
 
     if (hostConfDialog.exec() == QDialog::Accepted)
@@ -1423,7 +1423,7 @@ void DriverManager::modifyINDIHost()
     QDialog hostConfDialog;
     Ui::INDIHostConf hostConf;
     hostConf.setupUi(&hostConfDialog);
-    hostConfDialog.setWindowTitle(i18n("Modify Host"));
+    hostConfDialog.setWindowTitle(i18nc("@title:window", "Modify Host"));
 
     QTreeWidgetItem *currentItem = ui->clientTreeWidget->currentItem();
 
@@ -1493,8 +1493,8 @@ void DriverManager::saveHosts()
     QFile file;
     QString hostData;
 
-    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                     "indihosts.xml"); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("indihosts.xml"));
 
     if (!file.open(QIODevice::WriteOnly))
     {

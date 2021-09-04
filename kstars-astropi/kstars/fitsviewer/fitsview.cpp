@@ -521,41 +521,6 @@ bool FITSView::saveImage(const QString &newFilename)
     return m_ImageData->saveImage(newFilename);
 }
 
-bool FITSView::rescale(FITSZoom type)
-{
-    switch (m_ImageData->dataType())
-    {
-        case TBYTE:
-            return rescale<uint8_t>(type);
-
-        case TSHORT:
-            return rescale<int16_t>(type);
-
-        case TUSHORT:
-            return rescale<uint16_t>(type);
-
-        case TLONG:
-            return rescale<int32_t>(type);
-
-        case TULONG:
-            return rescale<uint32_t>(type);
-
-        case TFLOAT:
-            return rescale<float>(type);
-
-        case TLONGLONG:
-            return rescale<int64_t>(type);
-
-        case TDOUBLE:
-            return rescale<double>(type);
-
-        default:
-            break;
-    }
-
-    return false;
-}
-
 FITSView::CursorMode FITSView::getCursorMode()
 {
     return cursorMode;
@@ -595,7 +560,6 @@ void FITSView::leaveEvent(QEvent * event)
     }
 }
 
-template <typename T>
 bool FITSView::rescale(FITSZoom type)
 {
     if (!m_ImageData)
@@ -995,8 +959,10 @@ void FITSView::drawOverlay(QPainter * painter, double scale)
     if (showObjects)
         drawObjectNames(painter, scale);
 
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
     if (showEQGrid)
         drawEQGrid(painter, scale);
+#endif
 
     if (showPixelGrid)
         drawPixelGrid(painter, scale);
@@ -1357,7 +1323,7 @@ bool FITSView::imageHasWCS()
 void FITSView::drawObjectNames(QPainter * painter, double scale)
 {
     painter->setPen(QPen(QColor(KStarsData::Instance()->colorScheme()->colorNamed("FITSObjectLabelColor"))));
-    foreach (FITSSkyObject * listObject, m_ImageData->getSkyObjects())
+    for (const auto &listObject : m_ImageData->getSkyObjects())
     {
         painter->drawRect(listObject->x() * scale - 5, listObject->y() * scale - 5, 10, 10);
         painter->drawText(listObject->x() * scale + 10, listObject->y() * scale + 10, listObject->skyObject()->name());
@@ -1371,6 +1337,7 @@ judge which gridLines to draw.  Then it calls the drawEQGridlines methods below
 to draw gridlines at those specific RA and Dec values.
  */
 
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
 void FITSView::drawEQGrid(QPainter * painter, double scale)
 {
     const int image_width = m_ImageData->width();
@@ -1378,180 +1345,164 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
 
     if (m_ImageData->hasWCS() && m_ImageData->fullWCS())
     {
-        FITSImage::wcs_point * wcs_coord = m_ImageData->getWCSCoord();
-        if (wcs_coord != nullptr)
+        double maxRA  = -1000;
+        double minRA  = 1000;
+        double maxDec = -1000;
+        double minDec = 1000;
+        m_ImageData->findWCSBounds(minRA, maxRA, minDec, maxDec);
+
+        auto minDecMinutes = (int)(minDec * 12); //This will force the Dec Scale to 5 arc minutes in the loop
+        auto maxDecMinutes = (int)(maxDec * 12);
+
+        auto minRAMinutes =
+            (int)(minRA / 15.0 *
+                  120.0); //This will force the scale to 1/2 minutes of RA in the loop from 0 to 50 degrees
+        auto maxRAMinutes = (int)(maxRA / 15.0 * 120.0);
+
+        double raConvert  = 15 / 120.0; //This will undo the calculation above to retrieve the actual RA.
+        double decConvert = 1.0 / 12.0; //This will undo the calculation above to retrieve the actual DEC.
+
+        if (maxDec > 50 || minDec < -50)
         {
-            const int size      = image_width * image_height;
-            double maxRA  = -1000;
-            double minRA  = 1000;
-            double maxDec = -1000;
-            double minDec = 1000;
+            minRAMinutes =
+                (int)(minRA / 15.0 * 60.0); //This will force the scale to 1 min of RA from 50 to 80 degrees
+            maxRAMinutes = (int)(maxRA / 15.0 * 60.0);
+            raConvert    = 15 / 60.0;
+        }
 
-            for (int i = 0; i < (size); i++)
-            {
-                double ra  = wcs_coord[i].ra;
-                double dec = wcs_coord[i].dec;
-                if (ra > maxRA)
-                    maxRA = ra;
-                if (ra < minRA)
-                    minRA = ra;
-                if (dec > maxDec)
-                    maxDec = dec;
-                if (dec < minDec)
-                    minDec = dec;
-            }
-            auto minDecMinutes = (int)(minDec * 12); //This will force the Dec Scale to 5 arc minutes in the loop
-            auto maxDecMinutes = (int)(maxDec * 12);
+        if (maxDec > 80 || minDec < -80)
+        {
+            minRAMinutes =
+                (int)(minRA / 15.0 * 30); //This will force the scale to 2 min of RA from 80 to 85 degrees
+            maxRAMinutes = (int)(maxRA / 15.0 * 30);
+            raConvert    = 15 / 30.0;
+        }
+        if (maxDec > 85 || minDec < -85)
+        {
+            minRAMinutes =
+                (int)(minRA / 15.0 * 6); //This will force the scale to 10 min of RA from 85 to 89 degrees
+            maxRAMinutes = (int)(maxRA / 15.0 * 6);
+            raConvert    = 15 / 6.0;
+        }
+        if (maxDec >= 89.25 || minDec <= -89.25)
+        {
+            minRAMinutes =
+                (int)(minRA /
+                      15); //This will force the scale to whole hours of RA in the loop really close to the poles
+            maxRAMinutes = (int)(maxRA / 15);
+            raConvert    = 15;
+        }
 
-            auto minRAMinutes =
-                (int)(minRA / 15.0 *
-                      120.0); //This will force the scale to 1/2 minutes of RA in the loop from 0 to 50 degrees
-            auto maxRAMinutes = (int)(maxRA / 15.0 * 120.0);
+        painter->setPen(QPen(Qt::yellow));
 
-            double raConvert  = 15 / 120.0; //This will undo the calculation above to retrieve the actual RA.
-            double decConvert = 1.0 / 12.0; //This will undo the calculation above to retrieve the actual DEC.
+        QPointF pixelPoint, imagePoint, pPoint;
 
-            if (maxDec > 50 || minDec < -50)
-            {
-                minRAMinutes =
-                    (int)(minRA / 15.0 * 60.0); //This will force the scale to 1 min of RA from 50 to 80 degrees
-                maxRAMinutes = (int)(maxRA / 15.0 * 60.0);
-                raConvert    = 15 / 60.0;
-            }
+        //This section draws the RA Gridlines
 
-            if (maxDec > 80 || minDec < -80)
-            {
-                minRAMinutes =
-                    (int)(minRA / 15.0 * 30); //This will force the scale to 2 min of RA from 80 to 85 degrees
-                maxRAMinutes = (int)(maxRA / 15.0 * 30);
-                raConvert    = 15 / 30.0;
-            }
-            if (maxDec > 85 || minDec < -85)
-            {
-                minRAMinutes =
-                    (int)(minRA / 15.0 * 6); //This will force the scale to 10 min of RA from 85 to 89 degrees
-                maxRAMinutes = (int)(maxRA / 15.0 * 6);
-                raConvert    = 15 / 6.0;
-            }
-            if (maxDec >= 89.25 || minDec <= -89.25)
-            {
-                minRAMinutes =
-                    (int)(minRA /
-                          15); //This will force the scale to whole hours of RA in the loop really close to the poles
-                maxRAMinutes = (int)(maxRA / 15);
-                raConvert    = 15;
-            }
-
+        for (int targetRA = minRAMinutes; targetRA <= maxRAMinutes; targetRA++)
+        {
             painter->setPen(QPen(Qt::yellow));
+            double target = targetRA * raConvert;
 
-            QPointF pixelPoint, imagePoint, pPoint;
+            if (eqGridPoints.count() != 0)
+                eqGridPoints.clear();
 
-            //This section draws the RA Gridlines
+            double increment = std::abs((maxDec - minDec) /
+                                        100.0); //This will determine how many points to use to create the RA Line
 
-            for (int targetRA = minRAMinutes; targetRA <= maxRAMinutes; targetRA++)
+            for (double targetDec = minDec; targetDec <= maxDec; targetDec += increment)
             {
-                painter->setPen(QPen(Qt::yellow));
-                double target = targetRA * raConvert;
-
-                if (eqGridPoints.count() != 0)
-                    eqGridPoints.clear();
-
-                double increment = std::abs((maxDec - minDec) /
-                                            100.0); //This will determine how many points to use to create the RA Line
-
-                for (double targetDec = minDec; targetDec <= maxDec; targetDec += increment)
+                SkyPoint pointToGet(target / 15.0, targetDec);
+                bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
+                if (inImage)
                 {
-                    SkyPoint pointToGet(target / 15.0, targetDec);
-                    bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
-                    if (inImage)
-                    {
-                        QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
-                        eqGridPoints.append(pt);
-                    }
-                }
-
-                if (eqGridPoints.count() > 1)
-                {
-                    for (int i = 1; i < eqGridPoints.count(); i++)
-                        painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
-                    QString str = QString::number(dms(target).hour()) + "h " +
-                                  QString::number(dms(target).minute()) + '\'';
-                    if  (maxDec <= 50 && maxDec >= -50)
-                        str = str + " " + QString::number(dms(target).second()) + "''";
-                    QPointF pt = getPointForGridLabel(painter, str, scale);
-                    if (pt.x() != -100)
-                        painter->drawText(pt.x(), pt.y(), str);
+                    QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
+                    eqGridPoints.append(pt);
                 }
             }
 
-            //This section draws the DEC Gridlines
-
-            for (int targetDec = minDecMinutes; targetDec <= maxDecMinutes; targetDec++)
+            if (eqGridPoints.count() > 1)
             {
-                if (eqGridPoints.count() != 0)
-                    eqGridPoints.clear();
+                for (int i = 1; i < eqGridPoints.count(); i++)
+                    painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
+                QString str = QString::number(dms(target).hour()) + "h " +
+                              QString::number(dms(target).minute()) + '\'';
+                if  (maxDec <= 50 && maxDec >= -50)
+                    str = str + " " + QString::number(dms(target).second()) + "''";
+                QPointF pt = getPointForGridLabel(painter, str, scale);
+                if (pt.x() != -100)
+                    painter->drawText(pt.x(), pt.y(), str);
+            }
+        }
 
-                double increment = std::abs((maxRA - minRA) /
-                                            100.0); //This will determine how many points to use to create the Dec Line
-                double target    = targetDec * decConvert;
+        //This section draws the DEC Gridlines
 
-                for (double targetRA = minRA; targetRA <= maxRA; targetRA += increment)
+        for (int targetDec = minDecMinutes; targetDec <= maxDecMinutes; targetDec++)
+        {
+            if (eqGridPoints.count() != 0)
+                eqGridPoints.clear();
+
+            double increment = std::abs((maxRA - minRA) /
+                                        100.0); //This will determine how many points to use to create the Dec Line
+            double target    = targetDec * decConvert;
+
+            for (double targetRA = minRA; targetRA <= maxRA; targetRA += increment)
+            {
+                SkyPoint pointToGet(targetRA / 15, targetDec * decConvert);
+                bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
+                if (inImage)
                 {
-                    SkyPoint pointToGet(targetRA / 15, targetDec * decConvert);
-                    bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
-                    if (inImage)
-                    {
-                        QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
-                        eqGridPoints.append(pt);
-                    }
-                }
-                if (eqGridPoints.count() > 1)
-                {
-                    for (int i = 1; i < eqGridPoints.count(); i++)
-                        painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
-                    QString str = QString::number(dms(target).degree()) + "° " + QString::number(dms(target).arcmin()) + '\'';
-                    QPointF pt = getPointForGridLabel(painter, str, scale);
-                    if (pt.x() != -100)
-                        painter->drawText(pt.x(), pt.y(), str);
+                    QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
+                    eqGridPoints.append(pt);
                 }
             }
-
-            //This Section Draws the North Celestial Pole if present
-            SkyPoint NCP(0, 90);
-
-            bool NCPtest = m_ImageData->wcsToPixel(NCP, pPoint, imagePoint);
-            if (NCPtest)
+            if (eqGridPoints.count() > 1)
             {
-                bool NCPinImage =
-                    (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
-                if (NCPinImage)
-                {
-                    painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
-                                      KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
-                    painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
-                                      i18nc("North Celestial Pole", "NCP"));
-                }
+                for (int i = 1; i < eqGridPoints.count(); i++)
+                    painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
+                QString str = QString::number(dms(target).degree()) + "° " + QString::number(dms(target).arcmin()) + '\'';
+                QPointF pt = getPointForGridLabel(painter, str, scale);
+                if (pt.x() != -100)
+                    painter->drawText(pt.x(), pt.y(), str);
             }
+        }
 
-            //This Section Draws the South Celestial Pole if present
-            SkyPoint SCP(0, -90);
+        //This Section Draws the North Celestial Pole if present
+        SkyPoint NCP(0, 90);
 
-            bool SCPtest = m_ImageData->wcsToPixel(SCP, pPoint, imagePoint);
-            if (SCPtest)
+        bool NCPtest = m_ImageData->wcsToPixel(NCP, pPoint, imagePoint);
+        if (NCPtest)
+        {
+            bool NCPinImage =
+                (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
+            if (NCPinImage)
             {
-                bool SCPinImage =
-                    (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
-                if (SCPinImage)
-                {
-                    painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
-                                      KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
-                    painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
-                                      i18nc("South Celestial Pole", "SCP"));
-                }
+                painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
+                                  KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
+                painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
+                                  i18nc("North Celestial Pole", "NCP"));
+            }
+        }
+
+        //This Section Draws the South Celestial Pole if present
+        SkyPoint SCP(0, -90);
+
+        bool SCPtest = m_ImageData->wcsToPixel(SCP, pPoint, imagePoint);
+        if (SCPtest)
+        {
+            bool SCPinImage =
+                (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
+            if (SCPinImage)
+            {
+                painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
+                                  KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
+                painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
+                                  i18nc("South Celestial Pole", "SCP"));
             }
         }
     }
 }
+#endif
 
 bool FITSView::pointIsInImage(QPointF pt, double scale)
 {
@@ -1744,7 +1695,12 @@ void FITSView::toggleObjects()
     }
 
     if (m_ImageFrame)
+    {
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
+        m_ImageData->searchObjects();
+#endif
         updateFrame();
+    }
 }
 
 void FITSView::toggleStars()
@@ -2091,6 +2047,11 @@ void FITSView::syncWCSState()
 {
     bool hasWCS    = m_ImageData->hasWCS();
     bool wcsLoaded = m_ImageData->getWCSState() == FITSData::Success;
+
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
+    if (showObjects)
+        m_ImageData->searchObjects();
+#endif
 
     if (hasWCS && wcsLoaded)
         this->updateFrame();

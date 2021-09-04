@@ -1,4 +1,4 @@
-/*
+﻿/*
     Helper class of KStars UI tests
 
     Copyright (C) 2021
@@ -14,6 +14,11 @@
 #include "test_ekos.h"
 #include "test_ekos_debug.h"
 #include "test_ekos_simulator.h"
+
+#include "indi/indidevice.h"
+#include "indi/indigroup.h"
+#include "indi/indiproperty.h"
+#include "indi/indielement.h"
 
 #include "ekos/profileeditor.h"
 
@@ -318,6 +323,12 @@ do {\
     toolsWidget->setCurrentWidget(module); \
     QTRY_COMPARE_WITH_TIMEOUT(toolsWidget->currentWidget(), module, timeout);} while (false)
 
+#define SET_INDI_VALUE_DOUBLE(device, group, property, value) do {\
+    int result = QProcess::execute(QString("indi_setprop"), {QString("-n"), QString("%1.%2.%3=%4").arg(device).arg(group).arg(property).arg(value)});\
+    qCInfo(KSTARS_EKOS_TEST) << "Process result code: " << result;\
+    } while (false)
+
+
 class TestEkosHelper : public QObject
 {
     Q_OBJECT
@@ -336,12 +347,12 @@ public:
     /**
      * @brief Initialization ahead of executing the test cases.
      */
-    void virtual initTestCase();
+    void virtual init();
 
     /**
      * @brief Cleanup after test cases have been executed.
      */
-    void virtual cleanupTestCase();
+    void virtual cleanup();
 
     /**
      * @brief Fill mount, guider, CCD and focuser of an EKOS profile
@@ -400,4 +411,12 @@ public:
      * @param lookup target value
      */
     void setTreeviewCombo(QComboBox *combo, const QString lookup);
+
+    /**
+     * @brief Simple write-string-to-file utility.
+     * @param filename name of the file to be created
+     * @param lines file content
+     */
+    bool writeFile(const QString &filename, const QStringList &lines, QFileDevice::Permissions permissions = QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+
 };

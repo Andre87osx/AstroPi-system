@@ -59,7 +59,12 @@
 #define ZOOM_LOW_INCR  10
 #define ZOOM_HIGH_INCR 50
 
-const QString FITSData::m_TemporaryPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+QString getTemporaryPath()
+{
+    return QDir(KSPaths::writableLocation(QStandardPaths::TempLocation) + "/" +
+                qAppName()).path();
+}
+
 const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw", "orf" };
 
 FITSData::FITSData(FITSMode fitsMode): m_Mode(fitsMode)
@@ -111,8 +116,6 @@ FITSData::~FITSData()
 
     if (starCenters.count() > 0)
         qDeleteAll(starCenters);
-
-    delete[] m_WCSCoordinates;
 
     if (m_SkyObjects.count() > 0)
         qDeleteAll(m_SkyObjects);
@@ -176,7 +179,7 @@ bool fitsOpenError(int status, const QString &message, bool silent)
 
 bool FITSData::privateLoad(const QByteArray &buffer, const QString &extension, bool silent)
 {
-    m_isTemporary = m_Filename.startsWith(m_TemporaryPath);
+    m_isTemporary = m_Filename.startsWith(getTemporaryPath());
 
     if (extension.contains("fit"))
         return loadFITSImage(buffer, extension, silent);
@@ -2362,8 +2365,6 @@ bool FITSData::loadWCS(bool extras)
     int status = 0;
     char * header;
     int nkeyrec, nreject, nwcs;
-    int w  = width();
-    int h = height();
 
     if (fits_hdr2str(fptr, 1, nullptr, 0, &header, &nkeyrec, &status))
     {
@@ -2413,63 +2414,7 @@ bool FITSData::loadWCS(bool extras)
         return false;
     }
 
-    delete[] m_WCSCoordinates;
-
-    m_WCSCoordinates = new FITSImage::wcs_point[w * h];
-
-    if (m_WCSCoordinates == nullptr)
-    {
-        wcsvfree(&m_nwcs, &m_WCSHandle);
-        m_WCSHandle = nullptr;
-        m_LastError = "Not enough memory for WCS data!";
-        m_WCSState = Failure;
-        return false;
-    }
-
-    m_WCSState = Busy;
-
-    if (extras)
-    {
-        const int nThreads = QThread::idealThreadCount();
-        QList<QFuture<void>> futures;
-        // Calculate how many elements we process per thread
-        uint32_t tStride = m_Statistics.samples_per_channel / nThreads;
-        // Calculate the final stride since we can have some left over due to division above
-        uint32_t fStride = tStride + (m_Statistics.samples_per_channel - (tStride * nThreads));
-
-        for (int i = 0; i < nThreads; i++)
-        {
-            uint32_t cStart = i * tStride;
-            uint32_t cEnd = cStart + ((i == (nThreads - 1)) ? fStride : tStride);
-            // Run threads
-            futures.append(QtConcurrent::run([ = ]()
-            {
-                double phi = 0, theta = 0, world[2], pixcrd[2], imgcrd[2];
-                int stat[2];
-                FITSImage::wcs_point *wcsPointer = m_WCSCoordinates + cStart;
-                for (uint32_t i = cStart; i < cEnd; i++)
-                {
-                    uint32_t x = i % w;
-                    uint32_t y = i / w;
-                    pixcrd[0] = x;
-                    pixcrd[1] = y;
-                    if (wcsp2s(m_WCSHandle, 1, 2, &pixcrd[0], &imgcrd[0], &phi, &theta, &world[0], &stat[0]) == 0)
-                    {
-                        wcsPointer->ra  = world[0];
-                        wcsPointer->dec = world[1];
-                    }
-                    wcsPointer++;
-                }
-            }));
-        }
-
-        for (auto &oneFuture : futures)
-            oneFuture.waitForFinished();
-
-        SkyPoint startPoint(m_WCSCoordinates->ra / 15.0, m_WCSCoordinates->dec);
-        SkyPoint endPoint( (m_WCSCoordinates + w * h - 1)->ra / 15.0, (m_WCSCoordinates + w * h - 1)->dec);
-        findObjectsInImage(startPoint, endPoint);
-    }
+    m_ObjectsSearched = false;
     m_WCSState = Success;
     FullWCS = extras;
     HasWCS = true;
@@ -2553,10 +2498,92 @@ bool FITSData::pixelToWCS(const QPointF &wcsPixelPoint, SkyPoint &wcsCoord)
 }
 
 #if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
-void FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
+bool FITSData::searchObjects()
+{
+    if (m_ObjectsSearched)
+        return true;
+
+    m_ObjectsSearched = true;
+
+    SkyPoint startPoint;
+    SkyPoint endPoint;
+
+    pixelToWCS(QPointF(0, 0), startPoint);
+    pixelToWCS(QPointF(width() - 1, height() - 1), endPoint);
+
+    return findObjectsInImage(startPoint, endPoint);
+}
+
+bool FITSData::findWCSBounds(double &minRA, double &maxRA, double &minDec, double &maxDec)
+{
+    if (m_WCSHandle == nullptr)
+    {
+        m_LastError = i18n("No world coordinate systems found.");
+        return false;
+    }
+
+    maxRA  = -1000;
+    minRA  = 1000;
+    maxDec = -1000;
+    minDec = 1000;
+
+    auto updateMinMax = [&](int x, int y)
+    {
+        int stat[2];
+        double imgcrd[2], phi, pixcrd[2], theta, world[2];
+
+        pixcrd[0] = x;
+        pixcrd[1] = y;
+
+        if (wcsp2s(m_WCSHandle, 1, 2, &pixcrd[0], &imgcrd[0], &phi, &theta, &world[0], &stat[0]))
+            return;
+
+        minRA = std::min(minRA, world[0]);
+        maxRA = std::max(maxRA, world[0]);
+        minDec = std::min(minDec, world[1]);
+        maxDec = std::max(maxDec, world[1]);
+    };
+
+    // Find min and max values from edges
+    for (int y = 0; y < height(); y++)
+    {
+        updateMinMax(0, y);
+        updateMinMax(width() - 1, y);
+    }
+
+    for (int x = 1; x < width() - 1; x++)
+    {
+        updateMinMax(x, 0);
+        updateMinMax(x, height() - 1);
+    }
+
+    // Check if either pole is in the image
+    SkyPoint NCP(0, 90);
+    SkyPoint SCP(0, -90);
+    QPointF pixelPoint, imagePoint, pPoint;
+    if (wcsToPixel(NCP, pPoint, imagePoint))
+    {
+        if (pPoint.x() > 0 && pPoint.x() < width() && pPoint.y() > 0 && pPoint.y() < height())
+        {
+            maxDec = 90;
+        }
+    }
+    if (wcsToPixel(SCP, pPoint, imagePoint))
+    {
+        if (pPoint.x() > 0 && pPoint.x() < width() && pPoint.y() > 0 && pPoint.y() < height())
+        {
+            minDec = -90;
+        }
+    }
+    return true;
+}
+#endif
+
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
+bool FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
 {
     if (KStarsData::Instance() == nullptr)
-        return;
+        return false;
 
     int w = width();
     int h = height();
@@ -2612,6 +2639,7 @@ void FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
     }
 
     delete (num);
+    return true;
 }
 #endif
 
@@ -3667,7 +3695,7 @@ bool FITSData::ImageToFITS(const QString &filename, const QString &format, QStri
         return false;
     }
 
-    output = QString(KSPaths::writableLocation(QStandardPaths::TempLocation) + QFileInfo(filename).fileName() + ".fits");
+    output = QDir(getTemporaryPath()).filePath(filename + ".fits");
 
     //This section sets up the FITS File
     fitsfile *fptr = nullptr;
@@ -3899,7 +3927,7 @@ template <typename T> void FITSData::constructHistogramInternal()
         m_HistogramIntensity[n].fill(0, m_HistogramBinCount + 1);
         m_HistogramFrequency[n].fill(0, m_HistogramBinCount + 1);
         m_CumulativeFrequency[n].fill(0, m_HistogramBinCount + 1);
-        m_HistogramBinWidth[n] = (m_Statistics.max[n] - m_Statistics.min[n]) / (m_HistogramBinCount - 1);
+        m_HistogramBinWidth[n] = qMax(1.0, (m_Statistics.max[n] - m_Statistics.min[n]) / (m_HistogramBinCount - 1));
     }
 
     QVector<QFuture<void>> futures;

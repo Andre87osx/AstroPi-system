@@ -12,10 +12,12 @@
 #pragma once
 
 #include "matr.h"
+#include "fitsviewer/fitsdata.h"
 #include "indi/indicommon.h"
 #include "../guideinterface.h"
 #include "guidelog.h"
 #include "calibration.h"
+#include "calibrationprocess.h"
 
 #include <QFile>
 #include <QPointer>
@@ -37,26 +39,6 @@ class InternalGuider : public GuideInterface
         Q_OBJECT
 
     public:
-        enum CalibrationStage
-        {
-            CAL_IDLE,
-            CAL_ERROR,
-            CAL_CAPTURE_IMAGE,
-            CAL_SELECT_STAR,
-            CAL_START,
-            CAL_RA_INC,
-            CAL_RA_DEC,
-            CAL_DEC_INC,
-            CAL_DEC_DEC,
-            CAL_BACKLASH
-        };
-        enum CalibrationType
-        {
-            CAL_NONE,
-            CAL_RA_AUTO,
-            CAL_RA_DEC_AUTO
-        };
-
         InternalGuider();
 
         bool Connect() override
@@ -108,36 +90,22 @@ class InternalGuider : public GuideInterface
 
         // Guide View
         void setGuideView(GuideView *guideView);
-
-        // Region Axis
-        void setRegionAxis(uint32_t value);
+        // Image Data
+        void setImageData(const QSharedPointer<FITSData> &data);
 
         bool start();
 
         bool isGuiding(void) const;
-        void setAO(bool enable);
         void setInterface(void);
-        bool isRapidGuide()
-        {
-            return m_UseRapidGuide;
-        }
 
-        double getAOLimit();
         void setSubFramed(bool enable)
         {
             m_isSubFramed = enable;
         }
-        void setGuideOptions(const QString &algorithm, bool useSubFrame, bool useRapidGuide);
 
-        QString getAlgorithm();
         bool useSubFrame();
-        bool useRapidGuide();
 
         const Calibration &getCalibration() const;
-        bool isImageGuideEnabled() const;
-        void setImageGuideEnabled(bool value);
-
-        QList<Edge *> getGuideStars();
 
         // Select a guide star automatically
         bool selectAutoStar();
@@ -164,15 +132,8 @@ class InternalGuider : public GuideInterface
         void DESwapChanged(bool enable);
 
     private:
-        // Calibration
-        void calibrateRADECRecticle(bool ra_only); // 1 or 2-axis calibration
-        void processCalibration();
-
         // Guiding
         bool processGuiding();
-
-        // Image Guiding
-        bool processImageGuiding();
 
         bool abortDither();
 
@@ -183,47 +144,14 @@ class InternalGuider : public GuideInterface
 
         std::unique_ptr<cgmath> pmath;
         QPointer<GuideView> guideFrame;
+        QSharedPointer<FITSData> m_ImageData;
         bool m_isStarted { false };
         bool m_isSubFramed { false };
         bool m_isFirstFrame { false };
-        bool m_UseRapidGuide { false };
-        bool m_ImageGuideEnabled { false };
         int m_starLostCounter { 0 };
 
         QFile logFile;
         uint32_t guideBoxSize { 32 };
-
-        struct
-        {
-            int auto_drift_time { 5 };
-            int turn_back_time { 0 };
-            int ra_iterations { 0 };
-            int dec_iterations { 0 };
-            int backlash_iterations { 0 };
-            int last_pulse { 0 };
-            int ra_total_pulse { 0 };
-            int de_total_pulse { 0 };
-            uint8_t backlash { 0 };
-            Calibration tempCalibration;
-        } m_CalibrationParams;
-
-        struct
-        {
-            double start_x1 { 0 };
-            double start_y1 { 0 };
-            double end_x1 { 0 };
-            double end_y1 { 0 };
-            double start_x2 { 0 };
-            double start_y2 { 0 };
-            double end_x2 { 0 };
-            double end_y2 { 0 };
-            double last_x { 0 };
-            double last_y { 0 };
-            double ra_distance {0};
-            double de_distance {0};
-            double start_backlash_x { 0 };
-            double start_backlash_y { 0 };
-        } m_CalibrationCoords;
 
         Vector m_DitherTargetPosition;
         uint8_t m_DitherRetries {0};
@@ -232,8 +160,6 @@ class InternalGuider : public GuideInterface
         int m_highRMSCounter {0};
 
         Ekos::Matrix ROT_Z;
-        CalibrationStage calibrationStage { CAL_IDLE };
-        CalibrationType calibrationType;
         Ekos::GuideState rememberState { GUIDE_IDLE };
 
         // Progressive Manual Dither
@@ -255,5 +181,10 @@ class InternalGuider : public GuideInterface
 
         QPair<double, double> accumulator;
         GuideLog guideLog;
+
+        void iterateCalibration();
+        std::unique_ptr<CalibrationProcess> calibrationProcess;
+        double calibrationStartX = 0;
+        double calibrationStartY = 0;
 };
 }

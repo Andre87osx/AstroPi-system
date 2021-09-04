@@ -38,12 +38,13 @@ const QString mag_desc = "magnitude DESC NULLS LAST";
 
 /* constants */
 const QString catalog_prefix       = "cat_";
-constexpr int current_db_version   = 2;
+constexpr int current_db_version   = 3;
 constexpr int default_htmesh_level = 3;
 constexpr int user_catalog_id      = 0;
 const QString user_catalog_name    = "user";
 const QString master_catalog       = "master";
 const QString all_catalog_view     = "all_catalogs";
+const QString colors_table         = "catalog_colors";
 
 /* metadata */
 const QString create_meta_table =
@@ -51,9 +52,24 @@ const QString create_meta_table =
     "NULL, htmesh_level INTEGER NOT NULL, init INTEGER NOT NULL)";
 
 const QString update_version = "UPDATE meta SET version = :version";
-const QString get_meta = "SELECT version, htmesh_level, init FROM meta LIMIT 1";
-const QString set_meta = "INSERT INTO meta (version, htmesh_level, init) VALUES "
+const QString get_meta       = "SELECT version, htmesh_level, init FROM meta LIMIT 1";
+const QString set_meta       = "INSERT INTO meta (version, htmesh_level, init) VALUES "
                          "(:version, :htmesh_level, :init)";
+
+/* Colors */
+const QString create_colors_table =
+    QString("CREATE TABLE IF NOT EXISTS %1 (catalog INTEGER NOT "
+            "NULL, scheme TEXT NOT NULL, color TEXT NOT NULL, UNIQUE(catalog, scheme, "
+            "color))")
+        .arg(colors_table);
+
+const QString get_colors =
+    QString("SELECT catalog, scheme, color FROM %1").arg(colors_table);
+
+const QString insert_color =
+    QString("INSERT INTO %1 (catalog, scheme, color) VALUES (:catalog, :scheme, :color) "
+            "ON CONFLICT(catalog, scheme, color) DO UPDATE SET color = :color")
+        .arg(colors_table);
 
 /* catalog queries */
 template <typename input_iterator>
@@ -339,6 +355,26 @@ inline const QString dso_by_name_and_catalog(const int id)
         .arg(object_fields)
         .arg(id)
         .arg(mag_asc);
+}
+
+const QString _dso_by_wildcard = "SELECT %1 FROM master WHERE name LIKE :wildcard LIMIT "
+                                 ":limit ODRER BY CAST(name AS INTEGER)";
+
+inline const QString dso_by_wildcard()
+{
+    return QString(_dso_by_wildcard).arg(object_fields);
+}
+
+inline const QString dso_general_query(const QString &where, const QString &order_by = "")
+{
+    auto query = QString("SELECT %1 FROM master WHERE %2").arg(object_fields).arg(where);
+
+    if (order_by.size() > 0)
+        query += " ORDER BY " + order_by;
+
+    query += " LIMIT :limit";
+
+    return query;
 }
 
 const QString _dso_by_maglim = "SELECT %1 FROM master WHERE magnitude < :maglim "

@@ -83,7 +83,7 @@ class FITSData : public QObject
         // Does FITS have WSC header?
         Q_PROPERTY(bool hasWCS READ hasWCS)
         // Does FITS have bayer data?
-        Q_PROPERTY(bool hasDebyaer READ hasDebayer)
+        Q_PROPERTY(bool hasDebayer READ hasDebayer)
 
     public:
         explicit FITSData(FITSMode fitsMode = FITS_NORMAL);
@@ -394,11 +394,6 @@ class FITSData : public QObject
         {
             return m_WCSState;
         }
-        // Get WCS Coordinates
-        FITSImage::wcs_point *getWCSCoord() const
-        {
-            return m_WCSCoordinates;
-        }
 
         /**
              * @brief wcsToPixel Given J2000 (RA0,DE0) coordinates. Find in the image the corresponding pixel coordinates.
@@ -536,7 +531,9 @@ class FITSData : public QObject
         ////////////////////////////////////////////////////////////////////////////////////////
 #ifndef KSTARS_LITE
 #ifdef HAVE_WCSLIB
-        void findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint);
+        bool searchObjects();
+        bool findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint);
+        bool findWCSBounds(double &minRA, double &maxRA, double &minDec, double &maxDec);
 #endif
 #endif
         const QList<FITSSkyObject *> &getSkyObjects() const
@@ -683,8 +680,6 @@ class FITSData : public QObject
         /// How many times the image was flipped vertically?
         int flipVCounter { 0 };
 
-        /// Pointer to WCS coordinate data, if any.
-        FITSImage::wcs_point *m_WCSCoordinates { nullptr };
         /// WCS Struct
         struct wcsprm *m_WCSHandle
         {
@@ -721,6 +716,7 @@ class FITSData : public QObject
         QFuture<bool> m_StarFindFuture;
 
         QList<FITSSkyObject *> m_SkyObjects;
+        bool m_ObjectsSearched {false};
 
         QString m_LastError;
 
@@ -736,6 +732,4 @@ class FITSData : public QObject
         uint16_t m_HistogramBinCount { 0 };
         double m_JMIndex { 1 };
         bool m_HistogramConstructed { false };
-
-        static const QString m_TemporaryPath;
 };

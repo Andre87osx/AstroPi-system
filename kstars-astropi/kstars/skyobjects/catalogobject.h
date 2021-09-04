@@ -21,7 +21,6 @@
 #include "skyobject.h"
 #include "nan.h"
 #include "texturemanager.h"
-
 #include <QString>
 #include <QByteArray>
 #include <QImage>
@@ -53,8 +52,7 @@ class CatalogObject : public SkyObject
     friend class AddCatalogObject;
 
   public:
-    using CatalogObjectList = std::list<CatalogObject>;
-    using oid               = QByteArray;
+    using oid = QByteArray;
 
     /**
      * @param id oid (hash) of the object
@@ -79,11 +77,12 @@ class CatalogObject : public SkyObject
                   const QString &lname              = QString(),
                   const QString &catalog_identifier = QString(),
                   const int catalog_id = -1, const float a = 0.0, const float b = 0.0,
-                  const double pa = 0.0, const float flux = 0, QString database_path = "")
+                  const double pa = 0.0, const float flux = 0,
+                  const QString &database_path = "")
         : SkyObject(t, r, d, m, n, catalog_identifier, lname),
           m_catalog_identifier{ catalog_identifier }, m_catalog_id{ catalog_id },
-          m_database_path{ std::move(database_path) }, m_major_axis{ a },
-          m_minor_axis{ b }, m_position_angle{ pa }, m_flux{ flux }
+          m_database_path{ database_path }, m_major_axis{ a }, m_minor_axis{ b },
+          m_position_angle{ pa }, m_flux{ flux }
     {
         if (id.length() == 0)
             m_object_id = getId();
@@ -269,7 +268,7 @@ class CatalogObject : public SkyObject
     /**
      * The database path which this object was loaded from.
      */
-    QString m_database_path;
+    std::reference_wrapper<const QString> m_database_path;
 
     /**
      * Whether the image for this catalog object has been loaded.
