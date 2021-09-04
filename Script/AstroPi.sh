@@ -30,7 +30,6 @@ chkARM64()
 		zenity --info --text="Your system is already 64 bit.\n$sysinfo" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
 	else
 		zenity --warning --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 0
-
 	fi
 }
 
@@ -43,7 +42,7 @@ sysClean()
 
 chkUsr()
 {
-if [ `whoami` = 'root' ]; then
+if [ $(whoami) = 'root' ]; then
 	su - astropi
 fi
 }
