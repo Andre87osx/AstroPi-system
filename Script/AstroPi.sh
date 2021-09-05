@@ -36,8 +36,16 @@ chkARM64()
 sysClean()
 {
 	echo "$password" | sudo -S apt-get clean
+	if [ -d "$WorkDir" ]; then
 	cd "$WorkDir" || exit
-	( git repack -a -d ) | zenity --progress
+	( git repack -a -d ) | zenity --progress \
+		--title="AstroPi System $ASTROPI_V" \
+		--text="AstroPi System $ASTROPI_V" \
+		--percentage=0 \
+		--auto-close \
+		--width=300 \
+		--auto-kill
+	fi
 }
 
 chkUsr()
