@@ -344,7 +344,7 @@ ans=$(zenity --list --title="AstroPi System $ASTROPI_V" --width=350 --height=300
 	FALSE "Setup my WiFi" \
 	FALSE "$StatHotSpot AstroPi hotspot" \
 	FALSE "Check for update" \
-	FALSE "System Cleaning" \	
+	FALSE "System Cleaning" \
 	FALSE "Install INDI and Driver $INDI_V" \
 	FALSE "Install Kstars AstroPi $KSTARS_V")
     
