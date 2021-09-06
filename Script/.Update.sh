@@ -62,8 +62,7 @@ zenity --info --title="AstroPi System" --text="I prepare the files to run the la
 	echo "# Make sure that the script are executable"
 	sleep 2s
         chmod +x "$WorkDir"/Script/*.sh
-        chmod +x "$WorkDir"/AstroPiSystem/*.sh
-			
+
 	# =================================================================
 	echo "100"
 	echo "# One meore second"
