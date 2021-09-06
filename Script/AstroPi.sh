@@ -94,25 +94,25 @@ SOURCES=/etc/apt/sources.list.d/astroberry.list
 		echo "75"
 		echo "# Updating all AstroPi script"
 		sleep 2s
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot.service /etc/systemd/system/autohotspot.service
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/autohotspot.service /etc/systemd/system/autohotspot.service
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/autohotspot /usr/bin/autohotspot
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/autohotspot /usr/bin/autohotspot
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot script</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		if [ -f "$HOME"/'AstroPi system updater' ]; then
 			echo "$password" | sudo -S rm -rf "$HOME"/'AstroPi system updater'
 		fi
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/share/applications/AstroPi.desktop
 		if [ -f "$HOME"/.Update.sh ]; then
 			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
 		fi
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/.Update.sh /usr/bin/.Update.sh
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/.Update.sh /usr/bin/.Update.sh
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating .Update.sh</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
 		pcmanfm --set-wallpaper="$HOME/.AstroPi-system/Loghi&background/AstroPi_wallpaper.png"
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>change wallpaper</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
-		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/AstroPiSystem/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
+		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 
 		# =================================================================
