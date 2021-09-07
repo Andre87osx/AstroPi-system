@@ -50,8 +50,8 @@ sysClean()
 
 chkUsr()
 {
-if [ $(whoami) = 'root' ]; then
-	su - astropi
+if [ "$(whoami)" = "root" ]; then
+	su - astropi || exit 1
 fi
 }
 
