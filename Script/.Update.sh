@@ -40,28 +40,33 @@ zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT
 	echo "# Preparing update"
 	sleep 2s
         git -C "$WorkDir" pull
-        case $? in
+	case $? in
         0)
         	true
-		#zenity --info --text="All file have been successfully updated" --width=300 --title="AstroPi System"
         ;;
         1)
-		#echo "$password" | sudo -S rm -rf "$WorkDir"
-		#cd "$HOME" || exit
-		#git clone https://github.com/Andre87osx/AstroPi-system.git
-		#mv $HOME/AstroPi-system $HOME/.AstroPi-system
-		#git -C "$WorkDir" pull
-		# zenity --info --text="All file have been successfully updated" --width=300 --title="AstroPi System"
-		exit 1
+		wget -q --spider https://github.com/Andre87osx/AstroPi-system
+		if [ $? -eq 0 ]; then
+			echo "$password" | sudo -S rm -rf "$GitDir"
+			cd "$HOME" || exit
+			git clone https://github.com/Andre87osx/AstroPi-system.git
+			mv "$HOME"/AstroPi-system "$GitDir"
+			git -C "$WorkDir" pull
+		else
+			echo "I can not update the GIT because it lacks an internet connection"
+		fi
         ;;
         -1)
-		#echo "$password" | sudo -S rm -rf "$WorkDir"
-		#cd "$HOME" || exit
-		#git clone https://github.com/Andre87osx/AstroPi-system.git
-		#mv $HOME/AstroPi-system $HOME/.AstroPi-system
-		#git -C "$WorkDir" pull
-		# zenity --info --text="All file have been successfully updated" --width=300 --title="AstroPi System"
-		exit 1
+		wget -q --spider https://github.com/Andre87osx/AstroPi-system
+		if [ $? -eq 0 ]; then
+			echo "$password" | sudo -S rm -rf "$GitDir"
+			cd "$HOME" || exit
+			git clone https://github.com/Andre87osx/AstroPi-system.git
+			mv "$HOME"/AstroPi-system "$GitDir"
+			git -C "$WorkDir" pull
+		else
+			echo "I can not update the GIT because it lacks an internet connection"
+		fi
         ;;
         esac
 
@@ -82,7 +87,8 @@ zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT
 	--percentage=0 \
 	--auto-close \
 	--width=300 \
-	--auto-kill
+	--auto-kill \
+	--pulsante
 
 #=========================================================================
 
