@@ -35,7 +35,7 @@ echo "$password" | sudo -S rm -rf "$GitDir"
 cd "$HOME" || exit
 git clone https://github.com/Andre87osx/AstroPi-system.git
 mv "$HOME"/AstroPi-system "$GitDir"
-git -C "$WorkDir" pull
+git -C "$GitDir" pull
 }
 
 #=========================================================================
