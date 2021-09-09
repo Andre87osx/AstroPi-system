@@ -63,7 +63,7 @@ chkUsr
 	echo "5"
 	echo "# Preparing update"
 	sleep 2s
-        git -C "$WorkDir" pull
+        git -C "$GitDir" pull
 	case $? in
         0)
         	true
