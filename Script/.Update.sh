@@ -10,8 +10,8 @@
 # Bash variables
 #=========================================================================
 Indi_V=1.9.1
-KStars_V=3.5.4v1.1
-AstroPi_V=v.1.2
+KStars_V=3.5.5v1.3 - Beta
+AstroPi_V=v.1.3
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
 
@@ -19,6 +19,22 @@ for i in ${!functions[@]}
 do
     ${functions[$i]}
 done
+chkUsr()
+{
+if [ "$(whoami)" = "root" ]; then
+	su - astropi || exit 1
+fi
+}
+
+buildGit()
+{
+echo "$password" | sudo -S rm -rf "$GitDir"
+cd "$HOME" || exit
+git clone https://github.com/Andre87osx/AstroPi-system.git
+mv "$HOME"/AstroPi-system "$GitDir"
+git -C "$WorkDir" pull
+}
+
 #=========================================================================
 
 # Sudo password request. 
@@ -32,6 +48,9 @@ echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 
 # Information window for the waiting time
 zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT is up to date, readable and executable.\n<b>The operation can last a few minutes</b>" --width=300
+
+# Check if whoami is user not root
+chkUsr
 
 # Check the AstroPi GIT for update.
 (
@@ -47,11 +66,14 @@ zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT
         1)
 		wget -q --spider https://github.com/Andre87osx/AstroPi-system
 		if [ $? -eq 0 ]; then
-			echo "$password" | sudo -S rm -rf "$GitDir"
-			cd "$HOME" || exit
-			git clone https://github.com/Andre87osx/AstroPi-system.git
-			mv "$HOME"/AstroPi-system "$GitDir"
-			git -C "$WorkDir" pull
+			builGit | zenity --progress \
+					--title="AstroPi System $AstroPi_V" \
+					--text="AstroPi System $AstroPi_V" \
+					--percentage=0 \
+					--auto-close \
+					--width=300 \
+					--auto-kill \
+					--pulsante		
 		else
 			echo "I can not update the GIT because it lacks an internet connection"
 		fi
@@ -59,11 +81,14 @@ zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT
         -1)
 		wget -q --spider https://github.com/Andre87osx/AstroPi-system
 		if [ $? -eq 0 ]; then
-			echo "$password" | sudo -S rm -rf "$GitDir"
-			cd "$HOME" || exit
-			git clone https://github.com/Andre87osx/AstroPi-system.git
-			mv "$HOME"/AstroPi-system "$GitDir"
-			git -C "$WorkDir" pull
+			builGit | zenity --progress \
+					--title="AstroPi System $AstroPi_V" \
+					--text="AstroPi System $AstroPi_V" \
+					--percentage=0 \
+					--auto-close \
+					--width=300 \
+					--auto-kill \
+					--pulsante
 		else
 			echo "I can not update the GIT because it lacks an internet connection"
 		fi
