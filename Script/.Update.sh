@@ -60,7 +60,7 @@ chkUsr
 
 #=========================================================================
 # Check the AstroPi GIT for update.
-git -C "$GitDir" pull | zenity --progress --title="AstroPi System $AstroPi_V" --text="AstroPi System $AstroPi_V" \
+( git -C "$GitDir" pull ) | zenity --progress --title="AstroPi System $AstroPi_V" --text="AstroPi System $AstroPi_V" \
 				--percentage=0 \
 				--auto-close \
 				--width=300 \
@@ -74,7 +74,7 @@ case $? in
 	# Check firs connection
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
-		builGit | zenity --progress \
+		( buildGit ) | zenity --progress \
 				--title="AstroPi System $AstroPi_V" \
 				--text="AstroPi System $AstroPi_V" \
 				--percentage=0 \
@@ -90,7 +90,7 @@ case $? in
 	# Check firs connection
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
-		builGit | zenity --progress \
+		( buildGit ) | zenity --progress \
 				--title="AstroPi System $AstroPi_V" \
 				--text="AstroPi System $AstroPi_V" \
 				--percentage=0 \
