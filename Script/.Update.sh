@@ -7,6 +7,9 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ####### AstroPi update system ########
 
+# Sudo password request. 
+password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
+
 # Bash variables
 #=========================================================================
 Indi_V=1.9.1
@@ -39,9 +42,6 @@ git -C "$GitDir" pull
 }
 
 #=========================================================================
-
-# Sudo password request. 
-password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
 
 # Make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
@@ -127,7 +127,7 @@ KStars_V=3.5.4v1.1
 AstroPi_V=v.1.2
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
-password="$password"
+password
 set +a
 "$GitDir"/Script/AstroPi.sh
 
