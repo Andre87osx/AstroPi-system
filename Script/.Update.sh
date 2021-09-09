@@ -7,16 +7,18 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ####### AstroPi update system ########
 
-# Sudo password request. 
-password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
-
-# Bash variables
+# Bash variables ready for export
 #=========================================================================
+set -a
 Indi_V=1.9.1
 KStars_V=3.5.5v1.3 - Beta
 AstroPi_V=v.1.3
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
+# Sudo password request. 
+password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
+set +a
+"$GitDir"/Script/AstroPi.sh
 
 for i in ${!functions[@]}
 do
@@ -119,17 +121,6 @@ chkUsr
 	--pulsante
 
 #=========================================================================
-
-# I export the variables to the script AstroPi.sh
-set -a
-Indi_V=1.9.1
-KStars_V=3.5.4v1.1
-AstroPi_V=v.1.2
-GitDir="$HOME"/.AstroPi-system
-WorkDir="$HOME"/.Projects
-password
-set +a
-"$GitDir"/Script/AstroPi.sh
 
 # Starting AstroPi.sh
 echo "$password" | sudo -S "$GitDir"/Script/AstroPi.sh
