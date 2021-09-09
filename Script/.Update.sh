@@ -19,6 +19,9 @@ for i in ${!functions[@]}
 do
     ${functions[$i]}
 done
+
+# Bash functios
+#=========================================================================
 chkUsr()
 {
 if [ "$(whoami)" = "root" ]; then
