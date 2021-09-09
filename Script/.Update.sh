@@ -29,14 +29,12 @@ if [ "$(whoami)" = "root" ]; then
 fi
 }
 
-buildGit()
-{
 echo "$password" | sudo -S rm -rf "$GitDir"
 cd "$HOME" || exit
 git clone https://github.com/Andre87osx/AstroPi-system.git
 mv "$HOME"/AstroPi-system "$GitDir"
 git -C "$GitDir" pull
-}
+
 
 #=========================================================================
 # Sudo password request. 
@@ -60,28 +58,20 @@ chkUsr
 
 #=========================================================================
 # Check the AstroPi GIT for update.
-( git -C "$GitDir" pull ) | zenity --progress --title="AstroPi System $AstroPi_V" --text="AstroPi System $AstroPi_V" \
-				--percentage=0 \
-				--auto-close \
-				--width=300 \
-				--auto-kill \
-				--pulsante
+git -C "$GitDir" pull
 case $? in
 0)
-	true
+	echo "GIT is up to date"
 ;;
 1)
 	# Check firs connection
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
-		( buildGit ) | zenity --progress \
-				--title="AstroPi System $AstroPi_V" \
-				--text="AstroPi System $AstroPi_V" \
-				--percentage=0 \
-				--auto-close \
-				--width=300 \
-				--auto-kill \
-				--pulsante		
+		echo "$password" | sudo -S rm -rf "$GitDir"
+		cd "$HOME" || exit
+		git clone https://github.com/Andre87osx/AstroPi-system.git
+		mv "$HOME"/AstroPi-system "$GitDir"
+		git -C "$GitDir" pull
 	else
 		echo "I can not update the GIT because it lacks an internet connection"
 	fi
@@ -90,14 +80,11 @@ case $? in
 	# Check firs connection
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
-		( buildGit ) | zenity --progress \
-				--title="AstroPi System $AstroPi_V" \
-				--text="AstroPi System $AstroPi_V" \
-				--percentage=0 \
-				--auto-close \
-				--width=300 \
-				--auto-kill \
-				--pulsante
+		echo "$password" | sudo -S rm -rf "$GitDir"
+		cd "$HOME" || exit
+		git clone https://github.com/Andre87osx/AstroPi-system.git
+		mv "$HOME"/AstroPi-system "$GitDir"
+		git -C "$GitDir" pull
 	else
 		echo "I can not update the GIT because it lacks an internet connection"
 	fi
