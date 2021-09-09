@@ -42,87 +42,71 @@ git -C "$GitDir" pull
 # Sudo password request. 
 password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
 
+#=========================================================================
 # Make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 
+#=========================================================================
 # Makes sure that the user sudo password is correct
 (( $? != 0 )) && zenity --error --text="<b>Incorrect User or Password</b>\n\nError in AstroPi System" --width=300 --title="AstroPi - user password required" && exit 1
 
+#=========================================================================
 # Information window for the waiting time
 zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT is up to date, readable and executable.\n<b>The operation can last a few minutes</b>" --width=300
 
+#=========================================================================
 # Check if whoami is user not root
 chkUsr
 
+#=========================================================================
 # Check the AstroPi GIT for update.
-(
-	# =================================================================
-	echo "5"
-	echo "# Preparing update"
-	sleep 2s
-        git -C "$GitDir" pull | zenity --progress \
-					--title="AstroPi System $AstroPi_V" \
-					--text="AstroPi System $AstroPi_V" \
-					--percentage=0 \
-					--auto-close \
-					--width=300 \
-					--auto-kill \
-					--pulsante
-	case $? in
-        0)
-        	true
-        ;;
-        1)
-		wget -q --spider https://github.com/Andre87osx/AstroPi-system
-		if [ $? -eq 0 ]; then
-			builGit | zenity --progress \
-					--title="AstroPi System $AstroPi_V" \
-					--text="AstroPi System $AstroPi_V" \
-					--percentage=0 \
-					--auto-close \
-					--width=300 \
-					--auto-kill \
-					--pulsante		
-		else
-			echo "I can not update the GIT because it lacks an internet connection"
-		fi
-        ;;
-        -1)
-		wget -q --spider https://github.com/Andre87osx/AstroPi-system
-		if [ $? -eq 0 ]; then
-			builGit | zenity --progress \
-					--title="AstroPi System $AstroPi_V" \
-					--text="AstroPi System $AstroPi_V" \
-					--percentage=0 \
-					--auto-close \
-					--width=300 \
-					--auto-kill \
-					--pulsante
-		else
-			echo "I can not update the GIT because it lacks an internet connection"
-		fi
+git -C "$GitDir" pull | zenity --progress --title="AstroPi System $AstroPi_V" --text="AstroPi System $AstroPi_V" \
+				--percentage=0 \
+				--auto-close \
+				--width=300 \
+				--auto-kill \
+				--pulsante
+case $? in
+0)
+	true
+;;
+1)
+	# Check firs connection
+	wget -q --spider https://github.com/Andre87osx/AstroPi-system
+	if [ $? -eq 0 ]; then
+		builGit | zenity --progress \
+				--title="AstroPi System $AstroPi_V" \
+				--text="AstroPi System $AstroPi_V" \
+				--percentage=0 \
+				--auto-close \
+				--width=300 \
+				--auto-kill \
+				--pulsante		
+	else
+		echo "I can not update the GIT because it lacks an internet connection"
+	fi
+;;
+-1)
+	# Check firs connection
+	wget -q --spider https://github.com/Andre87osx/AstroPi-system
+	if [ $? -eq 0 ]; then
+		builGit | zenity --progress \
+				--title="AstroPi System $AstroPi_V" \
+				--text="AstroPi System $AstroPi_V" \
+				--percentage=0 \
+				--auto-close \
+				--width=300 \
+				--auto-kill \
+				--pulsante
+	else
+		echo "I can not update the GIT because it lacks an internet connection"
+	fi
         ;;
         esac
 
-	# =================================================================
-	echo "75"
-	echo "# Make sure that the script are executable"
-	sleep 2s
-	echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
-
-	# =================================================================
-	echo "100"
-	echo "# One meore second"
-        sleep 1s 
-        
-) | zenity --progress \
-	--title="AstroPi System $AstroPi_V" \
-	--text="AstroPi System $AstroPi_V" \
-	--percentage=0 \
-	--auto-close \
-	--width=300 \
-	--auto-kill \
-	--pulsante
+#=========================================================================
+# Make sure that the scripts are executable
+echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 
 #=========================================================================
 # Export all variable to AstroPi.sh
@@ -139,6 +123,7 @@ export GitDir
 export WorkDir
 "$GitDir"/Script/AstroPi.sh
 
+#=========================================================================
 # Starting AstroPi.sh
 echo "$password" | sudo -S "$GitDir"/Script/AstroPi.sh
 (( $? != 0 )) && zenity --error --text="Something went wrong trying to start AstroPi System. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
