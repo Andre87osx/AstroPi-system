@@ -7,18 +7,13 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ####### AstroPi update system ########
 
-# Bash variables ready for export
+# Bash variables
 #=========================================================================
-set -a
 Indi_V=1.9.1
 KStars_V=3.5.5v1.3-Beta
 AstroPi_V=v.1.3
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
-# Sudo password request. 
-password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
-set +a
-"$GitDir"/Script/AstroPi.sh
 
 for i in ${!functions[@]}
 do
@@ -44,6 +39,8 @@ git -C "$GitDir" pull
 }
 
 #=========================================================================
+# Sudo password request. 
+password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
 
 # Make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
@@ -63,7 +60,14 @@ chkUsr
 	echo "5"
 	echo "# Preparing update"
 	sleep 2s
-        git -C "$GitDir" pull
+        git -C "$GitDir" pull | zenity --progress \
+					--title="AstroPi System $AstroPi_V" \
+					--text="AstroPi System $AstroPi_V" \
+					--percentage=0 \
+					--auto-close \
+					--width=300 \
+					--auto-kill \
+					--pulsante
 	case $? in
         0)
         	true
@@ -121,6 +125,19 @@ chkUsr
 	--pulsante
 
 #=========================================================================
+# Export all variable to AstroPi.sh
+export password
+"$GitDir"/Script/AstroPi.sh
+export Indi_V
+"$GitDir"/Script/AstroPi.sh
+export KStars_V
+"$GitDir"/Script/AstroPi.sh
+export AstroPi_V
+"$GitDir"/Script/AstroPi.sh
+export GitDir
+"$GitDir"/Script/AstroPi.sh
+export WorkDir
+"$GitDir"/Script/AstroPi.sh
 
 # Starting AstroPi.sh
 echo "$password" | sudo -S "$GitDir"/Script/AstroPi.sh
