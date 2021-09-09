@@ -11,7 +11,7 @@
 #=========================================================================
 set -a
 Indi_V=1.9.1
-KStars_V=3.5.5v1.3 - Beta
+KStars_V=3.5.5v1.3-Beta
 AstroPi_V=v.1.3
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
