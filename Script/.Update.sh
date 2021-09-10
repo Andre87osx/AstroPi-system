@@ -34,11 +34,11 @@ buildGIT()
 zenity --warning --timeout=5 --title="AstroPi System $AstroPi_V" --text="Your GIT looks corrupt or non-existent.\n<b>Rebuild the GIT it will take a few minutes.</b>" --width=300
 while :
 do
-echo "$password" | sudo -S rm -rf "$GitDir"
-cd "$HOME" || exit
-git clone https://github.com/Andre87osx/AstroPi-system.git
-mv "$HOME"/AstroPi-system "$GitDir"
-git -C "$GitDir" pull
+	echo "$password" | sudo -S rm -rf "$GitDir"
+	cd "$HOME" || exit
+	git clone https://github.com/Andre87osx/AstroPi-system.git
+	mv "$HOME"/AstroPi-system "$GitDir"
+	git -C "$GitDir" pull
 done | zenity --progress \
 		--title="AstroPi System $AstroPi_V" \
 		--text="AstroPi System $AstroPi_V" \
@@ -81,7 +81,7 @@ case $? in
 		echo "I can not update the GIT because it lacks an internet connection"
 	fi
 ;;
--1)
+*)
 	# Check connection firs
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
