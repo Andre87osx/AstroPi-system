@@ -9,7 +9,6 @@
 
 # Bash variables
 #=========================================================================
-wifidev="wlan0" #device name to use. Default is wlan0. Use the command: iw dev ,to see wifi interface name
 if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
 	StatHotSpot=Disable
 else
@@ -35,17 +34,27 @@ chkARM64()
 
 sysClean()
 {
-	echo "$password" | sudo -S apt-get clean
-	if [ -d "$GitDir" ]; then
-	cd "$GitDir" || exit
-	( git repack -a -d ) | zenity --progress \
+	(
+		echo "10" ; sleep 1
+		echo "# Remove unnecessary lib" ; sleep 1
+		echo "$password" | sudo -S apt-get clean
+		echo "50" ; sleep 1
+		echo "# Cleaning GIT dir" ; sleep 1
+		if [ -d "$GitDir" ]; then
+			cd "$GitDir" || exit
+			git repack -a -d
+		fi
+		echo "75" ; sleep 1
+		echo "# Finishing..." ; sleep 1
+		echo "100" ; sleep 1
+	) | zenity --progress \
 		--title="AstroPi System $AstroPi_V" \
 		--text="AstroPi System $AstroPi_V" \
 		--percentage=0 \
 		--auto-close \
 		--width=300 \
-		--auto-kill
-	fi
+		--auto-kill \
+		--pulsante
 }
 
 chkUsr()
@@ -61,8 +70,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 	(
 		# =================================================================
 		echo "5"
-		echo "# Preparing update"
-		sleep 2s
+		echo "# Preparing update" ; sleep 2s
 		if [ ! -f "$sources" ]; then
 			echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
 			wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
@@ -78,22 +86,19 @@ sources=/etc/apt/sources.list.d/astroberry.list
 
 		# =================================================================
 		echo "25"
-		echo "# Run Software Updater..."
-		sleep 2s
+		echo "# Run Software Updater..." ; sleep 2s
 		echo "$password" | sudo -S apt-get update && sudo apt-get -y dist-upgrade && sudo apt -y full-upgrade
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating system AstroPi</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 
 		# =================================================================
 		echo "50"
-		echo "# Remove unnecessary libraries"
-		sleep 2s
+		echo "# Remove unnecessary libraries" ; sleep 2s
 		echo "$password" | sudo -S apt -y autoremove
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 
 		# =================================================================
 		echo "75"
-		echo "# Updating all AstroPi script"
-		sleep 2s
+		echo "# Updating all AstroPi script" ; sleep 2s
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/autohotspot.service /etc/systemd/system/autohotspot.service
 		(($? != 0)) && zenity --error --text="Something went wrong in <b>Updating AstroPi Hotspot.service</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 		echo "$password" | sudo -S cp "$HOME"/.AstroPi-system/Script/autohotspot /usr/bin/autohotspot
@@ -117,7 +122,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 
 		# =================================================================
 		echo "100"
-		echo "# One meore second"
+		echo "# One meore second" ; sleep 1s
 		zenity --info --text="All updates have been successfully installed" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
 
 		) | zenity --progress \
@@ -126,14 +131,16 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		--percentage=0 \
 		--auto-close \
 		--width=300 \
-		--auto-kill
+		--auto-kill \
+		--pulsante
 		
 }
 
 setupWiFi()
 {
 	# Setup WiFi in wpa_supplicant
-	#######################################
+	# =========================================================================
+
 	WIFI=$(zenity --forms --width=400 --height=300 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
 		--add-entry="Enter the SSID of the wifi network to be added." \
 		--add-password="Enter the password of selected wifi network")
@@ -166,7 +173,7 @@ setupWiFi()
 chkHotspot()
 {
         # Disable AstroPi auto hotspot
-        #######################################
+	# =========================================================================
 	if [ "$StatHotSpot" == Disable ]; then
 		echo "$password" | sudo -S systemctl disable autohotspot.service
 		(($? != 0)) && zenity --error --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
@@ -175,7 +182,7 @@ chkHotspot()
 		zenity --info --text "The auto hotspot service is now <b>disable</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" --width=300 --title="AstroPi System $AstroPi_V" && exit 0        
 	else
         # Enable AstroPi auto hotspot
-        #######################################
+	# =========================================================================
 		echo "$password" | sudo -S echo "nohook wpa_supplicant" >>/etc/dhcpcd.conf
 		(($? != 0)) && zenity --error --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 		echo "$password" | sudo -S systemctl enable autohotspot.service
@@ -186,164 +193,154 @@ chkHotspot()
 
 chkINDI()
 {
-(
-	# =================================================================
-	echo "5"
-	echo "# Install dependencies..."
-	sleep 2s
-	echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev gsc gsc-data
-	(($? != 0)) && zenity --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S apt-get install -y libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libfftw3-dev
-	(($? != 0)) && zenity --error --text="Error installing INDI Core dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev
-	(($? != 0)) && zenity --error --text="Error installing INDI Driver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev libgsl-dev wcslib-dev
-	(($? != 0)) && zenity --error --text="Error installing Stellarsolver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
+	(
+		# =================================================================
+		echo "5"
+		echo "# Install dependencies..." ; sleep 2s
+		echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev gsc gsc-data
+		(($? != 0)) && zenity --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S apt-get install -y libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libfftw3-dev
+		(($? != 0)) && zenity --error --text="Error installing INDI Core dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev
+		(($? != 0)) && zenity --error --text="Error installing INDI Driver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev libgsl-dev wcslib-dev
+		(($? != 0)) && zenity --error --text="Error installing Stellarsolver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $ASTROPI_V" && exit 1
 
-	# =================================================================
-	echo "15"
-	echo "# Checking INDI Core..."
-	sleep 2s
-	if [ ! -d "$WorkDir"/indi-cmake ]; then mkdir -p "$WorkDir"/indi-cmake; fi
-	cd "$WorkDir" || exit
-	wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_V".tar.gz -O - | tar -xz -C "$HOME"/.Projects
-	cd "$HOME"/.Projects/indi-cmake || exit
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$HOME"/.Projects/indi-"$Indi_V"
-	(($? != 0)) && zenity --error --text="Error <b>CMake</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	sleep 60s
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S make install
-	(($? != 0)) && zenity --error --text="Error <b>Instal</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		# =================================================================
+		echo "15"
+		echo "# Checking INDI Core..." ; sleep 2s
+		if [ ! -d "$WorkDir"/indi-cmake ]; then mkdir -p "$WorkDir"/indi-cmake; fi
+		cd "$WorkDir" || exit
+		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_V".tar.gz -O - | tar -xz -C "$HOME"/.Projects
+		cd "$HOME"/.Projects/indi-cmake || exit
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$HOME"/.Projects/indi-"$Indi_V"
+		(($? != 0)) && zenity --error --text="Error <b>CMake</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		sleep 1s
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S make install
+		(($? != 0)) && zenity --error --text="Error <b>Instal</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 
-	# =================================================================
-	echo "25"
-	echo "# Checking INDI 3rd Party Library"
-	sleep 2s
-	cd "$WorkDir" || exit
-	wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_V".tar.gz -O - | tar -xz -C "$WorkDir"
-	if [ ! -d "$WorkDir"/indi3rdlib-cmake ]; then mkdir -p "$WorkDir"/indi3rdlib-cmake; fi
-	cd "$WorkDir"/indi3rdlib-cmake || exit
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 "$WorkDir"/indi-3rdparty-"$Indi_V"
-	(($? != 0)) && zenity --error --text="Error <b>CMake</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	sleep 60s
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S make install
-	(($? != 0)) && zenity --error --text="Error <b>Instal</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		# =================================================================
+		echo "25"
+		echo "# Checking INDI 3rd Party Library" ; sleep 2s
+		cd "$WorkDir" || exit
+		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_V".tar.gz -O - | tar -xz -C "$WorkDir"
+		if [ ! -d "$WorkDir"/indi3rdlib-cmake ]; then mkdir -p "$WorkDir"/indi3rdlib-cmake; fi
+		cd "$WorkDir"/indi3rdlib-cmake || exit
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 "$WorkDir"/indi-3rdparty-"$Indi_V"
+		(($? != 0)) && zenity --error --text="Error <b>CMake</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		sleep 1s
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S make install
+		(($? != 0)) && zenity --error --text="Error <b>Instal</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 
-	# =================================================================
-	echo "50"
-	echo "# Check INDI 3rd Party Driver"
-	sleep 2s
-	if [ ! -d "$WorkDir"/indi3rd-cmake ]; then mkdir -p "$WorkDir"/indi3rd-cmake; fi
-	cd "$WorkDir"/indi3rd-cmake || exit
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$WorkDir"/indi-3rdparty-"$Indi_V"
-	(($? != 0)) && zenity --error --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	sleep 60s
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S make install
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> Instal INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		# =================================================================
+		echo "50"
+		echo "# Check INDI 3rd Party Driver" ; sleep 2s
+		if [ ! -d "$WorkDir"/indi3rd-cmake ]; then mkdir -p "$WorkDir"/indi3rd-cmake; fi
+		cd "$WorkDir"/indi3rd-cmake || exit
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$WorkDir"/indi-3rdparty-"$Indi_V"
+		(($? != 0)) && zenity --error --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		sleep 1s
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S make install
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> Instal INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 
-	# =================================================================
-	echo "75"
-	echo "# Checking Stellarsolver"
-	sleep 2s
-	if [ ! -d "$WorkDir"/stellarsolver-cmake ]; then mkdir -p "$WorkDir"/stellarsolver-cmake; fi
-	cd "$WorkDir" || exit
-	git clone https://github.com/rlancaste/stellarsolver.git
-	cd "$WorkDir"/stellarsolver-cmake || exit
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/stellarsolver
-	(($? != 0)) && zenity --error --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	sleep 60s
-	make -j 2
-	(($? != 0)) && zenity --error --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	echo "$password" | sudo -S make install
-	(($? != 0)) && zenity --error --text="Error Make Instal Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		# =================================================================
+		echo "75"
+		echo "# Checking Stellarsolver" ; sleep 2s
+		if [ ! -d "$WorkDir"/stellarsolver-cmake ]; then mkdir -p "$WorkDir"/stellarsolver-cmake; fi
+		cd "$WorkDir" || exit
+		git clone https://github.com/rlancaste/stellarsolver.git
+		cd "$WorkDir"/stellarsolver-cmake || exit
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/stellarsolver
+		(($? != 0)) && zenity --error --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		sleep 1s
+		make -j 2
+		(($? != 0)) && zenity --error --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		echo "$password" | sudo -S make install
+		(($? != 0)) && zenity --error --text="Error Make Instal Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 
-	# =================================================================
-	echo "90"
-	echo "# Removing the temporary files"
-	sleep 2s
-	echo "$password" | sudo -S rm -rf "$WorkDir"
+		# =================================================================
+		echo "90"
+		echo "# Removing the temporary files"
+		sleep 2s
+		echo "$password" | sudo -S rm -rf "$WorkDir"
 
-        # =================================================================
-	echo "100"
-	echo "# All finished."
-        sleep 2s
-	zenity --info --text="INDI and Driver has been updated to version $Indi_V" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
+		# =================================================================
+		echo "100"
+		echo "# All finished." ; sleep 2s
+		zenity --info --text="INDI and Driver has been updated to version $Indi_V" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
 
-    ) |
-        zenity --progress \
-            --title="AstroPi System  $AstroPi_V" \
-            --text="AstroPi System  $AstroPi_V" \
-            --percentage=0 \
-            --auto-close \
-            --width=300 \
-            --auto-kill
-
-}
-
-chkKStars()
-{
-(
- 	# =================================================================
-	echo "5"
-	echo "# Check KStars AstroPi"
-	sleep 2s
-	if [ ! -d "$HOME"/.indi/logs ]; then mkdir -p "$HOME"/.indi/logs; fi
-	(($? != 0)) && zenity --error --text="Error <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
-	(($? != 0)) && zenity --error --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
-	cd "$WorkDir"/kstars-cmake || exit
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$GitDir"/kstars-astropi
-	(($? != 0)) && zenity --error --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	
-	# =================================================================
-	echo "25"
-	echo "# Install KStars AstroPi $KStars_V"
-	sleep 2s
-	make -j2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-	sleep 60s
-	make -j2
-	(($? != 0)) && zenity --error --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-
-	# =================================================================
-	echo "50"
-	echo "$password" | sudo -S make install
-	(($? != 0)) && zenity --error --text="Error <b>Install</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
-
-	# =================================================================
-	echo "75"
-	echo "# Removing the temporary files"
-	sleep 2s
-	echo "$password" | sudo -S rm -rf "$WorkDir"
-
-	# =================================================================
-	echo "100"
-	echo "# All finished."
-	sleep 2s
-	zenity --info --text="KStars AstroPi $KStars_V allredy installed" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
-
- ) |
-	zenity --progress \
+	) | zenity --progress \
 		--title="AstroPi System  $AstroPi_V" \
 		--text="AstroPi System  $AstroPi_V" \
 		--percentage=0 \
 		--auto-close \
 		--width=300 \
-		--auto-kill
+		--auto-kill \
+		--pulsante
+
+}
+
+chkKStars()
+{
+	(
+		# =================================================================
+		echo "5"
+		echo "# Check KStars AstroPi" ; sleep 2s
+		if [ ! -d "$HOME"/.indi/logs ]; then mkdir -p "$HOME"/.indi/logs; fi
+		(($? != 0)) && zenity --error --text="Error <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
+		(($? != 0)) && zenity --error --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
+		cd "$WorkDir"/kstars-cmake || exit
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$GitDir"/kstars-astropi
+		(($? != 0)) && zenity --error --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+	
+		# =================================================================
+		echo "25"
+		echo "# Install KStars AstroPi $KStars_V" ; sleep 2s
+		make -j2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+		sleep 1s
+		make -j2
+		(($? != 0)) && zenity --error --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+
+		# =================================================================
+		echo "50"
+		echo "$password" | sudo -S make install
+		(($? != 0)) && zenity --error --text="Error <b>Install</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+
+		# =================================================================
+		echo "75"
+		echo "# Removing the temporary files" ; sleep 2s
+		echo "$password" | sudo -S rm -rf "$WorkDir"
+
+		# =================================================================
+		echo "100"
+		echo "# All finished." ; sleep 2s
+		zenity --info --text="KStars AstroPi $KStars_V allredy installed" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
+
+	) | zenity --progress \
+		--title="AstroPi System  $AstroPi_V" \
+		--text="AstroPi System  $AstroPi_V" \
+		--percentage=0 \
+		--auto-close \
+		--width=300 \
+		--auto-kill \
+		--pulsante
 
 }
 
@@ -394,7 +391,7 @@ ans=$(zenity --list --title="AstroPi System $AstroPi_V" --width=350 --height=300
 	1)
 	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
 	;;
-	-1)
+	*)
 	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
 	;;
 	esac
