@@ -20,35 +20,6 @@ do
     ${functions[$i]}
 done
 
-# Bash functios
-#=========================================================================
-chkUsr()
-{
-if [ "$(whoami)" = "root" ]; then
-	su - astropi || exit 1
-fi
-}
-
-buildGIT()
-{
-zenity --warning --timeout=5 --title="AstroPi System $AstroPi_V" --text="Your GIT looks corrupt or non-existent.\n<b>Rebuild the GIT it will take a few minutes.</b>" --width=300
-while :
-do
-	echo "$password" | sudo -S rm -rf "$GitDir"
-	cd "$HOME" || exit
-	git clone https://github.com/Andre87osx/AstroPi-system.git
-	mv "$HOME"/AstroPi-system "$GitDir"
-	git -C "$GitDir" pull
-done | zenity --progress \
-		--title="AstroPi System $AstroPi_V" \
-		--text="AstroPi System $AstroPi_V" \
-		--percentage=0 \
-		--auto-close \
-		--width=300 \
-		--auto-kill \
-		--pulsante
-}
-
 # Sudo password request.
 password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
 
@@ -59,39 +30,34 @@ echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 (( $? != 0 )) && zenity --error --text="<b>Incorrect User or Password</b>\n\nError in AstroPi System" --width=300 --title="AstroPi - user password required" && exit 1
 
 # Information window for the waiting time
-zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT is up to date, readable and executable.\n<b>The operation can last a few minutes</b>" --width=300
+zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT is up to date, readable and executable.\n<b>The operation can last a few minutes</b>" --width=300 --timeout=5
 
 # Check if whoami is user not root
-chkUsr
+if [ "$(whoami)" = "root" ]; then
+	su - astropi || exit 1
+fi
 
-#=========================================================================
 # Check the AstroPi GIT for update.
 git -C "$GitDir" pull
 case $? in
 0)
 	echo "GIT is up to date"
 ;;
-1)
-	# Check connection firs
-	wget -q --spider https://github.com/Andre87osx/AstroPi-system
-	if [ $? -eq 0 ]; then
-		chkUsr
-		buildGIT
-	else
-		echo "I can not update the GIT because it lacks an internet connection"
-	fi
-;;
 *)
 	# Check connection firs
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
-		chkUsr
-		buildGIT
+		zenity --warning --title="AstroPi System $AstroPi_V" --text="AstroPi system seems corrupt or inaccessible.\n<b>I download the files from the GIT, and update it. This can take a few minutes.</b>" --width=300 --timeout=5
+		echo "$password" | sudo -S rm -rf "$GitDir"
+		cd "$HOME" || exit
+		git clone https://github.com/Andre87osx/AstroPi-system.git
+		mv "$HOME"/AstroPi-system "$GitDir"
+		git -C "$GitDir" pull
 	else
 		echo "I can not update the GIT because it lacks an internet connection"
 	fi
-        ;;
-        esac
+;;
+esac
 
 # Make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
