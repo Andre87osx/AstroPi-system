@@ -23,8 +23,8 @@
 #include <cmath>
 #include <set>
 
-Vector cgmath::findLocalStarPosition(QSharedPointer<FITSData> &imageData,
-                                     GuideView *guideView)
+GuiderUtils::Vector cgmath::findLocalStarPosition(QSharedPointer<FITSData> &imageData,
+        GuideView *guideView)
 {
     if (usingSEPMultiStar())
     {
@@ -41,8 +41,8 @@ Vector cgmath::findLocalStarPosition(QSharedPointer<FITSData> &imageData,
 cgmath::cgmath() : QObject()
 {
     // sky coord. system vars.
-    starPosition = Vector(0);
-    targetPosition = Vector(0);
+    starPosition = GuiderUtils::Vector(0);
+    targetPosition = GuiderUtils::Vector(0);
 
     // processing
     in_params.reset();
@@ -72,6 +72,7 @@ bool cgmath::setVideoParameters(int vid_wd, int vid_ht, int binX, int binY)
     video_width  = vid_wd / binX;
     video_height = vid_ht / binY;
 
+    calibration.setBinningUsed(binX, binY);
     guideStars.setCalibration(calibration);
 
     return true;
@@ -122,7 +123,7 @@ bool cgmath::setTargetPosition(double x, double y)
     if (y >= (double)video_height - 1)
         y = (double)video_height - 1;
 
-    targetPosition = Vector(x, y, 0);
+    targetPosition = GuiderUtils::Vector(x, y, 0);
 
     guideStars.setCalibration(calibration);
 
@@ -344,20 +345,21 @@ void cgmath::calculatePulses(void)
             {
                 pulseDirection = NO_DIR;
                 pulseLength = 0;
-                continue;
-            }
-
-            // Check the min pulse value, and assign the direction.
-            const double pulseArcSec = pulseConverter > 0 ? pulseLength / pulseConverter : 0;
-            if (pulseArcSec >= in_params.min_pulse_arcsec[k])
-            {
-                if (k == GUIDE_RA)
-                    pulseDirection = arcsecDrift > 0 ? RA_DEC_DIR : RA_INC_DIR;
-                else
-                    pulseDirection = arcsecDrift > 0 ? DEC_INC_DIR : DEC_DEC_DIR; // GUIDE_DEC.
             }
             else
-                pulseDirection = NO_DIR;
+            {
+                // Check the min pulse value, and assign the direction.
+                const double pulseArcSec = pulseConverter > 0 ? pulseLength / pulseConverter : 0;
+                if (pulseArcSec >= in_params.min_pulse_arcsec[k])
+                {
+                    if (k == GUIDE_RA)
+                        pulseDirection = arcsecDrift > 0 ? RA_DEC_DIR : RA_INC_DIR;
+                    else
+                        pulseDirection = arcsecDrift > 0 ? DEC_INC_DIR : DEC_DEC_DIR; // GUIDE_DEC.
+                }
+                else
+                    pulseDirection = NO_DIR;
+            }
 
         }
         qCDebug(KSTARS_EKOS_GUIDE) << "pulse_length[" << axisStr(k) << "] = " << pulseLength
@@ -385,7 +387,7 @@ void cgmath::performProcessing(Ekos::GuideState state, QSharedPointer<FITSData> 
     {
         if (Options::gPGEnabled())
         {
-            Vector guideStarPosition = findLocalStarPosition(imageData, guideView);
+            GuiderUtils::Vector guideStarPosition = findLocalStarPosition(imageData, guideView);
             if (guideStarPosition.x != -1 && !std::isnan(guideStarPosition.x))
             {
                 gpg->suspended(guideStarPosition, targetPosition,
@@ -396,7 +398,7 @@ void cgmath::performProcessing(Ekos::GuideState state, QSharedPointer<FITSData> 
         return;
     }
 
-    Vector starPositionArcSec, targetPositionArcSec;
+    GuiderUtils::Vector starPositionArcSec, targetPositionArcSec;
 
     // find guiding star location in the image
     starPosition = findLocalStarPosition(imageData, guideView);
@@ -439,7 +441,7 @@ void cgmath::performProcessing(Ekos::GuideState state, QSharedPointer<FITSData> 
     qCDebug(KSTARS_EKOS_GUIDE) << "Reticle RA: " << targetPositionArcSec.x << " DEC: " << targetPositionArcSec.y;
 
     // Compute RA & DEC drift in arcseconds.
-    Vector star_drift = starPositionArcSec - targetPositionArcSec;
+    GuiderUtils::Vector star_drift = starPositionArcSec - targetPositionArcSec;
     star_drift = calibration.rotateToRaDec(star_drift);
 
     // both coords are ready for math processing

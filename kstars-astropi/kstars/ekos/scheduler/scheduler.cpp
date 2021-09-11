@@ -41,7 +41,7 @@
 #define RESTART_GUIDING_DELAY_MS  5000
 
 #define DEFAULT_CULMINATION_TIME    -60
-#define DEFAULT_MIN_ALTITUDE        10
+#define DEFAULT_MIN_ALTITUDE        15
 #define DEFAULT_MIN_MOON_SEPARATION 0
 
 // This is a temporary debugging printout introduced while gaining experience developing

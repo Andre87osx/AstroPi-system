@@ -41,7 +41,7 @@ InternalGuider::InternalGuider()
     // Do this so that stored calibration will be visible on the
     // guide options menu. Calibration will get restored again when needed.
     pmath->getMutableCalibration()->restore(
-        pierSide, Options::reverseDecOnPierSideChange(), nullptr);
+        pierSide, Options::reverseDecOnPierSideChange(), subBinX, subBinY, nullptr);
 
     state = GUIDE_IDLE;
 }
@@ -179,7 +179,7 @@ bool InternalGuider::ditherXY(double x, double y)
         else if (fabs(targetY - y) < oneJump)
             targetY = y;
 
-        m_ProgressiveDither.enqueue(Vector(targetX, targetY, -1));
+        m_ProgressiveDither.enqueue(GuiderUtils::Vector(targetX, targetY, -1));
 
     }
     while (targetX != x || targetY != y);
@@ -206,7 +206,7 @@ bool InternalGuider::dither(double pixels)
     // Instead we call findLocalStarPosition() which does the analysis from the image.
     // Unfortunately, processGuiding() will repeat that computation.
     // We currently don't cache it.
-    Vector star_position = pmath->findLocalStarPosition(m_ImageData, guideFrame);
+    GuiderUtils::Vector star_position = pmath->findLocalStarPosition(m_ImageData, guideFrame);
     if (pmath->isStarLost() || (star_position.x == -1) || (star_position.y == -1))
     {
         // If the star position is lost, just lose this iteration.
@@ -246,7 +246,7 @@ bool InternalGuider::dither(double pixels)
             diff_y *= -1.5;
         accumulator.second += diff_y;
 
-        m_DitherTargetPosition = Vector(ret_x, ret_y, 0) + Vector(diff_x, diff_y, 0);
+        m_DitherTargetPosition = GuiderUtils::Vector(ret_x, ret_y, 0) + GuiderUtils::Vector(diff_x, diff_y, 0);
 
         qCDebug(KSTARS_EKOS_GUIDE) << "Dithering process started.. Reticle Target Pos X " << m_DitherTargetPosition.x << " Y " <<
                                    m_DitherTargetPosition.y;
@@ -270,7 +270,7 @@ bool InternalGuider::dither(double pixels)
     double driftRA, driftDEC;
     pmath->getCalibration().computeDrift(
         star_position,
-        Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
+        GuiderUtils::Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
         &driftRA, &driftDEC);
 
     qCDebug(KSTARS_EKOS_GUIDE) << "Dithering in progress. Current" << star_position.x << star_position.y << "Target" <<
@@ -342,8 +342,8 @@ bool InternalGuider::processManualDithering()
     // These will be the RA & DEC drifts of the current star position from the reticle position in pixels.
     double driftRA, driftDEC;
     pmath->getCalibration().computeDrift(
-        Vector(cur_x, cur_y, 0),
-        Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
+        GuiderUtils::Vector(cur_x, cur_y, 0),
+        GuiderUtils::Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
         &driftRA, &driftDEC);
 
     qCDebug(KSTARS_EKOS_GUIDE) << "Manual Dithering in progress. Diff star X:" << driftRA << "Y:" << driftDEC;
@@ -579,7 +579,8 @@ bool InternalGuider::restoreCalibration()
 {
     bool success = Options::reuseGuideCalibration() &&
                    pmath->getMutableCalibration()->restore(
-                       pierSide, Options::reverseDecOnPierSideChange(), &mountDEC);
+                       pierSide, Options::reverseDecOnPierSideChange(),
+                       subBinX, subBinY, &mountDEC);
     if (success)
         emit DESwapChanged(pmath->getCalibration().declinationSwapEnabled());
     return success;
@@ -666,7 +667,7 @@ bool InternalGuider::processGuiding()
     {
         if (state == GUIDE_GUIDING)
         {
-            Vector star_pos = pmath->findLocalStarPosition(m_ImageData, guideFrame);
+            GuiderUtils::Vector star_pos = pmath->findLocalStarPosition(m_ImageData, guideFrame);
             pmath->setTargetPosition(star_pos.x, star_pos.y);
         }
         m_isFirstFrame = false;
