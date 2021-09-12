@@ -15,6 +15,12 @@ else
 	StatHotSpot=Enable
 fi
 
+Indi_V=1.9.1
+KStars_V=3.5.5v1.3-Beta
+AstroPi_V=v.1.3
+GitDir="$HOME"/.AstroPi-system
+WorkDir="$HOME"/.Projects
+
 for i in ${!functions[@]}
 do
     ${functions[$i]}
@@ -387,12 +393,13 @@ ans=$(zenity --list --title="AstroPi System $AstroPi_V" --width=350 --height=300
 			exit
 		
 		fi
+		exit
 	;;
 	1)
 	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 	;;
-	*)
+	-1)
 	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 	;;
 	esac
-exit
+exit 0
