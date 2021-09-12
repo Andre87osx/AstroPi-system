@@ -25,12 +25,10 @@ zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT
 
 # Check the AstroPi GIT for update.
 git -C "$HOME"/.AstroPi-system pull
-case $? in
-0)
+if [ $? = 0 ]; then
 	echo "GIT is up to date"
-;;
-1)
-	# Check connection firs
+else
+	# Check connection first
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? == 0 ]; then
 		zenity --warning --title="AstroPi System $AstroPi_V" --text="AstroPi system seems corrupt or inaccessible.\n<b>I download the files from the GIT, and update it. This can take a few minutes.</b>" --width=300 --timeout=5
@@ -38,12 +36,11 @@ case $? in
 		cd "$HOME" || exit
 		git clone https://github.com/Andre87osx/AstroPi-system.git
 		mv "$HOME"/AstroPi-system "$HOME"/.AstroPi-system
-		git -C "$HOME"/.AstroPi-system pull
+		git -C "$HOME"/.AstroPi-system pull || exit
 	else
 		echo "I can not update the GIT because it lacks an internet connection"
 	fi
-;;
-esac
+fi
 
 # Make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$HOME"/.AstroPi-system/Script/*.sh
