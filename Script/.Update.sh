@@ -43,7 +43,7 @@ case $? in
 0)
 	echo "GIT is up to date"
 ;;
-*)
+1)
 	# Check connection firs
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? -eq 0 ]; then
