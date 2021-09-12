@@ -47,7 +47,7 @@ echo "$password" | sudo -S chmod +x "$HOME"/.AstroPi-system/Script/*.sh
 
 # Export variable to AstroPi.sh
 export password
-"$HOME"/.AstroPi-system/Script/AstroPi.sh
+/"$HOME"/.AstroPi-system/Script/AstroPi.sh
 
 # Starting AstroPi.sh
 echo "$password" | sudo -S "$HOME"/.AstroPi-system/Script/AstroPi.sh
