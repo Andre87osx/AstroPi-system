@@ -60,7 +60,7 @@ case $? in
 esac
 
 # Make sure that the scripts are executable
-echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
+echo "$password" | sudo -S chmod +x "$HOME"/.AstroPi-system/Script/*.sh
 
 # Export all variable to AstroPi.sh
 export password
