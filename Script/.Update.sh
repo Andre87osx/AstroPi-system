@@ -20,11 +20,6 @@ AstroPi_V=v.1.3
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
 
-for i in ${!functions[@]}
-do
-    ${functions[$i]}
-done
-
 # Sudo password request.
 password=$(zenity --password  --width=300 --title="AstroPi System $AstroPi_V")
 
@@ -60,7 +55,7 @@ case $? in
 esac
 
 # Make sure that the scripts are executable
-echo "$password" | sudo -S chmod +x "$HOME"/.AstroPi-system/Script/*.sh
+echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 
 # Export all variable to AstroPi.sh
 export password
