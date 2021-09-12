@@ -7,6 +7,11 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ####### AstroPi update system ########
 
+# Check if whoami is user not root
+if [ "$(whoami)" = "root" ]; then
+	su - astropi || exit 1
+fi
+
 # Bash variables
 #=========================================================================
 Indi_V=1.9.1
@@ -31,11 +36,6 @@ echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 
 # Information window for the waiting time
 zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT is up to date, readable and executable.\n<b>The operation can last a few minutes</b>" --width=300 --timeout=5
-
-# Check if whoami is user not root
-if [ "$(whoami)" = "root" ]; then
-	su - astropi || exit 1
-fi
 
 # Check the AstroPi GIT for update.
 git -C "$GitDir" pull
