@@ -25,9 +25,7 @@ zenity --info --title="AstroPi System $AstroPi_V" --text="Check if the local GIT
 
 # Check the AstroPi GIT for update.
 git -C "$HOME"/.AstroPi-system pull
-if [ $? = 0 ]; then
-	echo "GIT is up to date"
-else
+if [ $? != 0 ]; then
 	# Check connection first
 	wget -q --spider https://github.com/Andre87osx/AstroPi-system
 	if [ $? == 0 ]; then
