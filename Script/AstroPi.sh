@@ -389,10 +389,10 @@ ans=$(zenity --list --title="AstroPi System $AstroPi_V" --width=350 --height=300
 		fi
 	;;
 	1)
-	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
+	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 	;;
 	*)
-	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $AstroPi_V" && exit 0
+	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
 	;;
 	esac
-exit 0
+exit
