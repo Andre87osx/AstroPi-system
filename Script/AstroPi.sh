@@ -366,40 +366,42 @@ ans=$(zenity --list --title="AstroPi System $AstroPi_V" --width=350 --height=300
 			sysUpgrade
 			chkARM64
 			lxpanelctl restart
-			exit
+			exit 0
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
 			chkUsr
 			setupWiFi
-			exit
+			exit 0
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
 			chkUsr
 			chkHotspot
-			exit
+			exit 0
 
 		elif [ "$ans" == "Install INDI and Driver $Indi_V" ]; then
 			chkUsr
 			chkINDI
-			exit
+			exit 0
 
 		elif [ "$ans" == "Install Kstars AstroPi $KStars_V" ]; then
 			chkUsr
 			chkKStars
-			exit
+			exit 0
 		elif [ "$ans" == "System Cleaning" ]; then
 			chkUsr
 			sysClean
-			exit
+			exit 0
 		
 		fi
-		exit
+		exit 0
 	;;
 	1)
-	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+	zenity --info --text="See you soon! Remember to keep your system up to date" --width=300 --title="AstroPi System $AstroPi_V"
+	exit 1
 	;;
 	-1)
-	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $AstroPi_V" && exit 1
+	zenity --warning --text="Something went wrong... Reload AstroPi System" --width=300 --title="AstroPi System $AstroPi_V"
+	exit 1
 	;;
 	esac
 exit 0
