@@ -1,4 +1,4 @@
-#!/bin/bash                                              
+#!/bin/bash
 #               _             _____ _ 
 #     /\       | |           |  __ (_)
 #    /  \   ___| |_ _ __ ___ | |__) | 
@@ -81,9 +81,9 @@ zenity --info --title="AstroPi System" --text="I prepare the files to run the la
 
 # I export the password to the script AstroPi.sh
 export password
-"$WorkDir"/Script/AstroPi.sh
-
 # launch AstroPi.sh
-echo "$password" | sudo -S "$WorkDir"/Script/AstroPi.sh
+"$WorkDir"/Script/AstroPi.sh
+# launch AstroPi.sh
+# echo "$password" | sudo -S "$WorkDir"/Script/AstroPi.sh
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=300 --title="AstroPi System" && exit 1
 exit 0
