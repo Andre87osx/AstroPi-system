@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=AstroPi-system
+GenericName=AstroPi-system
+Comment=Update AstroPi and application
+Icon="$HOME"/.AstroPi-system/Loghi&background/solar-system.svg
+Exec=/usr/bin/.Update.sh
+Terminal=false
+NotShowIn=GNOME;XFCE
+StartupNotify=false
+Categories=Utility
+NoDisplay=false
