@@ -14,7 +14,7 @@ KStars_v=3.5.5v1.3-Beta
 Indi_v=1.9.1
 
 GitDir="$HOME"/.AstroPi-system
-WorkDir="$HOME"/Projects
+WorkDir="$HOME"/.Projects
 # Define the height in px of the top system-bar:
 TOPMARGIN=27
 # Sum in px of all horizontal borders:
