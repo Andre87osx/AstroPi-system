@@ -27,7 +27,7 @@ chkARM64()
 {
 	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
-        true
+		true
 	else
 		zenity --warning --width="$W" --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
 	fi
@@ -42,10 +42,10 @@ sysClean()
 		if [ -d "$GitDir" ]; then
 			echo "$password" | sudo -S chown -R "$USER":"$USER" "$GitDir"
 			cd "$GitDir" || exit 1
-            git repack -a -d
+			git repack -a -d
 		fi
 		echo "# Cleaning Project..."
-        if [ -d "$WorkDir" ]; then echo "$password" | sudo -S rm -rf "$WorkDir"; fi
+		if [ -d "$WorkDir" ]; then echo "$password" | sudo -S rm -rf "$WorkDir"; fi
 		(($? != 0)) && zenity --error --width="$W" --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	) | zenity --progress \
 		--width="$Wprogress" \
@@ -58,10 +58,10 @@ sysClean()
 
 chkUsr()
 {
-    if [ "$(whoami)" = "root" ]; then
-    	# This function must be implemented v1.3/v1.4
-        exit
-    fi
+	if [ "$(whoami)" = "root" ]; then
+		# This function must be implemented v1.3/v1.4
+		exit
+	fi
 }
 
 sysUpgrade()
@@ -91,7 +91,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 
 		# =================================================================
 		echo "# Remove unnecessary libraries"
-        # Clean APT
+		# Clean APT
 		echo "$password" | sudo -S apt -y autoremove
 		(($? != 0)) && zenity --error --width="$W" --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
@@ -129,8 +129,8 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		zenity --info --width="$W" --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v"
 
 		) | zenity --progress \
-		    --title="AstroPi System $AstroPi_v" \
-		    --percentage=1 \
+		--title="AstroPi System $AstroPi_v" \
+		--percentage=1 \
 	    	--auto-close \
 	    	--width="$Wprogress" \
 	    	--auto-kill \
@@ -152,8 +152,8 @@ setupWiFi()
 	case "$?" in
 	0)	
 		echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
-        echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
-        case $? in
+		echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
+		case $? in
 		0)
 			zenity --info --width="$W" --text "New WiFi has been created, reboot AstroPi." --title="AstroPi System $AstroPi_v"
 		;;
@@ -331,7 +331,7 @@ chkKStars()
 
 }
 
-## Start true script
+## Starting AstroPi GUI
 #=========================================================================
 ans=$(zenity --list --width="$W" --height="$H" --title="AstroPi System $AstroPi_v" --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
 	FALSE "Setup my WiFi" \
