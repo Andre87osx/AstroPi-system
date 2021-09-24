@@ -11,7 +11,7 @@
 #=========================================================================
 AstroPi_v=1.3-Beta
 KStars_v=3.5.5v1.3-Beta
-Indi_v=1.9.1
+Indi_v=1.9.2
 
 GitDir="$HOME"/.AstroPi-system
 WorkDir="$HOME"/.Projects
