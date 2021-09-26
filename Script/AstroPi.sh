@@ -109,7 +109,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating .Update.sh</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
 		# Set default wallpaper
-		pcmanfm --set-wallpaper="$GitDir"/Loghi&background/AstroPi_wallpaper.png
+		pcmanfm --set-wallpaper="$GitDir/Loghi&background/AstroPi_wallpaper.png"
 		# Copy LX setting for start bar
 		echo "$password" | sudo -S cp "$GitDir"/Script/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
