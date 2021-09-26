@@ -62,8 +62,8 @@ fi
 echo "# Loading AstroPi - System."
 
 # I make sure that the scripts are executable
-cd "$GitDir"/Script || exit 1
-echo "$password" | sudo -S chmod +x -R
+echo "$password" | sudo -S chmod +x -R "$GitDir"/Script
+
 ) | zenity --progress --title="Loading AstroPi - System $AstroPi_v..." --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 
 # Export the variable to AstroPi.sh script
