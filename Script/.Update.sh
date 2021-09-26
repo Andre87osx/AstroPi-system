@@ -13,8 +13,9 @@ AstroPi_v=1.3
 KStars_v=3.5.5v1.3
 Indi_v=1.9.2
 
-GitDir="$HOME"/.AstroPi-system
-WorkDir="$HOME"/.Projects
+home=$HOME
+GitDir="$home"/.AstroPi-system
+WorkDir="$home"/.Projects
 # Define the height in px of the top system-bar:
 TOPMARGIN=27
 # Sum in px of all horizontal borders:
@@ -61,7 +62,7 @@ fi
 echo "# Loading AstroPi - System."
 
 # I make sure that the scripts are executable
-echo "$password" | sudo -S chmod +x "/$GitDir"/Script/*.sh
+echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
 ) | zenity --progress --title="Loading AstroPi - System $AstroPi_v..." --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 
 # Export the variable to AstroPi.sh script
