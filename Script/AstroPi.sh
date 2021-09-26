@@ -363,6 +363,6 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 	exit 0
 	;;
 	-1)
-	zenity --warning --width="$W" --text="Something went wrong... Reload AstroPi System" --title="AstroPi System $AstroPi_v" && exit 1
+	zenity --warning --width=$W --text="Something went wrong... Reload AstroPi System" --title="AstroPi System $AstroPi_v" && exit 1
 	;;
 	esac
