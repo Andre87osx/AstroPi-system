@@ -344,29 +344,25 @@ ans=$(zenity --list --width="$W" --height="$H" --title="AstroPi System $AstroPi_
 	case $? in
 	0)
 		if [ "$ans" == "Check for update" ]; then
-			sysUpgrade
-			chkARM64
+			sysUpgrade || exit 1
+			chkARM64 || exit 1
 			lxpanelctl restart
-			exit 0
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
-			setupWiFi
-			exit 0
+			setupWiFi || exit 1
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
-			chkHotspot
-			exit 0
+			chkHotspot || exit 1
 
 		elif [ "$ans" == "Install INDI and Driver $Indi_v" ]; then
-			chkINDI
-			exit 0
+			chkINDI || exit 1
 
 		elif [ "$ans" == "Install Kstars AstroPi $KStars_v" ]; then
-			chkKStars
-			exit 0
+			chkKStars || exit 1
+
 		elif [ "$ans" == "System Cleaning" ]; then
-			sysClean
-			exit 0
+			sysClean || exit 1
+
 		fi
 	;;
 	1)
