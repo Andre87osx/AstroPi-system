@@ -311,7 +311,7 @@ chkKStars()
 		echo "# All finished."
 		zenity --info --width=$W --text="KStars AstroPi $KStars_v allredy installed" --title="AstroPi System $AstroPi_v"
 
-	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width="$Wprogress"
 }
 
 ## Starting AstroPi GUI
