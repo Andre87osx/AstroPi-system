@@ -42,13 +42,8 @@ sysClean()
 		echo "# Cleaning Project..."
 		if [ -d "$WorkDir" ]; then echo "$password" | sudo -S rm -rf "$WorkDir"; fi
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-	) | zenity --progress \
-		--width=$Wprogress \
-		--title="AstroPi System $AstroPi_v" \
-		--percentage=1 \
-		--auto-close \
-		--auto-kill \
-		--pulsante
+
+	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 }
 
 chkUsr()
@@ -104,7 +99,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f "$HOME"/.Update.sh ]; then
 			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
 		fi
-		# \\
+		######################################
 		# Copy AstroPi icon and make executable
 		echo "$password" | sudo -S cp "$GitDir"/Script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		(($? != 0)) && zenity --error --width="$W" --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
@@ -123,14 +118,8 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "# All have done"
 		zenity --info --width=$W --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v"
 
-	) | zenity --progress \
-	--title="AstroPi System $AstroPi_v" \
-	--percentage=1 \
-	--auto-close \
-	--width=$Wprogress \
-	--auto-kill \
-	--pulsante
-		
+	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+	
 }
 
 setupWiFi()
