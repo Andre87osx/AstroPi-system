@@ -47,9 +47,9 @@ if wget -q --spider https://github.com/Andre87osx/AstroPi-system; then
 
 echo "# Check if GIT dir exist"
 	if [ ! -d "$GitDir" ]; then
-		cd "$HOME" || exit 1
+		cd "$home" || exit 1
 		git clone https://github.com/Andre87osx/AstroPi-system.git
-		mv "$HOME"/AstroPi-system "$HOME"/.AstroPi-system
+		mv "$home"/AstroPi-system "$GitDir"
 	fi
 echo "# Check the AstroPi git for update."
 	if ! git -C "$GitDir" pull; then
