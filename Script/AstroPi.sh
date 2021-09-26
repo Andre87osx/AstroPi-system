@@ -260,14 +260,7 @@ chkINDI()
 		echo "# All finished."
 		zenity --info --text="INDI and Driver has been updated to version $Indi_v" --width=$W --title="AstroPi System $AstroPi_v"
 
-	) | zenity --progress \
-		--title="AstroPi System  $AstroPi_v" \
-		--percentage=1 \
-		--auto-close \
-		--width=$Wprogress \
-		--auto-kill \
-		--pulsante
-
+	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 }
 
 chkKStars()
@@ -304,13 +297,7 @@ chkKStars()
 		echo "# All finished."
 		zenity --info --width=$W --text="KStars AstroPi $KStars_v allredy installed" --title="AstroPi System $AstroPi_v"
 
-	) | zenity --progress \
-		--title="AstroPi System  $AstroPi_v" \
-		--percentage=1 \
-		--auto-close \
-		--width=$Wprogress \
-		--auto-kill \
-		--pulsante
+	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 
 }
 
