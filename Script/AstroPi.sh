@@ -9,11 +9,6 @@
 
 # Bash variables
 #=========================================================================
-AstroPi_v=1.3-Beta # TEMP
-KStars_v=3.5.5v1.3-Beta # TEMP
-Indi_v=1.9.2 # TEMP
-GitDir="$HOME"/.AstroPi-system # TEMP
-WorkDir="$HOME"/Projects # TEMP
 
 if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
 	StatHotSpot=Disable
