@@ -287,7 +287,7 @@ chkKStars()
 		if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
-		cd "$WorkDir"/kstars-cmake || exit
+		cd "$WorkDir"/kstars-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$GitDir"/kstars-astropi
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	
@@ -312,7 +312,6 @@ chkKStars()
 		zenity --info --width=$W --text="KStars AstroPi $KStars_v allredy installed" --title="AstroPi System $AstroPi_v"
 
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
-
 }
 
 ## Starting AstroPi GUI
