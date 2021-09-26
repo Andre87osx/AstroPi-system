@@ -77,6 +77,6 @@ export H
 export Wprogress
 
 # Start AstroPi.sh
-"$GitDir"/Script/AstroPi.sh
+echo "$password" | sudo -S "$GitDir"/Script/AstroPi.sh
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=$W --title="AstroPi - System $AstroPi_v" && exit 1
 exit 0
