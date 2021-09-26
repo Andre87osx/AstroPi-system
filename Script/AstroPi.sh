@@ -18,6 +18,20 @@ fi
 
 # Bash functios
 #=========================================================================
+chkIndexGsc()
+{
+	(
+		echo "# Install GSC catalog for Simulaor"
+		sudo apt-get -y install gsc gsc-data
+		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		echo "# Install All Index for Astrometry"
+		sudo apt -y install astrometry-data-2mass astrometry-data-tycho2
+		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+
+	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+
+}
+
 chkARM64()
 {
 	sysinfo=$(uname -a)
@@ -181,7 +195,7 @@ chkINDI()
 	(
 		# =================================================================
 		echo "# Install dependencies..."
-		echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev gsc gsc-data
+		echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev
 		(($? != 0)) && zenity --width=$W --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S apt-get -y install git cdbs dkms cmake fxload libgps-dev libgsl-dev libraw-dev libusb-dev zlib1g-dev libftdi-dev libgsl0-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libusb-1.0-0-dev libdc1394-22-dev libboost-regex-dev libcurl4-gnutls-dev
 		(($? != 0)) && zenity --error --width=$W --text="Error installing INDI Core dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
@@ -306,10 +320,12 @@ chkKStars()
 ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
 	FALSE "Setup my WiFi" \
 	FALSE "$StatHotSpot AstroPi hotspot" \
-	FALSE "Check for update" \
+	FALSE " " \
 	FALSE "System Cleaning" \
+	FALSE "Check for update" \
 	FALSE "Install INDI and Driver $Indi_v" \
-	FALSE "Install KStars AstroPi $KStars_v")
+	FALSE "Install KStars AstroPi $KStars_v") \
+	FALSE "Install GSC and Index")	
     
 	case $? in
 	0)
@@ -329,6 +345,9 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 
 		elif [ "$ans" == "Install Kstars AstroPi $KStars_v" ]; then
 			chkKStars
+		
+		elif [ "$ans" == "Install GSC and Index" ]; then
+			chkIndexGsc
 
 		elif [ "$ans" == "System Cleaning" ]; then
 			sysClean
