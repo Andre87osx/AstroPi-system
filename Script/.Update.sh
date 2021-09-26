@@ -26,7 +26,7 @@ SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
 # New width and height
 W=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
-H=$(( SCREEN_HEIGHT / 4 - TOPMARGIN ))
+H=$(( SCREEN_HEIGHT / 3 - TOPMARGIN ))
 Wprogress=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
 
 #=========================================================================
