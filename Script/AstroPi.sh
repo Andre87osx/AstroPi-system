@@ -121,15 +121,16 @@ sources=/etc/apt/sources.list.d/astroberry.list
 
 		# =================================================================
 		echo "# All have done"
-		zenity --info --width="$W" --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v"
+		sleep 1s
 
-		) | zenity --progress \
-		--title="AstroPi System $AstroPi_v" \
-		--percentage=1 \
-	    	--auto-close \
-	    	--width="$Wprogress" \
-	    	--auto-kill \
-	    	--pulsante
+	) | zenity --progress \
+	--title="AstroPi System $AstroPi_v" \
+	--percentage=1 \
+	--auto-close \
+	--width="$Wprogress" \
+	--auto-kill \
+	--pulsante
+zenity --info --width="$W" --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v"
 		
 }
 
