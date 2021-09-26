@@ -342,7 +342,7 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 		elif [ "$ans" == "Install INDI and Driver $Indi_v" ]; then
 			chkINDI
 
-		elif [ "$ans" == "Install Kstars AstroPi $KStars_v" ]; then
+		elif [ "$ans" == "Install KStars AstroPi $KStars_v" ]; then
 			chkKStars
 		
 		elif [ "$ans" == "Install GSC and Index" ]; then
