@@ -320,7 +320,7 @@ chkKStars()
 		--title="AstroPi System  $AstroPi_v" \
 		--percentage=1 \
 		--auto-close \
-		--width="$W" \
+		--width="$Wprogress" \
 		--auto-kill \
 		--pulsante
 
