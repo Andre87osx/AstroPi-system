@@ -61,7 +61,7 @@ fi
 echo "# Loading AstroPi - System."
 
 # I make sure that the scripts are executable
-echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
+echo "$password" | sudo -S chmod +x "/$GitDir"/Script/*.sh
 ) | zenity --progress --title="Loading AstroPi - System $AstroPi_v..." --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 
 # Export the variable to AstroPi.sh script
@@ -76,6 +76,6 @@ export H
 export Wprogress
 
 # Start AstroPi.sh
-"$GitDir"/Script/AstroPi.sh
+"/$GitDir"/Script/AstroPi.sh
 (( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=$W --title="AstroPi - System $AstroPi_v" && exit 1
 exit 0
