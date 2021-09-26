@@ -325,7 +325,8 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 	FALSE "Check for update" \
 	FALSE "Install INDI and Driver $Indi_v" \
 	FALSE "Install KStars AstroPi $KStars_v") \
-	FALSE "Install GSC and Index")	
+	FALSE "Install GSC and Index"
+	)	
     
 	case $? in
 	0)
