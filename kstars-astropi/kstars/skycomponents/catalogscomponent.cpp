@@ -28,6 +28,7 @@
 #include "kstars.h"
 #include "skymapcomposite.h"
 #include "kspaths.h"
+#include "import_skycomp.h"
 
 CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_filename,
                                      bool load_default)
@@ -37,7 +38,7 @@ CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_fil
 {
     if (load_default)
     {
-        const auto &default_file = KSPaths::locate(QStandardPaths::GenericDataLocation,
+        const auto &default_file = KSPaths::locate(QStandardPaths::AppDataLocation,
                                                    Options::dSODefaultCatalogFilename());
 
         if (QFile(default_file).exists())
@@ -46,6 +47,8 @@ CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_fil
         }
     }
 
+    m_catalog_colors = m_db_manager.get_catalog_colors();
+    tryImportSkyComponents();
     qCInfo(KSTARS) << "Loaded DSO catalogs.";
 }
 
@@ -81,6 +84,7 @@ void CatalogsComponent::draw(SkyPainter *skyp)
     auto &labeler = *SkyLabeler::Instance();
     labeler.setPen(
         QColor(KStarsData::Instance()->colorScheme()->colorNamed("DSNameColor")));
+    const auto &color_scheme = KStarsData::Instance()->colorSchemeFileName();
 
     auto &map       = *SkyMap::Instance();
     auto hideLabels = (map.isSlewing() && Options::hideOnSlew()) ||
@@ -133,7 +137,7 @@ void CatalogsComponent::draw(SkyPainter *skyp)
             if (!magCriterion)
                 continue;
 
-            float size = object.a() * dms::PI * Options::zoomFactor() / 10800.0;
+            double size = object.a() * dms::PI * Options::zoomFactor() / 10800.0;
 
             bool sizeCriterion =
                 (size > 1.0 || size == 0 || Options::zoomFactor() > 2000.);
@@ -141,14 +145,15 @@ void CatalogsComponent::draw(SkyPainter *skyp)
             if (sizeCriterion)
             {
                 object.JITupdate();
-                auto &color = m_catalog_colors[object.catalogId()];
+                auto &color = m_catalog_colors[object.catalogId()][color_scheme];
                 if (!color.isValid())
                 {
-                    const auto &catalog_color = object.getCatalog().color;
-                    if (catalog_color == "")
+                    color = m_catalog_colors[object.catalogId()]["default"];
+
+                    if (!color.isValid())
+                    {
                         color = default_color;
-                    else
-                        color = QColor(catalog_color);
+                    }
                 }
 
                 skyp->setPen(color);
@@ -215,7 +220,7 @@ CatalogObject &CatalogsComponent::insertStaticObject(const CatalogObject &obj)
 
 SkyObject *CatalogsComponent::findByName(const QString &name)
 {
-    auto objects = m_db_manager.find_objects_by_name(name, 1);
+    auto objects = m_db_manager.find_objects_by_name(name, 1, true);
 
     if (objects.size() == 0)
         return nullptr;
@@ -300,3 +305,49 @@ SkyObject *CatalogsComponent::objectNearest(SkyPoint *p, double &maxrad)
 
     return &insertStaticObject(nearest);
 }
+
+void CatalogsComponent::tryImportSkyComponents()
+{
+    auto skycom_db = SkyComponentsImport::get_skycomp_db();
+    if (!skycom_db.first)
+        return;
+
+    const auto move_skycompdb = [&]()
+    {
+        const auto &path = skycom_db.second.databaseName();
+        const auto &new_path =
+            QString("%1.%2.backup").arg(path).arg(QDateTime::currentMSecsSinceEpoch());
+
+        QFile::rename(path, new_path);
+    };
+
+    const auto resp = KMessageBox::questionYesNoCancel(
+        nullptr, i18n("Import custom and internet resolved objects "
+                      "from the old DSO database into the new one?"));
+
+    if (resp != KMessageBox::Yes)
+    {
+        move_skycompdb();
+        return;
+    }
+
+    const auto &success = SkyComponentsImport::get_objects(skycom_db.second);
+    if (!std::get<0>(success))
+        KMessageBox::detailedError(nullptr, i18n("Could not import the objects."),
+                                   std::get<1>(success));
+
+    const auto &add_success =
+        m_db_manager.add_objects(CatalogsDB::user_catalog_id, std::get<2>(success));
+
+    if (!add_success.first)
+        KMessageBox::detailedError(nullptr, i18n("Could not import the objects."),
+                                   add_success.second);
+    else
+    {
+        KMessageBox::information(
+            nullptr, i18np("Successfully added %1 object to the user catalog.",
+                           "Successfully added %1 objects to the user catalog.",
+                           std::get<2>(success).size()));
+        move_skycompdb();
+    }
+};

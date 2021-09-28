@@ -29,9 +29,13 @@ constexpr int MAX_SKIPPED_SAMPLES = 4;
 // Fills parameters from the KStars options.
 void getGPGParameters(GaussianProcessGuider::guide_parameters *parameters)
 {
-    parameters->control_gain_                      = Options::gPGcWeight();
+    // Parameters from standard options.
+    parameters->control_gain_                      = Options::rAProportionalGain();
+    // We need a calibration to determine min move. This is re-set in computePulse() below.
+    parameters->min_move_                          = 0.25;
+
+    // Parameters from GPG-specific options.
     parameters->min_periods_for_inference_         = Options::gPGMinPeriodsForInference();
-    parameters->min_move_                          = Options::gPGMinMove();
     parameters->SE0KLengthScale_                   = Options::gPGSE0KLengthScale();
     parameters->SE0KSignalVariance_                = Options::gPGSE0KSignalVariance();
     parameters->PKLengthScale_                     = Options::gPGPKLengthScale();
@@ -129,8 +133,8 @@ void GPG::ditheringSettled(bool success)
         qCDebug(KSTARS_EKOS_GUIDE) << "GPG Dither done (failed)";
 }
 
-void GPG::suspended(const Vector &guideStarPosition,
-                    const Vector &reticlePosition,
+void GPG::suspended(const GuiderUtils::Vector &guideStarPosition,
+                    const GuiderUtils::Vector &reticlePosition,
                     GuideStars *guideStars,
                     const Calibration &cal)
 {
@@ -144,9 +148,9 @@ void GPG::suspended(const Vector &guideStarPosition,
         return;
     }
 
-    const Vector arc_star = cal.convertToArcseconds(guideStarPosition);
-    const Vector arc_reticle = cal.convertToArcseconds(reticlePosition);
-    const Vector star_drift =  cal.rotateToRaDec(arc_star - arc_reticle);
+    const GuiderUtils::Vector arc_star = cal.convertToArcseconds(guideStarPosition);
+    const GuiderUtils::Vector arc_reticle = cal.convertToArcseconds(reticlePosition);
+    const GuiderUtils::Vector star_drift =  cal.rotateToRaDec(arc_star - arc_reticle);
 
     double gpgInput = star_drift.x;
     if (guideStars != nullptr)
@@ -214,6 +218,10 @@ bool GPG::computePulse(double raArcsecError, GuideStars *guideStars,
         reset();
         return false;
     }
+
+    // GPG uses proportional gain and min-move from standard controls. Make sure they're using up-to-date values.
+    gpg->SetControlGain(Options::rAProportionalGain());
+    gpg->SetMinMove(Options::rAMinimumPulseArcSec());
 
     // GPG input is in RA arcseconds.
     QTime gpgTimer;

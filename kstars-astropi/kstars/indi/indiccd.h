@@ -367,12 +367,12 @@ class CCD : public DeviceDecorator
 
     private:
         void processStream(IBLOB *bp);
-        void loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data);
+        void loadImageInView(ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data);
         bool generateFilename(const QString &format, bool batch_mode, QString *filename);
         // Saves an image to disk on a separate thread.
         bool writeImageFile(const QString &filename, IBLOB *bp, bool is_fits);
         // Creates or finds the FITSViewer.
-        void setupFITSViewerWindows();
+        QPointer<FITSViewer> getFITSViewer();
         void handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, QSharedPointer<FITSData> data);
 
         //QString filter;

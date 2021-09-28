@@ -1360,17 +1360,13 @@ void CCD::processStream(IBLOB *bp)
 
 bool CCD::generateFilename(const QString &format, bool batch_mode, QString *filename)
 {
-    QString currentDir;
+    QDir currentDir;
     if (batch_mode)
-        currentDir = fitsDir.isEmpty() ? Options::fitsDir() : fitsDir;
+        currentDir.setPath(fitsDir.isEmpty() ? Options::fitsDir() : fitsDir);
     else
-        currentDir = KSPaths::writableLocation(QStandardPaths::TempLocation);
+        currentDir.setPath(KSPaths::writableLocation(QStandardPaths::TempLocation) + "/" + qAppName());
 
-    if (QDir(currentDir).exists() == false)
-        QDir().mkpath(currentDir);
-
-    if (currentDir.endsWith('/') == false)
-        currentDir.append('/');
+    currentDir.mkpath(".");
 
     // IS8601 contains colons but they are illegal under Windows OS, so replacing them with '-'
     // The timestamp is no longer ISO8601 but it should solve interoperality issues
@@ -1381,12 +1377,12 @@ bool CCD::generateFilename(const QString &format, bool batch_mode, QString *file
     {
         QString finalPrefix = seqPrefix;
         finalPrefix.replace("ISO8601", ts);
-        *filename = currentDir + finalPrefix +
-                    QString("_%1%2").arg(QString().asprintf("%03d", nextSequenceID), format);
+        *filename = currentDir.filePath(finalPrefix +
+                                        QString("_%1%2").arg(QString::asprintf("%03d", nextSequenceID), format));
     }
     else
-        *filename = currentDir + seqPrefix + (seqPrefix.isEmpty() ? "" : "_") +
-                    QString("%1%2").arg(QString().asprintf("%03d", nextSequenceID), format);
+        *filename = currentDir.filePath(seqPrefix + (seqPrefix.isEmpty() ? "" : "_") +
+                                        QString("%1%2").arg(QString::asprintf("%03d", nextSequenceID), format));
 
     QFile test_file(*filename);
     if (!test_file.open(QIODevice::WriteOnly))
@@ -1441,13 +1437,22 @@ bool CCD::writeImageFile(const QString &filename, IBLOB *bp, bool is_fits)
     return true;
 }
 
-void CCD::setupFITSViewerWindows()
+// Get or Create FITSViewer if we are using FITSViewer
+// or if capture mode is calibrate since for now we are forced to open the file in the viewer
+// this should be fixed in the future and should only use FITSData
+QPointer<FITSViewer> CCD::getFITSViewer()
 {
+    // if the FITS viewer exists, return it
+    if (m_FITSViewerWindow != nullptr && ! m_FITSViewerWindow.isNull())
+        return m_FITSViewerWindow;
+
+    // otherwise, create it
     normalTabID = calibrationTabID = focusTabID = guideTabID = alignTabID = -1;
 
     m_FITSViewerWindow = KStars::Instance()->createFITSViewer();
 
-    connect(m_FITSViewerWindow, &FITSViewer::closed, [&](int tabIndex)
+    // Check if ONE tab of the viewer was closed.
+    connect(m_FITSViewerWindow, &FITSViewer::closed, this, [this](int tabIndex)
     {
         if (tabIndex == normalTabID)
             normalTabID = -1;
@@ -1460,6 +1465,19 @@ void CCD::setupFITSViewerWindows()
         else if (tabIndex == alignTabID)
             alignTabID = -1;
     });
+
+    // If FITS viewer was completed closed. Reset everything
+    connect(m_FITSViewerWindow, &FITSViewer::destroyed, this, [this]()
+    {
+        normalTabID = -1;
+        calibrationTabID = -1;
+        focusTabID = -1;
+        guideTabID = -1;
+        alignTabID = -1;
+        m_FITSViewerWindow.clear();
+    });
+
+    return m_FITSViewerWindow;
 }
 
 void CCD::processBLOB(IBLOB *bp)
@@ -1678,15 +1696,6 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
 {
     FITSMode captureMode = targetChip->getCaptureMode();
 
-    // Get or Create FITSViewer if we are using FITSViewer
-    // or if capture mode is calibrate since for now we are forced to open the file in the viewer
-    // this should be fixed in the future and should only use FITSData
-    if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
-    {
-        if (m_FITSViewerWindow.isNull() && (captureMode == FITS_NORMAL || captureMode == FITS_CALIBRATE))
-            setupFITSViewerWindows();
-    }
-
     // Add metadata
     data->setProperty("device", getDeviceName());
     data->setProperty("blobVector", bp->bvp->name);
@@ -1700,6 +1709,11 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
         {
             if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
             {
+                // No need to wait until the image is loaded in the view, but emit AFTER checking
+                // batch mode, since newImage() may change it
+                emit BLOBUpdated(bp);
+                emit newImage(data);
+
                 bool success = false;
                 int tabIndex = -1;
                 int *tabID = (captureMode == FITS_NORMAL) ? &normalTabID : &calibrationTabID;
@@ -1722,10 +1736,10 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
                             previewTitle = i18n("Preview");
                     }
 
-                    success = m_FITSViewerWindow->loadData(data, fileURL, &tabIndex, captureMode, captureFilter, previewTitle);
+                    success = getFITSViewer()->loadData(data, fileURL, &tabIndex, captureMode, captureFilter, previewTitle);
                 }
                 else
-                    success = m_FITSViewerWindow->updateData(data, fileURL, *tabID, &tabIndex, captureFilter);
+                    success = getFITSViewer()->updateData(data, fileURL, *tabID, &tabIndex, captureFilter);
 
                 if (!success)
                 {
@@ -1736,25 +1750,29 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
                     return;
                 }
                 *tabID = tabIndex;
-                targetChip->setImageView(m_FITSViewerWindow->getView(tabIndex), captureMode);
+                targetChip->setImageView(getFITSViewer()->getView(tabIndex), captureMode);
                 if (Options::focusFITSOnNewImage())
-                    m_FITSViewerWindow->raise();
+                    getFITSViewer()->raise();
             }
-
-            emit BLOBUpdated(bp);
-            emit newImage(data);
+            else
+            {
+                emit BLOBUpdated(bp);
+                emit newImage(data);
+            }
         }
         break;
 
         case FITS_FOCUS:
         case FITS_GUIDE:
         case FITS_ALIGN:
-            loadImageInView(bp, targetChip, data);
+            loadImageInView(targetChip, data);
+            emit BLOBUpdated(bp);
+            emit newImage(data);
             break;
     }
 }
 
-void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data)
+void CCD::loadImageInView(ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data)
 {
     FITSMode mode = targetChip->getCaptureMode();
     FITSView *view = targetChip->getImageView(mode);
@@ -1776,10 +1794,7 @@ void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPoin
         // NORMAL is used for raw INDI drivers without Ekos.
         if ( (Options::useFITSViewer() || targetChip->isBatchMode() == false) &&
                 (mode == FITS_NORMAL || mode == FITS_CALIBRATE))
-            m_FITSViewerWindow->show();
-
-        emit BLOBUpdated(bp);
-        emit newImage(data);
+            getFITSViewer()->show();
     }
 }
 

@@ -16,24 +16,13 @@
 
 Calibration::Calibration()
 {
-    ROT_Z            = Ekos::Matrix(0);
+    ROT_Z = GuiderUtils::Matrix(0);
 }
 
 void Calibration::setAngle(double rotationAngle)
 {
     angle = rotationAngle;
-    ROT_Z = Ekos::RotateZ(-M_PI * angle / 180.0);
-}
-
-void Calibration::logCalibration() const
-{
-    qCDebug(KSTARS_EKOS_GUIDE) <<
-                               QString("Calibration. pulse: ms/pix ra: %1 dec %2  a-s/px x: %3 y: %4 Angle %5 foc %6 pw %7 ph %8 bin %9x%10")
-                               .arg(raPulseMsPerPixel).arg(decPulseMsPerPixel)
-                               .arg(xArcsecondsPerPixel()).arg(yArcsecondsPerPixel())
-                               .arg(angle)
-                               .arg(focalMm).arg(ccd_pixel_width).arg(ccd_pixel_height)
-                               .arg(subBinX).arg(subBinY);
+    ROT_Z = GuiderUtils::RotateZ(-M_PI * angle / 180.0);
 }
 
 void Calibration::setParameters(double ccd_pix_width, double ccd_pix_height,
@@ -49,7 +38,15 @@ void Calibration::setParameters(double ccd_pix_width, double ccd_pix_height,
     calibrationDEC      = mountDec;
     subBinX             = binX;
     subBinY             = binY;
+    subBinXused         = subBinX;
+    subBinYused         = subBinY;
     calibrationPierSide = currentPierSide;
+}
+
+void Calibration::setBinningUsed(int x, int y)
+{
+    subBinXused         = x;
+    subBinYused         = y;
 }
 
 void Calibration::setRaPulseMsPerPixel(double rate)
@@ -62,17 +59,17 @@ void Calibration::setDecPulseMsPerPixel(double rate)
     decPulseMsPerPixel = rate;
 }
 
-Vector Calibration::convertToArcseconds(const Vector &input) const
+GuiderUtils::Vector Calibration::convertToArcseconds(const GuiderUtils::Vector &input) const
 {
-    Vector arcseconds;
+    GuiderUtils::Vector arcseconds;
     arcseconds.x = input.x * xArcsecondsPerPixel();
     arcseconds.y = input.y * yArcsecondsPerPixel();
     return arcseconds;
 }
 
-Vector Calibration::convertToPixels(const Vector &input) const
+GuiderUtils::Vector Calibration::convertToPixels(const GuiderUtils::Vector &input) const
 {
-    Vector arcseconds;
+    GuiderUtils::Vector arcseconds;
     arcseconds.x = input.x / xArcsecondsPerPixel();
     arcseconds.y = input.y / yArcsecondsPerPixel();
     return arcseconds;
@@ -85,9 +82,9 @@ void Calibration::convertToPixels(double xArcseconds, double yArcseconds,
     *yPixel = yArcseconds / yArcsecondsPerPixel();
 }
 
-Vector Calibration::rotateToRaDec(const Vector &input) const
+GuiderUtils::Vector Calibration::rotateToRaDec(const GuiderUtils::Vector &input) const
 {
-    Vector in;
+    GuiderUtils::Vector in;
     in.x = input.x;
     in.y = -input.y;
     return (in * ROT_Z);
@@ -96,38 +93,48 @@ Vector Calibration::rotateToRaDec(const Vector &input) const
 void Calibration::rotateToRaDec(double dx, double dy,
                                 double *ra, double *dec) const
 {
-    Vector input;
+    GuiderUtils::Vector input;
     input.x = dx;
     input.y = dy;
-    Vector out = rotateToRaDec(input);
+    GuiderUtils::Vector out = rotateToRaDec(input);
     *ra = out.x;
     *dec = out.y;
+}
+
+double Calibration::binFactor() const
+{
+    return static_cast<double>(subBinXused) / static_cast<double>(subBinX);
+}
+
+double Calibration::inverseBinFactor() const
+{
+    return 1.0 / binFactor();
 }
 
 double Calibration::xArcsecondsPerPixel() const
 {
     // arcs = 3600*180/pi * (pix*ccd_pix_sz) / focal_len
-    return (206264.806 * ccd_pixel_width * subBinX) / focalMm;
+    return binFactor() * (206264.806 * ccd_pixel_width * subBinX) / focalMm;
 }
 
 double Calibration::yArcsecondsPerPixel() const
 {
-    return (206264.806 * ccd_pixel_height * subBinY) / focalMm;
+    return binFactor() * (206264.806 * ccd_pixel_height * subBinY) / focalMm;
 }
 
 double Calibration::xPixelsPerArcsecond() const
 {
-    return (focalMm / (206264.806 * ccd_pixel_width * subBinX));
+    return inverseBinFactor() * (focalMm / (206264.806 * ccd_pixel_width * subBinX));
 }
 
 double Calibration::yPixelsPerArcsecond() const
 {
-    return (focalMm / (206264.806 * ccd_pixel_height * subBinY));
+    return inverseBinFactor() * (focalMm / (206264.806 * ccd_pixel_height * subBinY));
 }
 
 double Calibration::raPulseMillisecondsPerPixel() const
 {
-    return raPulseMsPerPixel;
+    return binFactor() * raPulseMsPerPixel;
 }
 
 double Calibration::raPulseMillisecondsPerArcsecond() const
@@ -136,12 +143,12 @@ double Calibration::raPulseMillisecondsPerArcsecond() const
     // same along the RA or DEC axes if the pixel weren't square.
     // For now assume square as before.
     // Would need to combine the X and Y values according to the RA/DEC rotation angle.
-    return raPulseMsPerPixel * xPixelsPerArcsecond();
+    return raPulseMillisecondsPerPixel() * xPixelsPerArcsecond();
 }
 
 double Calibration::decPulseMillisecondsPerPixel() const
 {
-    return decPulseMsPerPixel;
+    return binFactor() * decPulseMsPerPixel;
 }
 
 double Calibration::decPulseMillisecondsPerArcsecond() const
@@ -150,7 +157,7 @@ double Calibration::decPulseMillisecondsPerArcsecond() const
     // same along the RA or DEC axes if the pixel weren't square.
     // For now assume square as before.
     // Would need to combine the X and Y values according to the RA/DEC rotation angle.
-    return decPulseMsPerPixel * xPixelsPerArcsecond();
+    return decPulseMillisecondsPerPixel() * yPixelsPerArcsecond();
 }
 
 double Calibration::calculateRotation(double x, double y)
@@ -159,9 +166,9 @@ double Calibration::calculateRotation(double x, double y)
 
     y = -y;
 
-    //if( (!Vector(delta_x, delta_y, 0)) < 2.5 )
+    //if( (!GuiderUtils::Vector(delta_x, delta_y, 0)) < 2.5 )
     // JM 2015-12-10: Lower threshold to 1 pixel
-    if ((!Vector(x, y, 0)) < 1)
+    if ((!GuiderUtils::Vector(x, y, 0)) < 1)
         return -1;
 
     // 90 or 270 degrees
@@ -179,9 +186,23 @@ double Calibration::calculateRotation(double x, double y)
     return phi;
 }
 
+bool Calibration::calculate1D(double start_x, double start_y,
+                              double end_x, double end_y, int RATotalPulse)
+{
+    return calculate1D(end_x - start_x, end_y - start_y, RATotalPulse);
+}
 
 bool Calibration::calculate1D(double x, double y, int RATotalPulse)
 {
+    const double length = std::hypot(x, y);
+    if (length < .1 || RATotalPulse <= 0)
+    {
+        qCDebug(KSTARS_EKOS_GUIDE)
+                << QString("Bad input to calculate1D: ra %1 %2 total pulse %3")
+                .arg(x).arg(y).arg(RATotalPulse);
+        return false;
+    }
+
     double phi = calculateRotation(x, y);
     if (phi < 0)
         return false;
@@ -193,25 +214,51 @@ bool Calibration::calculate1D(double x, double y, int RATotalPulse)
     decSwap = calibrationDecSwap = false;
 
     if (RATotalPulse > 0)
-        setRaPulseMsPerPixel(RATotalPulse / std::hypot(x, y));
+        setRaPulseMsPerPixel(RATotalPulse / length);
+
+    if (raPulseMillisecondsPerPixel() > 10000)
+    {
+        qCDebug(KSTARS_EKOS_GUIDE)
+                << "Calibration computed unreasonable pulse-milliseconds-per-pixel: "
+                << raPulseMillisecondsPerPixel() << " & " << decPulseMillisecondsPerPixel();
+    }
 
     initialized = true;
     return true;
+}
+bool Calibration::calculate2D(
+    double start_ra_x, double start_ra_y, double end_ra_x, double end_ra_y,
+    double start_dec_x, double start_dec_y, double end_dec_x, double end_dec_y,
+    bool *swap_dec, int RATotalPulse, int DETotalPulse)
+{
+    return calculate2D(end_ra_x - start_ra_x, end_ra_y - start_ra_y,
+                       end_dec_x - start_dec_x, end_dec_y - start_dec_y,
+                       swap_dec, RATotalPulse, DETotalPulse);
 }
 
 bool Calibration::calculate2D(
     double ra_x, double ra_y, double dec_x, double dec_y,
     bool *swap_dec, int RATotalPulse, int DETotalPulse)
 {
+    const double raLength = std::hypot(ra_x, ra_y);
+    const double decLength = std::hypot(dec_x, dec_y);
+    if (raLength < .1 || decLength < .1 || RATotalPulse <= 0 || DETotalPulse <= 0)
+    {
+        qCDebug(KSTARS_EKOS_GUIDE)
+                << QString("Bad input to calculate2D: ra %1 %2 dec %3 %4 total pulses %5 %6")
+                .arg(ra_x).arg(ra_y).arg(dec_x).arg(dec_y).arg(RATotalPulse).arg(DETotalPulse);
+        return false;
+    }
+
     double phi_ra  = 0; // angle calculated by GUIDE_RA drift
     double phi_dec = 0; // angle calculated by GUIDE_DEC drift
     double phi     = 0;
 
-    Vector ra_vect  = Normalize(Vector(ra_x, -ra_y, 0));
-    Vector dec_vect = Normalize(Vector(dec_x, -dec_y, 0));
+    GuiderUtils::Vector ra_vect  = GuiderUtils::Normalize(GuiderUtils::Vector(ra_x, -ra_y, 0));
+    GuiderUtils::Vector dec_vect = GuiderUtils::Normalize(GuiderUtils::Vector(dec_x, -dec_y, 0));
 
-    Vector try_increase = dec_vect * Ekos::RotateZ(M_PI / 2);
-    Vector try_decrease = dec_vect * Ekos::RotateZ(-M_PI / 2);
+    GuiderUtils::Vector try_increase = dec_vect * GuiderUtils::RotateZ(M_PI / 2);
+    GuiderUtils::Vector try_decrease = dec_vect * GuiderUtils::RotateZ(-M_PI / 2);
 
     double cos_increase = try_increase & ra_vect;
     double cos_decrease = try_decrease & ra_vect;
@@ -265,10 +312,19 @@ bool Calibration::calculate2D(
     calibrationDecSwap = decSwap;
 
     if (RATotalPulse > 0)
-        setRaPulseMsPerPixel(RATotalPulse / std::hypot(ra_x, ra_y));
+        setRaPulseMsPerPixel(RATotalPulse / raLength);
 
     if (DETotalPulse > 0)
-        setDecPulseMsPerPixel(DETotalPulse / std::hypot(dec_x, dec_y));
+        setDecPulseMsPerPixel(DETotalPulse / decLength);
+
+    // Check for unreasonable values.
+    if (raPulseMillisecondsPerPixel() > 10000 || decPulseMillisecondsPerPixel() > 10000)
+    {
+        qCDebug(KSTARS_EKOS_GUIDE)
+                << "Calibration computed unreasonable pulse-milliseconds-per-pixel: "
+                << raPulseMillisecondsPerPixel() << " & " << decPulseMillisecondsPerPixel();
+        return false;
+    }
 
     qCDebug(KSTARS_EKOS_GUIDE) << QString("Set RA ms/px = %1ms / %2px = %3. DEC: %4ms / %5px = %6.")
                                .arg(RATotalPulse).arg(std::hypot(ra_x, ra_y)).arg(raPulseMsPerPixel)
@@ -277,10 +333,10 @@ bool Calibration::calculate2D(
     return true;
 }
 
-void Calibration::computeDrift(const Vector &detection, const Vector &reference,
+void Calibration::computeDrift(const GuiderUtils::Vector &detection, const GuiderUtils::Vector &reference,
                                double *raDrift, double *decDrift) const
 {
-    Vector drift = detection - reference;
+    GuiderUtils::Vector drift = detection - reference;
     drift = rotateToRaDec(drift);
     *raDrift   = drift.x;
     *decDrift = drift.y;
@@ -382,10 +438,11 @@ void Calibration::save() const
 }
 
 bool Calibration::restore(ISD::Telescope::PierSide currentPierSide,
-                          bool reverseDecOnPierChange, const dms *declination)
+                          bool reverseDecOnPierChange, int currentBinX, int currentBinY,
+                          const dms *declination)
 {
     return restore(Options::serializedCalibration(), currentPierSide,
-                   reverseDecOnPierChange, declination);
+                   reverseDecOnPierChange, currentBinX, currentBinY, declination);
 }
 
 double Calibration::correctRA(double raMsPerPixel, const dms &calibrationDec, const dms &currentDec)
@@ -418,7 +475,8 @@ double Calibration::correctRA(double raMsPerPixel, const dms &calibrationDec, co
 }
 
 bool Calibration::restore(const QString &encoding, ISD::Telescope::PierSide currentPierSide,
-                          bool reverseDecOnPierChange, const dms *currentDeclination)
+                          bool reverseDecOnPierChange, int currentBinX, int currentBinY,
+                          const dms *currentDeclination)
 {
     // Fail if we couldn't read the calibration.
     if (!restore(encoding))
@@ -437,6 +495,9 @@ bool Calibration::restore(const QString &encoding, ISD::Telescope::PierSide curr
 
     if (currentDeclination != nullptr)
         raPulseMsPerPixel = correctRA(raPulseMsPerPixel, calibrationDEC, *currentDeclination);
+
+    subBinXused = currentBinX;
+    subBinYused = currentBinY;
 
     // Succeed if the calibration was on the same side of the pier as we're currently using.
     if (currentPierSide == calibrationPierSide)
