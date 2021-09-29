@@ -240,7 +240,7 @@ chkINDI()
 		echo "# Check INDI 3rd Party Driver"
 		if [ ! -d "$WorkDir"/indi3rd-cmake ]; then mkdir -p "$WorkDir"/indi3rd-cmake; fi
 		cd "$WorkDir"/indi3rd-cmake || exit
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_C_FLAGS=-m32 -DWITH_FXLOAD=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
