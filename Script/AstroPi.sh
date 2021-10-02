@@ -193,8 +193,16 @@ chkHotspot()
 chkINDI()
 {
 	(
+		echo "# Download Indi $Indi_v..."
+		cd "$WorkDir" || exit 1
+		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
+		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
+		git clone https://github.com/rlancaste/stellarsolver.git
+
 		# =================================================================
 		echo "# Install dependencies..."
+		echo "$password" | sudo -S apt-get -y install patchelf
+		(($? != 0)) && zenity --width=$W --error --text="Error installing PatchELF\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev
 		(($? != 0)) && zenity --width=$W --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S apt-get -y install git cdbs dkms cmake fxload libgps-dev libgsl-dev libraw-dev libusb-dev zlib1g-dev libftdi-dev libgsl0-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libusb-1.0-0-dev libdc1394-22-dev libboost-regex-dev libcurl4-gnutls-dev
@@ -204,17 +212,19 @@ chkINDI()
 		echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev libgsl-dev wcslib-dev
 		(($? != 0)) && zenity --error --width=$W --text="Error installing Stellarsolver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
+		# =================================================================		
+		echo "# Fix Indi $Indi_v for ARM_64..."
+		cd "$WorkDir"/indi-3rdparty-"$Indi_v" || exit 1
+		for f in $(find lib* -type f -name *bin | grep -E 'x64|64' | sed '/arm64/d' | xargs); do echo "=> Checking $f" ; patchelf --debug --print-soname $f; echo "------"; done
+
 		# =================================================================
 		echo "# Checking INDI Core..."
 		if [ ! -d "$WorkDir"/indi-cmake ]; then mkdir -p "$WorkDir"/indi-cmake; fi
-		cd "$WorkDir" || exit
-		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
-		cd "$WorkDir"/indi-cmake || exit
+		cd "$WorkDir"/indi-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$WorkDir"/indi-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		sleep 1s
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
@@ -222,15 +232,12 @@ chkINDI()
 
 		# =================================================================
 		echo "# Checking INDI 3rd Party Library"
-		cd "$WorkDir" || exit
-		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
 		if [ ! -d "$WorkDir"/indi3rdlib-cmake ]; then mkdir -p "$WorkDir"/indi3rdlib-cmake; fi
-		cd "$WorkDir"/indi3rdlib-cmake || exit
+		cd "$WorkDir"/indi3rdlib-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		sleep 1s
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
@@ -239,12 +246,11 @@ chkINDI()
 		# =================================================================
 		echo "# Check INDI 3rd Party Driver"
 		if [ ! -d "$WorkDir"/indi3rd-cmake ]; then mkdir -p "$WorkDir"/indi3rd-cmake; fi
-		cd "$WorkDir"/indi3rd-cmake || exit
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
+		cd "$WorkDir"/indi3rd-cmake || exit 1
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DWITH_FXLOAD=1  "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		sleep 1s
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
@@ -253,14 +259,11 @@ chkINDI()
 		# =================================================================
 		echo "# Checking Stellarsolver"
 		if [ ! -d "$WorkDir"/stellarsolver-cmake ]; then mkdir -p "$WorkDir"/stellarsolver-cmake; fi
-		cd "$WorkDir" || exit
-		git clone https://github.com/rlancaste/stellarsolver.git
 		cd "$WorkDir"/stellarsolver-cmake || exit
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/stellarsolver
 		(($? != 0)) && zenity --error --width=$W --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		sleep 1s
 		make -j 2
 		(($? != 0)) && zenity --error --width=$W --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
