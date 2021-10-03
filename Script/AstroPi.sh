@@ -9,6 +9,7 @@
 
 # Bash variables
 #=========================================================================
+source /usr/bin/.Update.sh
 
 if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
 	StatHotSpot=Disable
