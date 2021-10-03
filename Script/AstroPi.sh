@@ -194,7 +194,7 @@ chkINDI()
 {
 	(
 		echo "# Download Indi $Indi_v..."
-		cd "$WorkDir" || exit
+		sleep 5s && cd "$WorkDir" || exit
 		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
 		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
 		git clone https://github.com/rlancaste/stellarsolver.git
