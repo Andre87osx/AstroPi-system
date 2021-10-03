@@ -224,9 +224,9 @@ chkINDI()
 		cd "$WorkDir"/indi-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$WorkDir"/indi-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Instal</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
@@ -237,9 +237,9 @@ chkINDI()
 		cd "$WorkDir"/indi3rdlib-cmake || exit
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Instal</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
@@ -248,11 +248,11 @@ chkINDI()
 		echo "# Check INDI 3rd Party Driver"
 		if [ ! -d "$WorkDir"/indi3rd-cmake ]; then mkdir -p "$WorkDir"/indi3rd-cmake; fi
 		cd "$WorkDir"/indi3rd-cmake || exit
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DWITH_FXLOAD=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> Instal INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
@@ -263,9 +263,9 @@ chkINDI()
 		cd "$WorkDir"/stellarsolver-cmake || exit
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/stellarsolver
 		(($? != 0)) && zenity --error --width=$W --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		make -j 2
+		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error Make Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S make install
 		(($? != 0)) && zenity --error --width=$W --text="Error Make Instal Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
@@ -299,7 +299,6 @@ chkKStars()
 		echo "# Install KStars AstroPi $KStars_v"
 		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		sleep 1s
 		make -j2
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
