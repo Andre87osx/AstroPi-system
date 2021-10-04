@@ -195,7 +195,7 @@ chkINDI()
 	(
 		echo "# Download Indi $Indi_v..."
 		if [ ! -d "$WorkDir" ]; then mkdir "$WorkDir"; fi
-		cd "$WorkDir" || exit
+		cd "$WorkDir" || exit 1
 		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
 		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "$WorkDir"
 		git clone https://github.com/rlancaste/stellarsolver.git
@@ -213,11 +213,6 @@ chkINDI()
 		echo "$password" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev libgsl-dev wcslib-dev
 		(($? != 0)) && zenity --error --width=$W --text="Error installing Stellarsolver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
-		# =================================================================		
-		echo "# Fix Indi $Indi_v for ARM_64..."
-		cd "$WorkDir"/indi-3rdparty-"$Indi_v" || exit
-		for f in $(find lib* -type f -name *bin | grep -E 'x64|64' | sed '/arm64/d' | xargs); do echo "=> Checking $f" ; patchelf --debug --print-soname $f; echo "------"; done
-
 		# =================================================================
 		echo "# Checking INDI Core..."
 		if [ ! -d "$WorkDir"/indi-cmake ]; then mkdir -p "$WorkDir"/indi-cmake; fi
@@ -234,7 +229,7 @@ chkINDI()
 		# =================================================================
 		echo "# Checking INDI 3rd Party Library"
 		if [ ! -d "$WorkDir"/indi3rdlib-cmake ]; then mkdir -p "$WorkDir"/indi3rdlib-cmake; fi
-		cd "$WorkDir"/indi3rdlib-cmake || exit
+		cd "$WorkDir"/indi3rdlib-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j2
@@ -244,10 +239,15 @@ chkINDI()
 		echo "$password" | sudo -S make install
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Instal</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
+		# =================================================================		
+		echo "# Fix Indi $Indi_v for ARM_64..."
+		cd "$WorkDir"/indi-3rdparty-"$Indi_v" || exit 1
+		for f in $(find lib* -type f -name *bin | grep -E 'x64|64' | sed '/arm64/d' | xargs); do echo "=> Checking $f" ; patchelf --debug --print-soname $f; echo "------"; done
+
 		# =================================================================
 		echo "# Check INDI 3rd Party Driver"
 		if [ ! -d "$WorkDir"/indi3rd-cmake ]; then mkdir -p "$WorkDir"/indi3rd-cmake; fi
-		cd "$WorkDir"/indi3rd-cmake || exit
+		cd "$WorkDir"/indi3rd-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "$WorkDir"/indi-3rdparty-"$Indi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j2
@@ -260,7 +260,7 @@ chkINDI()
 		# =================================================================
 		echo "# Checking Stellarsolver"
 		if [ ! -d "$WorkDir"/stellarsolver-cmake ]; then mkdir -p "$WorkDir"/stellarsolver-cmake; fi
-		cd "$WorkDir"/stellarsolver-cmake || exit
+		cd "$WorkDir"/stellarsolver-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/stellarsolver
 		(($? != 0)) && zenity --error --width=$W --text="Error CMake Stellarsolver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		make -j2
@@ -291,7 +291,7 @@ chkKStars()
 		if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
-		cd "$WorkDir"/kstars-cmake || exit
+		cd "$WorkDir"/kstars-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$GitDir"/kstars-astropi
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	
