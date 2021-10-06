@@ -226,6 +226,11 @@ chkINDI()
 		echo "$password" | sudo -S make install
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>Instal</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
+		# =================================================================		
+		echo "# Fix Indi $Indi_v for ARM_64..."
+		cd "$WorkDir"/indi-3rdparty-"$Indi_v" || exit 1
+		for f in $(find lib* -type f -name *bin | grep -E 'x64|64' | sed '/arm64/d' | xargs); do echo "=> Checking $f" ; patchelf --debug --print-soname $f; echo "------"; done
+
 		# =================================================================
 		echo "# Checking INDI 3rd Party Library"
 		if [ ! -d "$WorkDir"/indi3rdlib-cmake ]; then mkdir -p "$WorkDir"/indi3rdlib-cmake; fi
