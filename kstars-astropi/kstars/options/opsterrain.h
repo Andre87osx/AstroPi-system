@@ -43,5 +43,6 @@ class OpsTerrain : public QFrame, public Ui::OpsTerrain
 
     private:
         KConfigDialog *m_ConfigDialog { nullptr };
+        //bool isDirty { false };
 };
 

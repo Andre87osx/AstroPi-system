@@ -11,10 +11,13 @@
 #ifndef TEST_KSTARS_STARTUP_H
 #define TEST_KSTARS_STARTUP_H
 
-#include "../testhelpers.h"
+#include <QObject>
 #include <QDate>
 #include <QDateTime>
+#include <QtTest>
 #include <KActionCollection>
+
+#include "kstars.h"
 
 #define KTRY_SHOW_KSTARS() do { \
     KStars * const K = KStars::Instance(); \
@@ -27,6 +30,7 @@
     QAction * const action = KStars::Instance()->actionCollection()->action(action_text); \
     QVERIFY2(action != nullptr, QString("Action '%1' is not registered and cannot be triggered").arg(action_text).toStdString().c_str()); \
     action->trigger(); } while(false)
+
 
 class TestKStarsStartup : public QObject
 {
@@ -50,9 +54,6 @@ public:
 private slots:
     void initTestCase();
     void cleanupTestCase();
-
-    void init();
-    void cleanup();
 
     void createInstanceTest();
     void testInitialConditions();

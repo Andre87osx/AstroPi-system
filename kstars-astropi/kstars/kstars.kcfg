@@ -1089,12 +1089,12 @@
          <default>true</default>
       </entry>
       <entry name="XplanetTimeout" type="UInt">
-         <label>XPlanet timeout</label>
+         <label>XPlanet Timeout</label>
          <whatsthis>How long to wait for XPlanet before giving up in milliseconds</whatsthis>
          <default>1000</default>
       </entry>
       <entry name="XplanetAnimationDelay" type="UInt">
-         <label>XPlanet animation delay</label>
+         <label>XPlanet Animation Delay</label>
          <whatsthis>How long to pause between frames in the XPlanet Animation</whatsthis>
          <default>100</default>
       </entry>
@@ -1240,7 +1240,7 @@
          <default></default>
       </entry>
       <entry name="XplanetFOV" type="Bool">
-         <label>Use KStars's FOV</label>
+         <label>Use kstars's FOV</label>
          <whatsthis>If checked, use kstars's FOV.</whatsthis>
          <default>false</default>
       </entry>
@@ -1629,10 +1629,6 @@
          <whatsthis>If the temperature change exceeds this limit, the autofocus routine will be automatically started.</whatsthis>
          <default>1</default>
       </entry>
-      <entry name="AutoDark" type="Bool">
-         <label>Automatically apply dark subtraction if a suitable dark frame is available.</label>
-         <default>false</default>
-      </entry>
       <entry name="EnforceGuideDeviation" type="Bool">
          <label>Enforce guiding deviation limit.</label>
          <default>false</default>
@@ -1842,12 +1838,12 @@
       <entry name="FocusXBin" type="UInt">
          <label>Default CCD X binning in focus mode</label>
          <whatsthis>Set horizontal binning of CCD camera while in focus mode.</whatsthis>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusYBin" type="UInt">
          <label>Default CCD Y binning in focus mode</label>
          <whatsthis>Set vertical binning of CCD camera while in focus mode.</whatsthis>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusSubFrame" type="Bool">
          <label>Subframe the focus star during the autofocus procedure.</label>
@@ -1996,11 +1992,6 @@
          <whatsthis>Set binning index of CCD camera while in alignment mode. Default values 0-3 corresponding to 1x1 to 4x4 binning. 4 is max binning.</whatsthis>
          <default>4</default>
       </entry>
-      <entry name="SolverCameraGain" type="Double">
-         <label>Default camera gain while in alignment mode</label>
-         <whatsthis>Set gain of camera while in alignment mode.</whatsthis>
-         <default>0</default>
-      </entry>
       <entry name="AstrometryUseRotator" type="Bool">
          <whatsthis>Use rotator when performing load and slew.</whatsthis>
          <default>false</default>
@@ -2140,7 +2131,20 @@
          <label>Internal or External Astrometry.net Conf File?</label>
          <default>true</default>
       </entry>
+      <entry name="UseDefaultPython" type="Bool">
+         <label>Use the Default System Python Path</label>
+         <default>true</default>
+      </entry>
+      <entry name="PythonExecPath" type="String">
+         <label></label>
+         <whatsthis>Folder in which the desired python executable or link to be used for astrometry.net resides.</whatsthis>
+         <default>/usr/local/opt/python/libexec/bin</default>
+      </entry>
 
+      <entry name="UseSextractor" type="Bool">
+         <label>Use Sextractor to extract an xylist for plate solving with astrometry.net instead of python</label>
+         <default>false</default>
+      </entry>
       <entry name="SextractorIsInternal" type="Bool">
          <label>Internal or External sextractor?</label>
          <default>false</default>
@@ -2224,21 +2228,17 @@
          <label>Pulse duration in milliseconds used for guiding pulses during calibration stage.</label>
          <default>1000</default>
       </entry>
-      <entry name="GuideBinSizeIndex" type="UInt">
-         <label>Guide binning size index (0 to 3) corresponding to binning (1x1 to 4x4).</label>
-         <default>0</default>
-      </entry>
-      <entry name="CalibrationMaxMove" type="UInt">
-         <label>Maximum number of pixels the calibration should move (approximate).</label>
-         <default>15</default>
-      </entry>
       <entry name="GuideSquareSizeIndex" type="UInt">
          <label>Guide square size index (0 to 4) corresponding to pixel sizes (8 to 128).</label>
          <default>2</default>
       </entry>
-      <entry name="GuideFilterFITSIndex" type="UInt">
-         <label>Effect FITS filter index corresponding to the available image enhancing filters.</label>
-         <default>0</default>
+      <entry name="ImageGuidingEnabled" type="Bool">
+         <label>Use Image Guiding algorithms instead of classical centroid guiding.</label>
+         <default>false</default>
+      </entry>
+      <entry name="GuideRegionAxis" type="UInt">
+         <label>Region Axis Index (0 to 4) corresponding to NxN partition size used Image Guiding (64 to 1024).</label>
+         <default>1</default>
       </entry>
       <entry name="GuideAutoStarEnabled" type="Bool">
          <label>Automatically select calibration star and perform calibration.</label>
@@ -2271,6 +2271,10 @@
       <entry name="TwoAxisEnabled" type="Bool">
          <label>Use both axes to perform calibration.</label>
          <default>true</default>
+      </entry>
+      <entry name="RapidGuideEnabled" type="Bool">
+         <label>Use driver side Rapid Guide to perform guiding.</label>
+         <default>false</default>
       </entry>
       <entry name="SaveGuideLog" type="Bool">
          <label>Automatically save internal guider user logs.</label>
@@ -2324,6 +2328,10 @@
          <label>Perform dithering even when not guiding.</label>
          <default>false</default>
       </entry>
+      <entry name="AOLimit" type="Double">
+         <label>The Adaptive Optics unit is utilized if the guiding deviation is less than this limit in arcseconds. Once exceeded, mechanical guiding is utilized.</label>
+         <default>2</default>
+      </entry>
       <entry name="RAGuideEnabled" type="Bool">
          <label>Enable autoguiding in the RA axis.</label>
          <default>true</default>
@@ -2360,17 +2368,23 @@
       <entry name="DECIntegralGain" type="Double">
          <default>0</default>
       </entry>
-      <entry name="RAMinimumPulseArcSec" type="Double">
-         <default>0.2</default>
+      <entry name="RADerivativeGain" type="Double">
+         <default>0</default>
       </entry>
-      <entry name="DECMinimumPulseArcSec" type="Double">
-         <default>0.2</default>
+      <entry name="DECDerivativeGain" type="Double">
+         <default>0</default>
       </entry>
-      <entry name="RAMaximumPulseArcSec" type="UInt">
-         <default>25</default>
+      <entry name="RAMaximumPulse" type="UInt">
+         <default>5000</default>
       </entry>
-      <entry name="DECMaximumPulseArcSec" type="UInt">
-         <default>25</default>
+      <entry name="DECMaximumPulse" type="UInt">
+         <default>5000</default>
+      </entry>
+      <entry name="RAMinimumPulse" type="UInt">
+         <default>100</default>
+      </entry>
+      <entry name="DECMinimumPulse" type="UInt">
+         <default>100</default>
       </entry>
       <entry name="GPGEnabled" type="Bool">
          <default>false</default>
@@ -2416,6 +2430,9 @@
       </entry>
       <entry name="GPGEstimatePeriod" type="Bool">
          <default>true</default>
+      </entry>
+      <entry name="GuidingRate" type="Double">
+         <default>0.5</default>
       </entry>
       <entry name="GuiderAccuracyThreshold" type="UInt">
          <label>Accuracy threshold for the Guide Graphs.</label>
@@ -2706,11 +2723,6 @@
     <entry name="TerrainSourceCorrectAz" type="Int">
           <label>Terrain Azimuth Correction.</label>
           <whatsthis>Terrain source azimuth correction.</whatsthis>
-          <default>0</default>
-    </entry>
-    <entry name="TerrainSourceCorrectAlt" type="Int">
-          <label>Terrain Altitude Correction.</label>
-          <whatsthis>Terrain source altitude correction.</whatsthis>
           <default>0</default>
     </entry>
     <entry name="TerrainDownsampling" type="Int">

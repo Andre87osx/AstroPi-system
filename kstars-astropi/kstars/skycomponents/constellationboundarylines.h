@@ -52,7 +52,7 @@ class ConstellationBoundaryLines : public NoPrecessIndex
     explicit ConstellationBoundaryLines(SkyComposite *parent);
     virtual ~ConstellationBoundaryLines() override = default;
 
-    QString constellationName(const SkyPoint *p) const;
+    QString constellationName(SkyPoint *p);
 
     bool selected() override;
 
@@ -68,7 +68,7 @@ class ConstellationBoundaryLines : public NoPrecessIndex
      */
     void appendPoly(std::shared_ptr<PolyList> &polyList, KSFileReader *file, int debug);
 
-    PolyList *ContainingPoly(const SkyPoint *p) const;
+    PolyList *ContainingPoly(SkyPoint *p);
 
     SkyMesh *m_skyMesh { nullptr };
     PolyIndex m_polyIndex;

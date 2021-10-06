@@ -50,7 +50,6 @@ void TestEkos::cleanupTestCase()
 
 void TestEkos::init()
 {
-    KTEST_BEGIN();
     KTRY_OPEN_EKOS();
     KVERIFY_EKOS_IS_OPENED();
 }
@@ -63,7 +62,6 @@ void TestEkos::cleanup()
 
     KTRY_CLOSE_EKOS();
     KVERIFY_EKOS_IS_HIDDEN();
-    KTEST_END();
 }
 
 void TestEkos::testOpenClose()

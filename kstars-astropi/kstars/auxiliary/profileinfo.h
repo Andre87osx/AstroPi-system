@@ -56,7 +56,6 @@ class ProfileInfo
         int id { 0 };
         int port { -1 };
         bool autoConnect { false };
-        bool portSelector {false};
         bool isStellarMate { false };
         int INDIWebManagerPort { -1 };
         // driver[role] = label

@@ -10,7 +10,6 @@
 #pragma once
 
 #include "ui_focus.h"
-#include "focusprofileplot.h"
 #include "ekos/ekos.h"
 #include "ekos/auxiliary/filtermanager.h"
 #include "ekos/auxiliary/stellarsolverprofileeditor.h"
@@ -274,20 +273,9 @@ class Focus : public QWidget, public Ui::Focus
         void startFraming();
 
         /**
-         * @brief Move the focuser to the initial focus position.
-         */
-        void resetFocuser();
-
-        /**
              * @brief checkStopFocus Perform checks before stopping the autofocus operation. Some checks are necessary for in-sequence focusing.
-             * @param abort true iff focusing should be aborted, false if it should only be stopped and marked as failed
              */
-        void checkStopFocus(bool abort);
-
-        /**
-         * @brief React when a meridian flip has been started
-         */
-        void meridianFlipStarted();
+        void checkStopFocus();
 
         /**
              * @brief Check CCD and make sure information is updated accordingly. This simply calls syncCCDInfo for the current CCD.
@@ -408,10 +396,7 @@ class Focus : public QWidget, public Ui::Focus
 
 
 
-protected:
-        void addPlotPosition(int pos, double hfr);
-
-private slots:
+    private slots:
         /**
              * @brief toggleSubframe Process enabling and disabling subfrag.
              * @param enable If true, subframing is enabled. If false, subframing is disabled. Even if subframing is enabled, it must be supported by the CCD driver.
@@ -438,6 +423,8 @@ private slots:
 
         void syncSettings();
 
+        void graphPolynomialFunction();
+
         void calculateHFR();
         void setCurrentHFR(double value);
 
@@ -454,53 +441,13 @@ private slots:
         void resumeGuiding();
         void newImage(FITSView *view);
         void newStarPixmap(QPixmap &);
+        void newProfilePixmap(QPixmap &);
         void settingsUpdated(const QJsonObject &settings);
 
         // Signals for Analyze.
         void autofocusStarting(double temperature, const QString &filter);
         void autofocusComplete(const QString &filter, const QString &points);
         void autofocusAborted(const QString &filter, const QString &points);
-
-        // HFR V curve plot events
-        /**
-         * @brief initialize the HFR V plot
-         * @param showPosition show focuser position (true) or count focus iterations (false)
-         */
-        void initHFRPlot(bool showPosition);
-
-        /**
-          * @brief new HFR plot position
-          * @param pos focuser position
-          * @param hfr measured star HFR value
-          * @param pulseDuration Pulse duration in ms for relative focusers that only support timers,
-          *        or the number of ticks in a relative or absolute focuser
-          * */
-        void newHFRPlotPosition(double pos, double hfr, int pulseDuration);
-
-        /**
-         * @brief draw the approximating polynomial into the HFR V-graph
-         * @param poly pointer to the polynomial approximation
-         * @param isVShape has the solution a V shape?
-         * @param activate make the graph visible?
-         */
-        void drawPolynomial(PolynomialFit *poly, bool isVShape, bool activate);
-
-        /**
-         * @brief Focus solution with minimal HFR found
-         * @param solutionPosition focuser position
-         * @param solutionValue HFR value
-         */
-        void minimumFound(double solutionPosition, double solutionValue);
-
-        /**
-         * @brief redraw the entire HFR plot
-         * @param poly pointer to the polynomial approximation
-         * @param solutionPosition solution focuser position
-         * @param solutionValue solution HFR value
-         */
-        void redrawHFRPlot(PolynomialFit *poly, double solutionPosition, double solutionValue);
-
-
     private:
 
         QList<SSolver::Parameters> m_StellarSolverProfiles;
@@ -529,6 +476,9 @@ private slots:
         /// HFR Plot
         ////////////////////////////////////////////////////////////////////
         void initPlots();
+        void drawHFRPlot();
+        void drawHFRIndeces();
+        void drawProfilePlot();
 
         ////////////////////////////////////////////////////////////////////
         /// Positions
@@ -538,13 +488,8 @@ private slots:
         void autoFocusAbs();
         void autoFocusLinear();
         void autoFocusRel();
-
-        /** @brief Helper function determining whether the focuser behaves like a position
-         *         based one (vs. a timer based)
-         */
-        bool isPositionBased() {return (canAbsMove || canRelMove || (focusAlgorithm == FOCUS_LINEAR));}
         void resetButtons();
-        void stop(FocusState completionState = FOCUS_ABORTED);
+        void stop(bool aborted = false);
 
         void initView();
 
@@ -596,14 +541,7 @@ private slots:
         /**
          * @brief completeAutofocusProcedure finishes off autofocus and emits a message for other modules.
          */
-        void completeFocusProcedure(FocusState completionState);
-
-        /**
-         * @brief activities to be executed after the configured settling time
-         * @param completionState state the focuser completed with
-         * @param autoFocusUsed is autofocus running?
-         */
-        void settle(const FocusState completionState, const bool autoFocusUsed);
+        void completeFocusProcedure(bool success);
 
         //        void initializeFocuserTemperature();
         void setLastFocusTemperature();
@@ -717,7 +655,7 @@ private slots:
         bool inAutoFocus { false };
         bool inFocusLoop { false };
         //bool inSequenceFocus { false };
-        bool restartFocus { false };
+        bool resetFocus { false };
         /// Did we reverse direction?
         bool reverseDir { false };
         /// Did the user or the auto selection process finish selecting our focus star?
@@ -756,10 +694,21 @@ private slots:
         double minPos { 1e6 };
         /// Plot maximum positions
         double maxPos { 0 };
+        /// List of V curve plot points
+        /// V-Curve graph
+        QCPGraph *v_graph { nullptr };
 
-        /// HFR V curve plot points
+        // Last gaussian fit values
+        QVector<double> lastGausIndexes;
+        QVector<double> lastGausFrequencies;
+        QCPGraph *currentGaus { nullptr };
+        QCPGraph *firstGaus { nullptr };
+        QCPGraph *lastGaus { nullptr };
+
         QVector<double> hfr_position, hfr_value;
-        bool isVShapeSolution = false;
+
+        // Pixmaps
+        QPixmap profilePixmap;
 
         /// State
         Ekos::FocusState state { Ekos::FOCUS_IDLE };
@@ -789,12 +738,15 @@ private slots:
         QVector<QVector3D> starsHFR;
 
         /// Relative Profile
-        FocusProfilePlot *profilePlot { nullptr };
+        QCustomPlot *profilePlot { nullptr };
         QDialog *profileDialog { nullptr };
 
         /// Polynomial fitting.
         std::unique_ptr<PolynomialFit> polynomialFit;
         int polySolutionFound { 0 };
+        QCPGraph *polynomialGraph = nullptr;
+        QCPGraph *focusPoint = nullptr;
+        bool polynomialGraphIsShown = false;
 
         // Capture timers
         QTimer captureTimer;

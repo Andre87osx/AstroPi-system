@@ -71,7 +71,7 @@ class GUIManager : public QWidget
         QPushButton *clearB;
         QPushButton *closeB;
         GUIManager(QWidget *parent = nullptr);
-        ~GUIManager() override;
+        ~GUIManager();
 
         static GUIManager *_GUIManager;
         QList<ClientManager *> clients;

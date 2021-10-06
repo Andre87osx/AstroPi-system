@@ -1,4 +1,4 @@
-﻿/*  KStars UI tests
+/*  KStars UI tests
     Copyright (C) 2020
     Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
@@ -65,14 +65,16 @@
     combobox->activated(cbIndex); \
     QCOMPARE(combobox->currentText(), QString(text)); } while(false);
 
-/** @brief Helper to configure a Light frame.
+/** @brief Helper to add a Light frame to a Capture job.
  * @param exposure is the exposure duration.
  * @param count is the number of exposures to execute.
  * @param delay is the delay after exposure.
  * @param filter is the filter name to set.
  * @param destination is the folder to store fames to.
  */
-#define KTRY_CAPTURE_CONFIGURE_LIGHT(exposure, count, delay, filter, destination) do { \
+#define KTRY_CAPTURE_ADD_LIGHT(exposure, count, delay, filter, destination) do { \
+    KTRY_CAPTURE_GADGET(QTableWidget, queueTable); \
+    int const jcount = queueTable->rowCount(); \
     KTRY_CAPTURE_GADGET(QDoubleSpinBox, captureExposureN); \
     captureExposureN->setValue((double)(exposure)); \
     KTRY_CAPTURE_GADGET(QSpinBox, captureCountN); \
@@ -86,19 +88,7 @@
     KTRY_CAPTURE_GADGET(QComboBox, captureFilterS); \
     KTRY_CAPTURE_COMBO_SET(captureFilterS, (filter)); \
     KTRY_CAPTURE_GADGET(QLineEdit, fileDirectoryT); \
-    fileDirectoryT->setText(destination); } while(false)
-
-/** @brief Helper to add a Light frame to a Capture job.
- * @param exposure is the exposure duration.
- * @param count is the number of exposures to execute.
- * @param delay is the delay after exposure.
- * @param filter is the filter name to set.
- * @param destination is the folder to store fames to.
- */
-#define KTRY_CAPTURE_ADD_LIGHT(exposure, count, delay, filter, destination) do { \
-    KTRY_CAPTURE_GADGET(QTableWidget, queueTable); \
-    int const jcount = queueTable->rowCount(); \
-    KTRY_CAPTURE_CONFIGURE_LIGHT(exposure, count, delay, filter, destination); \
+    fileDirectoryT->setText(destination); \
     KTRY_CAPTURE_CLICK(addToQueueB); \
     QTRY_VERIFY_WITH_TIMEOUT(queueTable->rowCount() == (jcount+1), 1000); } while(false);
 

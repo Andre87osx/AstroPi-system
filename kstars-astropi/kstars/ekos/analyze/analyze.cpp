@@ -386,7 +386,8 @@ void Analyze::keepCurrent(int state)
 void Analyze::initInputSelection()
 {
     // Setup the input combo box.
-    dirPath = QUrl::fromLocalFile(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("analyze"));
+    dirPath = QUrl::fromLocalFile(KSPaths::writableLocation(
+                                      QStandardPaths::GenericDataLocation) + "analyze/");
 
     inputCombo->addItem(i18n("Current Session"));
     inputCombo->addItem(i18n("Read from File"));
@@ -412,7 +413,7 @@ void Analyze::initInputSelection()
         else if (index == 1)
         {
             // Input from a file.
-            QUrl inputURL = QFileDialog::getOpenFileUrl(this, i18nc("@title:window", "Select input file"), dirPath,
+            QUrl inputURL = QFileDialog::getOpenFileUrl(this, i18n("Select input file"), dirPath,
                             i18n("Analyze Log (*.analyze);;All Files (*)"));
             if (inputURL.isEmpty())
                 return;
@@ -1987,10 +1988,11 @@ void Analyze::startLog()
         displayStartTime = analyzeStartTime;
     if (logInitialized)
         return;
-    QDir dir = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation) + "/analyze");
-    dir.mkpath(".");
+    QString  dir = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "analyze/";
+    if (QDir(dir).exists() == false)
+        QDir().mkpath(dir);
 
-    logFilename = dir.filePath("ekos-" + QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss") + ".analyze");
+    logFilename = dir + "ekos-" + QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss") + ".analyze";
     logFile.setFileName(logFilename);
     logFile.open(QIODevice::WriteOnly | QIODevice::Text);
 

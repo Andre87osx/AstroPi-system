@@ -67,7 +67,7 @@ DetailDialog::DetailDialog(SkyObject *o, const KStarsDateTime &ut, GeoLocation *
     //Create thumbnail image
     Thumbnail.reset(new QPixmap(200, 200));
 
-    setWindowTitle(i18nc("@title:window", "Object Details"));
+    setWindowTitle(i18n("Object Details"));
 
     // JM 2016-11-22: Do we really need a close button?
     //setStandardButtons(QDialogButtonBox::Close);
@@ -189,23 +189,6 @@ void DetailDialog::createGeneralTab()
                     i18nc("the star is a variable star", "variable"));
             }
 
-            // Add a label to indicate proper motion
-            double pmRA = s->pmRA(), pmDec = s->pmDec();
-            if (std::isfinite(pmRA) && std::isfinite(pmDec) && (pmRA != 0.0 || pmDec != 0.0))
-            {
-                // we have data : abuse the illumination label to show it!
-                Data->IllumLabel->setText(i18nc("Proper motion of a star", "Proper Motion:"));
-                Data->Illumination->setText(
-                    i18nc(
-                        "The first arg is proper motion in right ascension and the second in the declination. The unit stands for milliarcsecond per year",
-                        "%1 %2 mas/yr",
-                        QLocale().toString(pmRA, 'f', (pmRA >= 100.0 ? 1 :  2)),
-                        QLocale().toString(pmDec, 'f', (pmDec >= 100.0 ? 1 : 2))
-                    ));
-                Data->IllumLabel->setVisible(true);
-                Data->Illumination->setVisible(true);
-            }
-
             break; //end of stars case
         }
         case SkyObject::ASTEROID: //[fall through to planets]
@@ -246,7 +229,7 @@ void DetailDialog::createGeneralTab()
                 Data->IllumLabel->setVisible(true);
                 Data->Illumination->setVisible(true);
                 Data->Illumination->setText(QString("%1 %").arg(QLocale().toString(
-                                                ((KSMoon *)selectedObject)->illum() * 100., 'f', 0)));
+                    ((KSMoon *)selectedObject)->illum() * 100., 'f', 0)));
                 ((KSMoon *)selectedObject)->updateMag();
             }
 
@@ -282,10 +265,10 @@ void DetailDialog::createGeneralTab()
                 if (ps->name() == i18n("Sun") || ps->name() == i18n("Moon"))
                 {
                     Data->AngSize->setText(i18nc(
-                                               "angular size in arcminutes", "%1 arcmin",
-                                               QLocale().toString(
-                                                   ps->angSize(), 'f',
-                                                   1))); // Needn't be a plural form because sun / moon will never contract to 1 arcminute
+                        "angular size in arcminutes", "%1 arcmin",
+                        QLocale().toString(
+                            ps->angSize(), 'f',
+                            1))); // Needn't be a plural form because sun / moon will never contract to 1 arcminute
                 }
                 else
                 {
@@ -338,7 +321,7 @@ void DetailDialog::createGeneralTab()
             QLabel *redShiftLabel = new QLabel(i18n("Red Shift:"), this);
             QLabel *redShift      = new QLabel(
                 (sup->getRedShift() < 99) ? QString::number(sup->getRedShift(), 'f', 2) :
-                QString("--"),
+                                                 QString("--"),
                 this);
             Data->dataGridLayout->addWidget(redShiftLabel, 4, 0);
             Data->dataGridLayout->addWidget(redShift, 4, 1);
@@ -539,14 +522,14 @@ void DetailDialog::createGeneralTab()
 
     //Common to all types:
     QString cname = KStarsData::Instance()
-                    ->skyComposite()
-                    ->constellationBoundary()
-                    ->constellationName(selectedObject);
+                        ->skyComposite()
+                        ->constellationBoundary()
+                        ->constellationName(selectedObject);
     if (selectedObject->type() != SkyObject::CONSTELLATION)
     {
         cname = i18nc(
-                    "%1 type of sky object (planet, asteroid etc), %2 name of a constellation",
-                    "%1 in %2", objecttyp, cname);
+            "%1 type of sky object (planet, asteroid etc), %2 name of a constellation",
+            "%1 in %2", objecttyp, cname);
     }
     Data->ObjectTypeInConstellation->setText(cname);
 }
@@ -639,14 +622,14 @@ void DetailDialog::createPositionTab(const KStarsDateTime &ut, GeoLocation *geo)
         talt = selectedObject->transitAltitude(ut.addDays(1), geo);
     }
 
-    // JM 2021.09.14: Set time is already taken care of
+    //If set time is before rise time, use set time for tomorrow
     QTime st = selectedObject->riseSetTime(ut, geo, false);   //false = use set time
     dms saz  = selectedObject->riseSetTimeAz(ut, geo, false); //false = use set time
-    //    if (st < rt)
-    //    {
-    //        st  = selectedObject->riseSetTime(ut.addDays(1), geo, false);   //false = use set time
-    //        saz = selectedObject->riseSetTimeAz(ut.addDays(1), geo, false); //false = use set time
-    //    }
+    if (st < rt)
+    {
+        st  = selectedObject->riseSetTime(ut.addDays(1), geo, false);   //false = use set time
+        saz = selectedObject->riseSetTimeAz(ut.addDays(1), geo, false); //false = use set time
+    }
 
     if (rt.isValid())
     {
@@ -699,7 +682,7 @@ void DetailDialog::createLinksTab()
 
     for (const auto &link : m_user_data.images())
         Links->ImageTitleList->addItem(i18nc(
-                                           "Image/info menu item (should be translated)", link.title.toLocal8Bit()));
+            "Image/info menu item (should be translated)", link.title.toLocal8Bit()));
 
     // Signals/Slots
     connect(Links->ViewButton, SIGNAL(clicked()), this, SLOT(viewLink()));
@@ -739,12 +722,11 @@ void DetailDialog::addLink()
     if (adialog->exec() == QDialog::Accepted)
     {
         const auto &success = KStarsData::Instance()->addToUserData(
-                                  selectedObject->name(),
-                                  SkyObjectUserdata::LinkData
-        {
-            adialog->desc(), QUrl(adialog->url()),
-            (adialog->isImageLink()) ? SkyObjectUserdata::LinkData::Type::image :
-            SkyObjectUserdata::LinkData::Type::website });
+            selectedObject->name(),
+            SkyObjectUserdata::LinkData{
+                adialog->desc(), QUrl(adialog->url()),
+                (adialog->isImageLink()) ? SkyObjectUserdata::LinkData::Type::image :
+                                           SkyObjectUserdata::LinkData::Type::website });
 
         if (!success.first)
         {
@@ -812,14 +794,14 @@ void DetailDialog::viewLink()
     if (m_CurrentLink->listWidget() == Links->InfoTitleList)
     {
         URL = m_user_data.websites()
-              .at(Links->InfoTitleList->row(m_CurrentLink))
-              .url.toString();
+                  .at(Links->InfoTitleList->row(m_CurrentLink))
+                  .url.toString();
     }
     else if (m_CurrentLink->listWidget() == Links->ImageTitleList)
     {
         URL = m_user_data.images()
-              .at(Links->ImageTitleList->row(m_CurrentLink))
-              .url.toString();
+                  .at(Links->ImageTitleList->row(m_CurrentLink))
+                  .url.toString();
     }
 
     if (!URL.isEmpty())
@@ -862,7 +844,7 @@ void DetailDialog::editLinkDialog()
         return;
 
     QDialog editDialog(this);
-    editDialog.setWindowTitle(i18nc("@title:window", "Edit Link"));
+    editDialog.setWindowTitle(i18n("Edit Link"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
 
@@ -917,14 +899,14 @@ void DetailDialog::editLinkDialog()
 
     // If nothing changed, skip th action
     if (editLinkField.text() == currentItem.url.toString() &&
-            editNameField.text() == currentItem.title)
+        editNameField.text() == currentItem.title)
         go = false;
 
     if (go)
     {
         const auto &success = KStarsData::Instance()->editUserData(
-                                  selectedObject->name(), row,
-        { editNameField.text(), QUrl{ editLinkField.text() }, type });
+            selectedObject->name(), row,
+            { editNameField.text(), QUrl{ editLinkField.text() }, type });
 
         if (!success.first)
             KSNotification::sorry(success.second, i18n("Could not edit the entry."));
@@ -961,10 +943,10 @@ void DetailDialog::removeLinkDialog()
         return;
 
     if (KMessageBox::warningContinueCancel(
-                nullptr,
-                i18n("Are you sure you want to remove the %1 link?", m_CurrentLink->text()),
-                i18n("Delete Confirmation"),
-                KStandardGuiItem::del()) != KMessageBox::Continue)
+            nullptr,
+            i18n("Are you sure you want to remove the %1 link?", m_CurrentLink->text()),
+            i18n("Delete Confirmation"),
+            KStandardGuiItem::del()) != KMessageBox::Continue)
         return;
 
     const auto &success =
@@ -1051,7 +1033,7 @@ QString DetailDialog::parseADVData(const QString &inlink)
     {
         link.remove(index, 4);
         subLink = QString::asprintf("%02d%02d%02d", selectedObject->ra0().hour(), selectedObject->ra0().minute(),
-                                    selectedObject->ra0().second());
+                        selectedObject->ra0().second());
         subLink = subLink.insert(2, "%20");
         subLink = subLink.insert(7, "%20");
 
@@ -1063,14 +1045,14 @@ QString DetailDialog::parseADVData(const QString &inlink)
         if (selectedObject->dec().degree() < 0)
         {
             subLink = QString::asprintf("%03d%02d%02d", selectedObject->dec0().degree(), selectedObject->dec0().arcmin(),
-                                        selectedObject->dec0().arcsec());
+                            selectedObject->dec0().arcsec());
             subLink = subLink.insert(3, "%20");
             subLink = subLink.insert(8, "%20");
         }
         else
         {
             subLink = QString::asprintf("%02d%02d%02d", selectedObject->dec0().degree(), selectedObject->dec0().arcmin(),
-                                        selectedObject->dec0().arcsec());
+                            selectedObject->dec0().arcsec());
             subLink = subLink.insert(0, "%2B");
             subLink = subLink.insert(5, "%20");
             subLink = subLink.insert(10, "%20");
@@ -1084,7 +1066,7 @@ QString DetailDialog::parseADVData(const QString &inlink)
 void DetailDialog::saveLogData()
 {
     const auto &success = KStarsData::Instance()->updateUserLog(
-                              selectedObject->name(), Log->UserLog->toPlainText());
+        selectedObject->name(), Log->UserLog->toPlainText());
 
     if (!success.first)
         KSNotification::sorry(success.second, i18n("Could not update the user log."));
@@ -1153,7 +1135,7 @@ void DetailDialog::showThumbnail()
 {
     //No image if object is a star
     if (selectedObject->type() == SkyObject::STAR ||
-            selectedObject->type() == SkyObject::CATALOG_STAR)
+        selectedObject->type() == SkyObject::CATALOG_STAR)
     {
         Thumbnail->scaled(Data->Image->width(), Data->Image->height());
         Thumbnail->fill(Data->DataFrame->palette().color(QPalette::Window));
@@ -1163,28 +1145,22 @@ void DetailDialog::showThumbnail()
 
     //Try to load the object's image from disk
     //If no image found, load "no image" image
+    QFile file;
 
-    const auto &base = KSPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDirIterator search(base, QStringList() << "thumb*", QDir::Dirs);
+    const auto &base = KSPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QDirIterator search(
+        base,
+        QStringList() << "thumb-" +
+                             selectedObject->name().toLower().remove(' ').remove('/') +
+                             ".png",
+        QDir::Files, QDirIterator::Subdirectories);
 
-    bool found = false;
-    while (search.hasNext())
+    if (search.hasNext())
     {
-        const auto &path =
-            QDir(search.next())
-            .absoluteFilePath(
-                "thumb-" + selectedObject->name().toLower().remove(' ').remove('/') +
-                ".png");
-
-        const QFile file{ path };
-        if (file.exists())
-        {
-            Thumbnail->load(path, "PNG");
-            found = true;
-        }
+        file.close();
+        Thumbnail->load(search.next(), "PNG");
     }
-
-    if (!found)
+    else
         Thumbnail->load(":/images/noimage.png");
 
     *Thumbnail = Thumbnail->scaled(Data->Image->width(), Data->Image->height(),
@@ -1199,11 +1175,11 @@ void DetailDialog::updateThumbnail()
 
     if (tp->exec() == QDialog::Accepted)
     {
-        QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).mkpath("thumbnails");
-
-        QString const fname =
-            QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation))
-            .filePath("thumb-" + selectedObject->name().toLower().remove(' ').remove('/') + ".png");
+        QDir().mkpath(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                      "thumbnails");
+        QString fname = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                        "thumbnails/thumb-" +
+                        selectedObject->name().toLower().remove(' ').remove('/') + ".png";
 
         Data->Image->setPixmap(*(tp->image()));
 

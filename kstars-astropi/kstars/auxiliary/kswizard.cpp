@@ -73,7 +73,7 @@ KSWizard::KSWizard(QWidget *parent) : QDialog(parent)
     wizardStack = new QStackedWidget(this);
     adjustSize();
 
-    setWindowTitle(i18nc("@title:window", "Startup Wizard"));
+    setWindowTitle(i18n("Startup Wizard"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(wizardStack);
@@ -110,23 +110,23 @@ KSWizard::KSWizard(QWidget *parent) : QDialog(parent)
 
     //Load images into banner frames.
     QPixmap im;
-    if (im.load(KSPaths::locate(QStandardPaths::AppDataLocation, "wzstars.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzstars.png")))
         welcome->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzstars.png"))
         welcome->Banner->setPixmap(im);
-    if (im.load(KSPaths::locate(QStandardPaths::AppDataLocation, "wzgeo.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzgeo.png")))
         location->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() + "/wzgeo.png"))
         location->Banner->setPixmap(im);
-    if (im.load(KSPaths::locate(QStandardPaths::AppDataLocation, "wzdownload.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzdownload.png")))
         download->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzdownload.png"))
         download->Banner->setPixmap(im);
 
 #ifdef Q_OS_OSX
-    if (im.load(KSPaths::locate(QStandardPaths::AppDataLocation, "wzdownload.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzdownload.png")))
         data->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzdownload.png"))
@@ -279,8 +279,8 @@ void KSWizard::slotOpenOrCopyKStarsDataDirectory()
             KSNotification::sorry(i18n("There was no default data directory found in the app bundle."));
             return;
         }
-        QDir writableDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation));
-        writableDir.mkpath(".");
+        QDir writableDir;
+        writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation));
         dataLocation =
             QStandardPaths::locate(QStandardPaths::GenericDataLocation, "kstars", QStandardPaths::LocateDirectory);
         if (dataLocation.isEmpty()) //If there *still* is not a kstars data directory

@@ -52,11 +52,6 @@ Telescope::Telescope(GDInterface *iPtr) : DeviceDecorator(iPtr)
 
     qRegisterMetaType<ISD::Telescope::PierSide>("ISD::Telescope::PierSide");
     qDBusRegisterMetaType<ISD::Telescope::PierSide>();
-
-    // Need to delay check for alignment model to upon connection is established since the property is defined BEFORE Telescope class is created.
-    // and therefore no registerProperty is called for these properties since they were already registered _before_ the Telescope
-    // class was created.
-    m_hasAlignmentModel = getProperty("ALIGNMENT_POINTSET_ACTION").isValid() || getProperty("ALIGNLIST").isValid();
 }
 
 void Telescope::registerProperty(INDI::Property prop)
@@ -75,7 +70,7 @@ void Telescope::registerProperty(INDI::Property prop)
         double temp = 0;
 
         auto aperture = ti->findWidgetByName("TELESCOPE_APERTURE");
-        if (aperture && aperture->getValue() <= 0)
+        if (aperture && aperture->getValue() == 0)
         {
             if (getDriverInfo()->getAuxInfo().contains("TELESCOPE_APERTURE"))
             {
@@ -84,14 +79,14 @@ void Telescope::registerProperty(INDI::Property prop)
                 {
                     aperture->setValue(temp);
                     auto g_aperture = ti->findWidgetByName("GUIDER_APERTURE");
-                    if (g_aperture && g_aperture->getValue() <= 0)
+                    if (g_aperture && g_aperture->getValue() == 0)
                         g_aperture->setValue(aperture->getValue());
                 }
             }
         }
 
         auto focal_length = ti->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
-        if (focal_length && focal_length->getValue() <= 0)
+        if (focal_length && focal_length->getValue() == 0)
         {
             if (getDriverInfo()->getAuxInfo().contains("TELESCOPE_FOCAL_LENGTH"))
             {
@@ -100,7 +95,7 @@ void Telescope::registerProperty(INDI::Property prop)
                 {
                     focal_length->setValue(temp);
                     auto g_focal = ti->findWidgetByName("GUIDER_FOCAL_LENGTH");
-                    if (g_focal && g_focal->getValue() <= 0)
+                    if (g_focal && g_focal->getValue() == 0)
                         g_focal->setValue(focal_length->getValue());
                 }
             }
@@ -161,6 +156,8 @@ void Telescope::registerProperty(INDI::Property prop)
             emit pierSideChanged(m_PierSide);
         }
     }
+    else if (prop->isNameMatch("ALIGNMENT_POINTSET_ACTION") || prop->isNameMatch("ALIGNLIST"))
+        m_hasAlignmentModel = true;
     else if (prop->isNameMatch("TELESCOPE_TRACK_STATE"))
         m_canControlTrack = true;
     else if (prop->isNameMatch("TELESCOPE_TRACK_MODE"))
@@ -192,7 +189,7 @@ void Telescope::registerProperty(INDI::Property prop)
         if (svp)
         {
             m_slewRates.clear();
-            for (const auto &it : *svp)
+            for (const auto &it: *svp)
                 m_slewRates << it.getLabel();
         }
     }
@@ -1496,12 +1493,6 @@ bool Telescope::sendParkingOptionCommand(ParkOptionCommand command)
     clientManager->sendNewSwitch(parkOptionsSP);
 
     return true;
-}
-
-const dms Telescope::hourAngle() const
-{
-    dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
-    return dms(lst.Degrees() - currentCoord.ra().Degrees());
 }
 
 }

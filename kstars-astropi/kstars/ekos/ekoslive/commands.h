@@ -56,8 +56,6 @@ enum COMMANDS
     DELETE_PROFILE,
     UPDATE_PROFILE,
     SET_PROFILE_MAPPING,
-    SET_PROFILE_PORT_SELECTION,
-    GET_PROFILE_PORT_SELECTION,
 
     // SCOPES
     GET_SCOPES,
@@ -188,14 +186,6 @@ enum COMMANDS
     // Filter Manager
     FM_GET_DATA,
     FM_SET_DATA,
-
-    // Astronomy Library
-    ASTRO_GET_ALMANC,
-    ASTRO_SEARCH_OBJECTS,
-    ASTRO_GET_OBJECTS_INFO,
-    ASTRO_GET_OBJECTS_IMAGE,
-    ASTRO_GET_OBJECTS_OBSERVABILITY,
-    ASTRO_GET_OBJECTS_RISESET,
 };
 
 static QMap<COMMANDS, QString> const commands =
@@ -237,8 +227,6 @@ static QMap<COMMANDS, QString> const commands =
     {DELETE_PROFILE, "profile_delete"},
     {UPDATE_PROFILE, "profile_update"},
     {SET_PROFILE_MAPPING, "profile_set_mapping"},
-    {SET_PROFILE_PORT_SELECTION, "profile_set_port_selection"},
-    {GET_PROFILE_PORT_SELECTION, "profile_get_port_selection"},
 
     {GET_SCOPES, "get_scopes"},
     {ADD_SCOPE, "scope_add"},
@@ -353,14 +341,7 @@ static QMap<COMMANDS, QString> const commands =
     {DIALOG_GET_RESPONSE, "dialog_get_response"},
 
     {FM_GET_DATA, "fm_get_data"},
-    {FM_SET_DATA, "fm_set_data"},
-
-    {ASTRO_GET_ALMANC, "astro_get_almanac"},
-    {ASTRO_SEARCH_OBJECTS, "astro_search_objects"},
-    {ASTRO_GET_OBJECTS_INFO, "astro_get_objects_info"},
-    {ASTRO_GET_OBJECTS_IMAGE, "astro_get_objects_image"},
-    {ASTRO_GET_OBJECTS_OBSERVABILITY, "astro_get_objects_observability"},
-    {ASTRO_GET_OBJECTS_RISESET, "astro_get_objects_riseset"}
+    {FM_SET_DATA, "fm_set_data"}
 };
 
 }

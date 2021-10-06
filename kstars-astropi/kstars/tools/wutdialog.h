@@ -21,7 +21,6 @@
 #include "kstarsdatetime.h"
 #include "ui_wutdialog.h"
 #include "catalogobject.h"
-#include "catalogsdb.h"
 
 #include <QFrame>
 #include <QDialog>
@@ -147,5 +146,5 @@ class WUTDialog : public QDialog
     QStringList m_Categories;
     QHash<QString, QSet<const SkyObject *>> m_VisibleList;
     QHash<QString, bool> m_CategoryInitialized;
-    QHash<QString, CatalogsDB::CatalogObjectList> m_CatalogObjects;
+    QHash<QString, CatalogObject::CatalogObjectList> m_CatalogObjects;
 };

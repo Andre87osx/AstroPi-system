@@ -17,6 +17,7 @@
 #include "fitsviewer/fitssepdetector.h"
 #include "starcorrespondence.h"
 #include "vect.h"
+#include "matr.h"
 #include "../guideview.h"
 #include "calibration.h"
 
@@ -60,8 +61,7 @@ class GuideStars
 
         // Finds the guide star previously selected with selectGuideStar()
         // in a new image. This sets up internal structures for getDrift().
-        GuiderUtils::Vector findGuideStar(const QSharedPointer<FITSData> &imageData, const QRect &trackingBox,
-                                          GuideView *guideView = nullptr);
+        Vector findGuideStar(const QSharedPointer<FITSData> &imageData, const QRect &trackingBox, GuideView *guideView = nullptr);
 
         // Finds the drift of the star positions in arc-seconds for RA and DEC.
         // Must be called after findGuideStar().
@@ -115,7 +115,7 @@ class GuideStars
         int findAllSEPStars(const QSharedPointer<FITSData> &imageData, QList<Edge*> *sepStars, int num);
 
         // Convert from input image coordinates to output RA and DEC coordinates.
-        GuiderUtils::Vector point2arcsec(const GuiderUtils::Vector &p) const;
+        Vector point2arcsec(const Vector &p) const;
 
         // Returns the RA and DEC distance between the star and the reference star.
         void computeStarDrift(const Edge &star, const Edge &reference,

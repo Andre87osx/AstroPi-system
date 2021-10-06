@@ -122,7 +122,7 @@ void CometsComponent::loadData()
     sequence.append(qMakePair(QString("H"), KSParser::D_SKIP));
     sequence.append(qMakePair(QString("G"), KSParser::D_SKIP));
 
-    QString file_name = KSPaths::locate(QStandardPaths::AppDataLocation, QString("comets.dat"));
+    QString file_name = KSPaths::locate(QStandardPaths::GenericDataLocation, QString("comets.dat"));
     KSParser cometParser(file_name, '#', sequence);
 
     QHash<QString, QVariant> row_content;
@@ -242,14 +242,11 @@ void CometsComponent::downloadReady()
     QByteArray data = downloadJob->downloadedData();
     data.insert(0, '#');
 
-    // Write data to comets.dat
-    QFile file(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("comets.dat"));
-    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
-    {
-        file.write(data);
-        file.close();
-    }
-    else qCWarning(KSTARS) << "Failed writing comet data to" << file.fileName();
+    // Write data to asteroids.dat
+    QFile file(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "comets.dat");
+    file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
+    file.write(data);
+    file.close();
 
     QString focusedComet;
 
@@ -269,7 +266,7 @@ void CometsComponent::downloadReady()
     }
 #endif
 
-    // Reload comets
+    // Reload asteroids
     loadData();
 
 #ifdef KSTARS_LITE

@@ -60,7 +60,7 @@ OptionsTreeView::OptionsTreeView(QWidget *p) : QDialog(p)
     mainLayout->addWidget(otvw.get());
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Options"));
+    setWindowTitle(i18n("Options"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -134,7 +134,7 @@ ScriptNameDialog::ScriptNameDialog(QWidget *p) : QDialog(p)
     mainLayout->addWidget(snw);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Script Data"));
+    setWindowTitle(i18n("Script Data"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -175,7 +175,7 @@ ScriptBuilder::ScriptBuilder(QWidget *parent)
     mainLayout->addWidget(sb);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Script Builder"));
+    setWindowTitle(i18n("Script Builder"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
     mainLayout->addWidget(buttonBox);
@@ -758,8 +758,8 @@ void ScriptBuilder::initViewOptions()
 
     QFile file;
     QString line;
-    //determine filename in local user KDE directory tree.
-    file.setFileName(KSPaths::locate(QStandardPaths::AppDataLocation, "colors.dat"));
+    file.setFileName(KSPaths::locate(QStandardPaths::GenericDataLocation,
+                                     "colors.dat")); //determine filename in local user KDE directory tree.
     if (file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);

@@ -167,12 +167,18 @@ void FITSLabel::mouseMoveEvent(QMouseEvent *e)
 
     if (view_data->hasWCS() && view->getCursorMode() != FITSView::selectCursor)
     {
-        QPointF wcsPixelPoint(x, y);
-        SkyPoint wcsCoord;
-        if(view_data->pixelToWCS(wcsPixelPoint, wcsCoord))
+        int index = x + y * m_Width;
+
+        FITSImage::wcs_point *wcs_coord = view_data->getWCSCoord();
+
+        if (wcs_coord)
         {
-            m_RA = wcsCoord.ra0();
-            m_DE = wcsCoord.dec0();
+            if (index > m_Size)
+                return;
+
+            m_RA.setD(wcs_coord[index].ra);
+            m_DE.setD(wcs_coord[index].dec);
+
             emit newStatus(QString("%1 , %2").arg(m_RA.toHMSString(), m_DE.toDMSString()), FITS_WCS);
         }
 
@@ -213,12 +219,6 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
 {
     float scale = (view->getCurrentZoom() / ZOOM_DEFAULT);
 
-    double x = round(e->x() / scale);
-    double y = round(e->y() / scale);
-
-    x = KSUtils::clamp(x, 1.0, m_Width);
-    y = KSUtils::clamp(y, 1.0, m_Height);
-
     if (view->getCursorMode() == FITSView::dragCursor)
     {
         mouseButtonDown = true;
@@ -231,20 +231,24 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
         const QSharedPointer<FITSData> &view_data = view->imageData();
         if (view_data->hasWCS())
         {
-            QPointF wcsPixelPoint(x, y);
-            SkyPoint wcsCoord;
-            if(view_data->pixelToWCS(wcsPixelPoint, wcsCoord))
+            FITSImage::wcs_point *wcs_coord = view_data->getWCSCoord();
+            if (wcs_coord)
             {
-                auto ra = wcsCoord.ra0();
-                auto dec = wcsCoord.dec0();
+                double x, y;
+                x = round(e->x() / scale);
+                y = round(e->y() / scale);
+
+                x         = KSUtils::clamp(x, 1.0, m_Width);
+                y         = KSUtils::clamp(y, 1.0, m_Height);
+                int index = x + y * m_Width;
                 if (KMessageBox::Continue == KMessageBox::warningContinueCancel(
                             nullptr,
-                            "Slewing to Coordinates: \nRA: " + ra.toHMSString() +
-                            "\nDec: " + dec.toDMSString(),
+                            "Slewing to Coordinates: \nRA: " + dms(wcs_coord[index].ra).toHMSString() +
+                            "\nDec: " + dms(wcs_coord[index].dec).toDMSString(),
                             i18n("Continue Slew"), KStandardGuiItem::cont(),
                             KStandardGuiItem::cancel(), "continue_slew_warning"))
                 {
-                    centerTelescope(ra.Hours(), dec.Degrees());
+                    centerTelescope(wcs_coord[index].ra / 15.0, wcs_coord[index].dec);
                     view->setCursorMode(view->lastMouseMode);
                     view->updateScopeButton();
                 }
@@ -253,6 +257,13 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
 #endif
     }
 
+    double x, y;
+
+    x = round(e->x() / scale);
+    y = round(e->y() / scale);
+
+    x = KSUtils::clamp(x, 1.0, m_Width);
+    y = KSUtils::clamp(y, 1.0, m_Height);
 
 #ifdef HAVE_INDI
     const QSharedPointer<FITSData> &view_data = view->imageData();

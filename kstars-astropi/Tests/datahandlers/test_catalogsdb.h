@@ -26,25 +26,24 @@ class TestCatalogsDB_DBManager : public QObject
 {
     Q_OBJECT
   public:
-    TestCatalogsDB_DBManager() : m_manager{ getTestSqliteFile() } {}
+    TestCatalogsDB_DBManager() : m_manager{ db_file } {}
 
   private:
-    const QString db_file_og = QFINDTESTDATA("data/test.sqlite");
+    const QString db_file = QCoreApplication::applicationDirPath() + "/data/test.sqlite";
+    const QString db_file_og =
+        QCoreApplication::applicationDirPath() + "/data/test_orig.sqlite";
     DBManager m_manager;
     CatalogObject some_object() { return m_manager.get_objects(99, 1).front(); }
-    QString getTestSqliteFile()
-    {
-        const QString db_file = "test.sqlite";
-        QFile::remove(db_file);
-        QFile::copy(db_file_og, db_file);
-        return db_file;
-    }
 
   private slots:
     void init()
     {
+        // A fresh db for each test
+        QFile::remove(db_file);
+        QFile::copy(db_file_og, db_file);
+
         // A fresh manager for each test.
-        m_manager = DBManager{ getTestSqliteFile() };
+        m_manager = DBManager{ db_file };
     };
 
     void user_catalog_created()
@@ -480,104 +479,6 @@ class TestCatalogsDB_DBManager : public QObject
         QVERIFY(stats.second.total_count > 0);
         QVERIFY(stats.second.object_counts.at(SkyObject::STAR) >= 1);
         QVERIFY(stats.second.object_counts.at(SkyObject::SUPERNOVA_REMNANT) >= 1);
-    }
-
-    void color_strings()
-    {
-        const std::vector<std::pair<QString, CatalogsDB::CatalogColorMap>> test_data{
-            { "#008000", { { "default", "#008000" } } },
-            { "#008000;test.colors;#008001",
-              { { "default", "#008000" }, { "test.colors", "#008001" } } },
-            { "#008000;test.colors;#008001;best.colors;#008002",
-              { { "default", "#008000" },
-                { "test.colors", "#008001" },
-                { "best.colors", "#008002" } } }
-        };
-
-        for (const auto &item : test_data)
-        {
-            QCOMPARE(CatalogsDB::parse_color_string(item.first), item.second);
-
-            QCOMPARE(
-                CatalogsDB::parse_color_string(CatalogsDB::to_color_string(item.second)),
-                item.second); // the other way around does not have to be invertible
-        }
-
-        // more than one theme changes the order in the string
-        const auto &simple = test_data.at(1);
-        QCOMPARE(CatalogsDB::to_color_string(simple.second), simple.first);
-
-        // Check the behavour when a color specification is missing
-        QCOMPARE((CatalogsDB::parse_color_string("#008000;test.colors")),
-                 (CatalogsDB::CatalogColorMap{ { "default", "#008000" } }));
-
-        // no default
-        QCOMPARE(CatalogsDB::parse_color_string(""), CatalogsDB::CatalogColorMap{});
-        QCOMPARE(CatalogsDB::parse_color_string(";test;#008000"),
-                 (CatalogsDB::CatalogColorMap{ { "test", "#008000" } }));
-    }
-
-    void color_database()
-    {
-        auto compare_catalog_color_maps = [](CatalogsDB::CatalogColorMap a,
-                                             CatalogsDB::CatalogColorMap b) -> void {
-            for (auto &item : a)
-            {
-                QCOMPARE(b[item.first].name(), item.second.name());
-            }
-
-            for (auto &item : b)
-            {
-                QCOMPARE(a[item.first].name(), item.second.name());
-            }
-        };
-
-        auto compare_color_maps =
-            [compare_catalog_color_maps](CatalogsDB::ColorMap a,
-                                         CatalogsDB::ColorMap b) -> void {
-            for (auto &item : a)
-            {
-                compare_catalog_color_maps(b[item.first], item.second);
-            }
-
-            for (auto &item : b)
-            {
-                compare_catalog_color_maps(a[item.first], item.second);
-            }
-        };
-
-        const auto &colors = m_manager.get_catalog_colors();
-        compare_color_maps((CatalogsDB::ColorMap{
-                               { 1,
-                                 {
-                                     { "default", "#001000" },
-                                     { "test.colors", "#008000" },
-                                     { "test1.colors", "#008001" }, // overridden
-                                     { "test2.colors", "#001002" }, // from catalog table
-                                 } },
-                               { 2,
-                                 {
-                                     { "test1.colors", "#008002" },
-                                 } } }),
-                           colors);
-
-        compare_catalog_color_maps(m_manager.get_catalog_colors(1), colors.at(1));
-
-        // overwrite default
-        auto new_colors            = colors.at(1);
-        new_colors["test2.colors"] = "#001003";
-
-        const auto &success = m_manager.insert_catalog_colors(1, new_colors);
-        QVERIFY(success.first);
-
-        QCOMPARE(m_manager.get_catalog_colors(1).at("test2.colors"), "#001003");
-
-        auto cat = m_manager.get_catalog(1);
-        QVERIFY(cat.first);
-        cat.second.color = "#001004";
-        QVERIFY(m_manager.update_catalog_meta(cat.second).first);
-        QCOMPARE(m_manager.get_catalog_colors(1).at("default"),
-                 "#001000"); // does not change
     }
 };
 

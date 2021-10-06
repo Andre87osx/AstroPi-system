@@ -47,7 +47,7 @@ ProfileEditor::ProfileEditor(QWidget *w) : QDialog(w)
     mainLayout->addWidget(ui);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Profile Editor"));
+    setWindowTitle(i18n("Profile Editor"));
 
     // Create button box and link it to save and reject functions
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Close, this);
@@ -149,15 +149,15 @@ void ProfileEditor::loadScopeEquipment()
         double Aperture = oneScope->aperture();
 
         ui->primaryScopeCombo->setItemData(i + 1,
-                                           i18nc("F-Number, Focal length, Aperture",
-                                                   "<nobr>F<b>%1</b> Focal length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
+                                           i18nc("F-Number, Focal Length, Aperture",
+                                                   "<nobr>F<b>%1</b> Focal Length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
                                                    QString::number(FocalLength / Aperture, 'f', 1), QString::number(FocalLength, 'f', 2),
                                                    QString::number(Aperture, 'f', 2)),
                                            Qt::ToolTipRole);
 
         ui->guideScopeCombo->setItemData(i + 1,
-                                         i18nc("F-Number, Focal length, Aperture",
-                                               "<nobr>F<b>%1</b> Focal length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
+                                         i18nc("F-Number, Focal Length, Aperture",
+                                               "<nobr>F<b>%1</b> Focal Length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
                                                QString::number(FocalLength / Aperture, 'f', 1), QString::number(FocalLength, 'f', 2),
                                                QString::number(Aperture, 'f', 2)),
                                          Qt::ToolTipRole);
@@ -233,8 +233,6 @@ void ProfileEditor::saveProfile()
 
     // Auto Connect
     pi->autoConnect = ui->autoConnectCheck->isChecked();
-    // Port Selector
-    pi->portSelector = ui->portSelectorCheck->isChecked();
 
     // Guider Type
     pi->guidertype = ui->guideTypeCombo->currentIndex();
@@ -384,7 +382,6 @@ void ProfileEditor::setPi(ProfileInfo *newProfile)
 
     ui->loadSiteCheck->setChecked(!pi->city.isEmpty());
     ui->autoConnectCheck->setChecked(pi->autoConnect);
-    ui->portSelectorCheck->setChecked(pi->portSelector);
 
     if (pi->city.isEmpty() == false)
     {
@@ -930,7 +927,6 @@ void ProfileEditor::setSettings(const QJsonObject &profile)
 {
     ui->profileIN->setText(profile["name"].toString());
     ui->autoConnectCheck->setChecked(profile["auto_connect"].toBool(true));
-    ui->portSelectorCheck->setChecked(profile["port_selector"].toBool(false));
     ui->localMode->setChecked(profile["mode"].toString() == "local");
     ui->remoteMode->setChecked(profile["mode"].toString() == "remote");
     ui->remoteHost->setText(profile["remote_host"].toString("localhost"));
@@ -1016,7 +1012,7 @@ void ProfileEditor::scanNetwork()
 {
     delete (m_ProgressDialog);
     m_ProgressDialog = new QProgressDialog(this);
-    m_ProgressDialog->setWindowTitle(i18nc("@title:window", "Scanning Network"));
+    m_ProgressDialog->setWindowTitle(i18n("Scanning Network"));
     m_ProgressDialog->setLabelText(i18n("Scanning network for INDI Web Managers..."));
     connect(m_ProgressDialog, &QProgressDialog::canceled, this, [this]()
     {

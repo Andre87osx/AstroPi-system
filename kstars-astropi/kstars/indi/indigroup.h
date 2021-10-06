@@ -17,7 +17,6 @@
 
 #include <QString>
 #include <QList>
-#include <QScrollArea>
 #include <QPointer>
 
 class INDI_P;
@@ -34,10 +33,11 @@ class QScrollArea;
  *
  * @author Jasem Mutlaq
  */
-class INDI_G: public QScrollArea
+class INDI_G
 {
     public:
         INDI_G(INDI_D *idv, const QString &inName);
+        ~INDI_G();
 
         bool addProperty(const INDI::Property newProperty);
 
@@ -46,6 +46,10 @@ class INDI_G: public QScrollArea
         QFrame *getContainer() const
         {
             return m_PropertiesContainer;
+        }
+        QScrollArea *getScrollArea() const
+        {
+            return m_ScrollArea;
         }
         const QString &getName() const
         {
@@ -68,6 +72,8 @@ class INDI_G: public QScrollArea
         }
 
     private:
+        void resetLayout();
+
         // Group name
         QString name;
         // Parent device
@@ -78,6 +84,7 @@ class INDI_G: public QScrollArea
         QPointer<QVBoxLayout> m_PropertiesLayout;
         // Vertical spacer
         QSpacerItem *m_VerticalSpacer {nullptr};
+        QScrollArea *m_ScrollArea {nullptr};
         QList<INDI_P *> m_PropertiesList;
         bool m_Dirty { false };
 };

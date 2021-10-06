@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>690</width>
+    <width>687</width>
     <height>613</height>
    </rect>
   </property>
@@ -144,7 +144,7 @@
         <item row="5" column="2">
          <widget class="QLabel" name="textLabel1_21">
           <property name="toolTip">
-           <string>Camera Gain</string>
+           <string>Delay in seconds between consecutive images</string>
           </property>
           <property name="whatsThis">
            <string/>
@@ -473,8 +473,7 @@ font-weight:bold;
              <string/>
             </property>
             <property name="icon">
-             <iconset theme="colors-chromablue">
-              <normaloff>.</normaloff>.</iconset>
+             <iconset theme="colors-chromablue"/>
             </property>
            </widget>
           </item>
@@ -1169,7 +1168,7 @@ font-weight:bold;
         <item row="6" column="2">
          <widget class="QLabel" name="textLabel1_20">
           <property name="toolTip">
-           <string>Camera Offset</string>
+           <string>Delay in seconds between consecutive images</string>
           </property>
           <property name="whatsThis">
            <string/>
@@ -2232,16 +2231,6 @@ font-weight:bold;
              </size>
             </property>
            </spacer>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="darkB">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatically apply dark subtraction on preview images if a suitable dark frame is available.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="text">
-             <string>Dark</string>
-            </property>
-           </widget>
           </item>
          </layout>
         </widget>

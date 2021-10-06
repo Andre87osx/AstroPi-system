@@ -41,11 +41,12 @@ class INDI_P;
  *
  * @author Jasem Mutlaq
  */
-class INDI_E : public QWidget
+class INDI_E : public QObject
 {
         Q_OBJECT
     public:
         INDI_E(INDI_P *gProp, INDI::Property dProp);
+        ~INDI_E();
 
         const QString &getLabel()
         {

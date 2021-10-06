@@ -32,6 +32,24 @@ OpsGuide::OpsGuide() : QFrame(KStars::Instance())
     //Get a pointer to the KConfigDialog
     m_ConfigDialog = KConfigDialog::exists("guidesettings");
 
+    connect(kcfg_DitherNoGuiding, &QCheckBox::toggled, this, [&](bool checked)
+    {
+        if (checked && kcfg_DitherEnabled->isChecked())
+        {
+            KSNotification::error("Guided dithering cannot be used along with non-guided dithering.");
+            kcfg_DitherEnabled->setChecked(false);
+        }
+    });
+
+    connect(kcfg_DitherEnabled, &QCheckBox::toggled, this, [&](bool checked)
+    {
+        if (checked && kcfg_DitherNoGuiding->isChecked())
+        {
+            KSNotification::error("Guided dithering cannot be used along with non-guided dithering.");
+            kcfg_DitherNoGuiding->setChecked(false);
+        }
+    });
+
     editGuideProfile->setIcon(QIcon::fromTheme("document-edit"));
     editGuideProfile->setAttribute(Qt::WA_LayoutUsesWidgetRect);
 
@@ -62,7 +80,8 @@ OpsGuide::OpsGuide() : QFrame(KStars::Instance())
 
 void OpsGuide::loadOptionsProfiles()
 {
-    QString savedOptionsProfiles = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("SavedGuideProfiles.ini");
+    QString savedOptionsProfiles = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                                   QString("SavedGuideProfiles.ini");
     if(QFile(savedOptionsProfiles).exists())
         optionsList = StellarSolver::loadSavedOptionsProfiles(savedOptionsProfiles);
     else

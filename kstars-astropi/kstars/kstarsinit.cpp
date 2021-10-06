@@ -29,7 +29,6 @@
 #include "skyobjects/ksplanetbase.h"
 #include "widgets/timespinbox.h"
 #include "widgets/timestepbox.h"
-#include "widgets/timeunitbox.h"
 #include "hips/hipsmanager.h"
 #include "auxiliary/thememanager.h"
 
@@ -179,7 +178,7 @@ void KStars::initActions()
             << QKeySequence(Qt::CTRL + Qt::Key_R);
 #endif
     actionCollection()->addAction("printing_wizard", this, SLOT(slotPrintingWizard()))
-            << i18nc("start Printing Wizard", "Printing &Wizard...");
+            << i18nc("start Printing Wizard", "Printing &Wizard");
     ka = actionCollection()->addAction(KStandardAction::Print, "print", this, SLOT(slotPrint()));
     ka->setIcon(QIcon::fromTheme("document-print"));
     //actionCollection()->addAction( KStandardAction::Quit,  "quit",  this, SLOT(close) );
@@ -225,11 +224,11 @@ void KStars::initActions()
     //UpdateTime() if clock is stopped (so hidden objects get drawn)
     QObject::connect(data()->clock(), SIGNAL(clockToggled(bool)), this, SLOT(updateTime()));
     actionCollection()->addAction("time_step_forward", this, SLOT(slotStepForward()))
-            << i18n("Advance One Step Forward in Time")
+            << i18n("Advance one step forward in time")
             << QIcon::fromTheme("media-skip-forward")
             << QKeySequence(Qt::Key_Greater);
     actionCollection()->addAction("time_step_backward", this, SLOT(slotStepBackward()))
-            << i18n("Advance One Step Backward in Time")
+            << i18n("Advance one step backward in time")
             << QIcon::fromTheme("media-skip-backward")
             << QKeySequence(Qt::Key_Less);
 
@@ -271,13 +270,13 @@ void KStars::initActions()
     action->setIcon(QIcon::fromTheme("view-fullscreen"));
 
     actionCollection()->addAction("coordsys", this, SLOT(slotCoordSys()))
-            << (Options::useAltAz() ? i18n("Switch to Star Globe View (Equatorial &Coordinates)") :
-                i18n("Switch to Horizonal View (Horizontal &Coordinates)"))
+            << (Options::useAltAz() ? i18n("Switch to star globe view (Equatorial &Coordinates)") :
+                i18n("Switch to horizonal view (Horizontal &Coordinates)"))
             << QKeySequence("Space");
 
     actionCollection()->addAction("toggle_terrain", this, SLOT(slotTerrain()))
-            << (Options::showTerrain() ? i18n("Hide Terrain") :
-                i18n("Show Terrain"))
+            << (Options::showTerrain() ? i18n("Hide terrain") :
+                i18n("Show terrain"))
             << QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_T);
 
     actionCollection()->addAction("project_lambert", this, SLOT(slotMapProjection()))
@@ -352,8 +351,8 @@ void KStars::initActions()
     addColorMenuItem(i18n("&Moonless Night"), "cs_moonless-night");
 
     //Add any user-defined color schemes:
-    //determine filename in local user KDE directory tree.
-    QFile file(KSPaths::locate(QStandardPaths::AppDataLocation, "colors.dat"));
+    QFile file(KSPaths::locate(QStandardPaths::GenericDataLocation,
+                               "colors.dat")); //determine filename in local user KDE directory tree.
     if (file.exists() && file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);
@@ -410,13 +409,13 @@ void KStars::initActions()
 
     // Updates actions
     actionCollection()->addAction("update_comets", this, SLOT(slotUpdateComets()))
-            << i18n("Update Comets Orbital Elements");
+            << i18n("Update comets orbital elements");
     actionCollection()->addAction("update_asteroids", this, SLOT(slotUpdateAsteroids()))
-            << i18n("Update Asteroids Orbital Elements");
+            << i18n("Update asteroids orbital elements");
     actionCollection()->addAction("update_supernovae", this, SLOT(slotUpdateSupernovae()))
-            << i18n("Update Recent Supernovae Data");
+            << i18n("Update Recent Supernovae data");
     actionCollection()->addAction("update_satellites", this, SLOT(slotUpdateSatellites()))
-            << i18n("Update Satellites Orbital Elements");
+            << i18n("Update satellites orbital elements");
 
     //Tools Menu:
     actionCollection()->addAction("astrocalculator", this, SLOT(slotCalculator()))
@@ -489,7 +488,7 @@ void KStars::initActions()
 
     // ==== observation menu - execute ================
     actionCollection()->addAction("execute", this, SLOT(slotExecute()))
-            << i18n("Execute the Session Plan...") << QKeySequence(Qt::CTRL + Qt::Key_2);
+            << i18n("Execute the session Plan...") << QKeySequence(Qt::CTRL + Qt::Key_2);
 
     // ==== observation menu - polaris hour angle ================
     actionCollection()->addAction("polaris_hour_angle", this, SLOT(slotPolarisHourAngle()))
@@ -539,14 +538,7 @@ void KStars::initActions()
     m_TimeStepBox->tsbox()->setToolTip(TSBToolTip);
     QWidgetAction *wa = new QWidgetAction(this);
     wa->setDefaultWidget(m_TimeStepBox);
-
-    // Add actions for the timestep widget's functions
     actionCollection()->addAction("timestep_control", wa) << i18n("Time step control");
-    const auto unitbox = m_TimeStepBox->unitbox();
-    ka = actionCollection()->addAction("timestep_increase_units", unitbox->increaseUnitsAction());
-    ka->setShortcut(QKeySequence(Qt::Key_Plus));
-    ka = actionCollection()->addAction("timestep_decrease_units", unitbox->decreaseUnitsAction());
-    ka->setShortcut(QKeySequence(Qt::Key_Underscore));
 
     // ==== viewToolBar actions ================
     actionCollection()->add<KToggleAction>("show_stars", this, SLOT(slotViewToolBar()))

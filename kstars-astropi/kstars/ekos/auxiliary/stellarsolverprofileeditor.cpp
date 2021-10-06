@@ -27,7 +27,6 @@ namespace Ekos
 StellarSolverProfileEditor::StellarSolverProfileEditor(QWidget *parent, ProfileGroup group,
         KConfigDialog *dialog) : QWidget(KStars::Instance())
 {
-    Q_UNUSED(parent);
     setupUi(this);
 
     //Get a pointer to the KConfigDialog
@@ -166,7 +165,7 @@ void StellarSolverProfileEditor::setProfileGroup(ProfileGroup group)
             break;
     }
 
-    savedOptionsProfiles = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(profileGroupFileName);
+    savedOptionsProfiles = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + profileGroupFileName;
     loadProfiles();
 }
 
