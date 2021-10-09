@@ -360,7 +360,7 @@
       <entry name="UseAnimatedSlewing" type="Bool">
          <label>Use animated slewing effects when changing focus position?</label>
          <whatsthis>If true, focus changes will cause the sky to visibly spin to the new position. Otherwise, the display will "snap" instantly to the new position.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="LeftClickSelectsObject" type="Bool">
          <label>Select objects on left click?</label>
