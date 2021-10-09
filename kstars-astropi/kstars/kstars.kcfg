@@ -2577,11 +2577,11 @@
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
          <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
-         <default>0</default>
+         <default>10</default>
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
    </group>
    <group name="Analyze">
