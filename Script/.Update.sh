@@ -10,8 +10,8 @@
 # Bash variables
 #=========================================================================
 AstroPi_v=1.3
-KStars_v=3.5.5v1.3
-Indi_v=1.9.2
+KStars_v=3.5.4v1.3
+Indi_v=1.9.1
 
 home=$HOME
 GitDir="$home"/.AstroPi-system
