@@ -84,7 +84,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "$password" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		# Hold some update
-		echo "$password" | sudo -S apt-mark hold kstars-bleeding indi-full libindi-dev libindi1
+		echo "$password" | sudo -S apt-mark hold kstars-bleeding indi-full libindi-dev libindi1 libindi-bin
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		
 		# =================================================================
