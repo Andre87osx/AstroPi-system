@@ -90,7 +90,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		# =================================================================
 		echo "# Run Software Updater..."
 		# Run APT FULL upgrade
-		echo "$password" | sudo -S apt-get update && sudo apt-get -y dist-upgrade && sudo apt -y full-upgrade
+		echo "$password" | sudo -S apt update && echo "$password" | sudo -S apt -y full-upgrade
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating system AstroPi</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
 		# =================================================================
