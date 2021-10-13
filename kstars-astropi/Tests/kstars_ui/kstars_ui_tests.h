@@ -9,12 +9,15 @@
 
 #pragma once
 
-#include "../testhelpers.h"
+#include "config-kstars.h"
+#include "kstars.h"
 #include "kstarsdata.h"
 
 #include <QMutex>
+#include <QObject>
 #include <QTimer>
 #include <QApplication>
+#include <QtTest>
 #include <QSystemTrayIcon>
 
 class KStars;
@@ -49,7 +52,6 @@ extern void execute_tests();
             if (!strcmp("-functions", argv[i])) \
                 return QTest::qExec(&tc, argc, argv); \
         QApplication* app = new QApplication(argc, argv); \
-        KTEST_BEGIN(); \
         prepare_tests(); \
         int failure = 0; \
         QTimer::singleShot(1000, app, [&] { \
@@ -64,7 +66,6 @@ extern void execute_tests();
             app->quit(); \
         }); \
         execute_tests(); \
-        KTEST_END(); \
         return failure; }
 
 // All QTest features are macros returning with no error code.

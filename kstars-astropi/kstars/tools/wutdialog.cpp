@@ -47,7 +47,7 @@ WUTDialog::WUTDialog(QWidget *parent, bool _session, GeoLocation *_geo,
 
     mainLayout->addWidget(WUT);
 
-    setWindowTitle(i18nc("@title:window", "What's up Tonight"));
+    setWindowTitle(i18n("What's up Tonight"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
     mainLayout->addWidget(buttonBox);
@@ -683,6 +683,5 @@ void WUTDialog::slotChangeMagnitude()
 
 void WUTDialog::showEvent(QShowEvent *event)
 {
-    Q_UNUSED(event);
     QTimer::singleShot(0, this, SLOT(init()));
 };

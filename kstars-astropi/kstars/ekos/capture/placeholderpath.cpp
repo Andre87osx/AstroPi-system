@@ -24,8 +24,7 @@
 
 #include <cmath>
 
-namespace Ekos
-{
+namespace Ekos {
 
 PlaceholderPath::PlaceholderPath() {}
 
@@ -70,25 +69,17 @@ void PlaceholderPath::processJobInfo(SequenceJob *job, QString targetName)
         imagePrefix += filterType;
     }
 
-    // JM 2021.08.21 For flat frames with specific ADU, the exposure duration is only advisory
-    // and the final exposure time would depend on how many seconds are needed to arrive at the
-    // target ADU. Therefore we should add duration to the signature.
-    if (expEnabled && !(job->getFrameType() == FRAME_FLAT && job->getFlatFieldDuration() == DURATION_ADU))
+    if (expEnabled)
     {
         imagePrefix += '_';
 
         double fractpart, intpart;
         fractpart = std::modf(exposure, &intpart);
-        if (fractpart == 0)
-        {
+        if (fractpart == 0) {
             imagePrefix += QString::number(exposure, 'd', 0) + QString("_secs");
-        }
-        else if (exposure >= 1e-3)
-        {
+        } else if (exposure >= 1e-3) {
             imagePrefix += QString::number(exposure, 'f', 3) + QString("_secs");
-        }
-        else
-        {
+        } else {
             imagePrefix += QString::number(exposure, 'f', 6) + QString("_secs");
         }
     }
@@ -103,8 +94,7 @@ void PlaceholderPath::processJobInfo(SequenceJob *job, QString targetName)
         directoryPostfix = QLatin1String("/") + frameType;
     else
         directoryPostfix = QLatin1String("/") + targetName + QLatin1String("/") + frameType;
-    if ((job->getFrameType() == FRAME_LIGHT || job->getFrameType() == FRAME_FLAT || job->getFrameType() == FRAME_NONE)
-            && filterType.isEmpty() == false)
+    if ((job->getFrameType() == FRAME_LIGHT || job->getFrameType() == FRAME_FLAT || job->getFrameType() == FRAME_NONE) && filterType.isEmpty() == false)
         directoryPostfix += QLatin1String("/") + filterType;
 
     job->setDirectoryPostfix(directoryPostfix);
@@ -140,8 +130,7 @@ void PlaceholderPath::addJob(SequenceJob *job, QString targetName)
         directoryPostfix = QLatin1String("/") + frameTypeStr;
     else
         directoryPostfix = QLatin1String("/") + targetName + QLatin1String("/") + frameTypeStr;
-    if ((frameType == FRAME_LIGHT || frameType == FRAME_FLAT || frameType == FRAME_NONE)
-            &&  job->getFilterName().isEmpty() == false)
+    if ((frameType == FRAME_LIGHT || frameType == FRAME_FLAT || frameType == FRAME_NONE) &&  job->getFilterName().isEmpty() == false)
         directoryPostfix += QLatin1String("/") + job->getFilterName();
 
     job->setDirectoryPostfix(directoryPostfix);

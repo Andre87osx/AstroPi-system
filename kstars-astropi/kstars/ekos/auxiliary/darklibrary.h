@@ -43,7 +43,6 @@ class DarkLibrary : public QDialog, public Ui::DarkLibrary
 
     public:
         static DarkLibrary *Instance();
-        static void Release();
 
         bool findDarkFrame(ISD::CCDChip *targetChip, double duration, QSharedPointer<FITSData> &darkData);
         bool findDefectMap(ISD::CCDChip *targetChip, double duration, QSharedPointer<DefectMap> &defectMap);
@@ -54,7 +53,7 @@ class DarkLibrary : public QDialog, public Ui::DarkLibrary
         void addCamera(ISD::GDInterface * newCCD);
         void removeCamera(ISD::GDInterface * newCCD);
         void checkCamera(int ccdNum = -1);
-        //void reset();
+        void reset();
         void setCaptureModule(Capture *instance);
 
     protected:

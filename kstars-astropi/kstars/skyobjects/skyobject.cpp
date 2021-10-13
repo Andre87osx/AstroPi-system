@@ -240,14 +240,17 @@ QTime SkyObject::transitTimeUT(const KStarsDateTime &dt, const GeoLocation *geo)
 
     //dSec is the number of seconds until the object transits.
     dms HourAngle = dms(LST.Degrees() - ra().Degrees());
-    int dSec      = static_cast<int>(-3600. * HourAngle.Degrees() / 15.0);
+    int dSec      = int(-3600. * HourAngle.Hours());
 
     //dt0 is the first guess at the transit time.
     KStarsDateTime dt0 = dt.addSecs(dSec);
-    //recompute object's position at UT0 and then find transit time of this refined position
+
+    //recompute object's position at UT0 and then find
+    //transit time of this refined position
     SkyPoint sp = recomputeCoords(dt0, geo);
+
     HourAngle = dms(LST.Degrees() - sp.ra().Degrees());
-    dSec      = static_cast<int>(-3600. * HourAngle.Degrees() / 15.0);
+    dSec      = int(-3600. * HourAngle.Hours());
 
     return dt.addSecs(dSec).time();
 }

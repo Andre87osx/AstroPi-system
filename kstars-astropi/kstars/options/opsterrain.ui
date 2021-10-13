@@ -28,7 +28,7 @@
         <item>
          <widget class="QCheckBox" name="kcfg_ShowTerrain">
           <property name="text">
-           <string>Show terrain</string>
+           <string>Show Terrain</string>
           </property>
          </widget>
         </item>
@@ -101,7 +101,7 @@
              <string>Rotate terrain in azimuth degrees so north is actually north</string>
             </property>
             <property name="text">
-             <string>Terrain image azimuth correction degrees:</string>
+             <string>Terrain image azimuth correction degrees</string>
             </property>
            </widget>
           </item>
@@ -115,64 +115,6 @@
             </property>
             <property name="toolTip">
              <string>Rotate terrain in azimuth degrees so north is actually north</string>
-            </property>
-            <property name="minimum">
-             <number>-360</number>
-            </property>
-            <property name="maximum">
-             <number>360</number>
-            </property>
-            <property name="value">
-             <number>0</number>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeType">
-             <enum>QSizePolicy::Expanding</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>200</width>
-              <height>16</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="terrainSourceCorrectAltLayout">
-          <item>
-           <widget class="QLabel" name="terrainSourceCorrectAltLabel">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Rotate terrain in altitude degrees so horizon is at 0 degrees altitude</string>
-            </property>
-            <property name="text">
-             <string>Terrain image altitude correction degrees:</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QSpinBox" name="kcfg_TerrainSourceCorrectAlt">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Rotate terrain in altitude degrees so north is actually north</string>
             </property>
             <property name="minimum">
              <number>-360</number>
@@ -228,7 +170,7 @@
            <string>Set the coarseness of the terrain image rendered. 1 is full resolution, but can be slow, 6 or more would be coarse resolution and fast.</string>
           </property>
           <property name="text">
-           <string>Terrain downsampling:</string>
+           <string>Terrain Downsampling</string>
           </property>
          </widget>
         </item>
@@ -269,7 +211,7 @@
       <item>
        <widget class="QCheckBox" name="kcfg_TerrainPanning">
         <property name="text">
-         <string>Show terrain while panning</string>
+         <string>Show Terrain While Panning</string>
         </property>
        </widget>
       </item>
@@ -279,7 +221,7 @@
          <string>Creates a smoother image at the cost of some extra computation.</string>
         </property>
         <property name="text">
-         <string>Smooth pixels</string>
+         <string>Smooth Pixels</string>
         </property>
        </widget>
       </item>
@@ -289,7 +231,7 @@
          <string>A speedup with minor image quality cost.</string>
         </property>
         <property name="text">
-         <string>Skip pixels speedup</string>
+         <string>Skip Pixels Speedup</string>
         </property>
        </widget>
       </item>
@@ -299,7 +241,7 @@
          <string>A speedup with minor image quality cost.</string>
         </property>
         <property name="text">
-         <string>Transparency speedup</string>
+         <string>Transparency Speedup</string>
         </property>
        </widget>
       </item>
@@ -324,18 +266,6 @@
    </item>
   </layout>
  </widget>
- <tabstops>
-  <tabstop>kcfg_ShowTerrain</tabstop>
-  <tabstop>kcfg_TerrainSource</tabstop>
-  <tabstop>selectTerrainFileB</tabstop>
-  <tabstop>kcfg_TerrainSourceCorrectAz</tabstop>
-  <tabstop>kcfg_TerrainSourceCorrectAlt</tabstop>
-  <tabstop>kcfg_TerrainDownsampling</tabstop>
-  <tabstop>kcfg_TerrainPanning</tabstop>
-  <tabstop>kcfg_TerrainSmoothPixels</tabstop>
-  <tabstop>kcfg_TerrainSkipSpeedup</tabstop>
-  <tabstop>kcfg_TerrainTransparencySpeedup</tabstop>
- </tabstops>
  <resources/>
  <connections/>
 </ui>

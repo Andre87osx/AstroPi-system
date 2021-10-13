@@ -29,7 +29,6 @@ class QStringListModel;
 class QSortFilterProxyModel;
 class SkyObjectListModel;
 class SkyObject;
-class DeepSkyObject;
 
 class FindDialogUI : public QFrame, public Ui::FindDialog
 {
@@ -63,28 +62,12 @@ class FindDialog : public QDialog
      */
     inline SkyObject *targetObject() { return m_targetObject; }
 
-
     /**
      * @brief exec overrides base's QDialog::exec() to provide a parent widget.
      * @param parent is the widget to position the FindDialog instance againt.
      * @return QDialog::exec() result.
      */
     int execWithParent(QWidget* parent = nullptr);
-
-    // Backend methods
-    /**
-     * @short Do some post processing on the search text to interpret what the user meant
-     * This could include replacing text like "m93" with "m 93"
-     */
-    static QString processSearchText(QString searchText);
-
-    // FIXME: Move this method to a better place, maybe into the NameResolver
-    /**
-     * @short Resolves an object using the internet and adds it to the database
-     * @note Can only be called when KStars is fully initialized
-     * @return a pointer to the DeepSkyObject (instance managed by internetResolvedComponent) if successful, nullptr otherwise
-     */
-    static CatalogObject *resolveAndAdd(CatalogsDB::DBManager &db_manager, const QString &query);
 
   public slots:
     /**
@@ -140,11 +123,11 @@ class FindDialog : public QDialog
     explicit FindDialog(QWidget *parent = nullptr);
 
     static FindDialog *m_Instance;
-
     /**
-     * @short processSearchText(QString) called on the text entered in the find dialog
+     * @short Do some post processing on the search text to interpret what the user meant
+     * This could include replacing text like "m93" with "m 93"
      */
-    inline QString processSearchText() { return processSearchText(ui->SearchBox->text()); }
+    QString processSearchText();
 
     /** @short Finishes the processing towards closing the dialog initiated by slotOk() or slotResolve() */
     void finishProcessing(SkyObject *selObj = nullptr, bool resolve = true);

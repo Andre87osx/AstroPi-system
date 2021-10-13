@@ -14,9 +14,12 @@
 
 #include "kstars_ui_tests.h"
 #include "test_ekos.h"
-#include "mountmodel.h"
 #include "Options.h"
 #include "indi/guimanager.h"
+#include "indi/indidevice.h"
+#include "indi/indigroup.h"
+#include "indi/indiproperty.h"
+#include "indi/indielement.h"
 
 TestEkosAlign::TestEkosAlign(QObject *parent) : QObject(parent)
 {
@@ -81,7 +84,7 @@ void TestEkosAlign::initTestCase()
     KVERIFY_EKOS_IS_OPENED();
     // start the profile
     QVERIFY(m_test_ekos_helper->startEkosProfile());
-    m_test_ekos_helper->init();
+    m_test_ekos_helper->initTestCase();
     QStandardPaths::setTestModeEnabled(true);
 
     prepareTestCase();
@@ -102,7 +105,7 @@ void TestEkosAlign::cleanupTestCase()
     disconnect(Ekos::Manager::Instance()->mountModule(), &Ekos::Mount::newStatus, this,
                &TestEkosAlign::telescopeStatusChanged);
 
-    m_test_ekos_helper->cleanup();
+    m_test_ekos_helper->cleanupTestCase();
     QVERIFY(m_test_ekos_helper->shutdownEkosProfile());
     KTRY_CLOSE_EKOS();
     KVERIFY_EKOS_IS_HIDDEN();
@@ -187,8 +190,7 @@ void TestEkosAlign::prepareTestCase()
             Qt::UniqueConnection);
 }
 
-void TestEkosAlign::init()
-{
+void TestEkosAlign::init() {
     // reset counters
     solver_count = 0;
     image_count  = 0;
@@ -204,14 +206,12 @@ bool TestEkosAlign::prepareMountModel(int points)
 
     // wait until the mount model is instantiated
     QTest::qWait(1000);
-    Ekos::MountModel * mountModel = Ekos::Manager::Instance()->alignModule()->mountModel();
+    Ui_mountModel * mountModel = Ekos::Manager::Instance()->alignModule()->getMountModelUI();
     KVERIFY_SUB(mountModel != nullptr);
 
     // clear alignment points
-    if (mountModel->alignTable->rowCount() > 0)
-    {
-        QTimer::singleShot(2000, [&]()
-        {
+    if (mountModel->alignTable->rowCount() > 0) {
+        QTimer::singleShot(2000, [&]() {
             QDialog * const dialog = qobject_cast <QDialog*> (QApplication::activeModalWidget());
             if (dialog != nullptr)
                 QTest::mouseClick(dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Yes), Qt::LeftButton);
@@ -223,8 +223,8 @@ bool TestEkosAlign::prepareMountModel(int points)
     mountModel->alignPtNum->setValue(points);
     KVERIFY_SUB(mountModel->alignPtNum->value() == points);
     // use named stars for alignment (this hopefully improves plate soving speed)
-    mountModel->alignTypeBox->setCurrentIndex(Ekos::MountModel::OBJECT_NAMED_STAR);
-    KVERIFY_SUB(mountModel->alignTypeBox->currentIndex() == Ekos::MountModel::OBJECT_NAMED_STAR);
+    mountModel->alignTypeBox->setCurrentIndex(Ekos::Align::OBJECT_NAMED_STAR);
+    KVERIFY_SUB(mountModel->alignTypeBox->currentIndex() == Ekos::Align::OBJECT_NAMED_STAR);
     // create the alignment points
     KVERIFY_SUB(mountModel->wizardAlignB->isEnabled());
     mountModel->wizardAlignB->click();
@@ -235,7 +235,7 @@ bool TestEkosAlign::prepareMountModel(int points)
 
 bool TestEkosAlign::runMountModelTool(int points, bool moveMount)
 {
-    Ekos::MountModel * mountModel = Ekos::Manager::Instance()->alignModule()->mountModel();
+    Ui_mountModel * mountModel = Ekos::Manager::Instance()->alignModule()->getMountModelUI();
 
     // start model creation
     KVERIFY_SUB(mountModel->startAlignB->isEnabled());

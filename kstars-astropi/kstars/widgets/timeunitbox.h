@@ -18,7 +18,6 @@
 #pragma once
 
 #include <QWidget>
-#include <QAction>
 
 class QToolButton;
 
@@ -83,9 +82,6 @@ class TimeUnitBox : public QWidget
     bool daysOnly() const { return DaysOnly; }
     void setDaysOnly(bool daysonly);
 
-    QAction *increaseUnitsAction() const { return IncreaseAction; }
-    QAction *decreaseUnitsAction() const { return DecreaseAction; }
-
   signals:
     void valueChanged(int);
 
@@ -99,8 +95,6 @@ class TimeUnitBox : public QWidget
     bool DaysOnly { false };
     QToolButton *UpButton { nullptr };
     QToolButton *DownButton { nullptr };
-    QAction *IncreaseAction { nullptr };
-    QAction *DecreaseAction { nullptr };
     int MinimumValue { 0 };
     int MaximumValue { 0 };
     int Value { 0 };

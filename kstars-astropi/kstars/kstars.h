@@ -176,7 +176,7 @@ class KStars : public KXmlGuiWindow
              * @param name The name to use in the menu
              * @param actionName The internal name for the action (derived from filename)
              */
-        void addColorMenuItem(QString name, const QString &actionName);
+        void addColorMenuItem(const QString &name, const QString &actionName);
 
         /** Remove an item from the color-scheme action manu
              * @param actionName The internal name of the action (derived from filename)
@@ -442,13 +442,9 @@ class KStars : public KXmlGuiWindow
 
         /** DBUS interface function.  Return XML containing information about a sky object
              * @param objectName name of the object.
-             * @param fallbackToInternet Attempt to resolve the name using internet databases if not found
-             * @param storeInternetResolved If we fell back to the internet, save the result in DSO database for future offline access
              * @note If the object was not found, the XML is empty.
              */
-        Q_SCRIPTABLE QString getObjectDataXML(const QString &objectName,
-                                              bool fallbackToInternet = false,
-                                              bool storeInternetResolved = true);
+        Q_SCRIPTABLE QString getObjectDataXML(const QString &objectName);
 
         /** DBUS interface function.  Return XML containing position info about a sky object
              * @param objectName name of the object.

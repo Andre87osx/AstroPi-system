@@ -61,9 +61,9 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     histogramView->setProperty("axesLabelEnabled", false);
     //histogramView->setProperty("linear", true);
 
-    QDir writableDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation));
-    writableDir.mkpath("darks");
-    writableDir.mkpath("defectmaps");
+    QDir writableDir;
+    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks");
+    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "defectmaps");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dark Generation Connections
@@ -304,25 +304,12 @@ bool DarkLibrary::findDarkFrame(ISD::CCDChip *m_TargetChip, double duration, QSh
                 }
 
                 // Duration has a higher score priority over temperature
-                {
-                    double diffMap = std::fabs(map["duration"].toDouble() - duration);
-                    double diffBest = std::fabs(bestCandidate["duration"].toDouble() - duration);
-                    if (diffMap < diffBest)
-                        thisMapScore += 2;
-                    else if (diffBest < diffMap)
-                        bestCandidateScore += 2;
-                }
-
-                // More recent has a higher score than older.
-                {
-                    const QDateTime now = QDateTime::currentDateTime();
-                    int64_t diffMap  = map["timestamp"].toDateTime().secsTo(now);
-                    int64_t diffBest = bestCandidate["timestamp"].toDateTime().secsTo(now);
-                    if (diffMap < diffBest)
-                        thisMapScore += 2;
-                    else if (diffBest < diffMap)
-                        bestCandidateScore += 2;
-                }
+                double diffMap = std::fabs(map["duration"].toDouble() - duration);
+                double diffBest = std::fabs(bestCandidate["duration"].toDouble() - duration);
+                if (diffMap < diffBest)
+                    thisMapScore += 2;
+                else if (diffBest < diffMap)
+                    bestCandidateScore += 2;
 
                 // Find candidate with closest time in case we have multiple defect maps
                 if (thisMapScore > bestCandidateScore)
@@ -339,15 +326,12 @@ bool DarkLibrary::findDarkFrame(ISD::CCDChip *m_TargetChip, double duration, QSh
                   QString::number(bestCandidate["duration"].toDouble(), 'f', 1),
                   QString::number(duration, 'f', 1));
 
-    QString filename = bestCandidate["filename"].toString();
-
     // Finally check if the duration is acceptable
-    QDateTime frameTime = bestCandidate["timestamp"].toDateTime();
+    QDateTime frameTime = QDateTime::fromString(bestCandidate["timestamp"].toString(), Qt::ISODate);
     if (frameTime.daysTo(QDateTime::currentDateTime()) > Options::darkLibraryDuration())
-    {
-        emit i18n("Dark frame %s is expired. Please create new master dark.", filename);
         return false;
-    }
+
+    QString filename = bestCandidate["filename"].toString();
 
     if (m_CachedDarkFrames.contains(filename))
     {
@@ -796,14 +780,11 @@ void DarkLibrary::processNewBLOB(IBLOB *bp)
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::Release()
+void DarkLibrary::reset()
 {
-    delete (_DarkLibrary);
-    _DarkLibrary = nullptr;
-
-    //    m_Cameras.clear();
-    //    cameraS->clear();
-    //    m_CurrentCamera = nullptr;
+    m_Cameras.clear();
+    cameraS->clear();
+    m_CurrentCamera = nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -966,7 +947,7 @@ void DarkLibrary::clearRow()
 ///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::openDarksFolder()
 {
-    QString darkFilesPath = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("darks");
+    QString darkFilesPath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks";
 
     QDesktopServices::openUrl(QUrl::fromLocalFile(darkFilesPath));
 }
@@ -1544,7 +1525,7 @@ template <typename T>  void DarkLibrary::generateMasterFrameInternal(const QShar
 
 
     QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-    QString path = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("darks/darkframe_" + ts + ".fits");
+    QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks/darkframe_" + ts + ".fits";
 
     data->calculateStats(true);
     if (!data->saveImage(path))
@@ -1610,8 +1591,7 @@ void DarkLibrary::saveDefectMap()
     if (filename.isEmpty())
     {
         QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-        filename = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("defectmaps/defectmap_" + ts +
-                   ".json");
+        filename = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "defectmaps/defectmap_" + ts + ".json";
         newFile = true;
     }
 

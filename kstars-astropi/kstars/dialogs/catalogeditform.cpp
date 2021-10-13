@@ -16,8 +16,6 @@
  ***************************************************************************/
 
 #include "catalogeditform.h"
-#include "dialogs/catalogcoloreditor.h"
-#include "kstarsdata.h"
 #include "ui_catalogeditform.h"
 #include "catalogsdb.h"
 #include <QColorDialog>
@@ -53,16 +51,12 @@ CatalogEditForm::CatalogEditForm(QWidget *parent, const CatalogsDB::Catalog &cat
             [&](const QString &s) { m_catalog.maintainer = s; });
 
     connect(ui->color, &QPushButton::clicked, [&]() {
-        CatalogColorEditor editor{
-            m_catalog.color == "" ?
-                KStarsData::Instance()->colorScheme()->colorNamed("DSOColor").name() :
-                m_catalog.color
-        };
-
-        if (editor.exec() != QDialog::Accepted)
+        QColorDialog picker{};
+        if (picker.exec() != QDialog::Accepted)
             return;
 
-        m_catalog.color = editor.color_string();
+        m_catalog.color = picker.currentColor().name();
+        ui->color->setText(m_catalog.color);
     });
 }
 
@@ -75,6 +69,10 @@ void CatalogEditForm::fill_form_from_catalog()
 {
     ui->id->setValue(m_catalog.id);
     ui->name->setText(m_catalog.name);
+    if (m_catalog.color == "")
+        ui->color->setText(i18n("Choose"));
+    else
+        ui->color->setText(m_catalog.color);
     ui->author->setText(m_catalog.author);
     ui->source->setText(m_catalog.source);
     ui->description->setHtml(m_catalog.description);

@@ -155,7 +155,8 @@ bool PolarAlign::findAzAlt(const QSharedPointer<FITSData> &image, double azimuth
     {
         QString debugString =
             QString("PolarAlign: Couldn't get pixel from WCS for az %1 alt %2 with j2000 RA %3 DEC %4")
-            .arg(QString::number(azimuth), QString::number(altitude), j2000Coord.ra0().toHMSString(), j2000Coord.dec0().toDMSString());
+            .arg(azimuth).arg(altitude).arg(j2000Coord.ra0().toHMSString())
+            .arg(j2000Coord.dec0().toDMSString());
         qCDebug(KSTARS_EKOS_ALIGN) << debugString;
         return false;
     }

@@ -30,7 +30,6 @@
 #include "sqlstatements.cpp"
 
 using namespace CatalogsDB;
-QSet<QString> DBManager::m_db_paths{};
 
 /**
  * Get an increasing index for new connections.
@@ -68,21 +67,11 @@ std::pair<bool, QString> migrate_db(const int version, QSqlDatabase &db,
     if (version < 2)
     {
         QSqlQuery add_ts{ db };
-        const auto success = add_ts.exec(QString("ALTER TABLE %1catalogs ADD COLUMN "
-                                                 "timestamp DEFAULT NULL")
-                                             .arg(prefix));
-        if (!success)
-            return { false, add_ts.lastError().text() };
-    }
 
-    // adding the color selector table; this only applies for the
-    // master database
-    if (version < 3 && prefix == "")
-    {
-        QSqlQuery add_colors{ db };
-        const auto success = add_colors.exec(SqlStatements::create_colors_table);
-        if (!success)
-            return { false, add_colors.lastError().text() };
+        return { add_ts.exec(QString("ALTER TABLE %1catalogs ADD COLUMN "
+                                     "timestamp DEFAULT NULL")
+                                 .arg(prefix)),
+                 add_ts.lastError().text() };
     }
 
     return { true, "" };
@@ -91,8 +80,7 @@ std::pair<bool, QString> migrate_db(const int version, QSqlDatabase &db,
 DBManager::DBManager(const QString &filename)
     : m_db{ QSqlDatabase::addDatabase(
           "QSQLITE", QString("cat_%1_%2").arg(filename).arg(get_connection_index())) },
-      m_db_file{ *m_db_paths.insert(filename) }
-
+      m_db_file{ filename }
 {
     m_db.setDatabaseName(m_db_file);
 
@@ -182,11 +170,11 @@ DBManager::DBManager(const QString &filename)
         }
     }
 
-    m_q_cat_by_id         = make_query(m_db, SqlStatements::get_catalog_by_id, true);
-    m_q_obj_by_trixel     = make_query(m_db, SqlStatements::dso_by_trixel, false);
-    m_q_obj_by_name       = make_query(m_db, SqlStatements::dso_by_name, true);
+    m_q_cat_by_id = make_query(m_db, SqlStatements::get_catalog_by_id, true);
+    m_q_obj_by_trixel            = make_query(m_db, SqlStatements::dso_by_trixel, false);
+    m_q_obj_by_name              = make_query(m_db, SqlStatements::dso_by_name, true);
     m_q_obj_by_name_exact = make_query(m_db, SqlStatements::dso_by_name_exact, true);
-    m_q_obj_by_maglim     = make_query(m_db, SqlStatements::dso_by_maglim, true);
+    m_q_obj_by_maglim            = make_query(m_db, SqlStatements::dso_by_maglim, true);
     m_q_obj_by_maglim_and_type =
         make_query(m_db, SqlStatements::dso_by_maglim_and_type, true);
     m_q_obj_by_oid = make_query(m_db, SqlStatements::dso_by_oid, true);
@@ -201,9 +189,6 @@ bool DBManager::initialize_db()
                                  "m_htmesh_level have to be set.");
 
     if (!m_db.exec(SqlStatements::create_meta_table).isActive())
-        return false;
-
-    if (!m_db.exec(SqlStatements::create_colors_table).isActive())
         return false;
 
     QSqlQuery meta_query{ m_db };
@@ -445,7 +430,7 @@ CatalogObject DBManager::read_catalogobject(const QSqlQuery &query) const
              flux,       m_db_file };
 }
 
-CatalogObjectVector DBManager::get_objects_in_trixel(const int trixel)
+std::vector<CatalogObject> DBManager::get_objects_in_trixel(const int trixel)
 {
     QMutexLocker _{ &m_mutex }; // this costs ~ .1ms which is ok
     m_q_obj_by_trixel.bindValue(0, trixel);
@@ -456,7 +441,7 @@ CatalogObjectVector DBManager::get_objects_in_trixel(const int trixel)
                 .arg(trixel),
             DatabaseError::ErrorType::UNKNOWN, m_q_obj_by_trixel.lastError());
 
-    CatalogObjectVector objects;
+    std::vector<CatalogObject> objects;
     size_t count =
         count_rows(m_q_obj_by_trixel); // this also moves the query head to the end
 
@@ -479,9 +464,9 @@ CatalogObjectVector DBManager::get_objects_in_trixel(const int trixel)
     return objects;
 }
 
-CatalogObjectList DBManager::fetch_objects(QSqlQuery &query) const
+std::list<CatalogObject> DBManager::fetch_objects(QSqlQuery &query) const
 {
-    CatalogObjectList objects;
+    std::list<CatalogObject> objects;
     auto _ = gsl::finally([&]() { query.finish(); });
 
     query.exec();
@@ -494,8 +479,8 @@ CatalogObjectList DBManager::fetch_objects(QSqlQuery &query) const
     return objects;
 }
 
-CatalogObjectList DBManager::find_objects_by_name(const QString &name, const int limit,
-                                                  const bool exactMatchOnly)
+std::list<CatalogObject> DBManager::find_objects_by_name(const QString &name,
+                                                         const int limit)
 {
     QMutexLocker _{ &m_mutex };
 
@@ -509,10 +494,6 @@ CatalogObjectList DBManager::find_objects_by_name(const QString &name, const int
         {
             return objs;
         }
-        if (exactMatchOnly)
-        {
-            return CatalogObjectList();
-        }
     }
 
     m_q_obj_by_name.bindValue(":name", name);
@@ -521,8 +502,9 @@ CatalogObjectList DBManager::find_objects_by_name(const QString &name, const int
     return fetch_objects(m_q_obj_by_name);
 }
 
-CatalogObjectList DBManager::find_objects_by_name(const int catalog_id,
-                                                  const QString &name, const int limit)
+std::list<CatalogObject> DBManager::find_objects_by_name(const int catalog_id,
+                                                         const QString &name,
+                                                         const int limit)
 {
     QSqlQuery query{ m_db };
 
@@ -566,7 +548,7 @@ std::pair<bool, CatalogObject> DBManager::get_object(const CatalogObject::oid &o
     return read_first_object(query);
 };
 
-CatalogObjectList DBManager::get_objects(float maglim, int limit)
+std::list<CatalogObject> DBManager::get_objects(float maglim, int limit)
 {
     QMutexLocker _{ &m_mutex };
     m_q_obj_by_maglim.bindValue(":maglim", maglim);
@@ -575,7 +557,8 @@ CatalogObjectList DBManager::get_objects(float maglim, int limit)
     return fetch_objects(m_q_obj_by_maglim);
 }
 
-CatalogObjectList DBManager::get_objects(SkyObject::TYPE type, float maglim, int limit)
+std::list<CatalogObject> DBManager::get_objects(SkyObject::TYPE type, float maglim,
+                                                int limit)
 {
     QMutexLocker _{ &m_mutex };
     m_q_obj_by_maglim_and_type.bindValue(":type", type);
@@ -585,9 +568,9 @@ CatalogObjectList DBManager::get_objects(SkyObject::TYPE type, float maglim, int
     return fetch_objects(m_q_obj_by_maglim_and_type);
 }
 
-CatalogObjectList DBManager::get_objects_in_catalog(SkyObject::TYPE type,
-                                                    const int catalog_id, float maglim,
-                                                    int limit)
+std::list<CatalogObject> DBManager::get_objects_in_catalog(SkyObject::TYPE type,
+                                                           const int catalog_id,
+                                                           float maglim, int limit)
 {
     QSqlQuery query{ m_db };
 
@@ -966,8 +949,8 @@ int DBManager::find_suitable_catalog_id()
 
 QString CatalogsDB::dso_db_path()
 {
-    return QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation))
-        .filePath(Options::dSOCatalogFilename());
+    return KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+           Options::dSOCatalogFilename();
 }
 
 std::pair<bool, Catalog> CatalogsDB::read_catalog_meta_from_file(const QString &path)
@@ -1039,7 +1022,7 @@ DBManager::get_catalog_statistics(const int catalog_id)
 
 std::pair<bool, QString>
 CatalogsDB::DBManager::add_objects(const int catalog_id,
-                                   const CatalogObjectVector &objects)
+                                   const std::vector<CatalogObject> &objects)
 {
     {
         const auto &success = get_catalog(catalog_id);
@@ -1071,146 +1054,4 @@ CatalogsDB::DBManager::add_objects(const int catalog_id,
 
     return { m_db.commit() && update_catalog_views() && compile_master_catalog(),
              m_db.lastError().text() };
-};
-
-CatalogObjectList CatalogsDB::DBManager::find_objects_by_wildcard(const QString &wildcard,
-                                                                  const int limit)
-{
-    QMutexLocker _{ &m_mutex };
-
-    QSqlQuery query{ m_db };
-    if (!query.prepare(SqlStatements::dso_by_wildcard()))
-    {
-        return {};
-    }
-    query.bindValue(":wildcard", wildcard);
-    query.bindValue(":limit", limit);
-
-    return fetch_objects(query);
-};
-
-std::tuple<bool, const QString, CatalogObjectList>
-CatalogsDB::DBManager::general_master_query(const QString &where, const QString &order_by,
-                                            const int limit)
-{
-    QMutexLocker _{ &m_mutex };
-
-    QSqlQuery query{ m_db };
-
-    if (!query.prepare(SqlStatements::dso_general_query(where, order_by)))
-    {
-        return { false, query.lastError().text(), {} };
-    }
-
-    query.bindValue(":limit", limit);
-
-    return { false, "", fetch_objects(query) };
-};
-
-CatalogsDB::CatalogColorMap CatalogsDB::parse_color_string(const QString &str)
-{
-    CatalogsDB::CatalogColorMap colors{};
-    if (str == "")
-        return colors;
-
-    const auto &parts = str.split(";");
-    auto it           = parts.constBegin();
-
-    if (it->length() > 0) // playing it save
-        colors["default"] = *it;
-
-    while (it != parts.constEnd())
-    {
-        const auto &scheme = *(++it);
-        if (it != parts.constEnd())
-        {
-            const auto next = ++it;
-            if (next == parts.constEnd())
-                break;
-
-            const auto &color = *next;
-            colors[scheme]    = QColor(color);
-        }
-    }
-
-    return colors;
-}
-
-QString get_name(const QColor &color)
-{
-    return color.isValid() ? color.name() : "";
-}
-
-QString CatalogsDB::to_color_string(CatalogColorMap colors)
-{
-    QStringList color_list;
-
-    color_list << colors["default"].name();
-    colors.erase("default");
-
-    for (const auto &item : colors)
-    {
-        if (item.second.isValid())
-        {
-            color_list << item.first << item.second.name();
-        }
-    }
-
-    return color_list.join(";");
-}
-
-ColorMap CatalogsDB::DBManager::get_catalog_colors()
-{
-    // no mutex b.c. this is read only
-    QSqlQuery query{ m_db };
-
-    ColorMap colors{};
-
-    if (!query.exec(SqlStatements::get_colors))
-        return colors;
-
-    for (const auto &cat : DBManager::get_catalogs(true))
-    {
-        colors[cat.id] = parse_color_string(cat.color);
-    }
-
-    while (query.next())
-    {
-        const auto &catalog     = query.value("catalog").toInt();
-        const auto &scheme      = query.value("scheme").toString();
-        const auto &color       = query.value("color").toString();
-        colors[catalog][scheme] = QColor(color);
-    }
-
-    return colors;
-};
-
-CatalogsDB::CatalogColorMap CatalogsDB::DBManager::get_catalog_colors(const int id)
-{
-    return get_catalog_colors()[id]; // good enough for now
-};
-
-std::pair<bool, QString>
-CatalogsDB::DBManager::insert_catalog_colors(const int id, const CatalogColorMap &colors)
-{
-    QMutexLocker _{ &m_mutex };
-
-    QSqlQuery query{ m_db };
-
-    if (!query.prepare(SqlStatements::insert_color))
-    {
-        return { false, query.lastError().text() };
-    }
-
-    query.bindValue(":catalog", id);
-    for (const auto &item : colors)
-    {
-        query.bindValue(":scheme", item.first);
-        query.bindValue(":color", item.second);
-
-        if (!query.exec())
-            return { false, query.lastError().text() };
-    }
-
-    return { true, "" };
 };

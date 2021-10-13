@@ -63,7 +63,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
 
     ld->MapView->setLocationDialog(this);
 
-    setWindowTitle(i18nc("@title:window", "Set Geographic Location"));
+    setWindowTitle(i18n("Set Geographic Location"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -111,7 +111,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
     connect(ld->GetLocationButton, SIGNAL(clicked()), this, SLOT(requestUpdate()));
 #endif
 
-    ld->DSTLabel->setText("<a href=\"showrules\">" + i18n("DST rule:") + "</a>");
+    ld->DSTLabel->setText("<a href=\"showrules\">" + i18n("DST Rule:") + "</a>");
     connect(ld->DSTLabel, SIGNAL(linkActivated(QString)), this, SLOT(showTZRules()));
 
     dataModified = false;
@@ -354,7 +354,7 @@ bool LocationDialog::updateCity(CityOperation operation)
     }*/
 
     QSqlDatabase mycitydb = QSqlDatabase::database("mycitydb");
-    QString dbfile        = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("mycitydb.sqlite");
+    QString dbfile        = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "mycitydb.sqlite";
 
     // If it doesn't exist, create it
     if (QFile::exists(dbfile) == false)

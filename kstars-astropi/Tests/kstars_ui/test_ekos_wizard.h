@@ -1,9 +1,11 @@
 #ifndef TESTEKOSWIZARD_H
 #define TESTEKOSWIZARD_H
 
-#include "../testhelpers.h"
+#include "config-kstars.h"
 
 #ifdef HAVE_INDI
+
+#include <QObject>
 
 class TestEkosWizard : public QObject
 {
@@ -15,8 +17,8 @@ public:
 private slots:
     void init();
     void cleanup();
-
     void testProfileWizard();
+
 };
 
 #endif // HAVE_INDI

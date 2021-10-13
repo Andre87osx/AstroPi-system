@@ -117,7 +117,7 @@ AstroCalc::AstroCalc(QWidget *parent) : QDialog(parent)
     mainLayout->addWidget(buttonBox);
     connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
 
-    setWindowTitle(i18nc("@title:window", "Calculator"));
+    setWindowTitle(i18n("Calculator"));
 
     // Create navigation panel
     navigationPanel = new QTreeWidget(split);

@@ -261,7 +261,7 @@
        <item>
         <widget class="QLabel" name="HelpLabel">
          <property name="text">
-          <string>Specify Years for the Calculation in the Input File</string>
+          <string>Specify years for the calculation in the input file.</string>
          </property>
         </widget>
        </item>
@@ -316,7 +316,7 @@
            <item>
             <widget class="QPushButton" name="ViewButtonBatch">
              <property name="text">
-              <string>View Output...</string>
+              <string>View output</string>
              </property>
             </widget>
            </item>

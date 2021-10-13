@@ -38,13 +38,12 @@ const QString mag_desc = "magnitude DESC NULLS LAST";
 
 /* constants */
 const QString catalog_prefix       = "cat_";
-constexpr int current_db_version   = 3;
+constexpr int current_db_version   = 2;
 constexpr int default_htmesh_level = 3;
 constexpr int user_catalog_id      = 0;
 const QString user_catalog_name    = "user";
 const QString master_catalog       = "master";
 const QString all_catalog_view     = "all_catalogs";
-const QString colors_table         = "catalog_colors";
 
 /* metadata */
 const QString create_meta_table =
@@ -52,34 +51,16 @@ const QString create_meta_table =
     "NULL, htmesh_level INTEGER NOT NULL, init INTEGER NOT NULL)";
 
 const QString update_version = "UPDATE meta SET version = :version";
-const QString get_meta       = "SELECT version, htmesh_level, init FROM meta LIMIT 1";
-const QString set_meta       = "INSERT INTO meta (version, htmesh_level, init) VALUES "
-                               "(:version, :htmesh_level, :init)";
-
-/* Colors */
-const QString create_colors_table =
-    QString("CREATE TABLE IF NOT EXISTS %1 (catalog INTEGER NOT "
-            "NULL, scheme TEXT NOT NULL, color TEXT NOT NULL, UNIQUE(catalog, scheme, "
-            "color))")
-    .arg(colors_table);
-
-const QString get_colors =
-    QString("SELECT catalog, scheme, color FROM %1").arg(colors_table);
-
-const QString insert_color =
-    QString("INSERT INTO %1 (catalog, scheme, color) VALUES (:catalog, :scheme, :color) "
-            "ON CONFLICT(catalog, scheme, color) DO UPDATE SET color = :color")
-    .arg(colors_table);
+const QString get_meta = "SELECT version, htmesh_level, init FROM meta LIMIT 1";
+const QString set_meta = "INSERT INTO meta (version, htmesh_level, init) VALUES "
+                         "(:version, :htmesh_level, :init)";
 
 /* catalog queries */
 template <typename input_iterator>
 QStringList from_it(input_iterator begin, input_iterator end)
 {
     QStringList field_strings{};
-    std::for_each(begin, end, [&](const auto & str)
-    {
-        field_strings << str;
-    });
+    std::for_each(begin, end, [&](const auto &str) { field_strings << str; });
     return field_strings;
 }
 
@@ -98,16 +79,12 @@ QString create_field_list(input_iterator begin, input_iterator end, const QStrin
     QStringList prefixed_field_strings;
     std::transform(field_strings.cbegin(), field_strings.cend(),
                    std::back_inserter(prefixed_field_strings),
-                   [&](const auto & str)
-    {
-        return prefix + str;
-    });
+                   [&](const auto &str) { return prefix + str; });
 
     return prefixed_field_strings.join(", ");
 }
 
-constexpr std::array<const char *, 15> catalog_collumns =
-{
+constexpr std::array<const char *, 15> catalog_collumns = {
     "hash",       "oid",        "type",
     "ra",         "dec",        "magnitude",
     "name",       "long_name",  "catalog_identifier",
@@ -119,20 +96,19 @@ const auto catalog_fields =
     create_field_list(catalog_collumns.begin(), catalog_collumns.end());
 
 constexpr std::array<const char *, 14> master_catalog_collumns = { "oid",
-    "type",
-    "ra",
-    "dec",
-    "magnitude",
-    "name",
-    "long_name",
-    "catalog_identifier",
-    "major_axis",
-    "minor_axis",
-    "position_angle",
-    "flux",
-    "trixel",
-    "catalog"
-};
+                                                                   "type",
+                                                                   "ra",
+                                                                   "dec",
+                                                                   "magnitude",
+                                                                   "name",
+                                                                   "long_name",
+                                                                   "catalog_identifier",
+                                                                   "major_axis",
+                                                                   "minor_axis",
+                                                                   "position_angle",
+                                                                   "flux",
+                                                                   "trixel",
+                                                                   "catalog" };
 
 const auto master_catalog_fields =
     create_field_list(master_catalog_collumns.begin(), master_catalog_collumns.end());
@@ -142,19 +118,18 @@ const auto master_catalog_fields =
  * kstars.
  */
 constexpr std::array<const char *, 13> dso_query_fields = { "oid",
-    "type",
-    "ra",
-    "dec",
-    "magnitude",
-    "name",
-    "long_name",
-    "catalog_identifier",
-    "major_axis",
-    "minor_axis",
-    "position_angle",
-    "flux",
-    "catalog"
-};
+                                                            "type",
+                                                            "ra",
+                                                            "dec",
+                                                            "magnitude",
+                                                            "name",
+                                                            "long_name",
+                                                            "catalog_identifier",
+                                                            "major_axis",
+                                                            "minor_axis",
+                                                            "position_angle",
+                                                            "flux",
+                                                            "catalog" };
 
 const auto object_fields =
     create_field_list(dso_query_fields.begin(), dso_query_fields.end());
@@ -191,19 +166,19 @@ const QString empty_view = "SELECT NULL WHERE FALSE";
 
 /* catalog management */
 const QString _create_catalog_list_table = "CREATE TABLE IF NOT EXISTS %1 ("
-        "id INTEGER PRIMARY KEY,"
-        "name TEXT NOT NULL,"
-        "precedence REAL NOT NULL,"
-        "author TEXT DEFAULT NULL,"
-        "source TEXT DEFAULT NULL,"
-        "description TEXT DEFAULT NULL,"
-        "mut INTEGER DEFAULT 0,"
-        "version INTEGER DEFAULT -1,"
-        "enabled INTEGER DEFAULT 1,"
-        "color TEXT DEFAULT NULL,"
-        "license TEXT DEFAULT NULL,"
-        "maintainer TEXT DEFAULT NULL,"
-        "timestamp DATETIME DEFAULT NULL)";
+                                           "id INTEGER PRIMARY KEY,"
+                                           "name TEXT NOT NULL,"
+                                           "precedence REAL NOT NULL,"
+                                           "author TEXT DEFAULT NULL,"
+                                           "source TEXT DEFAULT NULL,"
+                                           "description TEXT DEFAULT NULL,"
+                                           "mut INTEGER DEFAULT 0,"
+                                           "version INTEGER DEFAULT -1,"
+                                           "enabled INTEGER DEFAULT 1,"
+                                           "color TEXT DEFAULT NULL,"
+                                           "license TEXT DEFAULT NULL,"
+                                           "maintainer TEXT DEFAULT NULL,"
+                                           "timestamp DATETIME DEFAULT NULL)";
 
 inline const QString create_catalog_registry(const QString &name)
 {
@@ -230,24 +205,20 @@ inline QString create_update_list(input_iterator begin, input_iterator end)
     QStringList prefixed_field_strings;
     std::transform(field_strings.cbegin(), field_strings.cend(),
                    std::back_inserter(prefixed_field_strings),
-                   [&](const auto & str)
-    {
-        return QString("%1 = :%1").arg(str);
-    });
+                   [&](const auto &str) { return QString("%1 = :%1").arg(str); });
 
     return prefixed_field_strings.join(", ");
 }
 
-constexpr std::array<const char *, 8> _catalog_meta_fields =
-{
+constexpr std::array<const char *, 8> _catalog_meta_fields = {
     "name",  "author",  "source",     "description",
     "color", "license", "maintainer", "timestamp"
 };
 
 const QString update_catalog_meta =
     QString("UPDATE catalogs SET %1 WHERE id = :id")
-    .arg(create_update_list(_catalog_meta_fields.cbegin(),
-                            _catalog_meta_fields.cend()));
+        .arg(create_update_list(_catalog_meta_fields.cbegin(),
+                                _catalog_meta_fields.cend()));
 
 const QString insert_catalog = insert_into_catalog_registry("catalogs");
 const QString remove_catalog  = "DELETE FROM catalogs WHERE id = :id";
@@ -284,7 +255,7 @@ const QString _create_catalog_table = "CREATE TABLE IF NOT EXISTS %1 ("
 inline QString create_catalog_table(int id)
 {
     return QString(_create_catalog_table)
-           .arg(QString(catalog_prefix) + QString::number(id));
+        .arg(QString(catalog_prefix) + QString::number(id));
 }
 
 const QString drop_master = "DROP TABLE IF EXISTS master";
@@ -344,8 +315,8 @@ const QString dso_by_oid = QString(_dso_by_oid).arg(object_fields);
 inline const QString dso_by_oid_and_catalog(const int id)
 {
     return QString("SELECT %1 FROM cat_%2 WHERE oid = :id LIMIT 1")
-           .arg(object_fields)
-           .arg(id);
+        .arg(object_fields)
+        .arg(id);
 };
 
 const QString _dso_by_name =
@@ -355,7 +326,7 @@ const QString _dso_by_name =
     "ORDER BY name, long_name, "
     "%2 LIMIT :limit";
 
-const QString _dso_by_name_exact = "SELECT %1 FROM master WHERE lower(name) = lower(:name) LIMIT 1";
+const QString _dso_by_name_exact = "SELECT %1 FROM master WHERE name = :name LIMIT 1";
 
 const QString dso_by_name       = QString(_dso_by_name).arg(object_fields).arg(mag_asc);
 const QString dso_by_name_exact = QString(_dso_by_name_exact).arg(object_fields);
@@ -365,29 +336,9 @@ inline const QString dso_by_name_and_catalog(const int id)
     return QString("SELECT %1 FROM cat_%2 WHERE instr(name, :name) "
                    "OR instr(long_name, :name) OR instr(catalog_identifier, :name)"
                    "ORDER BY %3 LIMIT :limit")
-           .arg(object_fields)
-           .arg(id)
-           .arg(mag_asc);
-}
-
-const QString _dso_by_wildcard = "SELECT %1 FROM master WHERE name LIKE :wildcard LIMIT "
-                                 ":limit ODRER BY CAST(name AS INTEGER)";
-
-inline const QString dso_by_wildcard()
-{
-    return QString(_dso_by_wildcard).arg(object_fields);
-}
-
-inline const QString dso_general_query(const QString &where, const QString &order_by = "")
-{
-    auto query = QString("SELECT %1 FROM master WHERE %2").arg(object_fields).arg(where);
-
-    if (order_by.size() > 0)
-        query += " ORDER BY " + order_by;
-
-    query += " LIMIT :limit";
-
-    return query;
+        .arg(object_fields)
+        .arg(id)
+        .arg(mag_asc);
 }
 
 const QString _dso_by_maglim = "SELECT %1 FROM master WHERE magnitude < :maglim "
@@ -399,9 +350,9 @@ inline const QString dso_in_catalog_by_maglim(const int id)
 {
     return QString("SELECT %1 FROM cat_%2 WHERE magnitude < :maglim "
                    "AND type = :type ORDER BY %3 LIMIT :limit")
-           .arg(object_fields)
-           .arg(id)
-           .arg(mag_asc);
+        .arg(object_fields)
+        .arg(id)
+        .arg(mag_asc);
 }
 
 const QString _dso_by_maglim_and_type =
@@ -422,8 +373,8 @@ inline const QString dso_count_by_type(int catalog_id)
 const QString _insert_dso_template = "INSERT OR REPLACE INTO cat_%3 (%1) VALUES (%2)";
 const QString _insert_dso =
     QString(_insert_dso_template)
-    .arg(catalog_fields)
-    .arg(create_field_list(catalog_collumns.begin(), catalog_collumns.end(), ":"));
+        .arg(catalog_fields)
+        .arg(create_field_list(catalog_collumns.begin(), catalog_collumns.end(), ":"));
 
 inline const QString insert_dso(int catalog_id)
 {

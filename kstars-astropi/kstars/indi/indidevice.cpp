@@ -50,36 +50,34 @@
 
 const char *libindi_strings_context = "string from libindi, used in the config dialog";
 
-INDI_D::INDI_D(QWidget *parent, INDI::BaseDevice *in_dv, ClientManager *in_cm) : QWidget(parent)
+INDI_D::INDI_D(INDI::BaseDevice *in_dv, ClientManager *in_cm) : QDialog()
 {
 #ifdef Q_OS_OSX
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
 #endif
+
     m_BaseDevice = in_dv;
     m_ClientManager = in_cm;
 
     m_Name = m_BaseDevice->getDeviceName();
 
-    QHBoxLayout *layout = new QHBoxLayout(this);
+    deviceVBox = new QSplitter();
+    deviceVBox->setOrientation(Qt::Vertical);
 
-    deviceVBox = new QSplitter(Qt::Vertical, this);
+    groupContainer = new QTabWidget();
 
-    groupContainer = new QTabWidget(this);
-
-    msgST_w = new QTextEdit(this);
+    msgST_w = new QTextEdit();
     msgST_w->setReadOnly(true);
-    msgST_w->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContentsOnFirstShow);
 
     deviceVBox->addWidget(groupContainer);
     deviceVBox->addWidget(msgST_w);
-    deviceVBox->setStretchFactor(0, 2);
 
-    layout->addWidget(deviceVBox);
+    //parent->mainTabWidget->addTab(deviceVBox, label);
 }
 
 bool INDI_D::buildProperty(INDI::Property prop)
 {
-    if (!prop.isValid())
+    if (!prop.getRegistered())
         return false;
 
     QString groupName(prop.getGroupName());
@@ -93,7 +91,7 @@ bool INDI_D::buildProperty(INDI::Property prop)
     {
         pg = new INDI_G(this, groupName);
         groupsList.append(pg);
-        groupContainer->addTab(pg, i18nc(libindi_strings_context, groupName.toUtf8()));
+        groupContainer->addTab(pg->getScrollArea(), i18nc(libindi_strings_context, groupName.toUtf8()));
     }
 
     return pg->addProperty(prop);
@@ -337,13 +335,13 @@ void INDI_D::updateMessageLog(INDI::BaseDevice *idv, int messageID)
     qCInfo(KSTARS_INDI) << idv->getDeviceName() << ": " << message.mid(21);
 }
 
-//INDI_D::~INDI_D()
-//{
-//    while (!groupsList.isEmpty())
-//        delete groupsList.takeFirst();
-//}
+INDI_D::~INDI_D()
+{
+    while (!groupsList.isEmpty())
+        delete groupsList.takeFirst();
+}
 
-INDI_G *INDI_D::getGroup(const QString &groupName) const
+INDI_G *INDI_D::getGroup(const QString &groupName)
 {
     for (const auto &pg : groupsList)
     {

@@ -411,7 +411,7 @@ void PrintingWizard::setupWidgets()
 #endif
     m_WizardStack = new QStackedWidget(this);
 
-    setWindowTitle(i18nc("@title:window", "Printing Wizard"));
+    setWindowTitle(i18n("Printing Wizard"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(m_WizardStack);
@@ -460,7 +460,7 @@ void PrintingWizard::setupWidgets()
 
     // Set banner images for steps
     QPixmap bannerImg;
-    if (bannerImg.load(KSPaths::locate(QStandardPaths::AppDataLocation, "wzstars.png")))
+    if (bannerImg.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzstars.png")))
     {
         m_WizWelcomeUI->banner->setPixmap(bannerImg);
         m_WizObjectSelectionUI->banner->setPixmap(bannerImg);

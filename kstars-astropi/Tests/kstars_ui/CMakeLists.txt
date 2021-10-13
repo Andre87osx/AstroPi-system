@@ -23,14 +23,6 @@ INCLUDE_DIRECTORIES(${INDI_INCLUDE_DIR})
 SET(KSTARS_UI_EKOS_SRC ${KSTARS_UI_TESTS_SRC} test_ekos_wizard.cpp)
 SET(KSTARS_UI_EKOS_LIBS ${TEST_LIBRARIES} ${CFITSIO_LIBRARIES} ${INDI_CLIENT_LIBRARIES} ${NOVA_LIBRARIES} z)
 
-SET(KSTARS_UI_MOCK_SRC mockmodules.cpp)
-qt5_add_dbus_adaptor(KSTARS_UI_MOCK_SRC org.kde.kstars.MockEkos.MockFocus.xml mockmodules.h Ekos::MockFocus)
-qt5_add_dbus_adaptor(KSTARS_UI_MOCK_SRC org.kde.kstars.MockEkos.MockMount.xml mockmodules.h Ekos::MockMount)
-qt5_add_dbus_adaptor(KSTARS_UI_MOCK_SRC org.kde.kstars.MockEkos.MockCapture.xml mockmodules.h Ekos::MockCapture)
-qt5_add_dbus_adaptor(KSTARS_UI_MOCK_SRC org.kde.kstars.MockEkos.MockAlign.xml mockmodules.h Ekos::MockAlign)
-qt5_add_dbus_adaptor(KSTARS_UI_MOCK_SRC org.kde.kstars.MockEkos.MockGuide.xml mockmodules.h Ekos::MockGuide)
-qt5_add_dbus_adaptor(KSTARS_UI_MOCK_SRC org.kde.kstars.MockEkos.xml mockmodules.h Ekos::MockEkos)
-
 ADD_TEST(ui_xterm xterm)
 
 # FIXME: this particular test crashes when done on the EGLFS platform
@@ -56,25 +48,15 @@ TARGET_LINK_LIBRARIES(test_ekos_capture ${KSTARS_UI_EKOS_LIBS})
 ADD_TEST(NAME TestEkosCapture COMMAND test_ekos_capture)
 SET_TESTS_PROPERTIES( TestEkosCapture PROPERTIES LABELS "stable;ui" )
 
-ADD_EXECUTABLE(test_ekos_filterwheel ${KSTARS_UI_EKOS_SRC} test_ekos_filterwheel.cpp)
-TARGET_LINK_LIBRARIES(test_ekos_filterwheel ${KSTARS_UI_EKOS_LIBS})
-ADD_TEST(NAME TestEkosFilterWheel COMMAND test_ekos_filterwheel)
-SET_TESTS_PROPERTIES( TestEkosFilterWheel PROPERTIES LABELS "stable;ui" )
-
 ADD_EXECUTABLE(test_ekos_capture_count ${KSTARS_UI_EKOS_SRC} test_ekos_helper.cpp test_ekos_capture_helper.cpp test_ekos_capture_count.cpp)
 TARGET_LINK_LIBRARIES(test_ekos_capture_count ${KSTARS_UI_EKOS_LIBS})
 ADD_TEST(NAME TestEkosCaptureCount COMMAND test_ekos_capture_count)
 #SET_TESTS_PROPERTIES( TestEkosCaptureCount PROPERTIES LABELS "stable;ui" TIMEOUT 1200 )
 
-ADD_EXECUTABLE(test_ekos_capture_workflow ${KSTARS_UI_EKOS_SRC} test_ekos_helper.cpp test_ekos_capture_helper.cpp test_ekos_capture_workflow.cpp)
-TARGET_LINK_LIBRARIES(test_ekos_capture_workflow ${KSTARS_UI_EKOS_LIBS})
-
 ADD_EXECUTABLE(test_ekos_align ${KSTARS_UI_EKOS_SRC} test_ekos_helper.cpp test_ekos_align.cpp)
 TARGET_LINK_LIBRARIES(test_ekos_align ${KSTARS_UI_EKOS_LIBS})
-
-# excluded to avoid CI timelimit failure
-# ADD_TEST(NAME TestEkosAlign COMMAND test_ekos_align)
-# SET_TESTS_PROPERTIES( TestEkosAlign PROPERTIES LABELS "unstable;ui" TIMEOUT 600 )
+ADD_TEST(NAME TestEkosAlign COMMAND test_ekos_align)
+SET_TESTS_PROPERTIES( TestEkosAlign PROPERTIES LABELS "unstable;ui" TIMEOUT 300 )
 
 ADD_EXECUTABLE(test_ekos_meridianflip ${KSTARS_UI_EKOS_SRC} test_ekos_helper.cpp test_ekos_capture_helper.cpp test_ekos_meridianflip_base.cpp test_ekos_meridianflip.cpp)
 TARGET_LINK_LIBRARIES(test_ekos_meridianflip ${KSTARS_UI_EKOS_LIBS})
@@ -104,22 +86,6 @@ ADD_CUSTOM_COMMAND( TARGET test_ekos_scheduler POST_BUILD
             ${CMAKE_CURRENT_BINARY_DIR}/1x1s_RGBLumRGB.esq)
 ADD_TEST(NAME TestEkosScheduler COMMAND test_ekos_scheduler)
 SET_TESTS_PROPERTIES( TestEkosScheduler PROPERTIES LABELS "stable;ui" TIMEOUT 120 )
-
-ADD_EXECUTABLE(test_ekos_scheduler_ops ${KSTARS_UI_EKOS_SRC} ${KSTARS_UI_MOCK_SRC} test_ekos_scheduler_ops.cpp)
-TARGET_LINK_LIBRARIES(test_ekos_scheduler_ops ${KSTARS_UI_EKOS_LIBS})
-ADD_CUSTOM_COMMAND( TARGET test_ekos_scheduler_ops POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kstars.MockEkos.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kstars.MockEkos.MockAlign.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kstars.MockEkos.MockCapture.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kstars.MockEkos.MockFocus.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kstars.MockEkos.MockGuide.xml
-            ${CMAKE_CURRENT_SOURCE_DIR}/org.kde.kstars.MockEkos.MockMount.xml
-            ${CMAKE_CURRENT_BINARY_DIR})
-# JM 2021-08-06: Setting as unstable since DBus appears not to work correctly under the CI environment.
-# Warrants more investigation.
-#ADD_TEST(NAME TestEkosSchedulerOps COMMAND test_ekos_scheduler_ops)
-#SET_TESTS_PROPERTIES( TestEkosSchedulerOps PROPERTIES LABELS "unstable;ui" TIMEOUT 120 )
 
 ADD_EXECUTABLE(test_artificial_horizon ${KSTARS_UI_EKOS_SRC} test_artificial_horizon.cpp)
 TARGET_LINK_LIBRARIES(test_artificial_horizon ${KSTARS_UI_EKOS_LIBS})

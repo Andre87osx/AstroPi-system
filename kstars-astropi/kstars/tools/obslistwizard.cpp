@@ -41,7 +41,7 @@ ObsListWizard::ObsListWizard(QWidget *ksparent) : QDialog(ksparent)
     mainLayout->addWidget(olw);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Observing List Wizard"));
+    setWindowTitle(i18n("Observing List Wizard"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal);
     nextB                       = new QPushButton(i18n("&Next >"));
@@ -129,7 +129,7 @@ void ObsListWizard::initialize()
     olw->RAMax->setDegType(false);
 
     //Initialize object counts
-    ObjectCount   = 0; //number of objects in observing list
+    ObjectCount   = 0;                                        //number of objects in observing list
     StarCount     = data->skyComposite()->stars().size();     //total number of stars
     PlanetCount   = 10;                                       //Sun, Moon, 8 planets
     AsteroidCount = data->skyComposite()->asteroids().size(); //total number of asteroids
@@ -149,28 +149,26 @@ void ObsListWizard::initialize()
 
     for (const auto &element : stats.second.object_counts)
     {
-        auto cnt = element.second;
         switch (element.first)
         {
             case SkyObject::GALAXY:
-                GalaxyCount += cnt;
+                ++GalaxyCount;
                 break;
             case SkyObject::STAR:
             case SkyObject::CATALOG_STAR:
-                StarCount += cnt;
+                ++StarCount;
                 break;
             case SkyObject::OPEN_CLUSTER:
-                OpenClusterCount += cnt;
+                ++OpenClusterCount;
                 break;
             case SkyObject::GLOBULAR_CLUSTER:
-                GlobClusterCount += cnt;
-                break;
+                ++GlobClusterCount;
             case SkyObject::GASEOUS_NEBULA:
             case SkyObject::SUPERNOVA_REMNANT:
-                GasNebCount += cnt;
+                ++GasNebCount;
                 break;
             case SkyObject::PLANETARY_NEBULA:
-                PlanNebCount += cnt;
+                ++PlanNebCount;
                 break;
             default:
                 break;

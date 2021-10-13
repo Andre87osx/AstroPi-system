@@ -34,8 +34,6 @@
 #include "skyobjects/ksplanetbase.h"
 #include "skyobjects/starobject.h"
 #include "tools/whatsinteresting/wiview.h"
-#include "dialogs/finddialog.h"
-#include "tools/nameresolver.h"
 
 #ifdef HAVE_CFITSIO
 #include "fitsviewer/fitsviewer.h"
@@ -722,28 +720,9 @@ QString KStars::getDSSURL(double RA_J2000, double Dec_J2000, float width, float 
     return KSDssDownloader::getDSSURL(ra, dec, width, height);
 }
 
-QString KStars::getObjectDataXML(const QString &objectName, bool fallbackToInternet, bool storeInternetResolved)
+QString KStars::getObjectDataXML(const QString &objectName)
 {
-    bool deleteTargetAfterUse = false;
-    const SkyObject *target = data()->objectNamed(objectName);
-    if (!target && fallbackToInternet)
-    {
-        if (!storeInternetResolved)
-        {
-            const auto &cedata = NameResolver::resolveName(objectName);
-            if (cedata.first)
-            {
-                target = cedata.second.clone(); // We have to free this since we own the pointer
-                deleteTargetAfterUse = true; // so note that down
-            }
-        }
-        else
-        {
-            CatalogsDB::DBManager db_manager { CatalogsDB::dso_db_path() };
-            target = FindDialog::resolveAndAdd(db_manager, objectName);
-        }
-
-    }
+    SkyObject *target = data()->objectNamed(objectName);
     if (!target)
     {
         return QString("<xml></xml>");
@@ -770,8 +749,8 @@ QString KStars::getObjectDataXML(const QString &objectName, bool fallbackToInter
     stream.writeTextElement("Type", target->typeName());
     stream.writeTextElement("Magnitude", QString::number(target->mag(), 'g', 2));
     stream.writeTextElement("Position_Angle", QString::number(target->pa(), 'g', 3));
-    auto *star = dynamic_cast<const StarObject *>(target);
-    auto *dso = dynamic_cast<const CatalogObject *>(target);
+    StarObject *star   = dynamic_cast<StarObject *>(target);
+    auto *dso = dynamic_cast<CatalogObject *>(target);
     if (star)
     {
         stream.writeTextElement("Spectral_Type", star->sptype());
@@ -793,13 +772,6 @@ QString KStars::getObjectDataXML(const QString &objectName, bool fallbackToInter
     }
     stream.writeEndElement(); // object
     stream.writeEndDocument();
-
-    if (deleteTargetAfterUse)
-    {
-        Q_ASSERT(!!target);
-        delete target;
-    }
-
     return output;
 }
 
@@ -1002,7 +974,7 @@ void KStars::printImage(bool usePrintDialog, bool useChartColors)
         //        ok = printer.setup( this, i18n("Print Sky") );
         //QPrintDialog *dialog = KdePrint::createPrintDialog(&printer, this);
         QPrintDialog *dialog = new QPrintDialog(&printer, this);
-        dialog->setWindowTitle(i18nc("@title:window", "Print Sky"));
+        dialog->setWindowTitle(i18n("Print Sky"));
         if (dialog->exec() == QDialog::Accepted)
             ok = true;
         delete dialog;

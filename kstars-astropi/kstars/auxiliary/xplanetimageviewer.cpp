@@ -194,7 +194,7 @@ XPlanetImageViewer::XPlanetImageViewer(const QString &obj, QWidget *parent): QDi
 #endif
     setAttribute(Qt::WA_DeleteOnClose, true);
     setModal(false);
-    setWindowTitle(i18nc("@title:window", "XPlanet Solar System Simulator: %1", obj));
+    setWindowTitle(i18n("XPlanet Solar System Simulator: %1", obj));
 
     setXPlanetDate(KStarsData::Instance()->ut());
 
@@ -797,9 +797,9 @@ bool XPlanetImageViewer::setupOutputFile()
     {
         if(m_File.fileName().contains("xplanetfifo") && m_File.exists())
             return true;
-        QDir kstarsTempDir(KSPaths::writableLocation(QStandardPaths::TempLocation) + "/" + qAppName());
-        kstarsTempDir.mkpath(".");
-        m_File.setFileName(kstarsTempDir.filePath(QString("xplanetfifo%1.png").arg(QUuid::createUuid().toString().mid(1, 8)).toLatin1()));
+        QDir kstarsTempDir(KSPaths::writableLocation(QStandardPaths::TempLocation));
+        kstarsTempDir.mkdir(kstarsTempDir.absolutePath());
+        m_File.setFileName(kstarsTempDir.absolutePath() + QDir::separator() + QString("xplanetfifo%1.png").arg(QUuid::createUuid().toString().mid(1, 8)).toLatin1());
         int mkFifoSuccess = 0; //Note if the return value of the command is 0 it succeeded, -1 means it failed.
         if ((mkFifoSuccess = mkfifo(m_File.fileName().toLatin1(), S_IRUSR | S_IWUSR) < 0))
         {
@@ -811,9 +811,10 @@ bool XPlanetImageViewer::setupOutputFile()
 #endif
 
     //If the user is using windows or has not selected to use FIFO, it uses files in the KStars data directory.
-    QDir xPlanetDirPath(KSPaths::writableLocation(QStandardPaths::AppDataLocation) + "/" + "xplanet");
-    xPlanetDirPath.mkpath(".");
-    m_File.setFileName(xPlanetDirPath.filePath(m_ObjectName + ".png"));
+    QDir writableDir;
+    QString xPlanetDirPath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "xplanet";
+    writableDir.mkpath(xPlanetDirPath);
+    m_File.setFileName(xPlanetDirPath + QDir::separator() + m_ObjectName + ".png");
     return true;
 }
 
@@ -902,7 +903,7 @@ void XPlanetImageViewer::updateXPlanetObject(int objectIndex)
     m_CurrentObjectIndex = objectIndex;
     m_ObjectName = m_ObjectNames.at(objectIndex);
 
-    setWindowTitle(i18nc("@title:window", "XPlanet Solar System Simulator: %1", m_ObjectName));
+    setWindowTitle(i18n("XPlanet Solar System Simulator: %1", m_ObjectName));
     if(m_FreeRotate->isChecked())
         m_OriginSelector->setCurrentIndex(m_CurrentObjectIndex);
     if(m_CurrentObjectIndex == m_CurrentOriginIndex)
@@ -1229,7 +1230,7 @@ bool XPlanetImageViewer::showImage()
 void XPlanetImageViewer::saveFileToDisk()
 {
 #ifndef KSTARS_LITE
-    QFileDialog saveDialog(KStars::Instance(), i18nc("@title:window", "Save Image"), m_LastFile);
+    QFileDialog saveDialog(KStars::Instance(), i18n("Save Image"), m_LastFile);
     saveDialog.setDefaultSuffix("png");
     saveDialog.setAcceptMode(QFileDialog::AcceptSave);
     saveDialog.exec();

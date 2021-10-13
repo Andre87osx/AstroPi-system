@@ -62,7 +62,7 @@ bool FOVManager::save()
     QFile f;
 
     // TODO: Move FOVs to user database instead of file!!
-    f.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("fov.dat"));
+    f.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "fov.dat");
 
     if (!f.open(QIODevice::WriteOnly))
     {
@@ -90,7 +90,7 @@ const QList<FOV *> &FOVManager::readFOVs()
     m_FOVs.clear();
 
     QFile f;
-    f.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("fov.dat"));
+    f.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "fov.dat");
 
     if (!f.exists())
     {
