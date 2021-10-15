@@ -1467,7 +1467,7 @@
    <group name="Ekos">
     <entry name="EkosWindowWidth" type="UInt">
              <label>Ekos window width</label>
-             <default>600</default>
+             <default>800</default>
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
