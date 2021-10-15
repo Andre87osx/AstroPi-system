@@ -2432,7 +2432,7 @@
          <default>true</default>
       </entry>
       <entry name="GuidingRate" type="Double">
-         <default>0.5</default>
+         <default>0.4</default>
       </entry>
       <entry name="GuiderAccuracyThreshold" type="UInt">
          <label>Accuracy threshold for the Guide Graphs.</label>
