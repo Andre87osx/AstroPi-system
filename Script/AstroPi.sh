@@ -361,8 +361,8 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 	case $? in
 	0)
 		if [ "$ans" == "Check for update" ]; then
-			chksysHotSpot
 			sysUpgrade
+			chksysHotSpot
 			chkARM64
 			lxpanelctl restart # Restart LX for able new change icon
 	
