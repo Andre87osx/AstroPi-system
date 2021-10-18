@@ -22,10 +22,10 @@ chkIndexGsc()
 {
 	(
 		echo "# Install GSC catalog for Simulaor"
-		sudo apt-get -y install gsc gsc-data
+		echo "$password" | sudo -S apt-get -y install gsc gsc-data
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "# Install All Index for Astrometry"
-		sudo apt -y install astrometry-data-2mass astrometry-data-tycho2
+		echo "$password" | sudo -S apt -y install astrometry-data-2mass astrometry-data-tycho2
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
@@ -36,9 +36,32 @@ chkARM64()
 {
 	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
+		# Do not force automatic switching to 64bit. Warn only 
 		true
 	else
 		zenity --warning --width=$W --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
+	fi
+}
+
+chksysHotSpot()
+{
+	# After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
+	# the issue and also checks dnsmasq is ok so the hotspot can be generated.
+	# Check Hostapd is unmasked and disabled
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl unmask hostapd.service >/dev/null 2>&1
+	fi
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl disable hostapd.service >/dev/null 2>&1
+		echo "$password" | sudo -S systemctl stop hostapd >/dev/null 2>&1
+	fi
+	# Check dnsmasq is disabled
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl unmask dnsmasq >/dev/null 2>&1
+	fi
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl disable dnsmasq >/dev/null 2>&1
+		echo "$password" | sudo -S systemctl stop dnsmasq >/dev/null 2>&1
 	fi
 }
 
@@ -338,6 +361,7 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 	case $? in
 	0)
 		if [ "$ans" == "Check for update" ]; then
+			chksysHotSpot
 			sysUpgrade
 			chkARM64
 			lxpanelctl restart # Restart LX for able new change icon
