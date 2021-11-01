@@ -27,7 +27,6 @@ chkIndexGsc()
 		echo "# Install All Index for Astrometry"
 		echo "$password" | sudo -S apt -y install astrometry-data-2mass astrometry-data-tycho2
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 
 }
