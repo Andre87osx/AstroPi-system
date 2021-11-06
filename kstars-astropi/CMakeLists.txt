@@ -1,8 +1,8 @@
 PROJECT(kstars CXX C)
-set (KStars_VERSION_MAJOR 3)
+set (KStars_VERSION_MAJOR 5)
 set (KStars_VERSION_MINOR 5)
 set (KStars_VERSION_REVISION 4)
-set (KSTARS_BUILD_RELEASE "AstroPi - Beta v1.3")
+set (KSTARS_BUILD_RELEASE "AstroPi - Beta v1.4")
 set (CMAKE_CXX_STANDARD 14)
 
 # Build KStars Lite with -DBUILD_KSTARS_LITE=ON
