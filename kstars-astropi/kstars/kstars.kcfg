@@ -2542,7 +2542,7 @@
       </entry>
       <entry name="DawnOffset" type="Double">
          <label>Offset astronomical dawn by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>1.0</default>
+         <default>0.5</default>
       </entry>
       <entry name="DuskOffset" type="Double">
          <label>Offset astronomical dusk by this many hours to relax twilight restriction when using narrowband filters.</label>
