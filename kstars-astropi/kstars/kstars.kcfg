@@ -1792,7 +1792,7 @@
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>200</default>
+         <default>100</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1828,7 +1828,7 @@
       <entry name="FocusGain" type="Double">
          <label>Default Focuser gain value</label>
          <whatsthis>Specifies gain value of CCD when performing focusing if supported by camera.</whatsthis>
-         <default>0</default>
+         <default>100</default>
       </entry>
       <entry name="FocusBoxSize" type="UInt">
          <label>Default Focuser star selection box size</label>
@@ -1885,11 +1885,11 @@
       </entry>
       <entry name="FocusDetection" type="UInt">
          <label>Star detection algorithm</label>
-         <default>0</default>
+         <default>3</default>
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>0</default>
+         <default>1</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>
