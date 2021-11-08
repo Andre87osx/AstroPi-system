@@ -2182,7 +2182,7 @@
       </entry>
       <entry name="PAHAutoPark" type="Bool">
          <label>Automatically park the mount after Polar Alignment Assistant Tool is complete.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
    </group>
    <group name="Guide">
