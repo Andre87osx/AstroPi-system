@@ -18,13 +18,38 @@ fi
 
 # Bash functios
 #=========================================================================
+chkWhoami()
+{
+	if [ "$(whoami)" == "root" ]; then
+		zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
+		echo "AstroPi system should be run as User not as root."
+		exit 1
+	fi
+}
 chkIndexGsc()
 {
 	(
 		echo "# Install GSC catalog for Simulaor"
 		echo "$password" | sudo -S apt-get -y install gsc gsc-data
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		echo "# Install All Index for Astrometry"
+		echo "# Download and install all Index for Astrometry"
+		#wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb
+		#sudo dpkg -i astrometry-data-*.deb
+		#sudo rm *.deb
 		echo "$password" | sudo -S apt -y install astrometry-data-2mass astrometry-data-tycho2
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
@@ -360,6 +385,7 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 	case $? in
 	0)
 		if [ "$ans" == "Check for update" ]; then
+			chkWhoami
 			sysUpgrade
 			chksysHotSpot
 			chkARM64
@@ -372,15 +398,19 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 			chkHotspot
 
 		elif [ "$ans" == "Install INDI and Driver $Indi_v" ]; then
+			chkWhoami
 			chkINDI
 
 		elif [ "$ans" == "Install KStars AstroPi $KStars_v" ]; then
+			chkWhoami
 			chkKStars
 		
 		elif [ "$ans" == "Install GSC and Index" ]; then
+			chkWhoami
 			chkIndexGsc
 
 		elif [ "$ans" == "System Cleaning" ]; then
+			chkWhoami
 			sysClean
 
 		fi
