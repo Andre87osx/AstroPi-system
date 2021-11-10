@@ -22,7 +22,6 @@ chkWhoami()
 {
 	if [ "$(whoami)" == "root" ]; then
 		zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
-		echo "AstroPi system should be run as User not as root."
 		exit 1
 	fi
 }
