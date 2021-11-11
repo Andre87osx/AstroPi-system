@@ -1319,9 +1319,6 @@ font-weight:bold;
             <property name="text">
              <string>Se&amp;quence completion</string>
             </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
             </attribute>
@@ -1384,6 +1381,9 @@ font-weight:bold;
             </property>
             <property name="text">
              <string>Repeat &amp;until terminated</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
@@ -1634,7 +1634,7 @@ font-weight:bold;
              <double>89.900000000000006</double>
             </property>
             <property name="value">
-             <double>10.000000000000000</double>
+             <double>15.000000000000000</double>
             </property>
            </widget>
           </item>

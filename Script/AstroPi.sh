@@ -18,16 +18,39 @@ fi
 
 # Bash functios
 #=========================================================================
+chkWhoami()
+{
+	if [ "$(whoami)" == "root" ]; then
+		zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
+		exit 1
+	fi
+}
 chkIndexGsc()
 {
 	(
 		echo "# Install GSC catalog for Simulaor"
-		sudo apt-get -y install gsc gsc-data
+		echo "$password" | sudo -S apt-get -y install gsc gsc-data
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		echo "# Install All Index for Astrometry"
-		sudo apt -y install astrometry-data-2mass astrometry-data-tycho2
+		echo "# Download and install all Index for Astrometry"
+		#wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb
+		#wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb
+		#sudo dpkg -i astrometry-data-*.deb
+		#sudo rm *.deb
+		echo "$password" | sudo -S apt -y install astrometry-data-2mass astrometry-data-tycho2
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 
 }
@@ -36,9 +59,32 @@ chkARM64()
 {
 	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
+		# Do not force automatic switching to 64bit. Warn only 
 		true
 	else
 		zenity --warning --width=$W --text="Your system is NOT 64 bit.\n$sysinfo\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
+	fi
+}
+
+chksysHotSpot()
+{
+	# After some system updates hostapd gets masked using Raspbian Buster, and above. This checks and fixes  
+	# the issue and also checks dnsmasq is ok so the hotspot can be generated.
+	# Check Hostapd is unmasked and disabled
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl unmask hostapd.service >/dev/null 2>&1
+	fi
+	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl disable hostapd.service >/dev/null 2>&1
+		echo "$password" | sudo -S systemctl stop hostapd >/dev/null 2>&1
+	fi
+	# Check dnsmasq is disabled
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl unmask dnsmasq >/dev/null 2>&1
+	fi
+	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
+		echo "$password" | sudo -S systemctl disable dnsmasq >/dev/null 2>&1
+		echo "$password" | sudo -S systemctl stop dnsmasq >/dev/null 2>&1
 	fi
 }
 
@@ -203,8 +249,8 @@ chkINDI()
 
 		# =================================================================
 		echo "# Install dependencies..."
-		echo "$password" | sudo -S apt-get -y install patchelf
-		(($? != 0)) && zenity --width=$W --error --text="Error installing PatchELF\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		#echo "$password" | sudo -S apt-get -y install patchelf
+		#(($? != 0)) && zenity --width=$W --error --text="Error installing PatchELF\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev gsc gsc-data
 		(($? != 0)) && zenity --width=$W --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S apt-get install -y libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libfftw3-dev
@@ -338,7 +384,9 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 	case $? in
 	0)
 		if [ "$ans" == "Check for update" ]; then
+			chkWhoami
 			sysUpgrade
+			chksysHotSpot
 			chkARM64
 			lxpanelctl restart # Restart LX for able new change icon
 	
@@ -349,15 +397,19 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 			chkHotspot
 
 		elif [ "$ans" == "Install INDI and Driver $Indi_v" ]; then
+			chkWhoami
 			chkINDI
 
 		elif [ "$ans" == "Install KStars AstroPi $KStars_v" ]; then
+			chkWhoami
 			chkKStars
 		
 		elif [ "$ans" == "Install GSC and Index" ]; then
+			chkWhoami
 			chkIndexGsc
 
 		elif [ "$ans" == "System Cleaning" ]; then
+			chkWhoami
 			sysClean
 
 		fi

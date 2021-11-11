@@ -181,7 +181,7 @@
       </entry>
       <entry name="independentWindowINDI" type="Bool">
          <label>Make INDI Control Panel window independent of KStars main window</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="showTargetCrosshair" type="Bool">
          <label>Draw crosshairs at telescope position in the sky map?</label>
@@ -445,7 +445,7 @@
       <entry name="HidePlanets" type="Bool">
          <label>Hide solar system objects while moving?</label>
          <whatsthis>Toggle whether solar system objects are hidden while the display is in motion.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="HideStars" type="Bool">
          <label>Hide faint stars while moving?</label>
@@ -1467,7 +1467,7 @@
    <group name="Ekos">
     <entry name="EkosWindowWidth" type="UInt">
              <label>Ekos window width</label>
-             <default>600</default>
+             <default>800</default>
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
@@ -1487,7 +1487,7 @@
     </entry>
     <entry name="AutoStartEkosLive" type="Bool">
        <label>Start Ekos Live on KStars startup.</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLiveOnline" type="Bool">
        <label>Whether EkosLive connection mode is online.</label>
@@ -1569,7 +1569,7 @@
       </entry>
       <entry name="ExecuteMeridianFlip" type="Bool">
          <label>Flips the mount when reaching the meridian, if supported.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="MeridianFlipUnitDegrees" type="Bool">
          <label>Sets the display unit for meridian flip to degrees.</label>
@@ -1698,7 +1698,7 @@
       </entry>
       <entry name="AlwaysResetSequenceWhenStarting" type="Bool">
          <label>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When starting to process a sequence list, reset all capture counts to zero. Scheduler overrides this option when Remember Job Progress is enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="FlatSyncFocus" type="Bool">
          <label>Capture flat frames at the same focus position of light frames.</label>
@@ -1792,7 +1792,7 @@
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>200</default>
+         <default>100</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1828,7 +1828,7 @@
       <entry name="FocusGain" type="Double">
          <label>Default Focuser gain value</label>
          <whatsthis>Specifies gain value of CCD when performing focusing if supported by camera.</whatsthis>
-         <default>0</default>
+         <default>100</default>
       </entry>
       <entry name="FocusBoxSize" type="UInt">
          <label>Default Focuser star selection box size</label>
@@ -1885,11 +1885,11 @@
       </entry>
       <entry name="FocusDetection" type="UInt">
          <label>Star detection algorithm</label>
-         <default>0</default>
+         <default>3</default>
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>0</default>
+         <default>1</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>
@@ -1990,7 +1990,7 @@
       <entry name="SolverBinningIndex" type="UInt">
          <label>Default CCD binning index while in alignment mode</label>
          <whatsthis>Set binning index of CCD camera while in alignment mode. Default values 0-3 corresponding to 1x1 to 4x4 binning. 4 is max binning.</whatsthis>
-         <default>4</default>
+         <default>1</default>
       </entry>
       <entry name="AstrometryUseRotator" type="Bool">
          <whatsthis>Use rotator when performing load and slew.</whatsthis>
@@ -2182,7 +2182,7 @@
       </entry>
       <entry name="PAHAutoPark" type="Bool">
          <label>Automatically park the mount after Polar Alignment Assistant Tool is complete.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
    </group>
    <group name="Guide">
@@ -2191,6 +2191,7 @@
       </entry>
       <entry name="DefaultST4Driver" type="String">
          <label>Default guide module ST4 Driver.</label>
+         <default>1</default>
       </entry>
       <entry name="GuideExposure" type="Double">
          <label>Guider exposure duration in seconds.</label>
@@ -2432,7 +2433,7 @@
          <default>true</default>
       </entry>
       <entry name="GuidingRate" type="Double">
-         <default>0.5</default>
+         <default>0.4</default>
       </entry>
       <entry name="GuiderAccuracyThreshold" type="UInt">
          <label>Accuracy threshold for the Guide Graphs.</label>
@@ -2541,7 +2542,7 @@
       </entry>
       <entry name="DawnOffset" type="Double">
          <label>Offset astronomical dawn by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>1.0</default>
+         <default>0.5</default>
       </entry>
       <entry name="DuskOffset" type="Double">
          <label>Offset astronomical dusk by this many hours to relax twilight restriction when using narrowband filters.</label>
@@ -2573,7 +2574,7 @@
       </entry>
       <entry name="ErrorHandlingStrategy" type="UInt">
          <label>Strategy how to react, when a job aborts or steps into an error.</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
          <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
