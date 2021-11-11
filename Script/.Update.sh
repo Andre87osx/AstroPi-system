@@ -9,8 +9,8 @@
 
 # Bash variables
 #=========================================================================
-AstroPi_v=1.4
-KStars_v=5.5.4v1.4
+AstroPi_v=1.4-Beta
+KStars_v=3.5.4v1.4
 Indi_v=1.9.1
 
 home=$HOME
