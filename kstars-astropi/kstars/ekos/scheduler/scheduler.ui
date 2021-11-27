@@ -1773,7 +1773,7 @@ font-weight:bold;
              </sizepolicy>
             </property>
             <property name="toolTip">
-             <string>Turn off CCD cooler.</string>
+             <string>Turn off CCD cooler softly.</string>
             </property>
             <property name="text">
              <string>Warm CCD</string>
@@ -1781,6 +1781,9 @@ font-weight:bold;
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
             </attribute>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
