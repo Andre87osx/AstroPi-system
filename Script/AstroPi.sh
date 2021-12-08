@@ -98,9 +98,13 @@ sysClean()
 			echo "$password" | sudo -S chown -R "$USER":"$USER" "$GitDir"
 			cd "$GitDir" || exit
 			git repack -a -d
+			git rm -r --cached kstars-astropi/
 		fi
+		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>cleaning GIT</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "# Cleaning Project..."
-		if [ -d "$WorkDir" ]; then echo "$password" | sudo -S rm -rf "$WorkDir"; fi
+		if [ -d "$WorkDir" ]; then 
+			echo "$password" | sudo -S rm -rf "$WorkDir"
+		fi
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
