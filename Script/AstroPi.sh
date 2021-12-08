@@ -28,31 +28,75 @@ chkWhoami()
 chkIndexGsc()
 {
 	(
+		echo "# Check GSC catalog for Simulaor"
+		if [ ! -d /usr/share/GSC ]; then
+			mkdir -p "$HOME"/gsc | cd "$HOME"/gsc
+			if [ ! -f "$HOME"/gsc/bincats_GSC_1.2.tar.gz ]; then
+		echo "# Download GSC catalog for Simulaor"
+				wget -O bincats_GSC_1.2.tar.gz http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/tar.gz?bincats/GSC_1.2 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+			fi
 		echo "# Install GSC catalog for Simulaor"
-		echo "$password" | sudo -S apt-get -y install gsc gsc-data
-		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		echo "# Download and install all Index for Astrometry"
-		#wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb
-		#sudo dpkg -i astrometry-data-*.deb
-		#sudo rm *.deb
-		echo "$password" | sudo -S apt -y install astrometry-data-2mass astrometry-data-tycho2
-		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+			tar -xvzf bincats_GSC_1.2.tar.gz
+			cd "$HOME"/gsc/src || exit 1
+			make -j $(expr $(nproc) + 2)
+			mv gsc.exe gsc
+			echo "$password" | sudo -S cp gsc /usr/bin/
+			cp -r $HOME/gsc /usr/share/
+			echo "$password" | sudo -S mv /usr/share/gsc /usr/share/GSC
+			echo "$password" | sudo -S rm -r /usr/share/GSC/bin-dos
+			echo "$password" | sudo -S rm -r /usr/share/GSC/src
+			echo "$password" | sudo -S rm /usr/share/GSC/bincats_GSC_1.2.tar.gz
+			echo "$password" | sudo -S rm /usr/share/GSC/bin/gsc.exe
+			echo "$password" | sudo -S rm /usr/share/GSC/bin/decode.exe
+			echo "$password" | sudo -S rm -r "$HOME"/gsc
+			if [ -z "$(grep 'export GSCDAT' /etc/profile)" ]; then
+				cp /etc/profile /etc/profile.copy
+				echo "export GSCDAT=/usr/share/GSC" >> /etc/profile
+			fi
+		else
+			zenity --info --width=$W --text="GSC allredy exist.\nFor issue using simulator contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
+		fi
+	
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+	(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
+	(
+		echo "# Check all Index for Astrometry"
+		IndexDir="$HOME".local/share/kstars/astrometry/*.fits
+		IndexDir2=/usr/local/share/astrometry/*.fits
+		if [ -f "$IndexDir"]; then
+		echo "# Setup correct owners to Index files"
+			echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME".local/share/kstars/astrometry
+		else
+			if [ -f "$IndexDir2"]; then
+		echo "# Move Index files to correct path"
+				cd /usr/local/share/astrometry
+				echo "$password" | sudo -S mv *.fits "$HOME".local/share/kstars/astrometry
+				echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME".local/share/kstars/astrometry
+			else
+		echo "# Download and install all Index files to correct path"
+				cd "$HOME".local/share/kstars/astrometry || exit 1
+				wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				echo "$password" | sudo -S dpkg -i astrometry-data-*.deb
+				echo "$password" | sudo -S rm *.deb
+			fi
+		fi
+    ) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+    (($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 }
 
 chkARM64()
