@@ -33,7 +33,7 @@ chkIndexGsc()
 			mkdir -p "$HOME"/gsc | cd "$HOME"/gsc
 			if [ ! -f "$HOME"/gsc/bincats_GSC_1.2.tar.gz ]; then
 		echo "# Download GSC catalog for Simulaor"
-				wget -O bincats_GSC_1.2.tar.gz http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/tar.gz?bincats/GSC_1.2 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				wget -O bincats_GSC_1.2.tar.gz http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/tar.gz?bincats/GSC_1.2 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading GSC..." --pulsate --auto-close --auto-kill --width=$Wprogress
 			fi
 		echo "# Install GSC catalog for Simulaor"
 			tar -xvzf bincats_GSC_1.2.tar.gz
@@ -62,35 +62,38 @@ chkIndexGsc()
 
 	(
 		echo "# Check all Index for Astrometry"
-		IndexDir="$HOME".local/share/kstars/astrometry/*.fits
+		IndexDir="$HOME"/.local/share/kstars/astrometry/*.fits
 		IndexDir2=/usr/local/share/astrometry/*.fits
-		if [ -f "$IndexDir"]; then
+		if [ -f "$IndexDir" ]; then
 		echo "# Setup correct owners to Index files"
-			echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME".local/share/kstars/astrometry
+			echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME"/.local/share/kstars/astrometry
 		else
-			if [ -f "$IndexDir2"]; then
+			if [ -f "$IndexDir2" ]; then
 		echo "# Move Index files to correct path"
 				cd /usr/local/share/astrometry
-				echo "$password" | sudo -S mv *.fits "$HOME".local/share/kstars/astrometry
-				echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME".local/share/kstars/astrometry
+				echo "$password" | sudo -S mv *.fits "$HOME"/.local/share/kstars/astrometry
+				echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME"/.local/share/kstars/astrometry
 			else
 		echo "# Download and install all Index files to correct path"
-				cd "$HOME".local/share/kstars/astrometry || exit 1
-				wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
-				wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, ETA \3/' | zenity --progress --title="Downloading File..." 
+				cd "$HOME"/.local/share/kstars/astrometry || exit 1
+				if [ -f *.deb ]; then
+					echo "$password" | sudo -S rm *.deb
+				fi
+				wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 1/15 Index_4208-4219" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 2/15 Index_4207" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 3/15 Index_4206" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 4/15 Index_4205" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 5/15 Index_4204" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 6/15 Index_4203" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 7/15 Index_4202" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 8/15 Index_4201-1" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 9/15 Index_4201-2" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 10/15 Index_4201-3" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 11/15 Index_4201-4" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 12/15 Index_4200-1" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 13/15 Index_4200-2" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 14/15 Index_4200-3" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 15/15 Index_4200-4" --pulsate --auto-close --auto-kill --width=$Wprogress
 				echo "$password" | sudo -S dpkg -i astrometry-data-*.deb
 				echo "$password" | sudo -S rm *.deb
 			fi
