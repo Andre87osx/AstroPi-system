@@ -33,7 +33,8 @@ Wprogress=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
 #=========================================================================
 
 # Sudo password request.
-password=$(zenity --password  --width=$W --title="AstroPi System")
+password=$(zenity --password  --width=$W --title="AstroPi System $AstroPi_v")
+(( $? != 0 )) && exit
 
 # I make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
