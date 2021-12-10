@@ -16,19 +16,15 @@ Indi_v=1.9.1
 home=$HOME
 GitDir="$home"/.AstroPi-system
 WorkDir="$home"/.Projects
-# Define the height in px of the top system-bar:
-TOPMARGIN=27
-# Sum in px of all horizontal borders:
-RIGHTMARGIN=10
 
 # Get width of screen and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
 # New width and height
-W=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
-H=$(( SCREEN_HEIGHT / 3 - TOPMARGIN ))
-Wprogress=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
+W=$(( SCREEN_WIDTH / 5 ))
+H=$(( SCREEN_HEIGHT / 3 ))
+Wprogress=$(( SCREEN_WIDTH / 5 ))
 
 #=========================================================================
 
