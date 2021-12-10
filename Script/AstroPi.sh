@@ -387,15 +387,19 @@ chkINDI()
 chkKStars()
 {
 	(
+		echo "# Download KStars $KStars_v from AstroPi GIT..."
+		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
+		cd "$WorkDir" || exit 1
+		wget -c https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"$AstroPi_v".tar.gz -O - | tar -xz -C "$WorkDir"
+		
 		# =================================================================
 		echo "# Check KStars AstroPi"
 		if [ ! -d "$HOME"/.indi/logs ]; then mkdir -p "$HOME"/.indi/logs; fi
-		(($? != 0)) && zenity --error --width=$W --text="Error <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		(($? != 0)) && zenity --error --width=$W --text="Error MKdir <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
-		(($? != 0)) && zenity --error --width=$W --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
+		(($? != 0)) && zenity --error --width=$W --text="Error MKdir <b>KStars log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		cd "$WorkDir"/kstars-cmake || exit 1
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$GitDir"/kstars-astropi
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/AstroPi-system-"$AstroPi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	
 		# =================================================================
