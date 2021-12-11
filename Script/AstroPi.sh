@@ -174,7 +174,10 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		if [ ! -f "$sources" ]; then
 			echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
 			wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
-			echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		else
+			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
 			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		fi
 		# Implement USB memory dump
@@ -183,19 +186,13 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		# Hold some update
 		echo "$password" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		echo "$password" | sudo -S apt-mark unhold indi-full libindi-dev libindi1 indi-bin
+		echo "$password" | sudo -S apt-mark hold indi-full libindi-dev libindi1 indi-bin
 		
 		# =================================================================
 		echo "# Run Software Updater..."
 		# Run APT FULL upgrade
-		#echo "$password" | sudo -S apt update && echo "$password" | sudo -S apt -y full-upgrade
+		echo "$password" | sudo -S apt update && echo "$password" | sudo -S apt -y full-upgrade
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating system AstroPi</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-
-		# =================================================================
-		echo "# Remove unnecessary libraries"
-		# Clean APT
-		echo "$password" | sudo -S apt -y autoremove
-		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
 		# =================================================================
 		echo "# Updating all AstroPi script"
@@ -212,7 +209,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
 		fi
 		######################################
-		# Copy AstroPi icon and make executable
+		# Copy AstroPi louncher and make executable
 		echo "$password" | sudo -S cp "$GitDir"/Script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/share/applications/AstroPi.desktop
@@ -222,7 +219,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
 		# Set default wallpaper
 		pcmanfm --set-wallpaper="$GitDir/Loghi&background/AstroPi_wallpaper.png"
-		# Copy LX setting for start bar
+		# Copy LX setting for task bar
 		echo "$password" | sudo -S cp "$GitDir"/Script/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
