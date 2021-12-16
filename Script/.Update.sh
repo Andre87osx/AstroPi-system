@@ -13,9 +13,15 @@ AstroPi_v=1.5
 KStars_v=3.5.4v1.5
 Indi_v=1.9.1
 
-home=$HOME
-GitDir="$home"/.AstroPi-system
-WorkDir="$home"/.Projects
+# Chk and create secure user path
+if [[ -z ${USER} ]] && [[ ${USER} != root ]];
+then
+	zenity --error --text="<b>Run this script as USER noot a root</b>\n\nError in AstroPi System" --width=$W --title="AstroPi System" && exit 1
+else
+	GitDir="$HOME"/.AstroPi-system
+	WorkDir="$HOME"/.Projects
+fi
+
 
 # Get width of screen and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
