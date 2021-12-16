@@ -242,19 +242,24 @@ setupWiFi()
 		--add-password="Enter the password of selected wifi network")
 	SSID=$(echo "$WIFI" | cut -d'|' -f1)
 	PSK=$(echo "$WIFI" | cut -d'|' -f2)
+	PRIORITY=0
 	
 	case "$?" in
-	0)	
-		echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
-		echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
-		case $? in
-		0)
-			zenity --info --width=$W --text "New WiFi has been created, reboot AstroPi." --title="AstroPi System $AstroPi_v"
-		;;
-		1)
-			zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		;;
-		esac
+	0)
+		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
+			echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
+			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
+			case $? in
+			0)
+				zenity --info --width=$W --text "New WiFi has been added, reboot AstroPi." --title="AstroPi System $AstroPi_v"
+			;;
+			1)
+				zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+			;;
+			esac
+		else
+			# here the syntax to add at the bottom of the file another network without deleting the existing one
+		fi
 	;;
 	1)
 		zenity --info --width=$W --text "No changes have been made to your current configuration" --title="AstroPi System $AstroPi_v"
