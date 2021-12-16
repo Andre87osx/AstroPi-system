@@ -20,11 +20,12 @@ fi
 #=========================================================================
 chkWhoami()
 {
-	if [ "$(whoami)" == "root" ]; then
-		zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
-		exit 1
+	# Check if you run the script as USER
+	if [ $(whoami) = 'root' ]; then
+	zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	fi
 }
+
 chkIndexGsc()
 {
 	(
@@ -443,9 +444,11 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 			lxpanelctl restart # Restart LX for able new change icon
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
+			chkWhoami
 			setupWiFi
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
+			chkWhoami
 			chkHotspot
 
 		elif [ "$ans" == "Install INDI and Driver $Indi_v" ]; then
