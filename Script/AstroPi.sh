@@ -158,14 +158,6 @@ sysClean()
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 }
 
-chkUsr()
-{
-	if [ "$(whoami)" = "root" ]; then
-		# This function must be implemented v1.3/v1.4
-		exit
-	fi
-}
-
 sysUpgrade()
 {
 sources=/etc/apt/sources.list.d/astroberry.list
@@ -210,7 +202,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
 		fi
 		######################################
-		# Copy AstroPi louncher and make executable
+		# Copy AstroPi launcher and make executable
 		echo "$password" | sudo -S cp "$GitDir"/Script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/share/applications/AstroPi.desktop
@@ -242,23 +234,36 @@ setupWiFi()
 		--add-password="Enter the password of selected wifi network")
 	SSID=$(echo "$WIFI" | cut -d'|' -f1)
 	PSK=$(echo "$WIFI" | cut -d'|' -f2)
-	PRIORITY=0
+	PRIORITY=10
 	
 	case "$?" in
 	0)
 		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
-			echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
-			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
+			echo "$password" | sudo -S chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
+			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n   key_mgmt=WPA-PSK\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
 			case $? in
 			0)
 				zenity --info --width=$W --text "New WiFi has been added, reboot AstroPi." --title="AstroPi System $AstroPi_v"
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			1)
 				zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			esac
 		else
-			# here the syntax to add at the bottom of the file another network without deleting the existing one
+			echo "$password" | sudo -S chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
+			echo "\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$((PRIORITY--))\"\n   key_mgmt=WPA-PSK\n}\n" | tee -a /etc/wpa_supplicant/wpa_supplicant.conf
+			case $? in
+			0)
+				zenity --info --width=$W --text "New WiFi has been added, reboot AstroPi." --title="AstroPi System $AstroPi_v"
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+			;;
+			1)
+				zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+			;;
+			esac	
 		fi
 	;;
 	1)
