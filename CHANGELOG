@@ -1,1 +1,352 @@
+<<<<<<< Updated upstream
 
+=======
+8d2a4fc 2021-11-23 Andrea Aimone        Delete kstars make                                                                                                                                    
+e9620aa 2021-11-11 Andrea Aimone        Merge pull request #107 from Andre87osx/fixKstasrs1.3                                                                                                 
+88b57e3 2021-11-11 Andrea Aimone        AstroPi System 1.4 BETA                                                                                                                               
+902ab68 2021-11-11 Andrea Aimone        KStars AstroPi v1.4 STABLE                                                                                                                            
+4b52452 2021-11-11 Andrea Aimone        fix the issue where dso magnitudes are not drawn                                                                                                      
+05850cc 2021-11-11 Andrea Aimone        fix the issue where dso magnitudes are not drawn                                                                                                      
+cdf37dd 2021-11-10 Andrea Aimone        Add chkWhoami                                                                                                                                         
+d1e851a 2021-11-10 Andrea Aimone        start rework chkIndexGsc                                                                                                                              
+156b3fc 2021-11-08 Andrea Aimone        Update indidrivers.xml                                                                                                                                
+1795018 2021-11-08 Andrea Aimone        ErrorHandlingStrategy immediate                                                                                                                       
+0a4734d 2021-11-08 Andrea Aimone        Automatically park the mount after Polar Alignment is complete                                                                                        
+71ea900 2021-11-08 Andrea Aimone        Fix Mount Hand Control                                                                                                                                
+92be8e2 2021-11-08 Andrea Aimone        Update Mount Hand Control NEED TEST                                                                                                                   
+19573fa 2021-11-08 Andrea Aimone        Set default value to auto focus                                                                                                                       
+ee00c1f 2021-11-07 Andrea Aimone        DawnOffset force +0.5hours                                                                                                                            
+8ec2932 2021-11-07 Andrea Aimone        Restart job until terminated                                                                                                                          
+c85b01b 2021-11-07 Andrea Aimone        Set default Auto Meridian Flip                                                                                                                        
+c2e54d1 2021-11-06 Andrea Aimone        NOT Start Ekos Live on KStars startup                                                                                                                 
+fcc368c 2021-11-06 Andrea Aimone        set Mount Driver as default guide pulses                                                                                                              
+4c232ab 2021-11-06 Andrea Aimone        prepair kstars AstroPi v1,4                                                                                                                           
+d451d84 2021-11-06 Andrea Aimone        prepair for v1.4                                                                                                                                      
+2d6ed74 2021-11-01 Andrea Aimone        minor correction                                                                                                                                      
+b2da116 2021-10-29 Andrea Aimone        Default non altitude to 15degres part 3                                                                                                               
+edd177a 2021-10-29 Andrea Aimone        Default non altitude to 15degres part 2                                                                                                               
+f994ac6 2021-10-29 Andrea Aimone        Min altitude to 15degres                                                                                                                              
+dcd8e4b 2021-10-18 Andrea Aimone        move chksysHotSpot after upgrade                                                                                                                      
+2ea8488 2021-10-18 Andrea Aimone        move chksysHotSpot to AstroPi script                                                                                                                  
+f0884b7 2021-10-18 Andrea Aimone        Add funcion chksysHotSpot fix function chkIndexGsc                                                                                                    
+2df0b30 2021-10-16 Andrea Aimone        tmp suspend patchelf                                                                                                                                  
+3bcb4d5 2021-10-16 Andrea Aimone        fix case for date and day NEED TEST                                                                                                                   
+4c3ddfe 2021-10-16 Andrea Aimone        set independentWindowINDI TRUE                                                                                                                        
+da5e025 2021-10-15 Andrea Aimone        set Default binning index in alignment to 2x2                                                                                                         
+5676eee 2021-10-15 Andrea Aimone        set AlwaysResetSequenceWhenStarting to TRUE                                                                                                           
+47db4b9 2021-10-15 Andrea Aimone        set EkosWindowWidth to 800px                                                                                                                          
+f447e25 2021-10-15 Andrea Aimone        Set default guiding rate to 0.4x                                                                                                                      
+74fffdb 2021-10-15 Andrea Aimone        Hide solar system objects while moving set TRUE                                                                                                       
+25b4ec6 2021-10-14 Andrea Aimone        suspend all update                                                                                                                                    
+fbcd58f 2021-10-13 Andrea Aimone        hold kstars-bleeding-data                                                                                                                             
+8d1717b 2021-10-13 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+69fb6d9 2021-10-13 Andrea Aimone        remove error hold pakage libindi-bin not exist                                                                                                        
+1ff88c5 2021-10-13 Andrea Aimone        hold indi-bin                                                                                                                                         
+c11b2a4 2021-10-13 Andrea Aimone        error in KStars_VERSION_REVISION                                                                                                                      
+3df17e9 2021-10-13 Andrea Aimone        perform update script                                                                                                                                 
+7da05b7 2021-10-13 Andrea Aimone        Merge pull request #90 from Andre87osx/kstars-atropi1.3                                                                                               
+c1103b2 2021-10-11 Andrea Aimone        add hold libindi-bin                                                                                                                                  
+de56b01 2021-10-11 Andrea Aimone        remove libindi-dev                                                                                                                                    
+a500312 2021-10-11 Andrea Aimone        fix indi dependencies                                                                                                                                 
+9b12eda 2021-10-10 Andrea Aimone        fix rev                                                                                                                                               
+3052382 2021-10-10 Andrea Aimone        add HOLD libindi1 to force no update                                                                                                                  
+9cadb5c 2021-10-10 Andrea Aimone        fix INDI lib                                                                                                                                          
+51b68b4 2021-10-09 Andrea Aimone        set UseAnimatedSlewing false                                                                                                                          
+a388714 2021-10-09 Andrea Aimone        Default Focuser step ticks set 200                                                                                                                    
+83a9ef8 2021-10-09 Andrea Aimone        reschedule error                                                                                                                                      
+ba4e78f 2021-10-09 Andrea Aimone        changhe version to beta 3.5.5                                                                                                                         
+8b5817d 2021-10-06 Andre87osx           restore stable kstars astropi 1.1                                                                                                                     
+45d1105 2021-10-06 Andrea Aimone        double chk arm64 for indi                                                                                                                             
+6bdf2a5 2021-10-04 Andrea Aimone        try another way to fix indi                                                                                                                           
+4095a5c 2021-10-03 Andrea Aimone        bugfix make -j2                                                                                                                                       
+8f9c5fe 2021-10-03 Andrea Aimone        bugfix line 251                                                                                                                                       
+679f5c4 2021-10-03 Andrea Aimone        add INDI chk for workdir exist, if not create them                                                                                                    
+de9d545 2021-10-03 Andrea Aimone        revert add source                                                                                                                                     
+d4faacc 2021-10-03 Andrea Aimone        add source .Update.sh                                                                                                                                 
+ae35796 2021-10-03 Andrea Aimone        add sleep before start INDI upgrade                                                                                                                   
+77d6dc6 2021-10-03 Andrea Aimone        try fix #88                                                                                                                                           
+8033d55 2021-10-02 Andrea Aimone        another fix compiler indi (#84)                                                                                                                       
+972c4d4 2021-09-28 Andrea Aimone        Start import KDE KStars 3.5.5 (#66)                                                                                                                   
+717d4d1 2021-09-28 Andrea Aimone        fix indi 3rd cmake                                                                                                                                    
+9c7880a 2021-09-27 Andrea Aimone        try fix indi 3rd driver arm64                                                                                                                         
+bfe140b 2021-09-26 Andrea Aimone        bugfix kstars setup line 345                                                                                                                          
+edc0bcd 2021-09-26 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+47d9876 2021-09-26 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+6e3e954 2021-09-26 Andrea Aimone        bugfix line 327 another                                                                                                                               
+0676210 2021-09-26 Andrea Aimone        bugfix line 327                                                                                                                                       
+50fe1cb 2021-09-26 Andrea Aimone        bugfix line 328                                                                                                                                       
+a90d0a3 2021-09-26 Andrea Aimone        adding option for index and gsc                                                                                                                       
+9f36423 2021-09-26 Andrea Aimone        update INDI pre-requisites                                                                                                                            
+de745c4 2021-09-26 Andrea Aimone        fix bug line 112 set wallpaper                                                                                                                        
+3c6a76c 2021-09-26 Andrea Aimone        fix chmod                                                                                                                                             
+7b0f839 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+c71a74b 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+6184d79 2021-09-26 Andre87osx           clonte script TEMP                                                                                                                                    
+b667378 2021-09-26 Andrea Aimone        try dark light grey                                                                                                                                   
+0dfbc52 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+288feac 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+4d2ff1d 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+5a07d74 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+f76a494 2021-09-26 Andrea Aimone        re adding lx restart                                                                                                                                  
+0a50bb1 2021-09-26 Andrea Aimone        change variable                                                                                                                                       
+2458632 2021-09-26 Andrea Aimone        fix bug line 300                                                                                                                                      
+fbc6aab 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+af34a4a 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+491e5c9 2021-09-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+6e33ec9 2021-09-26 Andrea Aimone        fix variable double quote                                                                                                                             
+e23312f 2021-09-26 Andrea Aimone        remove lx restart                                                                                                                                     
+aa2e050 2021-09-26 Andrea Aimone        fix variable                                                                                                                                          
+a3a17f5 2021-09-26 Andrea Aimone        bugfix kstars and indi process                                                                                                                        
+c5dc14b 2021-09-26 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+10664ba 2021-09-26 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+20d3657 2021-09-26 Andrea Aimone        revert exit                                                                                                                                           
+9590e92 2021-09-26 Andrea Aimone        bugfix variable                                                                                                                                       
+3f01ef6 2021-09-26 Andrea Aimone        changhe in update function                                                                                                                            
+96531f9 2021-09-26 Andrea Aimone        correct Wprogress variable                                                                                                                            
+6ed692f 2021-09-26 Andrea Aimone        remove deprecated variable                                                                                                                            
+a113f1d 2021-09-26 Andrea Aimone        another adjust H                                                                                                                                      
+0322bcd 2021-09-26 Andrea Aimone        adjust H                                                                                                                                              
+08e408c 2021-09-26 Andrea Aimone        adjus W&H size                                                                                                                                        
+2b00054 2021-09-26 Andrea Aimone        Perform change AstroPi system v1 3 (#81)                                                                                                              
+39efdb3 2021-09-25 Andre87osx           Revert "start rework for v1.3 (#79)"                                                                                                                  
+f175a02 2021-09-25 Andrea Aimone        start rework for v1.3 (#79)                                                                                                                           
+41e93c3 2021-09-14 Andre87osx           try to remove sub dir script                                                                                                                          
+4f5aa74 2021-09-13 Andre87osx           revert temporary change dir                                                                                                                           
+c8768f1 2021-09-13 Andre87osx           revert change. downgrade to v1.2                                                                                                                      
+688953f 2021-09-12 Andrea Aimone        Update .Update.sh                                                                                                                                     
+5f67bd7 2021-09-12 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+9053299 2021-09-12 Andrea Aimone        Update .Update.sh                                                                                                                                     
+34f7969 2021-09-12 Andrea Aimone        use if statement                                                                                                                                      
+290cb45 2021-09-12 Andrea Aimone        change exit method                                                                                                                                    
+cdc070b 2021-09-12 Andrea Aimone        add variable                                                                                                                                          
+7c50ab5 2021-09-12 Andrea Aimone        try white for astropi icon                                                                                                                            
+a3cae36 2021-09-12 Andrea Aimone        another fix                                                                                                                                           
+b932a37 2021-09-12 Andrea Aimone        changhe dir chmod                                                                                                                                     
+a177c29 2021-09-12 Andrea Aimone        put first check user                                                                                                                                  
+c4a510e 2021-09-12 Andrea Aimone        try fix variable                                                                                                                                      
+7b41542 2021-09-12 Andrea Aimone        fix bug for exit 1                                                                                                                                    
+9bdc317 2021-09-12 Andrea Aimone        change exit method without any flag                                                                                                                   
+5823e5c 2021-09-11 Andrea Aimone        Perform change v1.3 (#61)                                                                                                                             
+f1c9d1d 2021-08-28 Andrea Aimone        Update .Update.sh                                                                                                                                     
+4e7507f 2021-08-28 Andrea Aimone        Update .Update.sh                                                                                                                                     
+f72fec0 2021-08-28 Andrea Aimone        Add files via upload                                                                                                                                  
+bd1a490 2021-08-28 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+0baa0c8 2021-08-27 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+8ca98af 2021-08-27 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+4d7b4ea 2021-08-27 Andrea Aimone        Update AstroPi System (#56)                                                                                                                           
+97a6116 2021-08-21 Andrea Aimone        Update autohotspot                                                                                                                                    
+d183407 2021-08-21 Andrea Aimone        Update autohotspot                                                                                                                                    
+16360c0 2021-08-21 Andrea Aimone        Update autohotspot                                                                                                                                    
+0aade98 2021-08-21 Andrea Aimone        Update autohotspot                                                                                                                                    
+5ceab5c 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+dcf96ff 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+0d3b3e2 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+3828a2d 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+da0c1ca 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+afec836 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+484d53c 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+33e28ab 2021-08-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+fb769f2 2021-08-21 Andrea Aimone        Makeover AstroPi.sh (#53)                                                                                                                             
+7aec003 2021-08-20 Andrea Aimone        Update autohotspot                                                                                                                                    
+05e39f6 2021-08-19 Andrea Aimone        Update autohotspot                                                                                                                                    
+609d799 2021-08-19 Andrea Aimone        Update autohotspot                                                                                                                                    
+884c832 2021-08-19 Andrea Aimone        Update autohotspot                                                                                                                                    
+f080250 2021-08-19 Andrea Aimone        Update autohotspot                                                                                                                                    
+6eb96d4 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+821ae74 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+f002157 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+bb70848 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+18d792a 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+fab3467 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+fba33b4 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+75b6d62 2021-08-15 Andrea Aimone        Merge pull request #51 from Andre87osx/AstroPi-System                                                                                                 
+dbf88b1 2021-08-15 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+86463a2 2021-08-15 Andrea Aimone        Add files via upload                                                                                                                                  
+f35b2a7 2021-08-14 Andrea Aimone        Merge pull request #45 from Andre87osx/Kstars-AstroPi3.5.4v1.1                                                                                        
+8a0d1f9 2021-08-14 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+e66fe52 2021-08-14 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+cd3649c 2021-08-14 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+e72433f 2021-08-14 Andrea Aimone        Update CMakeLists.txt                                                                                                                                 
+d996c42 2021-08-14 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+d4158f1 2021-08-14 Andrea Aimone        Merge branch 'main' into Kstars-AstroPi3.5.4v1.1                                                                                                      
+36cbf3c 2021-08-14 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+8af7a74 2021-08-14 Andrea Aimone        Update autohotspot                                                                                                                                    
+2148937 2021-08-14 Andrea Aimone        Update kstars.kcfg                                                                                                                                    
+9d8c89a 2021-08-13 Andrea Aimone        Update kstars.kcfg                                                                                                                                    
+2e447db 2021-08-12 Andrea Aimone        Update kstars.kcfg                                                                                                                                    
+3781758 2021-08-12 Andrea Aimone        start v1.1                                                                                                                                            
+e51ff38 2021-08-10 Andrea Aimone        adding check for logs dir                                                                                                                             
+32d18a8 2021-08-10 Andrea Aimone        Update Making AstroPi hisotry.md                                                                                                                      
+7130665 2021-08-10 Andrea Aimone        Update autohotspot                                                                                                                                    
+16872e2 2021-08-08 Andrea Aimone        Merge pull request #41 from Andre87osx/Kstars-AstroPi3.5.4v1.1                                                                                        
+62bcae5 2021-08-08 Andrea Aimone        AstroPi - Beta v1.1                                                                                                                                   
+03ad799 2021-08-08 Andrea Aimone        AstroPi - Beta v1.1                                                                                                                                   
+4eb1d6b 2021-08-08 Andrea Aimone        Update kstars.kcfg                                                                                                                                    
+421c358 2021-08-08 Andrea Aimone        Disable auto update INDI and other tricks                                                                                                             
+13614f4 2021-08-08 Andrea Aimone        Merge pull request #40 from Andre87osx/Kstars-AstroPi3.5.4v1.1                                                                                        
+365a6b7 2021-08-07 Andrea Aimone        Merge pull request #37 from Andre87osx/main                                                                                                           
+fe116a8 2021-08-07 Andrea Aimone        Merge branch 'Kstars-AstroPi3.5.4v1.1' into main                                                                                                      
+0068d14 2021-08-07 Andrea Aimone        Update autohotspot                                                                                                                                    
+201c3cf 2021-08-07 Andrea Aimone        Update autohotspot                                                                                                                                    
+a8d007f 2021-08-07 Andrea Aimone        Update autohotspot.service                                                                                                                            
+0b12f2c 2021-08-07 Andrea Aimone        Update autohotspot.service                                                                                                                            
+a0e1427 2021-08-07 Andrea Aimone        Update autohotspot.service                                                                                                                            
+03eb2f5 2021-08-07 Andrea Aimone        Update autohotspot.service                                                                                                                            
+42129d4 2021-08-07 Andrea Aimone        Update autohotspot                                                                                                                                    
+88ddfbc 2021-08-06 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+dc5007d 2021-08-06 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+b94ba91 2021-08-06 Andrea Aimone        Merge branch 'Kstars-AstroPi3.5.4v1.1' into main                                                                                                      
+ca2cb94 2021-08-06 Andrea Aimone        Create autohotspot                                                                                                                                    
+fc962b6 2021-08-06 Andrea Aimone        Create autohotspot.service                                                                                                                            
+43c69fa 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+13f2d5c 2021-08-03 Andrea Aimone        Merge branch 'main' into Kstars-AstroPi3.5.4v1.1                                                                                                      
+1766edf 2021-08-03 Andrea Aimone        Update Making AstroPi hisotry.md                                                                                                                      
+a248ea6 2021-08-03 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+b276c32 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+bb69cca 2021-08-03 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+5971942 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+4180861 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+e0a5455 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+fb7afe5 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+2142479 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+54f3114 2021-08-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+43faa90 2021-08-02 Andrea Aimone        Merge branch 'main' into Kstars-AstroPi3.5.4v1.2                                                                                                      
+2731be7 2021-08-02 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+60c9d4d 2021-08-02 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+3f196a9 2021-08-02 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+7161133 2021-08-02 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+24bf02f 2021-08-02 Andrea Aimone        adding statments for wpa_supplicant                                                                                                                   
+e9baf4b 2021-08-02 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+68b79ae 2021-07-29 Andrea Aimone        Update cmake.yml                                                                                                                                      
+4786160 2021-07-28 Andrea Aimone        Update cmake.yml                                                                                                                                      
+2e13b7f 2021-07-28 Andrea Aimone        Update cmake.yml                                                                                                                                      
+9c66f49 2021-07-28 Andrea Aimone        Ekos indipendent windows                                                                                                                              
+dad0813 2021-07-28 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+cc6f254 2021-07-28 Andrea Aimone        Update cmake.yml                                                                                                                                      
+d38321c 2021-07-28 Andrea Aimone        Update cmake.yml                                                                                                                                      
+f716947 2021-07-28 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+28277e2 2021-07-17 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+3cfad03 2021-07-17 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+aa32ec7 2021-07-17 Andrea Aimone        Update cmake.yml                                                                                                                                      
+12a51c2 2021-07-17 Andrea Aimone        Create cmake.yml                                                                                                                                      
+b6d013a 2021-07-17 Andrea Aimone        Delete .github/workflows directory                                                                                                                    
+3680a1d 2021-07-17 Andrea Aimone        Update cmake.yml                                                                                                                                      
+4624a5d 2021-07-17 Andrea Aimone        Update cmake.yml                                                                                                                                      
+2f37302 2021-07-17 Andrea Aimone        change make -j                                                                                                                                        
+5a1289a 2021-07-16 Andrea Aimone        adding sleep diuring make                                                                                                                             
+5c1659c 2021-07-15 Andrea Aimone        adding sleep                                                                                                                                          
+2163f4f 2021-07-14 Andrea Aimone        add another controll to .Projects dir                                                                                                                 
+6a7e292 2021-07-14 Andrea Aimone        two times make                                                                                                                                        
+75b7617 2021-07-14 Andrea Aimone        two time make                                                                                                                                         
+39be216 2021-07-13 Andrea Aimone        changhe mckdir permission                                                                                                                             
+d70b368 2021-07-12 Andrea Aimone        change exit status                                                                                                                                    
+12328f3 2021-07-12 Andre87osx           revert unaspected commit                                                                                                                              
+19bfe72 2021-07-12 Andre87osx           Merge branch 'main' of https://github.com/Andre87osx/AstroPi-system into main                                                                         
+507c509 2021-07-12 Andre87osx           fix build - rewrite last commit                                                                                                                       
+ec42f50 2021-07-11 Andrea Aimone        change usage of writableLocation in texturemanager                                                                                                    
+e006735 2021-07-11 Andrea Aimone        In capture and solve if image data is missing, assign from view                                                                                       
+b4050c5 2021-07-11 Andre87osx           Remove templating from rescale function as the template type is not used for anything (anymore?). Also fix a typo in "hasDebyaer".                    
+7b14836 2021-07-11 Andrea Aimone        pre populate the search dialog with the brightest objects                                                                                             
+ef3a874 2021-07-11 Andrea Aimone        Remove underscore from target name when setting FITS_OBJECT                                                                                           
+61f335d 2021-07-11 Andrea Aimone        update INDI 1.9.1 required in kstars 3.5.4                                                                                                            
+b66bbdd 2021-07-11 Andrea Aimone        Merge pull request #23 from Andre87osx/kstars-AstroPi3.5.4                                                                                            
+f0c42d0 2021-07-11 Andre87osx           import some commit from inventKDE                                                                                                                     
+9dff300 2021-07-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+98dca9d 2021-07-03 Andrea Aimone        Update cmake.yml                                                                                                                                      
+ff99798 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+c3217c2 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+747c80f 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+0430557 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+fbf4519 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+e42eb2e 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+2b9f84c 2021-07-02 Andrea Aimone        Create cmake.yml                                                                                                                                      
+c72266b 2021-07-02 Andrea Aimone        Delete .github/workflows directory                                                                                                                    
+a478232 2021-07-02 Andrea Aimone        Update cmake.yml                                                                                                                                      
+4578392 2021-06-29 Andrea Aimone        Create cmake.yml                                                                                                                                      
+67f0b48 2021-06-28 Andrea Aimone        Update codeql-analysis.yml                                                                                                                            
+49c8f78 2021-06-28 Andrea Aimone        Create codeql-analysis.yml                                                                                                                            
+6d6ed57 2021-06-21 Andrea Aimone        disable down sampling                                                                                                                                 
+5daf4a5 2021-06-16 Andrea Aimone        Merge pull request #13 from Andre87osx/Kstars-3.5.2                                                                                                   
+524d421 2021-06-16 Andre87osx           Reverse version to 3.5.2 - Stable                                                                                                                     
+c7056a1 2021-06-15 Andrea Aimone        Reverse temporaney INDI min required                                                                                                                  
+5a932d3 2021-06-15 Andrea Aimone        Merge pull request #12 from Andre87osx/Kstars-3.5.4-BETA                                                                                              
+80fd4f7 2021-06-15 Andre87osx           cumulative update of commits version 3.5.4                                                                                                            
+8a9dab6 2021-06-13 Andrea Aimone        update cmake kstars directory check                                                                                                                   
+e38ebee 2021-06-12 Andre87osx           Update darklibrary.cpp                                                                                                                                
+94e3ddd 2021-06-10 Andre87osx           Start Kstars AstroPi 3.5.4                                                                                                                            
+addf2e8 2021-06-10 Andre87osx           Create solar-system.svg                                                                                                                               
+e622ae0 2021-06-10 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+684959f 2021-06-09 Andre87osx           Merge branch 'main' of https://github.com/Andre87osx/AstroPi-system into main                                                                         
+d2641f4 2021-06-09 Andre87osx           Revert "update source list adding"                                                                                                                    
+9586cb7 2021-06-07 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+6608f7c 2021-06-06 Andre87osx           Revert "Update AstroPi.desktop"                                                                                                                       
+06c24ed 2021-06-06 Andre87osx           Correct minAlt in schedular                                                                                                                           
+dbbb5ca 2021-06-05 Andrea Aimone        Update scheduler.cpp                                                                                                                                  
+b8ef590 2021-06-04 Andrea Aimone        Update scheduler.cpp                                                                                                                                  
+c778169 2021-06-04 Andrea Aimone        Update scheduler.ui                                                                                                                                   
+93c2f10 2021-06-02 Andrea Aimone        Update scheduler.ui                                                                                                                                   
+a93240c 2021-06-01 Andrea Aimone        update source list adding                                                                                                                             
+7c3b631 2021-06-01 Andrea Aimone        bug fix sources list                                                                                                                                  
+fd7a2a2 2021-05-31 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+9df4dc8 2021-05-30 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+9301835 2021-05-30 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+0835428 2021-05-30 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+4860b45 2021-05-30 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+931bbea 2021-05-30 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+e8b3a01 2021-05-27 Andrea Aimone        Update .Update.sh                                                                                                                                     
+4343008 2021-05-26 Andrea Aimone        another bug fix in AstroPi.sh                                                                                                                         
+e48a7d4 2021-05-26 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+d954b5c 2021-05-26 Andrea Aimone        bug fix in AstroPi.sh                                                                                                                                 
+4e694ab 2021-05-26 Andrea Aimone        Update .Update.sh                                                                                                                                     
+07fd6c7 2021-05-26 Andrea Aimone        Delete .OLDUpdate.sh                                                                                                                                  
+821410b 2021-05-26 Andrea Aimone        Delete Astropi System                                                                                                                                 
+78ba1cc 2021-05-26 Andrea Aimone        Update AstroPi.desktop                                                                                                                                
+322b7ca 2021-05-26 Andrea Aimone        script enhancements .Update.sh                                                                                                                        
+c44fc69 2021-05-26 Andrea Aimone        script enhancements AstroPi.sh                                                                                                                        
+25d968d 2021-05-24 Andrea Aimone        Update scheduler.cpp                                                                                                                                  
+e39ff44 2021-05-23 Andrea Aimone        Update scheduler.cpp                                                                                                                                  
+1ccc07f 2021-05-23 Andrea Aimone        Edit kcfg fr minAltitude                                                                                                                              
+74262c9 2021-05-23 Andre87osx           Edit ckfg scheduler.ui                                                                                                                                
+c1d2b05 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+88f0e51 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+ad3370d 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+50cda31 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+91d6933 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+a36e982 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+c4fa693 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+d958efb 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+1322a7a 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+22ff918 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+351f60e 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+b02fec2 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+9e9ebe6 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+ae7b5f6 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+c11cacc 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+8c43014 2021-05-22 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+f059288 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+704eaa2 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+e7df73b 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+c89e9dc 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+0879ed0 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+168e7c1 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+951275b 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+2c6b810 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+8774dd5 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+2c2eb85 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+20c0a7e 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+e8c8e84 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+5ab1c01 2021-05-21 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+5fb86f5 2021-05-21 Andrea Aimone        another wpa update                                                                                                                                    
+4b58774 2021-05-20 Andrea Aimone        Edit AstroPi.sh wpa_supplcant                                                                                                                         
+64e48df 2021-05-17 Andrea Aimone        Edit wrong DEFAULT_MIN_ALTITUDE                                                                                                                       
+108e768 2021-05-17 Andrea Aimone        Edit kcfg for DSLR                                                                                                                                    
+996f878 2021-05-16 Andrea Aimone        Make stable                                                                                                                                           
+ac684d9 2021-05-16 Andrea Aimone        Disable cmake test                                                                                                                                    
+1b4f9ac 2021-05-16 Andrea Aimone        Edit kcfg some change                                                                                                                                 
+edeabe2 2021-05-16 Andrea Aimone        Edit default min altitude object                                                                                                                      
+ff7b933 2021-05-16 Andrea Aimone        Edit twilight relax DUSK DOWN                                                                                                                         
+629413d 2021-05-16 Andrea Aimone        Editing kcfg FOCUS setting                                                                                                                            
+107d1f7 2021-05-16 Andre87osx           I apply changes to get stable version AstroPi 3.5.3                                                                                                   
+35ccb1b 2021-05-16 Andre87osx           AstroPi 3.5.3                                                                                                                                         
+dcd6ad7 2021-05-16 Andrea Aimone        Initial commit                                                                                                                                        
+>>>>>>> Stashed changes
