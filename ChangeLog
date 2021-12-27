@@ -1,6 +1,10 @@
+# To obtain ChangeLog use this cmd line in git dir
+$ git log ---after=<date> -date=short --pretty=format:"%h %ad %<(20)%an %<(150,trunc)%s" > ChangeLog
+
 <<<<<<< Updated upstream
 
 =======
+v.1.4
 8d2a4fc 2021-11-23 Andrea Aimone        Delete kstars make                                                                                                                                    
 e9620aa 2021-11-11 Andrea Aimone        Merge pull request #107 from Andre87osx/fixKstasrs1.3                                                                                                 
 88b57e3 2021-11-11 Andrea Aimone        AstroPi System 1.4 BETA                                                                                                                               
