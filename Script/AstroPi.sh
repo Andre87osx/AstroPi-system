@@ -20,39 +20,87 @@ fi
 #=========================================================================
 chkWhoami()
 {
-	if [ "$(whoami)" == "root" ]; then
-		zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
-		exit 1
+	# Check if you run the script as USER
+	if [ $(whoami) = 'root' ]; then
+	zenity --warning --width=$W --text="Something went wrong.\nAstroPi system should be run as User not as root.\nRestart AstroPi System\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	fi
 }
+
 chkIndexGsc()
 {
 	(
+		echo "# Check GSC catalog for Simulaor"
+		if [ ! -d /usr/share/GSC ]; then
+			mkdir -p "$HOME"/gsc | cd "$HOME"/gsc
+			if [ ! -f "$HOME"/gsc/bincats_GSC_1.2.tar.gz ]; then
+		echo "# Download GSC catalog for Simulaor"
+				wget -O bincats_GSC_1.2.tar.gz http://cdsarc.u-strasbg.fr/viz-bin/nph-Cat/tar.gz?bincats/GSC_1.2 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading GSC..." --pulsate --auto-close --auto-kill --width=$Wprogress
+			fi
 		echo "# Install GSC catalog for Simulaor"
-		echo "$password" | sudo -S apt-get -y install gsc gsc-data
-		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		echo "# Download and install all Index for Astrometry"
-		#wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb
-		#wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb
-		#sudo dpkg -i astrometry-data-*.deb
-		#sudo rm *.deb
-		echo "$password" | sudo -S apt -y install astrometry-data-2mass astrometry-data-tycho2
-		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+			tar -xvzf bincats_GSC_1.2.tar.gz
+			cd "$HOME"/gsc/src || exit 1
+			make -j $(expr $(nproc) + 2)
+			mv gsc.exe gsc
+			echo "$password" | sudo -S cp gsc /usr/bin/
+			cp -r $HOME/gsc /usr/share/
+			echo "$password" | sudo -S mv /usr/share/gsc /usr/share/GSC
+			echo "$password" | sudo -S rm -r /usr/share/GSC/bin-dos
+			echo "$password" | sudo -S rm -r /usr/share/GSC/src
+			echo "$password" | sudo -S rm /usr/share/GSC/bincats_GSC_1.2.tar.gz
+			echo "$password" | sudo -S rm /usr/share/GSC/bin/gsc.exe
+			echo "$password" | sudo -S rm /usr/share/GSC/bin/decode.exe
+			echo "$password" | sudo -S rm -r "$HOME"/gsc
+			if [ -z "$(grep 'export GSCDAT' /etc/profile)" ]; then
+				cp /etc/profile /etc/profile.copy
+				echo "export GSCDAT=/usr/share/GSC" >> /etc/profile
+			fi
+		else
+			zenity --info --width=$W --text="GSC allredy exist.\nFor issue using simulator contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v"
+		fi
+	
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+	(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install GSC.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
+	(
+		echo "# Check all Index for Astrometry"
+		IndexDir="$HOME"/.local/share/kstars/astrometry/*.fits
+		IndexDir2=/usr/local/share/astrometry/*.fits
+		if [ -f "$IndexDir" ]; then
+		echo "# Setup correct owners to Index files"
+			echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME"/.local/share/kstars/astrometry
+		else
+			if [ -f "$IndexDir2" ]; then
+		echo "# Move Index files to correct path"
+				cd /usr/local/share/astrometry
+				echo "$password" | sudo -S mv *.fits "$HOME"/.local/share/kstars/astrometry
+				echo "$password" | sudo -S chown -R "$USER":"$USER" "$HOME"/.local/share/kstars/astrometry
+			else
+		echo "# Download and install all Index files to correct path"
+				cd "$HOME"/.local/share/kstars/astrometry || exit 1
+				if [ -f *.deb ]; then
+					echo "$password" | sudo -S rm *.deb
+				fi
+				wget http://data.astrometry.net/debian/astrometry-data-4208-4219_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 1/15 Index_4208-4219" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4207_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 2/15 Index_4207" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4206_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 3/15 Index_4206" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4205_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 4/15 Index_4205" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4204_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 5/15 Index_4204" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4203_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 6/15 Index_4203" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4202_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 7/15 Index_4202" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 8/15 Index_4201-1" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 9/15 Index_4201-2" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 10/15 Index_4201-3" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4201-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 11/15 Index_4201-4" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-1_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 12/15 Index_4200-1" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-2_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 13/15 Index_4200-2" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-3_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 14/15 Index_4200-3" --pulsate --auto-close --auto-kill --width=$Wprogress
+				wget http://data.astrometry.net/debian/astrometry-data-4200-4_0.45_all.deb 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | zenity --progress --title="Downloading 15/15 Index_4200-4" --pulsate --auto-close --auto-kill --width=$Wprogress
+				echo "$password" | sudo -S dpkg -i astrometry-data-*.deb
+				echo "$password" | sudo -S rm *.deb
+			fi
+		fi
+    ) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+    (($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Install Index Astrometry.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 }
 
 chkARM64()
@@ -98,20 +146,16 @@ sysClean()
 			echo "$password" | sudo -S chown -R "$USER":"$USER" "$GitDir"
 			cd "$GitDir" || exit
 			git repack -a -d
+			git rm -r --cached kstars-astropi/
 		fi
+		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>cleaning GIT</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "# Cleaning Project..."
-		if [ -d "$WorkDir" ]; then echo "$password" | sudo -S rm -rf "$WorkDir"; fi
+		if [ -d "$WorkDir" ]; then 
+			echo "$password" | sudo -S rm -rf "$WorkDir"
+		fi
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
-}
-
-chkUsr()
-{
-	if [ "$(whoami)" = "root" ]; then
-		# This function must be implemented v1.3/v1.4
-		exit
-	fi
 }
 
 sysUpgrade()
@@ -123,7 +167,10 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		if [ ! -f "$sources" ]; then
 			echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
 			wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
-			echo -e "deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		else
+			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
 			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		fi
 		# Implement USB memory dump
@@ -132,19 +179,13 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		# Hold some update
 		echo "$password" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>hold kstars-bleeding</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		echo "$password" | sudo -S apt-mark unhold indi-full libindi-dev libindi1 indi-bin
+		echo "$password" | sudo -S apt-mark hold indi-full libindi-dev libindi1 indi-bin
 		
 		# =================================================================
 		echo "# Run Software Updater..."
 		# Run APT FULL upgrade
-		#echo "$password" | sudo -S apt update && echo "$password" | sudo -S apt -y full-upgrade
+		echo "$password" | sudo -S apt update && echo "$password" | sudo -S apt -y full-upgrade
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating system AstroPi</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-
-		# =================================================================
-		echo "# Remove unnecessary libraries"
-		# Clean APT
-		echo "$password" | sudo -S apt -y autoremove
-		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>APT autoremove</b>.\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
 		# =================================================================
 		echo "# Updating all AstroPi script"
@@ -161,7 +202,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
 		fi
 		######################################
-		# Copy AstroPi icon and make executable
+		# Copy AstroPi launcher and make executable
 		echo "$password" | sudo -S cp "$GitDir"/Script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/share/applications/AstroPi.desktop
@@ -171,7 +212,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
 		# Set default wallpaper
 		pcmanfm --set-wallpaper="$GitDir/Loghi&background/AstroPi_wallpaper.png"
-		# Copy LX setting for start bar
+		# Copy LX setting for task bar
 		echo "$password" | sudo -S cp "$GitDir"/Script/panel "$HOME"/.config/lxpanel/LXDE-pi/panels/panel
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>editing lxpanels</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 
@@ -193,19 +234,37 @@ setupWiFi()
 		--add-password="Enter the password of selected wifi network")
 	SSID=$(echo "$WIFI" | cut -d'|' -f1)
 	PSK=$(echo "$WIFI" | cut -d'|' -f2)
+	PRIORITY=10
 	
 	case "$?" in
-	0)	
-		echo "$password" | sudo -S rm /etc/wpa_supplicant/wpa_supplicant.conf
-		echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   scan_ssid=1\n   psk=\"$PSK\"\n   key_mgmt=WPA-PSK\n}\n" | sudo tee /etc/wpa_supplicant/wpa_supplicant.conf
-		case $? in
-		0)
-			zenity --info --width=$W --text "New WiFi has been created, reboot AstroPi." --title="AstroPi System $AstroPi_v"
-		;;
-		1)
-			zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		;;
-		esac
+	0)
+		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
+			echo "$password" | sudo -S chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
+			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n   key_mgmt=WPA-PSK\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
+			case $? in
+			0)
+				zenity --info --width=$W --text "New WiFi has been added, reboot AstroPi." --title="AstroPi System $AstroPi_v"
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+			;;
+			1)
+				zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+			;;
+			esac
+		else
+			echo "$password" | sudo -S chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
+			echo "\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$((PRIORITY--))\"\n   key_mgmt=WPA-PSK\n}\n" | tee -a /etc/wpa_supplicant/wpa_supplicant.conf
+			case $? in
+			0)
+				zenity --info --width=$W --text "New WiFi has been added, reboot AstroPi." --title="AstroPi System $AstroPi_v"
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+			;;
+			1)
+				zenity --error --width=$W --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+				echo "$password" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+			;;
+			esac	
+		fi
 	;;
 	1)
 		zenity --info --width=$W --text "No changes have been made to your current configuration" --title="AstroPi System $AstroPi_v"
@@ -336,15 +395,19 @@ chkINDI()
 chkKStars()
 {
 	(
+		echo "# Download KStars $KStars_v from AstroPi GIT..."
+		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
+		cd "$WorkDir" || exit 1
+		wget -c https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"$AstroPi_v".tar.gz -O - | tar -xz -C "$WorkDir"
+		
 		# =================================================================
 		echo "# Check KStars AstroPi"
 		if [ ! -d "$HOME"/.indi/logs ]; then mkdir -p "$HOME"/.indi/logs; fi
-		(($? != 0)) && zenity --error --width=$W --text="Error <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		(($? != 0)) && zenity --error --width=$W --text="Error MKdir <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		if [ ! -d "$HOME"/.local/share/kstars/logs ]; then mkdir -p "$HOME"/.local/share/kstars/logs; fi
-		(($? != 0)) && zenity --error --width=$W --text="Error <b>KSTARS log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-		if [ ! -d "$WorkDir"/kstars-cmake ]; then mkdir -p "$WorkDir"/kstars-cmake; fi
+		(($? != 0)) && zenity --error --width=$W --text="Error MKdir <b>KStars log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		cd "$WorkDir"/kstars-cmake || exit 1
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$GitDir"/kstars-astropi
+		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "$WorkDir"/AstroPi-system-"$AstroPi_v"
 		(($? != 0)) && zenity --error --width=$W --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 	
 		# =================================================================
@@ -391,9 +454,11 @@ ans=$(zenity --list --width=$W --height=$H --title="AstroPi System $AstroPi_v" -
 			lxpanelctl restart # Restart LX for able new change icon
 	
 		elif [ "$ans" == "Setup my WiFi" ]; then
+			chkWhoami
 			setupWiFi
 
 		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
+			chkWhoami
 			chkHotspot
 
 		elif [ "$ans" == "Install INDI and Driver $Indi_v" ]; then

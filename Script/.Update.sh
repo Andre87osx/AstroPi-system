@@ -9,31 +9,33 @@
 
 # Bash variables
 #=========================================================================
-AstroPi_v=1.4-Beta
-KStars_v=3.5.4v1.4
+AstroPi_v=1.5
+KStars_v=3.5.4v1.5
 Indi_v=1.9.1
 
-home=$HOME
-GitDir="$home"/.AstroPi-system
-WorkDir="$home"/.Projects
-# Define the height in px of the top system-bar:
-TOPMARGIN=27
-# Sum in px of all horizontal borders:
-RIGHTMARGIN=10
+# Chk and create secure user path
+if [[ -z ${USER} ]] && [[ ${USER} != root ]];
+then
+	zenity --error --text="<b>Run this script as USER noot a root</b>\n\nError in AstroPi System" --width=$W --title="AstroPi System" && exit 1
+else
+	GitDir="$HOME"/.AstroPi-system
+	WorkDir="$HOME"/.Projects
+fi
 
 # Get width of screen and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
 # New width and height
-W=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
-H=$(( SCREEN_HEIGHT / 3 - TOPMARGIN ))
-Wprogress=$(( SCREEN_WIDTH / 5 - RIGHTMARGIN ))
+W=$(( SCREEN_WIDTH / 5 ))
+H=$(( SCREEN_HEIGHT / 3 ))
+Wprogress=$(( SCREEN_WIDTH / 5 ))
 
 #=========================================================================
 
 # Sudo password request.
-password=$(zenity --password  --width=$W --title="AstroPi System")
+password=$(zenity --password  --width=$W --title="AstroPi System $AstroPi_v")
+(( $? != 0 )) && exit
 
 # I make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
