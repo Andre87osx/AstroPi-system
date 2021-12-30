@@ -32,5 +32,5 @@
 *.app
 
 # Dir and project's
-kstars-astropi/
-/kstars-astropi
+kstars-astropi
+**/kstars-astropi/
