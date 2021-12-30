@@ -165,8 +165,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "# Preparing update"
 		# Check APT Source
 		if [ ! -f "$sources" ]; then
-			echo "$password" | sudo -S chmod 775 /etc/apt/sources.list.d
-			wget -O - https://www.astroberry.io/repo/key | sudo apt-key add -
+			echo "$password" | sudo -S chmod 644 /etc/apt/sources.list.d
 			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
 			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		else
@@ -201,7 +200,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f "$HOME"/.Update.sh ]; then
 			echo "$password" | sudo -S rm -rf "$HOME"/.Update.sh
 		fi
-		######################################
+		# =================================================================
 		# Copy AstroPi launcher and make executable
 		echo "$password" | sudo -S cp "$GitDir"/Script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating AstroPi Launcher</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
