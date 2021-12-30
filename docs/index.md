@@ -1,4 +1,4 @@
-## Welcome to GitHub Pages
+## AstroPi - System
 
 You can use the [editor on GitHub](https://github.com/Andre87osx/AstroPi-system/edit/kstars-astropi-1.5/docs/index.md) to maintain and preview the content for your website in Markdown files.
 
