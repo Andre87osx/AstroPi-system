@@ -154,7 +154,7 @@ sysClean()
 			echo "$password" | sudo -S rm -rf "$WorkDir"
 		fi
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>deleting .Projects dir</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-
+		zenity --info --width=$W --text="The cleaning was done correctly" --title="AstroPi System $AstroPi_v"
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
 }
 
