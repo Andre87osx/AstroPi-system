@@ -165,14 +165,15 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "# Preparing update"
 		# Check APT Source
 		if [ ! -f "$sources" ]; then
+			echo "$password" | sudo -S chmod 777 /etc/apt/sources.list.d/astroberry.list
 			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
 			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-			echo "$password" | sudo -S chmod 644 /etc/apt/sources.list.d
+			echo "$password" | sudo -S chmod 644 /etc/apt/sources.list.d/astroberry.list
 		else
-			echo "$password" | sudo -S chmod 777 /etc/apt/sources.list.d
+			echo "$password" | sudo -S chmod 777 /etc/apt/sources.list.d/astroberry.list
 			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
 			(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>sources.list.d</b>\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
-			echo "$password" | sudo -S chmod 644 /etc/apt/sources.list.d
+			echo "$password" | sudo -S chmod 644 /etc/apt/sources.list.d/astroberry.list
 
 		fi
 		# Implement USB memory dump
@@ -223,7 +224,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		zenity --info --width=$W --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v"
 
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
-	
+	exit 0
 }
 
 setupWiFi()
