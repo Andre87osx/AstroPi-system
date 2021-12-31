@@ -221,10 +221,10 @@ sources=/etc/apt/sources.list.d/astroberry.list
 
 		# =================================================================
 		echo "# All have done"
-		zenity --info --width=$W --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v"
+		zenity --info --width=$W --text="All updates have been successfully installed" --title="AstroPi System $AstroPi_v" | exit 0
+
 
 	) | zenity --progress --title="AstroPi System $AstroPi_v" --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
-	exit 0
 }
 
 setupWiFi()
