@@ -2243,11 +2243,11 @@
       </entry>
       <entry name="GuideAutoStarEnabled" type="Bool">
          <label>Automatically select calibration star and perform calibration.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="GuideAutoSquareSizeEnabled" type="Bool">
          <label>Automatically select the square size based on the selected star width.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="AutoModeIterations" type="UInt">
          <label>Number of automode iterations for calibration process.</label>
