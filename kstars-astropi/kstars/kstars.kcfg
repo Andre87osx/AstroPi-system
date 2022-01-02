@@ -2191,7 +2191,7 @@
       </entry>
       <entry name="DefaultST4Driver" type="String">
          <label>Default guide module ST4 Driver.</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="GuideExposure" type="Double">
          <label>Guider exposure duration in seconds.</label>
