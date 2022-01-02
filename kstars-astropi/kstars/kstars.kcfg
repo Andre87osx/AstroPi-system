@@ -1990,7 +1990,7 @@
       <entry name="SolverBinningIndex" type="UInt">
          <label>Default CCD binning index while in alignment mode</label>
          <whatsthis>Set binning index of CCD camera while in alignment mode. Default values 0-3 corresponding to 1x1 to 4x4 binning. 4 is max binning.</whatsthis>
-         <default>1</default>
+         <default>0</default>
       </entry>
       <entry name="AstrometryUseRotator" type="Bool">
          <whatsthis>Use rotator when performing load and slew.</whatsthis>
@@ -2191,7 +2191,7 @@
       </entry>
       <entry name="DefaultST4Driver" type="String">
          <label>Default guide module ST4 Driver.</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="GuideExposure" type="Double">
          <label>Guider exposure duration in seconds.</label>
@@ -2243,11 +2243,11 @@
       </entry>
       <entry name="GuideAutoStarEnabled" type="Bool">
          <label>Automatically select calibration star and perform calibration.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="GuideAutoSquareSizeEnabled" type="Bool">
          <label>Automatically select the square size based on the selected star width.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="AutoModeIterations" type="UInt">
          <label>Number of automode iterations for calibration process.</label>
