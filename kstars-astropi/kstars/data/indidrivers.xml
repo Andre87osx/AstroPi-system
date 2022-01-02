@@ -756,15 +756,15 @@
             <version>1.9</version>
         </device>
         <device label="ZWO Camera 1" manufacturer="ZWO">
-            <driver name="ZWO Camera">indi_asi_single_ccd</driver>
+            <driver name="ZWO Camera">indi_asi_ccd</driver>
             <version>1.9</version>
         </device>
         <device label="ZWO Camera 2" manufacturer="ZWO">
-            <driver name="ZWO Camera">indi_asi_single_ccd</driver>
+            <driver name="ZWO Camera">indi_asi_ccd</driver>
             <version>1.9</version>
         </device>
         <device label="ZWO Camera 3" manufacturer="ZWO">
-            <driver name="ZWO Camera">indi_asi_single_ccd</driver>
+            <driver name="ZWO Camera">indi_asi_ccd</driver>
             <version>1.9</version>
         </device>
     </devGroup>
