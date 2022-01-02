@@ -3,8 +3,8 @@ $ git log ---after=<date> -date=short --pretty=format:"%h %ad %<(20)%an %<(150,t
 
 <<<<<<< Updated upstream
 
-=======
 v.1.4
+================================
 8d2a4fc 2021-11-23 Andrea Aimone        Delete kstars make                                                                                                                                    
 e9620aa 2021-11-11 Andrea Aimone        Merge pull request #107 from Andre87osx/fixKstasrs1.3                                                                                                 
 88b57e3 2021-11-11 Andrea Aimone        AstroPi System 1.4 BETA                                                                                                                               
@@ -129,14 +129,20 @@ b932a37 2021-09-12 Andrea Aimone        changhe dir chmod
 a177c29 2021-09-12 Andrea Aimone        put first check user                                                                                                                                  
 c4a510e 2021-09-12 Andrea Aimone        try fix variable                                                                                                                                      
 7b41542 2021-09-12 Andrea Aimone        fix bug for exit 1                                                                                                                                    
-9bdc317 2021-09-12 Andrea Aimone        change exit method without any flag                                                                                                                   
+9bdc317 2021-09-12 Andrea Aimone        change exit method without any flag
+
+v1.2
+================================
 5823e5c 2021-09-11 Andrea Aimone        Perform change v1.3 (#61)                                                                                                                             
 f1c9d1d 2021-08-28 Andrea Aimone        Update .Update.sh                                                                                                                                     
 4e7507f 2021-08-28 Andrea Aimone        Update .Update.sh                                                                                                                                     
 f72fec0 2021-08-28 Andrea Aimone        Add files via upload                                                                                                                                  
 bd1a490 2021-08-28 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
 0baa0c8 2021-08-27 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
-8ca98af 2021-08-27 Andrea Aimone        Update AstroPi.sh                                                                                                                                     
+8ca98af 2021-08-27 Andrea Aimone        Update AstroPi.sh
+
+v1.1
+================================
 4d7b4ea 2021-08-27 Andrea Aimone        Update AstroPi System (#56)                                                                                                                           
 97a6116 2021-08-21 Andrea Aimone        Update autohotspot                                                                                                                                    
 d183407 2021-08-21 Andrea Aimone        Update autohotspot                                                                                                                                    
