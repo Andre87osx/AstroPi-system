@@ -7,10 +7,10 @@ Rectangle {
     id: rectangle
     objectName: "mountControlObject"
 
-    color: "#000000"
+    color: "#848482"
 
     property color buttonColor: "silver"
-    property color coordsColor: "gold"
+    property color coordsColor: "blueberry"
 
     FontMetrics {
         id: fontMetrics
@@ -18,7 +18,7 @@ Rectangle {
         font.bold: false
         font.italic: false
         font.underline:false
-        font.pointSize: 12
+        font.pointSize: 20
     }
 
     width:  (Qt.platform.os === "osx") ? fontMetrics.height * 13.5 /.75 : fontMetrics.height * 13.5
