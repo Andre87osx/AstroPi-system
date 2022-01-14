@@ -21,7 +21,7 @@ perc_used=$(df -h | awk '$1=="/dev/root"{print $5}')
 perc_used=${perc_used::-1}                              # Percentage disk usage ONLY decimal number
 
 while true; do
-   if [[ $perc_used -ge $allert_space ]] && [[ $free_space -ge $min_free_space ]]; then
+   if [[ $perc_used -ge $allert_space || $free_space -ge $min_free_space ]]; then
       # Available memory conditions are NOT respected
       echo "STOP START KStars - AstroPi used_disk ${perc_used}% free_space ${free_space}GB"
       zenity --warning --width=400 --height=200 --text "<b>Minimum free disk space requirements are not met!</b>
