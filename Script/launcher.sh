@@ -8,6 +8,7 @@
 ####### AstroPi update system ########
 # KStars AstroPi launcher and monitor
 
+Script_Dir=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 
 # Check disk space and load KStars - AstoPi
 #=========================================================================
@@ -56,15 +57,16 @@ while : ; do
    chkpid=$(pidof "$appname")
    if [[ "${app_pid}" == "${chkpid}" ]] ; then
       # KStars - AstroPi works
-      true
+      # Wait for next check
+      sleep 300s
       else
          if [[ "$chkpid" == "" ]]; then
-            echo "KStars is closed by User"
-            exit 0 && break
+            echo "KStars- AstroPi is closed by User"
+            break;
          else
-            crashtxt="Crashes will be logged in the monitoring tool directory under results.txt"
-            echo "FAILURE: Crash occurred at: $(date) ${crashtxt}"
-            exit 1 && break
+            echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
+            ${Script_Dir} | python parking.py
+            break;
          fi
    fi
 done
