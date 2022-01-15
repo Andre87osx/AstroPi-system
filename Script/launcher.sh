@@ -66,13 +66,15 @@ while : ; do
       # KStars - AstroPi works
       # Wait for next check
       echo "KStars- AstroPi is OK" #TEMP TEST
-      sleep 180s
+      sleep 60s
    else
       echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
       # Re-open KStars - AstroPi for use DBUS to control devices
-      (kstars &) && sleep 3s
+      (kstars &)
+      sleep 10s
       ${Script_Dir}
       python parking.py
+      pkill kstars
       break
 	fi
 done
