@@ -31,9 +31,7 @@ remote_object = bus.get_object("org.kde.kstars", # Connection name
 iface = dbus.Interface(remote_object, 'org.kde.kstars.INDI')
 
 # Set here all the drivers you want to try to connect
-myDriver = [ "indi_eqmod_mount", 
-             "indi_simulator_telescope" 
-           ]
+myDriver = [ "indi_eqmod_mount" ]
 
 # Start INDI devices
 iface.start("7624", myDriver)
