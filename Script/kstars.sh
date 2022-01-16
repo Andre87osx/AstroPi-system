@@ -23,27 +23,27 @@ perc_used=${perc_used::-1}                              # Percentage disk usage 
 
 exit_stat=""
 while true; do
-   if [[ $perc_used -ge $allert_space || $min_free_space -ge $free_space  ]]; then
-      # Available memory conditions are NOT respected
-      echo "STOP START KStars - AstroPi used_disk ${perc_used}% free_space ${free_space}GB"
-      zenity --warning --width=400 --height=200 --text "<b>Minimum free disk space requirements are not met!</b>
-      \nYou have used ${perc_used}% and have ${free_space}GB free\n<b>Please do disk cleanup</b>"
-      exit_stat=1
-      break
-   else
-      # Available memory conditions are met
-      echo "Start KStars - AstroPi used_disk ${perc_used}% free_space ${free_space}GB"
-      (kstars &) 
-      exit_stat=0
-      break
-   fi
+	if [[ $perc_used -ge $allert_space || $min_free_space -ge $free_space  ]]; then
+		# Available memory conditions are NOT respected
+		echo "STOP START KStars - AstroPi used_disk ${perc_used}% free_space ${free_space}GB"
+		zenity --warning --width=400 --height=200 --text "<b>Minimum free disk space requirements are not met!</b>
+		\nYou have used ${perc_used}% and have ${free_space}GB free\n<b>Please do disk cleanup</b>"
+		exit_stat=1
+		break
+	else
+		# Available memory conditions are met
+		echo "Start KStars - AstroPi used_disk ${perc_used}% free_space ${free_space}GB"
+		(kstars &) 
+		exit_stat=0
+		break
+	fi
 done
 
 # Chk exit status
 #=========================================================================
 if [[ $exit_stat -eq 1 ]]; then
-   # Exit script launcher with exit status error
-   exit 1
+	# Exit script launcher with exit status error
+	exit 1
 fi
 
 # Check the PID of kstars AstroPi
@@ -51,30 +51,29 @@ fi
 appname=kstars
 app_pid=$(pidof "$appname")
 for ((i = 0 ; i < 3 ; i++)); do
-   if [[ "$app_pid" == "" ]]; then
-      echo "FAILURE: PID is empty"
-      # Be careful while KStars is started
-      sleep 3s
+	if [[ "$app_pid" == "" ]]; then
+		echo "FAILURE: PID is empty"
+		# Be careful while KStars is started
+		sleep 3s
 	else
-      echo "PID of KStar - AstroPi is: ${app_pid}"
-fi
+		echo "PID of KStar - AstroPi is: ${app_pid}"
+	fi
 done
 
 while : ; do
-   chkpid=$(pidof "$appname")
+chkpid=$(pidof "$appname")
 	if [[ "${app_pid}" == "${chkpid}" ]] ; then
-      # KStars - AstroPi works
-      # Wait for next check
-      echo "KStars- AstroPi is OK" #TEMP TEST
-      sleep 60s
-   else
-      echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
-      # Re-open KStars - AstroPi for use DBUS to control devices
-      (kstars &)
-      sleep 10s
-      ${Script_Dir}
-      python parking.py
-      pkill kstars
-      break
+		# KStars - AstroPi works
+		true
+	else
+		echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
+		# Re-open KStars - AstroPi for use DBUS to control devices
+		(kstars &)
+		sleep 10s
+		${Script_Dir}
+		python parking.py
+		# Close Kstars - AstroPi
+		pkill kstars
+		break
 	fi
 done
