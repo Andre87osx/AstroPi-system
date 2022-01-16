@@ -131,4 +131,4 @@ while True:
         break;
 
 # Stop INDI server
-iface.stop("7624")
+iface.stop("port")
