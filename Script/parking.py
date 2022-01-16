@@ -49,7 +49,7 @@ while True:
     if (len(devices) < len(myDriver)):
         time.sleep(1)
     else:
-        break;
+        break
 
 print "We received the following devices from AstroPi :"
 
@@ -89,34 +89,14 @@ while True:
         break
 
 print "Connection to %s is established."%(mymount)
-print "Commanding telescope to slew to coordinates of default HOME position..."
 
-# Set Telescope RA,DEC coords in JNOW
-iface.setNumber(mymount, "EQUATORIAL_EOD_COORD", "RA", 1.300)
-iface.setNumber(mymount, "EQUATORIAL_EOD_COORD", "DEC", 89.369)
-iface.sendProperty(mymount, "EQUATORIAL_EOD_COORD")
-
-# Wait until slew is done
-telescopeState = "Busy"
-while True:
-    telescopeState = iface.getPropertyState(mymount, "EQUATORIAL_EOD_COORD")
-    if (telescopeState != "Ok"):
-        time.sleep(1)
-    else:
-        break
-
-print "Telescope slew is complete, now is in HOME position"
-
-# Stop mount traking
-print "Stop Mount tracking..."
+# Stop mount slew / traking
+print "Stop Telescope slew..."
 iface.setSwitch(mymount, "TELESCOPE_ABORT_MOTION", "ABORT_MOTION", "On")
 # Send the switch to INDI server so that it gets processed by the driver
 iface.sendProperty(mymount, "TELESCOPE_ABORT_MOTION")
 
-iface.setSwitch(mymount, "TELESCOPE_PARK_OPTION", "PARK_DEFAULT", "On")
-# Send the switch to INDI server so that it gets processed by the driver
-iface.sendProperty(mymount, "TELESCOPE_PARK_OPTION")
-
+print "Commanding telescope to go PARK..."
 iface.setSwitch(mymount, "TELESCOPE_PARK", "PARK", "On")
 # Send the switch to INDI server so that it gets processed by the driver
 iface.sendProperty(mymount, "TELESCOPE_PARK")
@@ -128,7 +108,13 @@ while True:
     if (telescopeState != "Ok"):
         time.sleep(1)
     else:
-        break;
+        break
+
+print "Disconnect the %s mount..."%(mymount)
+# Set connect switch to OFF to disconnect the mount
+iface.setSwitch(mymount, "CONNECTION", "DISCONNECT", "On")
+# Send the switch to INDI server so that it gets processed by the driver
+iface.sendProperty(mymount, "CONNECTION")
 
 # Stop INDI server
 iface.stop("port")
