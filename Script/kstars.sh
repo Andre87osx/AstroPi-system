@@ -33,7 +33,6 @@ while true; do
 	else
 		# Available memory conditions are met
 		echo "Start KStars - AstroPi used_disk ${perc_used}% free_space ${free_space}GB"
-		(kstars &) 
 		exit_stat=0
 		break
 	fi
@@ -46,34 +45,19 @@ if [[ $exit_stat -eq 1 ]]; then
 	exit 1
 fi
 
-# Check the PID of kstars AstroPi
+# Start KStars - AstroPi
+# Wait to know the output status of kStars, if = 0 the user has closed KStars, if != 0 a crash has occurred
 #=========================================================================
-appname=kstars
-app_pid=$(pidof "$appname")
-for ((i = 0 ; i < 3 ; i++)); do
-	if [[ "$app_pid" == "" ]]; then
-		echo "FAILURE: PID is empty"
-		# Be careful while KStars is started
-		sleep 3s
-	else
-		echo "PID of KStar - AstroPi is: ${app_pid}"
-	fi
-done
-
-while : ; do
-chkpid=$(pidof "$appname")
-	if [[ "${app_pid}" == "${chkpid}" ]] ; then
-		# KStars - AstroPi works
-		true
-	else
-		echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
-		# Re-open KStars - AstroPi for use DBUS to control devices
-		(kstars &)
-		sleep 10s
-		${Script_Dir}
-		python parking.py
-		# Close Kstars - AstroPi
-		pkill kstars
-		break
-	fi
-done
+if kstars; then
+	# Close the script safetly
+	echo "KStars- AstroPi is closed by user correctly"
+	exit 0
+else
+	echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
+	(kstars &)		# Re-open KStars - AstroPi for use DBUS to control devices
+	sleep 10s		# Wait until kstars has started completely
+	${Script_Dir}		# Go to bash directory
+	python parking.py	# Launch parking script
+	pkill kstars		# Close Kstars - AstroPi
+	exit 0
+fi
