@@ -101,14 +101,8 @@ iface.setSwitch(mymount, "TELESCOPE_PARK", "PARK", "On")
 # Send the switch to INDI server so that it gets processed by the driver
 iface.sendProperty(mymount, "TELESCOPE_PARK")
 
-# Wait until slew is done
-telescopeState = "Busy"
-while True:
-    telescopeState = iface.getPropertyState(mymount, "EQUATORIAL_EOD_COORD")
-    if (telescopeState != "Ok"):
-        time.sleep(1)
-    else:
-        break
+# Wait until PARK is done
+time.sleep(30)
 
 print "Disconnect the %s mount..."%(mymount)
 # Set connect switch to OFF to disconnect the mount
