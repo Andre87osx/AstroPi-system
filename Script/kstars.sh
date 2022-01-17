@@ -48,7 +48,7 @@ fi
 # Start KStars - AstroPi
 # Wait to know the output status of kStars, if = 0 the user has closed KStars, if != 0 a crash has occurred
 #=========================================================================
-if kstars; then
+if kstars > /dev/null 2>&1; then
 	# Close the script safetly
 	echo "KStars- AstroPi is closed by user correctly"
 	exit 0
