@@ -86,7 +86,7 @@ Plugin {
   type=launchbar
   Config {
     Button {
-      id=org.kde.kstars.desktop
+      id=kstars.desktop
     }
     Button {
       id=ASTAP.desktop
