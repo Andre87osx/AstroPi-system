@@ -213,6 +213,14 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		echo "$password" | sudo -S cp "$GitDir"/Script/.Update.sh /usr/bin/.Update.sh
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating .Update.sh</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "$password" | sudo -S chmod +x /usr/bin/.Update.sh
+		# Copy kstars.sh and make executable
+		echo "$password" | sudo -S cp "$GitDir"/Script/kstars.sh /usr/bin/.Update.sh
+		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating kstars.sh</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		echo "$password" | sudo -S chmod +x /usr/bin/kstars.sh
+		# Copy parking.py and make executable
+		echo "$password" | sudo -S cp "$GitDir"/Script/parking.py /usr/bin/.Update.sh
+		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating parking.py</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
+		echo "$password" | sudo -S chmod +x /usr/bin/parking.py
 		# Set default wallpaper
 		pcmanfm --set-wallpaper="$GitDir/Loghi&background/AstroPi_wallpaper.png"
 		# Copy LX setting for task bar
