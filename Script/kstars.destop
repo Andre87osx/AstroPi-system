@@ -1,0 +1,12 @@
+# AstroPi - System 
+# KStars - AstroPi
+[Desktop Entry]
+Type=Application
+Exec=/usr/bin/kstars.sh
+Icon=/home/astropi/.AstroPi-system/Loghi&background/kstars.svg
+X-DocPath=kstars/index.html
+Comment=Gear for astrophotography experience
+Terminal=false
+Name=KStars - AstroPi
+GenericName=Gear for astrophotography experience
+Categories=Qt;KDE;Education;Science;Astronomy;
