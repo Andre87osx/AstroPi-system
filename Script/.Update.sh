@@ -37,7 +37,7 @@ else
 fi
 
 # Sudo password request.
-if password=$(zenity --password  --width=${W} --title="${W_Title}"); then
+if [ password=$(zenity --password  --width=${W} --title="${W_Title}") ]; then
 	# User write password and press OK
 	# Makes sure that the user sudo password is correct
 	until (echo $password | sudo -S echo '' 2>/dev/null); do
@@ -52,7 +52,7 @@ fi
 # Check and update AstroPi GIT
 (
 echo "# Check internet connection first"
-if wget -q --spider https://github.com/Andre87osx/AstroPi-system; then
+if [ wget -q --spider https://github.com/Andre87osx/AstroPi-system ]; then
 	echo "# Check if GIT dir exist"
 	if [ ! -d "${GitDir}" ]; then
 		cd "${HOME}" || exit 1
@@ -60,7 +60,7 @@ if wget -q --spider https://github.com/Andre87osx/AstroPi-system; then
 		mv "${HOME}"/AstroPi-system "${GitDir}"
 	fi
 	echo "# Check the AstroPi git for update."
-	if ! git -C "${GitDir}" pull; then
+	if [ ! git -C "${GitDir}" pull ]; then
 		cd "${GitDir}" || exit 1
 		git reset --hard
 		echo "$password" | sudo -S chown -R "${USER}":"${USER}" "${GitDir}" | git -C "${GitDir}" pull || git reset --hard origin/main
@@ -88,7 +88,7 @@ export W_err_generic
 export W_Title
 
 # Start AstroPi.sh
-if ( bash "${GitDir}"/Script/AstroPi.sh ); then
+if [ bash "${GitDir}"/Script/AstroPi.sh ]; then
 	exit 0
 else
 	zenity --error --text="${W_err_generic}" --width=${W} --title="${W_Title}"
