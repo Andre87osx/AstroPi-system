@@ -7,22 +7,14 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ####### AstroPi update system ########
 
-# Bash variables
+# Variables
 #=========================================================================
-AstroPi_v=1.5
-KStars_v=3.5.4v1.5
-Indi_v=1.9.1
+AstroPi_v=1.5		# Actual stable version
+KStars_v=3.5.4v1.5	# Based on KDE Kstrs v.3.5.4
+Indi_v=1.9.1		# Dased on INDI 1.9.1 Core
+#=========================================================================
 
-# Chk and create secure user path
-if [[ -z ${USER} ]] && [[ ${USER} != root ]];
-then
-	zenity --error --text="<b>Run this script as USER noot a root</b>\n\nError in AstroPi System" --width=$W --title="AstroPi System" && exit 1
-else
-	GitDir="$HOME"/.AstroPi-system
-	WorkDir="$HOME"/.Projects
-fi
-
-# Get width of screen and height of screen
+# Get width and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
@@ -31,42 +23,55 @@ W=$(( SCREEN_WIDTH / 5 ))
 H=$(( SCREEN_HEIGHT / 3 ))
 Wprogress=$(( SCREEN_WIDTH / 5 ))
 
-#=========================================================================
+W_Title="AstroPi System v${AstroPi_v}"
+W_err_generic="Something went wrong...\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
+
+# Chk USER and create path
+if [[ -z ${USER} ]] && [[ ${USER} != root ]];
+then
+	zenity --error --text="<b>Run this script as USER not as root</b>\n\nError in AstroPi System" --width=${W} --title="${W_Title}"
+	exit 1
+else
+	GitDir="${HOME}"/.AstroPi-system
+	WorkDir="${HOME}"/.Projects
+fi
 
 # Sudo password request.
-password=$(zenity --password  --width=$W --title="AstroPi System $AstroPi_v")
-(( $? != 0 )) && exit
+if [ password=$(zenity --password  --width=${W} --title="${W_Title}") ]; then
+	# User write password and press OK
+	# Makes sure that the user sudo password is correct
+	until (echo $password | sudo -S echo '' 2>/dev/null); do
+		zenity --warning --text="<b>The password is incorrect.</b>\n\nTry again or sign out" --width=${W} --title="${W_Title}"
+		if password=$(zenity --password  --width=${W} --title="${W_Title}"); then true; else exit 0; fi
+	done
+else
+	# User press CANCEL button
+	exit 0
+fi
 
-# I make sure that the scripts are executable
-echo "$password" | sudo -S chmod +x "$GitDir"/Script/*.sh
-
-# The script makes sure that the user sudo password is correct
-(( $? != 0 )) && zenity --error --text="<b>Incorrect user password</b>\n\nError in AstroPi System" --width=$W --title="AstroPi - user password required" && exit 1
-
+# Check and update AstroPi GIT
 (
 echo "# Check internet connection first"
-if wget -q --spider https://github.com/Andre87osx/AstroPi-system; then
-
-echo "# Check if GIT dir exist"
-	if [ ! -d "$GitDir" ]; then
-		cd "$home" || exit 1
+if [ wget -q --spider https://github.com/Andre87osx/AstroPi-system ]; then
+	echo "# Check if GIT dir exist"
+	if [ ! -d "${GitDir}" ]; then
+		cd "${HOME}" || exit 1
 		git clone https://github.com/Andre87osx/AstroPi-system.git
-		mv "$home"/AstroPi-system "$GitDir"
+		mv "${HOME}"/AstroPi-system "${GitDir}"
 	fi
-echo "# Check the AstroPi git for update."
-	if ! git -C "$GitDir" pull; then
-		cd "$GitDir" || exit 1
+	echo "# Loading AstroPi - System."
+	if [ ! git -C "${GitDir}" pull ]; then
+		cd "${GitDir}" || exit 1
 		git reset --hard
-		echo "$password" | sudo -S chown -R "$USER":"$USER" "$GitDir" | git -C "$GitDir" pull || git reset --hard origin/main
-		git -C "$GitDir" pull || zenity --error --text="<b>Something went wrong. I can't update the repository files.</b>\n\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues" --width=$W --title="AstroPi - System $AstroPi_v" && exit 1
+		echo "$password" | sudo -S chown -R "${USER}":"${USER}" "${GitDir}" | git -C "${GitDir}" pull || git reset --hard origin/main
+		git -C "${GitDir}" pull || zenity --error --text="${W_err_generic}" --width=${W} --title="${W_Title}" && exit 1
 	fi
 fi
-echo "# Loading AstroPi - System."
 
 # I make sure that the scripts are executable
-echo "$password" | sudo -S chmod +x -R "$GitDir"/Script
+echo "$password" | sudo -S chmod +x -R "${GitDir}"/Script
 
-) | zenity --progress --title="Loading AstroPi - System $AstroPi_v..." --percentage=1 --pulsate --auto-close --auto-kill --width=$Wprogress
+) | zenity --progress --title="Loading AstroPi - System ${AstroPi_v}..." --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 
 # Export the variable to AstroPi.sh script
 export password
@@ -78,8 +83,13 @@ export Indi_v
 export W
 export H
 export Wprogress
+export W_err_generic
+export W_Title
 
 # Start AstroPi.sh
-bash "$GitDir"/Script/AstroPi.sh
-(( $? != 0 )) && zenity --error --text="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=$W --title="AstroPi - System $AstroPi_v" && exit 1
-exit 0
+if [ bash "${GitDir}"/Script/AstroPi.sh ]; then
+	exit 0
+else
+	zenity --error --text="${W_err_generic}" --width=${W} --title="${W_Title}"
+	exit 1
+fi

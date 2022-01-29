@@ -1,3 +1,15 @@
+<!-- 
+=> AstroPi.desktop              /usr/bin                                            main icon launch AstroPi System
+    |=> .Update.sh              /usr/bin                                            first step, upgrade git and launch 
+        |=> AstrpPi.sh          "${HOME}"/.AstroPi-system/Script
+        |=> astrometry.sh       "${HOME}".AstroPi-system/Script
+=> autohotspot.service          /usr/bin
+    |=> autohotspot             /usr/bin
+=> kstars.desktop               /usr/bin
+    |=> kstars.sh               /usr/bin
+        |=> parking.py          /usr/bin
+=> panel                        "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
+-->
 # To obtain ChangeLog use this cmd line in git dir
 $ git log ---after=<date> -date=short --pretty=format:"%h %ad %<(20)%an %<(150,trunc)%s" > ChangeLog
 
