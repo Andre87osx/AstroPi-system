@@ -11,7 +11,7 @@
 #=========================================================================
 AstroPi_v=1.5		# Actual stable version
 KStars_v=3.5.4v1.5	# Based on KDE Kstrs v.3.5.4
-Indi_v=1.9.1		# Dased on INDI 1.9.1 Core
+Indi_v=1.9.1		# Based on INDI 1.9.1 Core
 #=========================================================================
 
 # Get width and height of screen
@@ -45,9 +45,9 @@ if [ ${exit_stat} -ne 0 ]; then
 else
 	# User write password and press OK
 	# Makes sure that the user sudo password is correct
-	until (echo $password | sudo -S echo '' 2>/dev/null); do
-		zenity --warning --text="<b>The password is incorrect.</b>\n\nTry again or sign out" --width=${W} --title="${W_Title}"
-		if "$(password=$(zenity --password  --width=${W} --title="${W_Title}"))"; then true; else exit 0; fi
+	until [ $"(echo $password | sudo -S echo '' 2>/dev/null)" ]; do
+		zenity --warning --text="<b>The password is incorrect.</b>\n\nTry again" --width=${W} --title="${W_Title}"
+		exit 1
 	done
 fi
 
