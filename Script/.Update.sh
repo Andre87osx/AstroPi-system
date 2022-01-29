@@ -37,7 +37,7 @@ else
 fi
 
 # Sudo password request.
-password=$(zenity --password  --width=${W} --title="${W_Title}") ]
+password=$(zenity --password  --width=${W} --title="${W_Title}")
 exit_stat=$?
 if [ ${exit_stat} -ne 0 ]; then
 	# User press CANCEL button
