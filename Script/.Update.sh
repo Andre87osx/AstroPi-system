@@ -24,7 +24,7 @@ H=$(( SCREEN_HEIGHT / 3 ))
 Wprogress=$(( SCREEN_WIDTH / 5 ))
 
 W_Title="AstroPi System v${AstroPi_v}"
-W_err_generic="Something went wrong. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
+W_err_generic="Something went wrong...\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
 
 # Chk USER and create path
 if [[ -z ${USER} ]] && [[ ${USER} != root ]];
@@ -59,7 +59,7 @@ if [ wget -q --spider https://github.com/Andre87osx/AstroPi-system ]; then
 		git clone https://github.com/Andre87osx/AstroPi-system.git
 		mv "${HOME}"/AstroPi-system "${GitDir}"
 	fi
-	echo "# Check the AstroPi git for update."
+	echo "# Loading AstroPi - System."
 	if [ ! git -C "${GitDir}" pull ]; then
 		cd "${GitDir}" || exit 1
 		git reset --hard
@@ -67,7 +67,6 @@ if [ wget -q --spider https://github.com/Andre87osx/AstroPi-system ]; then
 		git -C "${GitDir}" pull || zenity --error --text="${W_err_generic}" --width=${W} --title="${W_Title}" && exit 1
 	fi
 fi
-echo "# Loading AstroPi - System."
 
 # I make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x -R "${GitDir}"/Script
