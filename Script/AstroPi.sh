@@ -219,7 +219,7 @@ sources=/etc/apt/sources.list.d/astroberry.list
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		echo "${password}" | sudo -S chmod +x /usr/bin/.Update.sh
 		# Copy kstars.sh and make executable
-		echo "${password}" | sudo -S cp "${GitDir}"/Script/kstars.sh /usr/bin/.Update.sh
+		echo "${password}" | sudo -S cp "${GitDir}"/Script/kstars.sh /usr/bin/kstars.sh
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>Updating kstars.sh</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		echo "${password}" | sudo -S chmod +x /usr/bin/kstars.sh
