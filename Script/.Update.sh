@@ -37,16 +37,18 @@ else
 fi
 
 # Sudo password request.
-if [ password=$(zenity --password  --width=${W} --title="${W_Title}") ]; then
+password=$(zenity --password  --width=${W} --title="${W_Title}") ]
+exit_stat=$?
+if [ ${exit_stat} -ne 0 ]; then
+	# User press CANCEL button
+	exit 0
+else
 	# User write password and press OK
 	# Makes sure that the user sudo password is correct
 	until (echo $password | sudo -S echo '' 2>/dev/null); do
 		zenity --warning --text="<b>The password is incorrect.</b>\n\nTry again or sign out" --width=${W} --title="${W_Title}"
 		if password=$(zenity --password  --width=${W} --title="${W_Title}"); then true; else exit 0; fi
 	done
-else
-	# User press CANCEL button
-	exit 0
 fi
 
 # Check and update AstroPi GIT
