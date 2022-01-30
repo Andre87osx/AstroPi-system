@@ -62,7 +62,8 @@ fi
 	if [ "$(wget -q --spider https://github.com/Andre87osx/AstroPi-system)" ]; then
 		echo "# AstroPi are connected"
 		if [ ! -f "${AppDir}/.Update.sh" ]; then
-			wget https://github.com/Andre87osx/AstroPi-system/blob/v"${AstroPi_v}"/Script/AstroPi.sh
+			cd "${AppDir}" || exit 1
+			curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/v"${AstroPi_v}"/Script/AstroPi.sh > AstroPi.sh
 		fi
 	else
 		if [ ! -f "${AppDir}/AstroPi.sh" ]; then
