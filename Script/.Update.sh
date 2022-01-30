@@ -59,13 +59,16 @@ fi
 		mkdir -p "${AppDir}"
 	fi
 	echo "# Check for internet connection"
-	if [ "$(wget -q --spider https://github.com/Andre87osx/AstroPi-system)" ]; then
+	wget -q --spider https://github.com/Andre87osx/AstroPi-system
+	exit_stat=$?
+	if [ "${exit_stat}" -eq 0 ]; then
 		echo "# AstroPi are connected"
 		if [ ! -f "${AppDir}"/AstroPi.sh ]; then
 			cd "${AppDir}" || exit 1
 			curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/v"${AstroPi_v}"/Script/AstroPi.sh > AstroPi.sh
 		fi
 	else
+		echo "# AstroPi not have internet connection"
 		if [ ! -f "${AppDir}/AstroPi.sh" ]; then
 			zenity --warning --text="<b>AstroPi System is not installed correctly.</b>
 			\nConnect to the internet to be able to download the necessary updates. 
@@ -73,7 +76,7 @@ fi
 			exit 1
 		fi
 	fi
-
+		
 # I make sure that the scripts are executable
 echo "$password" | sudo -S chmod +x -R "${AppDir}"/*.sh >/dev/null 2>&1
 echo "$password" | sudo -S chmod +x -R "${AppDir}"/*.py >/dev/null 2>&1
