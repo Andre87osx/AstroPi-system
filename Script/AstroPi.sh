@@ -163,16 +163,16 @@ function sysClean()
 # Update RaspberryPi OS, library, app and AstroPi System
 function sysUpgrade()
 {
-sources=/etc/apt/sources.list.d/astroberry.list
 	(
 		echo "# Preparing update"
 		# Check APT Source stops unwanted updates
-		if [ -f "$sources" ]; then
-			echo "${password}" | sudo -S chmod 777 /etc/apt/sources.list.d/astroberry.list
-			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee /etc/apt/sources.list.d/astroberry.list
+		sources=/etc/apt/sources.list.d/astroberry.list
+		if [ -f "${sources}" ]; then
+			echo "${password}" | sudo -S chmod 777 "${sources}"
+			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
-			\n. Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-			echo "${password}" | sudo -S chmod 644 /etc/apt/sources.list.d/astroberry.list
+			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+			echo "${password}" | sudo -S chmod 644 "${sources}"
 		fi
 		# Implement USB memory dump
 		echo "${password}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
