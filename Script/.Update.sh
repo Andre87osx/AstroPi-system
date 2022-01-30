@@ -71,8 +71,8 @@ fi
 		echo "# AstroPi not have internet connection"
 		if [ ! -f "${AppDir}/AstroPi.sh" ]; then
 			zenity --warning --text="<b>AstroPi System is not installed correctly.</b>
-			\nConnect to the internet to be able to download the necessary updates. 
-			The program will be finished. Check your internet connection" --width=${W} --title="${W_Title}"
+			\nConnect to internet to be able to download the necessary updates. 
+			The program will be finished. Check your internet connection!" --width=${W} --title="${W_Title}"
 			exit 1
 		fi
 	fi
@@ -86,7 +86,7 @@ echo "$password" | sudo -S chmod +x -R "${AppDir}"/*.py >/dev/null 2>&1
 # Export the variable to AstroPi.sh script
 export password
 export AstroPi_v
-export GitDir
+export GitDir		# Deprecated after v1.5
 export AppDir
 export WorkDir
 export KStars_v
