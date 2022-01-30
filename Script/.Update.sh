@@ -98,9 +98,11 @@ export W_err_generic
 export W_Title
 
 # Start AstroPi.sh
-if [ $(bash "${AppDir}"/AstroPi.sh) ]; then
-	exit 0
-else
+bash "${AppDir}"/AstroPi.sh
+exit_stat=$?
+if [ ${exit_stat} -ne 0 ]; then
 	zenity --error --text="${W_err_generic}" --width=${W} --title="${W_Title}"
 	exit 1
+else
+	exit 0
 fi
