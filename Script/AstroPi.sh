@@ -174,18 +174,19 @@ function sysUpgrade()
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 			echo "${password}" | sudo -S chmod 644 "${sources}"
 		fi
+		
 		# Implement USB memory dump
 		echo "${password}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# Hold some update
-		echo "${password}" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold kstars-bleeding</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo "${password}" | sudo -S apt-mark hold indi-full libindi-dev libindi1 indi-bin
 		
-		# =================================================================
-		echo "# Run Software Updater..."
+		# Hold some update
+		echo "${password}" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
+		indi-full libindi-dev libindi1 indi-bin
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		
+		echo "# Run Linux AstroPi full upgrade..."
 		# Run APT FULL upgrade
 		echo "${password}" | sudo -S apt update && echo "${password}" | sudo -S apt -y full-upgrade
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>Updating system AstroPi</b>
