@@ -61,15 +61,15 @@ fi
 	echo "# Check for internet connection"
 	if [ "$(wget -q --spider https://github.com/Andre87osx/AstroPi-system)" ]; then
 		echo "# AstroPi are connected"
-		if [ ! -f "${AppDir}/.Update.sh" ]; then
+		if [ ! -f "${AppDir}"/AstroPi.sh ]; then
 			cd "${AppDir}" || exit 1
 			curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/v"${AstroPi_v}"/Script/AstroPi.sh > AstroPi.sh
 		fi
 	else
 		if [ ! -f "${AppDir}/AstroPi.sh" ]; then
 			zenity --warning --text="<b>AstroPi System is not installed correctly.</b>
-			Connect to the internet to be able to download the necessary updates. 
-			\nThe program will be finished. Try again" --width=${W} --title="${W_Title}"
+			\nConnect to the internet to be able to download the necessary updates. 
+			The program will be finished. Check your internet connection" --width=${W} --title="${W_Title}"
 			exit 1
 		fi
 	fi
