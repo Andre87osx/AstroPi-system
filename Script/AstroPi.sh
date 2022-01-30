@@ -188,7 +188,7 @@ function sysUpgrade()
 		
 		echo "# Run Linux AstroPi full upgrade..."
 		# Run APT FULL upgrade
-		echo "${password}" | sudo -S apt update && echo "${password}" | sudo -S apt -y full-upgrade
+		echo "${password}" | sudo -S apt-get update && echo "${password}" | sudo -S apt -y full-upgrade
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>Updating system AstroPi</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
