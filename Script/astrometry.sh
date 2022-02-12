@@ -12,7 +12,7 @@
 # ============================================
 
 # These files use 2MASS as the astrometric reference catalog.
-#   http://www.ipac.caltech.edu/2mass/releases/allsky/index.html
+# http://www.ipac.caltech.edu/2mass/releases/allsky/index.html
 
 # "This publication makes use of data products from the Two Micron All
 # Sky Survey, which is a joint project of the University of
@@ -37,8 +37,6 @@
 
 # Scales 08-19 are named like index-40XX.fits.bz2 and each one covers
 # the whole sky.
-
-source /usr/bin/.Update.sh
 
 (
     cd ${IndexPath} || exit 1
