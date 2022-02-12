@@ -5,7 +5,7 @@
 #   / /\ \ / __| __| '__/ _ \|  ___/ |
 #  / ____ \__ \ |_| | | (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
-####### AstroPi update system ########
+########### AstroPi System ###########
 
 # Source http://data.astrometry.net
 # "4200-series" index files for Astrometry.net

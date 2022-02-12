@@ -10,11 +10,12 @@
 # Run this script as USER
 # Type in console 'bash <your script path>/install.sh'
 
-# Array
 #=========================================================================
+# Create version of AstroPi
 majorRelease=1                                      # Major Release
 minorRelease=5                                      # Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}           # Actual Stable Release
+
 # Get width and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
@@ -69,9 +70,9 @@ while ${connection} ; do
     echo ""
     echo "Downloading AstroPi v${AstroPi_v}..."
     echo ""
-    wget -c https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"${AstroPi_v}".tar.gz -O - | \
-    tar --strip-components=1 -xz -C ${appDir} 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-    zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=${Wprogress}
+    ( wget -c https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"${AstroPi_v}".tar.gz -O - | \
+    tar --strip-components=1 -xz -C ${appDir} ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+    zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
     echo ""
     
     # Make all script executable
@@ -102,7 +103,7 @@ while ${connection} ; do
 					echo "Install ${script} in /usr/bin/ "
 			fi 
 	        if [ ${exit_stat} -ne 0 ]; then
-			zenity --error --width=${W} --text="Something went wrong <b>installing "${script}"...</b>
+			zenity --error --width=${W} --text="Something went wrong <b>installing ${script}...</b>
 			Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 			exit 1
 	        fi
@@ -112,10 +113,16 @@ while ${connection} ; do
     install AstroPi.sh kstars.sh AstroPi.desktop kstars.desktop panel autohotspot.service autohotspot
     
     # Set default wallpaper
-	pcmanfm --set-wallpaper="${appDir}/media/AstroPi_wallpaper.png"
+	pcmanfm --set-wallpaper="${appDir}/include/AstroPi_wallpaper.png"
     
     # Restart LX for able new change icon and wallpaper
     lxpanelctl restart 
+    
+    # Installation is finished
+    echo ""
+    echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out"
+    zenity --info --width=${W} --text="<b><big>The installation of AstroPi v${AstroPi_v} is completed.</big>
+    \nLaunch AstroPi to try it out</b>" --title="${W_Title}"
     
     # STOP LOOP
     break
