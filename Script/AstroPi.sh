@@ -74,7 +74,7 @@ else
 fi
 
 # Define path bash script
-Script_Dir=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
+Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd )"
 
 # Check if GSC exist for simulator solving
 function chkIndexGsc()
