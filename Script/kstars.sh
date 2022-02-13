@@ -8,9 +8,6 @@
 ####### AstroPi update system ########
 # KStars AstroPi launcher and monitor
 
-# Set source for use global AstroPi System variable
-source ./.Update.sh
-
 # Found bash path dir Kstar.sh
 Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd )"
 
@@ -31,7 +28,7 @@ while true; do
 		# Available memory conditions are NOT respected
 		echo "WARNING TO START KStars AstroPi.
 		\nThe memory requirements on the disk are not met used_disk ${perc_used}% free_space ${free_space}GB"
-		if ( zenity --question --width=${W} --title="${W_Title}" --ok-label "Yes" --cancel-label "No" \
+		if ( zenity --question --width=350 --title="KStars AstroPi" --ok-label "Yes" --cancel-label "No" \
 			--text "<b>WARNING TO START KStars AstroPi.
 			\nMinimum free disk space requirements are not met!</b>
 			\nYou have used ${perc_used}% and have ${free_space}GB free\n<b>Please do disk cleanup</b>
@@ -58,7 +55,9 @@ if [[ $exit_stat -eq 1 ]]; then
 fi
 
 # Start KStars - AstroPi
-# Wait to know the output status of kStars, if = 0 the user has closed KStars, if != 0 a crash has occurred
+# Wait to know the output status of kStars, 
+# if = 0 the user has closed KStars
+# if != 0 a crash has occurred
 #=========================================================================
 if kstars > /dev/null 2>&1; then
 	# Close the script
@@ -66,14 +65,14 @@ if kstars > /dev/null 2>&1; then
 	exit 0
 else
 	echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
-	(kstars &)						# Re-open KStars - AstroPi for use DBUS to control devices
-	sleep 10s						# Wait until kstars has started completely
-	${Script_Dir}					# Go to bash directory
-	python parking.py				# Launch parking script
-	pkill kstars					# Close Kstars - AstroPi
-	time=$( date '+%F_%H:%M:%S' )	# Set current date and time
+	(kstars &)							# Re-open KStars - AstroPi for use DBUS to control devices
+	sleep 10s							# Wait until kstars has started completely
+	cd ${HOME}/.local/share/astropi/	# Go to app directory
+	python parking.py					# Launch parking script
+	pkill kstars						# Close Kstars - AstroPi
+	time=$( date '+%F_%H:%M:%S' )		# Set current date and time
 	# The script pauses until the user closes the crash warning message
-	zenity --warning --width=${W} --title="${W_Title}" --text="<b>KStars AstroPi crashed...</b>
+	zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
 	The telescope will be parked and the INDI services stopped on ${time}.
 	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
 	exit 0

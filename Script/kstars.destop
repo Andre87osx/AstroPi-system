@@ -3,7 +3,7 @@
 [Desktop Entry]
 Type=Application
 Exec=/usr/bin/kstars.sh
-Icon=/home/astropi/.AstroPi-system/icons/kstars.svg
+Icon="${HOME}"/.local/share/astropi/include/kstars.svg
 X-DocPath=kstars/index.html
 Comment=Gear for astrophotography experience
 Terminal=false
