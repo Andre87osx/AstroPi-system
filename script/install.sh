@@ -87,19 +87,19 @@ while ${connection} ; do
 			exit_stat=1     
 			if [[  -f ${appDir}/script/${script} ]]; then
 				if [[ "${script}" = *.sh ]]; then
-					echo ${ask_pass} | sudo -S cp -f ${appDir}/script/${script} /usr/bin/ && exit_stat=0
+					echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/bin/${script} && exit_stat=0
 					echo "Install ${script} in /usr/bin/ "
 				elif [[ "${script}" = *.desktop ]]; then
-					echo ${ask_pass} | sudo -S cp -f ${appDir}/script/${script} /usr/share/applications/ && exit_stat=0
+					echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/share/applications/${script} && exit_stat=0
 					echo "Install ${script} in /usr/share/applications/ "
 				elif  [[ "${script}" = panel ]]; then
-					echo ${ask_pass} | sudo -S cp -f ${appDir}/script/${script} ${HOME}/.config/lxpanel/LXDE-pi/panels/ && exit_stat=0
+					echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} ${HOME}/.config/lxpanel/LXDE-pi/panels/${script} && exit_stat=0
 					echo "Install ${script} in ${HOME}/.config/lxpanel/LXDE-pi/panels/ "
 				elif [[ "${script}" = *.service ]]; then
-					echo ${ask_pass} | sudo -S cp -f ${appDir}/script/${script} /etc/systemd/system/ && exit_stat=0
+					echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /etc/systemd/system/${script} && exit_stat=0
 					echo "Install ${script} in /etc/systemd/system/ "
 				elif [[ "${script}" = autohotspot ]]; then
-					echo ${ask_pass} | sudo -S cp -f ${appDir}/script/${script} /usr/bin/ && exit_stat=0
+					echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/bin/${script} && exit_stat=0
 					echo "Install ${script} in /usr/bin/ "
 				fi 
 				if [ ${exit_stat} -ne 0 ]; then
