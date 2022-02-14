@@ -42,36 +42,36 @@ IndexPath="${HOME}"/.local/share/kstars/astrometry
 
 cd ${IndexPath} || exit 1
 for y in `seq -w 00 47`; do
-for x in `seq -w 00 04`; do
-	Index=("index-42${x}-${y}.fits")
-	if [ ! -f ${Index} ]; then
-        # Download missing Index file
-        ( wget http://data.astrometry.net/4200/index-42${x}-${y}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-		zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
-	else
-        echo "${Index} found in ${IndexPath}"
-	fi
-done
+	for x in `seq -w 00 04`; do
+		Index=("index-42${x}-${y}.fits")
+		if [ ! -f ${Index} ]; then
+        		# Download missing Index file
+        		( wget http://data.astrometry.net/4200/index-42${x}-${y}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+			zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
+		else
+        	echo "${Index} found in ${IndexPath}"
+		fi
+	done
 done
 
 for y in `seq -w 00 11`; do
-for x in `seq -w 05 07`; do
-	Index=("index-42${x}-${y}.fits")
-	if [ ! -f ${Index} ]; then
-        # Download missing Index file
-        ( wget http://data.astrometry.net/4200/index-42${x}-${y}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-		zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
-	else
-        echo "${Index} found in ${IndexPath}"
-	fi
-done
+	for x in `seq -w 05 07`; do
+		Index=("index-42${x}-${y}.fits")
+		if [ ! -f ${Index} ]; then
+        		# Download missing Index file
+        		( wget http://data.astrometry.net/4200/index-42${x}-${y}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+			zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
+		else
+        		echo "${Index} found in ${IndexPath}"
+		fi
+	done
 done
 
 for x in `seq -w 4208 4219`; do
 	Index=("index-${x}.fits")
 	if [ ! -f ${Index} ]; then
-        # Download missing Index file
-        ( wget http://data.astrometry.net/4200/index-${x}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+        	# Download missing Index file
+        	( wget http://data.astrometry.net/4200/index-${x}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 		zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
 	else
 		echo "${Index} found in ${IndexPath}"
@@ -83,8 +83,8 @@ done
 for x in `seq -w 4107 4119`; do
 	Index=("index-${x}.fits")
 	if [ ! -f ${Index} ]; then
-        # Download missing Index file
-        ( wget http://data.astrometry.net/4100/index-${x}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+        	# Download missing Index file
+        	( wget http://data.astrometry.net/4100/index-${x}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 		zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
 	else
 		echo "${Index} found in ${IndexPath}"
