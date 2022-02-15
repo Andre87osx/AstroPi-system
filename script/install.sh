@@ -17,8 +17,8 @@ minorRelease=5                                      # Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}           # Actual Stable Release
 
 # Get width and height of screen
-SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
-SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
+SCREEN_WIDTH=$( xwininfo -root | awk '$1=="Width:" {print $2}' )
+SCREEN_HEIGHT=$( xwininfo -root | awk '$1=="Height:" {print $2}' )
 
 # New width and height
 W=$(( SCREEN_WIDTH / 5 ))
@@ -62,6 +62,50 @@ else
 		mkdir -p ${appDir}
 	fi
 fi
+
+# Update RaspberryPi OS, library, app and AstroPi System
+function sysUpgrade()
+{
+	# Check APT Source stops unwanted updates
+	sources=/etc/apt/sources.list.d/astroberry.list
+	if [ -f "${sources}" ]; then
+		echo "${ask_pass}" | sudo -S chmod 777 "${sources}"
+		echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
+		\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		echo "${ask_pass}" | sudo -S chmod 644 "${sources}"
+	fi
+	(
+		echo "# Preparing update"
+		# Implement USB memory dump
+		echo "${ask_pass}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		
+		# Hold some update
+		echo "${ask_pass}" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
+		indi-full libindi-dev libindi1 indi-bin
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		
+		echo "# Run Linux AstroPi full upgrade..."
+		# Run APT FULL upgrade
+		echo "${ask_pass}" | sudo -S apt update && echo "${ask_pass}" | sudo -S apt -y full-upgrade
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>Updating system AstroPi</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
+		# =================================================================
+		echo "# All have done"
+		zenity --info --width=${W} --text="All updates have been successfully installed" --title="${W_Title}"
+
+	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+	exit_stat=$?
+	if [ ${exit_stat} -ne 0 ]; then
+			zenity --error --width=${W} --text="Something went wrong in <b>System Update</b>
+			Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+			exit 1
+	fi
+}
 
 echo "Check for internet connection"
 connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
@@ -121,16 +165,19 @@ while ${connection} ; do
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "Install parking.py in	/usr/bin/"
 	done
-    
+	    
 	# Set default wallpaper
 	pcmanfm --set-wallpaper="${appDir}/include/AstroPi_wallpaper.png"
+	
+	# Update RaspberryPi OS, library, app and AstroPi System
+	sysUpgrade
     
 	# Restart LX for able new settings
-	lxpanelctl restart 
+	lxpanelctl restart
     
 	# Installation is finished
 	echo ""
-	echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out"
+	echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out and upgrade KStars AstroPi"
 	zenity --info --width=${W} --text="<b><big>The installation of AstroPi v${AstroPi_v} is completed.</big>
 	\nLaunch AstroPi to try it out</b>" --title="${W_Title}"
     
