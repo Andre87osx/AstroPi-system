@@ -174,6 +174,11 @@ while ${connection} ; do
     
 	# Restart LX for able new settings
 	lxpanelctl restart
+	
+	# Delete old AstroPi installations and GIT
+	while [ -d ${HOME}/.AstroPi-system ]; do
+		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/.AstroPi-system || exit 1
+	done
     
 	# Installation is finished
 	echo ""
@@ -181,6 +186,4 @@ while ${connection} ; do
 	zenity --info --width=${W} --text="<b><big>The installation of AstroPi v${AstroPi_v} is completed.</big>
 	\nLaunch AstroPi to try it out</b>" --title="${W_Title}"
     
-	# STOP LOOP
-	break
 done
