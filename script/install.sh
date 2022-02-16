@@ -121,7 +121,7 @@ while ${connection} ; do
     
 	# Install all script in default path
 	cd ${appDir}/script || exit 1
-	for f in ./*.sh; do
+	for f in *.sh; do
 		exit_stat=1
    		echo ${ask_pass} | sudo -S cp "${appDir}"/script/"${f}" /usr/bin/"${f}" && exit_stat=0
 		echo ${ask_pass} | sudo -S chmod +x /usr/bin/"${f}" && exit_stat=0
@@ -132,7 +132,7 @@ while ${connection} ; do
 			exit 1
 		fi
 	done
-	for f in ./*.desktop; do
+	for f in *.desktop; do
 		exit_stat=1
    		echo ${ask_pass} | sudo -S cp "${appDir}"/script/"${f}" /usr/share/applications/"${f}" && exit_stat=0
 		echo ${ask_pass} | sudo -S chmod +x /usr/share/applications/"${f}" && exit_stat=0
@@ -164,6 +164,9 @@ while ${connection} ; do
 		(($? != 0)) && zenity --error --width=$W --text="Something went wrong in <b>Updating parking.py</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="AstroPi System $AstroPi_v" && exit 1
 		echo "Install parking.py in	/usr/bin/"
+		
+		# Stop loop
+		break
 	done
 	    
 	# Set default wallpaper
@@ -185,5 +188,7 @@ while ${connection} ; do
 	echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out and upgrade KStars AstroPi"
 	zenity --info --width=${W} --text="<b><big>The installation of AstroPi v${AstroPi_v} is completed.</big>
 	\nLaunch AstroPi to try it out</b>" --title="${W_Title}"
-    
+	
+	# Stop loop
+	break
 done
