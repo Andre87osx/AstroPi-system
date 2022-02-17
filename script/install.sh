@@ -81,7 +81,7 @@ function system_pre_update()
 	sources=/etc/apt/sources.list.d/astroberry.list
 	if [ -f "${sources}" ]; then
 		echo ${ask_pass} | sudo -S chmod 777 "${sources}"
-		echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}" > dev/null
+		echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
 		\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		echo ${ask_pass} | sudo -S chmod 644 "${sources}"
