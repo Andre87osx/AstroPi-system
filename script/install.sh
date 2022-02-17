@@ -115,16 +115,10 @@ function system_update()
 		echo "---"
 		echo "Running $CMD"
 		echo ""
-		( $CMD ) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
-
-		if [ $? -eq 0 ]; then
-			echo "$CMD was successfully run, exit status code: $?"
-			echo ""
-		elif [ $? -ne 0 ]; then
-			echo"ERROR: $CMD was not successful!!! Exit status code $?"
-			zenity --error --width=${W} --text="Something went wrong in <b>System Update $CMD</b>
-			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-		fi
+		until $CMD; do
+		i=0
+		(( i++ )) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		done
 	done	
 	echo "Exit status code:  $?"
 	if [ $? -eq 0 ]; then
