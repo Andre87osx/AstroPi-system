@@ -30,13 +30,13 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 https://github.com/Andre87osx/AstroPi-system/issues"
 
 apt_commands=(
-'apt update -y'
-'apt upgrade -y'
-'apt dist-upgrade -y'
-'apt full-upgrade -y'
-'apt autopurge -y'
-'apt autoremove -y'
-'apt autoclean -y'
+'echo "${ask_pass}" | sudo -S apt update -y'
+'echo "${ask_pass}" | sudo -S apt upgrade -y'
+'echo "${ask_pass}" | sudo -S apt dist-upgrade -y'
+'echo "${ask_pass}" | sudo -S apt full-upgrade -y'
+'echo "${ask_pass}" | sudo -S apt autopurge -y'
+'echo "${ask_pass}" | sudo -S apt autoremove -y'
+'echo "${ask_pass}" | sudo -S apt autoclean -y'
 )
 
 #=========================================================================
