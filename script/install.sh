@@ -30,13 +30,12 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 https://github.com/Andre87osx/AstroPi-system/issues"
 
 apt_commands=(
-'echo "${ask_pass}" | sudo -S apt update -y'
-'echo "${ask_pass}" | sudo -S apt upgrade -y'
-'echo "${ask_pass}" | sudo -S apt dist-upgrade -y'
-'echo "${ask_pass}" | sudo -S apt full-upgrade -y'
-'echo "${ask_pass}" | sudo -S apt autopurge -y'
-'echo "${ask_pass}" | sudo -S apt autoremove -y'
-'echo "${ask_pass}" | sudo -S apt autoclean -y'
+'apt-get update'
+'apt-get upgrade'
+'apt-get full-upgrade'
+'apt autopurge'
+'apt autoremove'
+'apt autoclean'
 )
 
 #=========================================================================
@@ -74,27 +73,64 @@ else
 	fi
 fi
 
+# Install all script in default path
+function install_script()
+{
+	exit_stat=1
+	cd ${appDir}/script || exit 1
+	if [[ -f ./AstroPi.sh ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/script/AstroPi.sh /usr/bin/AstroPi.sh
+		echo "Install AstroPi.sh in /usr/bin/"
+	fi
+	if [[ -f ./kstars.sh ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/script/kstars.sh /usr/bin/kstars.sh
+		echo "Install kstars.sh in /usr/bin/"
+	fi
+	if [[ -f ./AstroPi.desktop ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+		echo "Install AstroPi.desktop in /usr/share/applications/"
+	fi
+	if [[ -f ./kstars.desktop ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/script/kstars.desktop /usr/share/applications/kstars.desktop
+		echo "Install kstars.desktop in /usr/share/applications/"
+	fi
+	#if  [[ -f ./panel ]]; then
+	#	echo ${ask_pass} | sudo -S cp ${appDir}/script/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
+	#	echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+	#fi
+	if [[ -f ./autohotspot.service ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot.service /etc/systemd/system/autohotspot.service
+		echo "Install autohotspot.service in /etc/systemd/system/"
+	fi
+	if [[ -f ./autohotspot ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot /usr/bin/autohotspot
+		echo "Install autohotspot in /usr/bin/"
+	fi 
+}
+
 # Prepair fot update system
 function system_pre_update()
 {
-	# Check APT Source and stops unwanted updates
-	sources=/etc/apt/sources.list.d/astroberry.list
-	if [ -f "${sources}" ]; then
-		echo ${ask_pass} | sudo -S chmod 777 "${sources}"
-		echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
-		\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo ${ask_pass} | sudo -S chmod 644 "${sources}"
-	fi
-	(
-		echo "# Preparing update"
+	(	
+		# Check APT Source and stops unwanted updates
+		sources=/etc/apt/sources.list.d/astroberry.list
+		if [ -f "${sources}" ]; then
+			echo ${ask_pass} | sudo -S chmod 777 "${sources}"
+			echo -e "# Stop unwonted update deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
+			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
+			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+			echo ${ask_pass} | sudo -S chmod 644 "${sources}"
+		fi
+		
 		# Implement USB memory dump
-		echo "${ask_pass}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+		echo "# Preparing update"
+		echo ${ask_pass} | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		
 		# Hold some update
-		echo "${ask_pass}" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
+		echo "# Hold some update"
+		echo ${ask_pass} | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
 		indi-full libindi-dev libindi1 indi-bin
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
@@ -112,57 +148,26 @@ function system_pre_update()
 function system_update()
 {
 	for CMD in "${apt_commands[@]}"; do
-		echo "---"
+		echo ""
 		echo "Running $CMD"
 		echo ""
-		until $CMD; do
-		i=0
-		(( i++ )) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		until echo "${ask_pass}" | sudo -S ${CMD} -y &> /dev/null; do
+			(
+				echo "# Running Update ${CMD}"
+				sleep 1s
+			) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+			exit_stat=$?
 		done
-	done	
-	echo "Exit status code:  $?"
-	if [ $? -eq 0 ]; then
-		echo "System successfully updated on $(date)" >> ${appDir}/script/update-log.txt
-	elif [ $? -ne 0 ]; then
-		echo "Error running $CMD on $(date), exit status code: $?" >> ${appDir}/script/update-log.txt
-	fi
-}
-
-# Install all script in default path
-function install()
-{
-	for script in "$@"; do
-		exit_stat=1     
-		if [[  -f ${appDir}/script/"${script}" ]]; then
-			if [[ "${script}" = AstroPi.sh ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/bin/${script} && exit_stat=0
-				echo "Install ${script} in /usr/bin/ "
-			elif [[ "${script}" = kstars.sh ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/bin/${script} && exit_stat=0
-				echo "Install ${script} in /usr/bin/ "
-			elif [[ "${script}" = AstroPi.desktop ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/share/applications/${script} && exit_stat=0
-				echo "Install ${script} in /usr/share/applications/ "
-			elif [[ "${script}" = kstars.desktop ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/share/applications/${script} && exit_stat=0
-				echo "Install ${script} in /usr/share/applications/ "
-			elif  [[ "${script}" = panel ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} ${HOME}/.config/lxpanel/LXDE-pi/panels/${script} && exit_stat=0
-				echo "Install ${script} in ${HOME}/.config/lxpanel/LXDE-pi/panels/ "
-			elif [[ "${script}" = *.service ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /etc/systemd/system/${script} && exit_stat=0
-				echo "Install ${script} in /etc/systemd/system/ "
-			elif [[ "${script}" = autohotspot ]]; then
-				echo ${ask_pass} | sudo -S cp ${appDir}/script/${script} /usr/bin/${script} && exit_stat=0
-				echo "Install ${script} in /usr/bin/ "
-			fi 
-			if [ ${exit_stat} -ne 0 ]; then
-				zenity --error --width=${W} --text="<big>Something went wrong <b>installing ${script}...</b></big>
-				\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-				exit 1
-			fi
+		if [ ${exit_stat} -eq 0 ]; then
+			echo "System successfully updated on $(date)" >> ${appDir}/script/update-log.txt
+		elif [ ${exit_stat} -ne 0 ]; then
+			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> ${appDir}/script/update-log.txt
+			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
+			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+			exit 1
 		fi
-	done
+	done	
+	
 }
 
 echo "Check for internet connection"
@@ -190,7 +195,7 @@ while ${connection} ; do
 	done
     
 	# Install all script in default path
-	install AstroPi.sh kstars.sh AstroPi.desktop kstars.desktop panel autohotspot.service autohotspot
+	install_script
 	
 	# Perform PRE update
 	system_pre_update
