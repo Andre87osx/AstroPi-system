@@ -94,10 +94,10 @@ function install_script()
 		echo ${ask_pass} | sudo -S cp ${appDir}/script/kstars.desktop /usr/share/applications/kstars.desktop
 		echo "Install kstars.desktop in /usr/share/applications/"
 	fi
-	#if  [[ -f ./panel ]]; then
-	#	echo ${ask_pass} | sudo -S cp ${appDir}/script/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
-	#	echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
-	#fi
+	if  [[ -f ./panel ]]; then
+		cp ${appDir}/script/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
+		echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+	fi
 	if [[ -f ./autohotspot.service ]]; then
 		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot.service /etc/systemd/system/autohotspot.service
 		echo "Install autohotspot.service in /etc/systemd/system/"
@@ -151,13 +151,12 @@ function system_update()
 		echo ""
 		echo "Running $CMD"
 		echo ""
-		until echo "${ask_pass}" | sudo -S ${CMD} -y &> /dev/null; do
-			(
-				echo "# Running Update ${CMD}"
-				sleep 1s
-			) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
-			exit_stat=$?
-		done
+		(
+			echo "# Running Update ${CMD}"
+			echo "${ask_pass}" | sudo -S ${CMD} -y
+			sleep 1s
+		) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		exit_stat=$?
 		if [ ${exit_stat} -eq 0 ]; then
 			echo "System successfully updated on $(date)" >> ${appDir}/script/update-log.txt
 		elif [ ${exit_stat} -ne 0 ]; then
