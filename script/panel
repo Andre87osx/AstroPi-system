@@ -80,25 +80,23 @@ Plugin {
 Plugin {
   type=space
   Config {
+    Size=8
   }
 }
 Plugin {
   type=launchbar
   Config {
     Button {
-      id=org.kde.kstars.desktop
+      id=AstroPi.desktop
+    }
+    Button {
+      id=kstars.desktop
     }
     Button {
       id=ASTAP.desktop
     }
     Button {
       id=oacapture.desktop
-    }
-    Button {
-      id=AstroPi.desktop
-    }
-    Button {
-      id=TAP.desktop
     }
   }
 }
