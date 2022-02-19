@@ -7,7 +7,7 @@ Global {
   margin=0
   widthtype=percent
   width=100
-  height=54
+  height=60
   transparent=1
   tintcolor=#f8f8f8
   alpha=47
