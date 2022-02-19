@@ -212,6 +212,9 @@ while ${connection} ; do
 	if [ -d ${HOME}/.AstroPi-system ]; then	
 		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/.AstroPi-system || exit 1	
 	fi
+	if [ -f /usr/bin/.Update.sh ]; then	
+		echo ${ask_pass} | sudo -S rm -Rf /usr/bin/.Update.sh || exit 1	
+	fi
     
 	# Installation is finished
 	echo ""
