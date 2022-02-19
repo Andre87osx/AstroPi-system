@@ -4,9 +4,13 @@
 Type=Application
 Exec=/usr/bin/kstars.sh
 Icon=/home/astropi/.local/share/astropi/include/kstars.svg
+StartupWMClass=kstars
 X-DocPath=kstars/index.html
 Comment=Gear for astrophotography experience
 Terminal=false
 Name=KStars - AstroPi
 GenericName=Gear for astrophotography experience
+X-DBUS-StartupType=Multi
+MimeType=image/fits;
 Categories=Qt;KDE;Education;Science;Astronomy;
+X-DBUS-ServiceName=org.kde.kstars
