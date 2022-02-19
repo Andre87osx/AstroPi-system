@@ -65,12 +65,12 @@ if kstars > /dev/null 2>&1; then
 	exit 0
 else
 	echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
-	(kstars &)							# Re-open KStars - AstroPi for use DBUS to control devices
-	sleep 10s							# Wait until kstars has started completely
-	cd ${HOME}/.local/share/astropi/	# Go to app directory
-	python parking.py					# Launch parking script
-	pkill kstars						# Close Kstars - AstroPi
-	time=$( date '+%F_%H:%M:%S' )		# Set current date and time
+	(kstars &)					# Re-open KStars - AstroPi for use DBUS to control devices
+	sleep 10s					# Wait until kstars has started completely
+	cd ${HOME}/.local/share/astropi/script		# Go to app directory
+	python parking.py				# Launch parking script
+	pkill kstars					# Close Kstars - AstroPi
+	time=$( date '+%F_%H:%M:%S' )			# Set current date and time
 	# The script pauses until the user closes the crash warning message
 	zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
 	The telescope will be parked and the INDI services stopped on ${time}.
