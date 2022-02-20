@@ -23,7 +23,7 @@
 #include <ekos_scheduler_debug.h>
 
 #define BAD_SCORE -1000
-#define MIN_ALTITUDE 15.00
+#define MIN_ALTITUDE 15.0
 
 
 GeoLocation *SchedulerJob::storedGeo = nullptr;

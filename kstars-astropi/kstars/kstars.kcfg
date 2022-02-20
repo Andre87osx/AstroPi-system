@@ -181,7 +181,7 @@
       </entry>
       <entry name="independentWindowINDI" type="Bool">
          <label>Make INDI Control Panel window independent of KStars main window</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="showTargetCrosshair" type="Bool">
          <label>Draw crosshairs at telescope position in the sky map?</label>
@@ -334,25 +334,25 @@
       <entry name="Longitude" type="Double">
          <label>Geographic Longitude, in degrees.</label>
          <whatsthis>The longitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>07.686</default>
+         <default>0.0</default>
       </entry>
       <entry name="Latitude" type="Double">
          <label>Geographic Latitude, in degrees.</label>
          <whatsthis>The latitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>45.070</default>
+         <default>51.468</default>
       </entry>
       <entry name="Elevation" type="Double">
          <label>Elevation above sea level of geographic location, in meters.</label>
-         <default>434.15</default>
+         <default>-10.0</default>
       </entry>
       <entry name="TimeZone" type="Double">
          <label>Time Zone offset of geographic location, in hours.</label>
-         <default>1.0</default>
+         <default>0.0</default>
       </entry>
       <entry name="DST" type="String">
          <label>Two-letter code for daylight savings time rule used by geographic location.</label>
          <whatsthis>Two-letter code that determines the dates on which daylight savings time begins and ends (you can view the rules by pressing the "Explain DST Rules" button in the Geographic Location window).</whatsthis>
-         <default>EU</default>
+         <default>--</default>
       </entry>
    </group>
 
@@ -360,7 +360,7 @@
       <entry name="UseAnimatedSlewing" type="Bool">
          <label>Use animated slewing effects when changing focus position?</label>
          <whatsthis>If true, focus changes will cause the sky to visibly spin to the new position. Otherwise, the display will "snap" instantly to the new position.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="LeftClickSelectsObject" type="Bool">
          <label>Select objects on left click?</label>
@@ -445,7 +445,7 @@
       <entry name="HidePlanets" type="Bool">
          <label>Hide solar system objects while moving?</label>
          <whatsthis>Toggle whether solar system objects are hidden while the display is in motion.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="HideStars" type="Bool">
          <label>Hide faint stars while moving?</label>
@@ -460,7 +460,7 @@
       <entry name="ShowAsteroids" type="Bool">
          <label>Draw asteroids in the sky map?</label>
          <whatsthis>Toggle whether asteroids are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowAsteroidNames" type="Bool">
          <label>Label asteroid names in the sky map?</label>
@@ -474,12 +474,12 @@
       <entry name="ShowComets" type="Bool">
          <label>Draw comets in the sky map?</label>
          <whatsthis>Toggle whether comets are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowCometComas" type="Bool">
          <label>Draw comet comas in the sky map?</label>
          <whatsthis>Toggle whether comet comas are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowCometNames" type="Bool">
          <label>Label comet names in the sky map?</label>
@@ -524,7 +524,7 @@
       <entry name="ShowCLines" type="Bool">
          <label>Draw constellation lines in the sky map?</label>
          <whatsthis>Toggle whether constellation lines are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowConstellationArt" type="Bool">
          <label>Draw constellation art in the sky map?</label>
@@ -549,17 +549,17 @@
       <entry name="ShowEquator" type="Bool">
          <label>Draw equator line in the sky map?</label>
          <whatsthis>Toggle whether the equator line is drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="AutoSelectGrid" type="Bool">
          <label>Draw grids according to active coordinate system?</label>
          <whatsthis>Coordinate grids will automatically change according to active coordinate system.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowEquatorialGrid" type="Bool">
          <label>Draw equatorial coordinate grid in the sky map?</label>
          <whatsthis>Toggle whether the equatorial coordinate grid is drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowHorizontalGrid" type="Bool">
          <label>Draw horizontal coordinate grid in the sky map?</label>
@@ -569,7 +569,7 @@
       <entry name="ShowLocalMeridian" type="Bool">
          <label>Draw local meridian line in the sky map?</label>
          <whatsthis>Toggle whether the local meridian line is drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowGround" type="Bool">
          <label>Draw opaque ground in the sky map?</label>
@@ -813,7 +813,7 @@
       <entry name="StarDensity" type="Int">
          <label>Density of stars in the field of view</label>
          <whatsthis>Sets the density of stars in the field of view</whatsthis>
-         <default>6</default>
+         <default>5</default>
       </entry>
 
       <!--                <entry name="MagLimitDrawStarZoomOut" type="Double">
@@ -1335,12 +1335,12 @@
       <entry name="RegularLogging" type="Bool">
          <label>Enable Regular Logging</label>
          <whatsthis>Checking this option causes KStars to generate regular debug information.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="DisableLogging" type="Bool">
          <label>Disable Verbose Logging</label>
          <whatsthis>Checking this option causes KStars to stop generating ANY debug information.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="LogToDefault" type="Bool">
          <label>Log debug message to default output</label>
@@ -1388,7 +1388,7 @@
    <group name="FITSViewer">
    <entry name="useFITSViewer" type="Bool">
       <label>Display every image captured in a FITS Viewer window.</label>
-      <default>false</default>
+      <default>true</default>
    </entry>
    <entry name="singlePreviewFITS" type="Bool">
       <label>Preview FITS in a single tab?</label>
@@ -1467,7 +1467,7 @@
    <group name="Ekos">
     <entry name="EkosWindowWidth" type="UInt">
              <label>Ekos window width</label>
-             <default>800</default>
+             <default>600</default>
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
@@ -1475,11 +1475,11 @@
     </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>
-       <default>false</default>
+       <default>true</default>
     </entry>
     <entry name="EkosLeftIcons" type="Bool">
        <label>Ekos modules icons are placed to the left of pages</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="RememberCredentials" type="Bool">
        <label>Remember Ekos Live credentials.</label>
@@ -1487,7 +1487,7 @@
     </entry>
     <entry name="AutoStartEkosLive" type="Bool">
        <label>Start Ekos Live on KStars startup.</label>
-       <default>false</default>
+       <default>true</default>
     </entry>
     <entry name="EkosLiveOnline" type="Bool">
        <label>Whether EkosLive connection mode is online.</label>
@@ -1498,7 +1498,7 @@
     </entry>
       <entry name="independentWindowEkos" type="Bool">
          <label>Make Ekos window independent of KStars main window</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="profile" type="String">
          <label>Ekos drivers profile</label>
@@ -1569,7 +1569,7 @@
       </entry>
       <entry name="ExecuteMeridianFlip" type="Bool">
          <label>Flips the mount when reaching the meridian, if supported.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="MeridianFlipUnitDegrees" type="Bool">
          <label>Sets the display unit for meridian flip to degrees.</label>
@@ -1698,7 +1698,7 @@
       </entry>
       <entry name="AlwaysResetSequenceWhenStarting" type="Bool">
          <label>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When starting to process a sequence list, reset all capture counts to zero. Scheduler overrides this option when Remember Job Progress is enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="FlatSyncFocus" type="Bool">
          <label>Capture flat frames at the same focus position of light frames.</label>
@@ -1730,7 +1730,7 @@
       </entry>
       <entry name="StretchPreviewSampling" type="UInt">
          <label>Set the coarseness of the preview shown when sliding the fitsviewer's stretch parameter sliders. 1 is full resolution, but can be slow, 4 would be coarse resolution and fast.</label>
-         <default>3</default>
+         <default>4</default>
       </entry>
       <entry name="AdaptiveSampling" type="Bool">
          <label>Automatically down sample images based on available resources.</label>
@@ -1738,11 +1738,11 @@
       </entry>
       <entry name="useSummaryPreview" type="Bool">
          <label>Display every image captured sequence image in the Ekos summary screen preview window.</label>
-         <default>true</default>
+         <default>!KSUtils::isHardwareLimited()</default>
       </entry>
       <entry name="useDSLRImageViewer" type="Bool">
          <label>Display every captured DSLR image in the Image Viewer window.</label>
-         <default>true</default>
+         <default>!KSUtils::isHardwareLimited()</default>
       </entry>
       <entry name="ForceDSLRPresets" type="Bool">
          <label>Force exposure times to align with DSLR exposure presets. This insures accurate exposure times for sub-second exposures.</label>
@@ -1769,11 +1769,11 @@
       </entry>
       <entry name="fileSettingsUseDuration" type="Bool">
          <label>Add the capture duration to the capture file name.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="fileSettingsUseTimestamp" type="Bool">
          <label>Add the capture timestamp to the capture file name.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
    </group>
    <group name="Focus">
@@ -1792,7 +1792,7 @@
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>100</default>
+         <default>500</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1828,7 +1828,7 @@
       <entry name="FocusGain" type="Double">
          <label>Default Focuser gain value</label>
          <whatsthis>Specifies gain value of CCD when performing focusing if supported by camera.</whatsthis>
-         <default>100</default>
+         <default>0</default>
       </entry>
       <entry name="FocusBoxSize" type="UInt">
          <label>Default Focuser star selection box size</label>
@@ -1838,12 +1838,12 @@
       <entry name="FocusXBin" type="UInt">
          <label>Default CCD X binning in focus mode</label>
          <whatsthis>Set horizontal binning of CCD camera while in focus mode.</whatsthis>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="FocusYBin" type="UInt">
          <label>Default CCD Y binning in focus mode</label>
          <whatsthis>Set vertical binning of CCD camera while in focus mode.</whatsthis>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="FocusSubFrame" type="Bool">
          <label>Subframe the focus star during the autofocus procedure.</label>
@@ -1865,7 +1865,7 @@
       </entry>
       <entry name="FocusAutoStarEnabled" type="Bool">
          <label>Automatically select a star to focus.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="SuspendGuiding" type="Bool">
          <label>Suspend guiding while autofocus in progress.</label>
@@ -1885,11 +1885,11 @@
       </entry>
       <entry name="FocusDetection" type="UInt">
          <label>Star detection algorithm</label>
-         <default>3</default>
+         <default>0</default>
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>1</default>
+         <default>0</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>
@@ -1990,7 +1990,7 @@
       <entry name="SolverBinningIndex" type="UInt">
          <label>Default CCD binning index while in alignment mode</label>
          <whatsthis>Set binning index of CCD camera while in alignment mode. Default values 0-3 corresponding to 1x1 to 4x4 binning. 4 is max binning.</whatsthis>
-         <default>0</default>
+         <default>4</default>
       </entry>
       <entry name="AstrometryUseRotator" type="Bool">
          <whatsthis>Use rotator when performing load and slew.</whatsthis>
@@ -2182,7 +2182,7 @@
       </entry>
       <entry name="PAHAutoPark" type="Bool">
          <label>Automatically park the mount after Polar Alignment Assistant Tool is complete.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
    </group>
    <group name="Guide">
@@ -2194,7 +2194,7 @@
       </entry>
       <entry name="GuideExposure" type="Double">
          <label>Guider exposure duration in seconds.</label>
-         <default>2.0</default>
+         <default>1.0</default>
       </entry>
       <entry name="GuiderType" type="UInt">
          <label>Which guider process to utilize for guiding (0 Internal Guider, 1 PHD2, 2 lin_guider)</label>
@@ -2222,7 +2222,7 @@
       </entry>
       <entry name="GuideScopeType" type="UInt">
          <label>Index of telescope type to be used when guiding. 0 for Primary, 1 for Guide</label>
-         <default>1</default>
+         <default>0</default>
       </entry>
       <entry name="CalibrationPulseDuration" type="UInt">
          <label>Pulse duration in milliseconds used for guiding pulses during calibration stage.</label>
@@ -2242,11 +2242,11 @@
       </entry>
       <entry name="GuideAutoStarEnabled" type="Bool">
          <label>Automatically select calibration star and perform calibration.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="GuideAutoSquareSizeEnabled" type="Bool">
          <label>Automatically select the square size based on the selected star width.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="AutoModeIterations" type="UInt">
          <label>Number of automode iterations for calibration process.</label>
@@ -2432,7 +2432,7 @@
          <default>true</default>
       </entry>
       <entry name="GuidingRate" type="Double">
-         <default>0.4</default>
+         <default>0.5</default>
       </entry>
       <entry name="GuiderAccuracyThreshold" type="UInt">
          <label>Accuracy threshold for the Guide Graphs.</label>
@@ -2486,7 +2486,7 @@
       </entry>
       <entry name="ResetMountModelOnAlignFail" type="Bool">
          <label>Reset mount model in case of alignment failure.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ResetMountModelBeforeJob" type="Bool">
          <label>Reset mount model before starting each job.</label>
@@ -2525,7 +2525,7 @@
       </entry>
       <entry name="RememberJobProgress" type="Bool">
          <label>When processing a scheduled job, resume the sequence starting from the last image present in storage.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="LeadTime" type="Double">
          <label>Minimum time between jobs in minutes.</label>
@@ -2541,11 +2541,11 @@
       </entry>
       <entry name="DawnOffset" type="Double">
          <label>Offset astronomical dawn by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>0.5</default>
+         <default>0</default>
       </entry>
       <entry name="DuskOffset" type="Double">
          <label>Offset astronomical dusk by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>-1.0</default>
+         <default>0</default>
       </entry>
       <entry name="TelescopeFocalLength" type="Double">
          <label>Telescope focal length in millimeters.</label>
@@ -2573,15 +2573,15 @@
       </entry>
       <entry name="ErrorHandlingStrategy" type="UInt">
          <label>Strategy how to react, when a job aborts or steps into an error.</label>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
          <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
-         <default>600</default>
+         <default>0</default>
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
    </group>
    <group name="Analyze">
@@ -2603,7 +2603,7 @@
     </entry>
     <entry name="AnalyzeTemperature" type="Bool">
       <whatsthis>Display the ambient temperature on the Analyze Statistics Plot.</whatsthis>
-      <default>true</default>
+      <default>false</default>
     </entry>
     <entry name="AnalyzeNumStars" type="Bool">
       <whatsthis>Display NumStars on the Analyze Statistics Plot.</whatsthis>

@@ -2,14 +2,14 @@ PROJECT(kstars CXX C)
 set (KStars_VERSION_MAJOR 3)
 set (KStars_VERSION_MINOR 5)
 set (KStars_VERSION_REVISION 4)
-set (KSTARS_BUILD_RELEASE "AstroPi v1.5")
+set (KSTARS_BUILD_RELEASE "Stable")
 set (CMAKE_CXX_STANDARD 14)
 
 # Build KStars Lite with -DBUILD_KSTARS_LITE=ON
 option(BUILD_KSTARS_LITE "Build KStars Lite" OFF)
 
 # Build KStars documentation
-option(BUILD_DOC "Build Documentation" OFF)
+option(BUILD_DOC "Build Documentation" ON)
 
 # Fetch translations with -DFETCH_TRANSLATIONS=ON
 option(FETCH_TRANSLATIONS "Fetch Translations" OFF)
