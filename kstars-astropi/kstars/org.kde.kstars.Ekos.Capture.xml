@@ -1,0 +1,128 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kstars.Ekos.Capture">
+    <property name="targetName" type="s" access="readwrite"/>
+    <property name="observerName" type="s" access="readwrite"/>
+    <property name="camera" type="s" access="readwrite"/>
+    <property name="filterWheel" type="s" access="readwrite"/>
+    <property name="filter" type="s" access="readwrite"/>
+    <property name="coolerControl" type="b" access="readwrite"/>
+    <property name="logText" type="as" access="read"/>
+    <property name="status" type="i" access="read">
+        <annotation name="org.qtproject.QtDBus.QtTypeName" value="Ekos::CaptureState"/>
+    </property>
+    <method name="start">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="abort">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="suspend">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="stop">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="pause">
+        <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="toggleSequence">
+        <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="restartCamera">
+        <arg name="name" type="s" direction="in"/>
+        <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="toggleVideo">
+      <arg name="enabled" type="b" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="loadSequenceQueue">
+      <arg type="b" direction="out"/>
+      <arg name="fileURL" type="s" direction="in"/>
+    </method>
+    <method name="saveSequenceQueue">
+      <arg type="b" direction="out"/>
+      <arg name="path" type="s" direction="in"/>
+    </method>
+    <method name="clearSequenceQueue">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="getSequenceQueueStatus">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="setMaximumGuidingDeviation">
+      <arg name="enable" type="b" direction="in"/>
+      <arg name="value" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setInSequenceFocus">
+      <arg name="enable" type="b" direction="in"/>
+      <arg name="HFR" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="getJobCount">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="getPendingJobCount">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="getJobState">
+      <arg type="s" direction="out"/>
+      <arg name="id" type="i" direction="in"/>
+    </method>
+    <method name="getJobImageProgress">
+      <arg type="i" direction="out"/>
+      <arg name="id" type="i" direction="in"/>
+    </method>
+    <method name="getJobImageCount">
+      <arg type="i" direction="out"/>
+      <arg name="id" type="i" direction="in"/>
+    </method>
+    <method name="getJobExposureProgress">
+      <arg type="d" direction="out"/>
+      <arg name="id" type="i" direction="in"/>
+    </method>
+    <method name="getJobExposureDuration">
+      <arg type="d" direction="out"/>
+      <arg name="id" type="i" direction="in"/>
+    </method>
+    <method name="getProgressPercentage">
+      <arg type="d" direction="out"/>
+    </method>
+    <method name="getActiveJobID">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="getActiveJobRemainingTime">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="getOverallRemainingTime">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="clearAutoFocusHFR">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="ignoreSequenceHistory">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setCapturedFramesMap">
+      <arg name="signature" type="s" direction="in"/>
+      <arg name="count" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <signal name="newLog">
+        <arg name="text" type="s" direction="out"/>
+    </signal>
+    <signal name="newSequenceImage">
+        <arg name="filename" type="s" direction="out"/>
+    </signal>
+    <signal name="meridianFlipStarted"/>
+    <signal name="meridianFlipCompleted"/>
+    <signal name="newStatus">
+        <arg name="status" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::CaptureState"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::CaptureState"/>
+    </signal>
+    <signal name="ready"/>
+  </interface>
+</node>
