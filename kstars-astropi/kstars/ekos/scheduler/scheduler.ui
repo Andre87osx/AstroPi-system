@@ -1281,6 +1281,9 @@ font-weight:bold;
             <property name="text">
              <string>&amp;Repeat for</string>
             </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
             </attribute>
@@ -1318,9 +1321,6 @@ font-weight:bold;
             </property>
             <property name="text">
              <string>Se&amp;quence completion</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
@@ -1633,6 +1633,9 @@ font-weight:bold;
             <property name="maximum">
              <double>89.900000000000006</double>
             </property>
+            <property name="value">
+             <double>15.000000000000000</double>
+            </property>
            </widget>
           </item>
           <item row="2" column="0">
@@ -1778,6 +1781,9 @@ font-weight:bold;
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
             </attribute>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -1819,6 +1825,9 @@ font-weight:bold;
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
             </attribute>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
@@ -2124,6 +2133,9 @@ font-weight:bold;
             <attribute name="buttonGroup">
              <string notr="true">startupProcedureButtonGroup</string>
             </attribute>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item>
