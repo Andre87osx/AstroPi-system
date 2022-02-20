@@ -1,0 +1,48 @@
+###############
+# KStars 3.3.7
+###############
+
+1. Dependencies
+
+KStars can be built on any C++11 compliant modern Linux/BSD/Mac system. Dependencies fall under
+required and optional.
+
+1.1 Required
+    + CMake
+    + Qt (> 5.6)
+    + KF5 (> 5.50)
+    + KF5
+    + ZLib
+    + Eigen3
+
+1.2 Optional
+    + INDI
+    + CFitsio
+    + libnova
+    + libraw
+    + libgsl
+    + wcslib
+
+2. Installing Dependecies
+
+2.1 Ubuntu
+
+KStars requires 16.04+. Install the prerequisites:
+
+sudo apt-get -y install build-essential cmake git pkg-config libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme
+
+2.2 Other Systems
+
+Please refer to your system for how to install required packages.
+
+3. Building KStars
+
+$ mkdir ~/Projects/build/kstars
+$ cd ~/Projects
+$ git clone --depth 1 git://anongit.kde.org/kstars.git
+$ cd build/kstars
+$ cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ~/Projects/kstars
+$ make
+$ sudo make install
+
+This would override any KStars installation in your system path.
