@@ -170,16 +170,15 @@ function system_update()
 }
 
 echo "Check for internet connection"
+release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"${AstroPi_v}".tar.gz -O -"
 connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
 while ${connection}; do
 	echo "AstroPi is online!"
 	echo ""
 	echo "Downloading AstroPi v${AstroPi_v}..."
 	echo ""
-	(
-		wget -c https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"${AstroPi_v}".tar.gz -O - | \
-		tar --strip-components=1 -xz -C "${appDir}"
-	) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+	( wget -c ${release} | tar --strip-components=1 -xz -C "${appDir}" ) 2>&1 | \
+	sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
 	echo ""
 
