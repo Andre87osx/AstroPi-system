@@ -182,7 +182,7 @@ while ${connection} ; do
 	) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
 	echo ""
-    
+
 	# Make all script executable
 	for f in ${appDir}/script/*.sh; do
 		echo "Make executable ${f} script"
