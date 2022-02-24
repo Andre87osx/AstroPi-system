@@ -257,9 +257,6 @@
           </item>
           <item row="0" column="1" colspan="3">
            <widget class="QComboBox" name="guiderCombo"/>
-           <property name="text">
-            <string>Primary Telescope</string>
-           </property>
           </item>
           <item row="3" column="0">
            <widget class="QLabel" name="label_5">
