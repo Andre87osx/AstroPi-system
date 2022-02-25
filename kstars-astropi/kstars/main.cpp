@@ -127,10 +127,19 @@ int main(int argc, char *argv[])
         "https://edu.kde.org/kstars");
     aboutData.addAuthor(i18n("Jason Harris"), i18n("Original Author"),
                         "jharris@30doradus.org", "http://www.30doradus.org");
-    aboutData.addAuthor(i18n("Jasem Mutlaq"), i18n("Current Maintainer"),
-                        "mutlaqja@ikarustech.com", "https://www.indilib.org");
+    aboutData.addAuthor(i18n("Aimone Andrea"), i18n("KStars AstroPi Author"),
+                        "andrea.aimone@outlook.com", "https://github.com/Andre87osx/AstroPi-system");
+    aboutData.addAuthor(i18n("Ing. Ostorero Roberto"), i18n("Search and Development AstroPi"),
+                        "robywan64@yahoo.it", "");
 
     // Active developers
+    aboutData.addAuthor(i18n("Dr. Roberti Leali Roberto"), i18n("Current Maintainer"),
+                        "r.robertileali@sinim.it", "");
+
+
+    // Inactive developers
+    aboutData.addAuthor(i18n("Jasem Mutlaq"), i18n("Old Maintainer"),
+                        "mutlaqja@ikarustech.com", "https://www.indilib.org");
     aboutData.addAuthor(i18n("Akarsh Simha"), QString(), "akarsh@kde.org",
                         "http://www.ph.utexas.edu/~asimha");
     aboutData.addAuthor(i18n("Robert Lancaster"),
@@ -146,8 +155,6 @@ int main(int argc, char *argv[])
                         i18n("FITS, Focus, Guide Improvements"));
     aboutData.addAuthor("Valentin Boettcher", QString(), "hiro@protagon.space",
                         i18n("Binary Asteroid List, DSO Database & Catalogs"));
-
-    // Inactive developers
     aboutData.addAuthor(i18n("Artem Fedoskin"), i18n("KStars Lite"),
                         "afedoskin3@gmail.com");
     aboutData.addAuthor(i18n("James Bowlin"), QString(), "bowlin@mindspring.com");
