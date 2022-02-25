@@ -2191,9 +2191,6 @@
       </entry>
       <entry name="DefaultST4Driver" type="String">
          <label>Default guide module ST4 Driver.</label>
-         <default>
-           <string>Primary Telescope</string>
-         </default>
       </entry>
       <entry name="GuideExposure" type="Double">
          <label>Guider exposure duration in seconds.</label>
