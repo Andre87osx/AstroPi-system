@@ -129,11 +129,11 @@ int main(int argc, char *argv[])
                         "jharris@30doradus.org", "http://www.30doradus.org");
     aboutData.addAuthor(i18n("Aimone Andrea"), i18n("KStars AstroPi Author"),
                         "andrea.aimone@outlook.com", "https://github.com/Andre87osx/AstroPi-system");
-    aboutData.addAuthor(i18n("Ing. Ostorero Roberto"), i18n("Search and Development AstroPi"),
+    aboutData.addAuthor(i18n("Dott. Ing. Ostorero Roberto"), i18n("Projects mechanical parts & Development AstroPi"),
                         "robywan64@yahoo.it", "");
 
     // Active developers
-    aboutData.addAuthor(i18n("Dr. Roberti Leali Roberto"), i18n("Current Maintainer"),
+    aboutData.addAuthor(i18n("Dr. Roberti Leali Roberto"), i18n("Ekos Improvements & BETA tester"),
                         "r.robertileali@sinim.it", "");
 
 
