@@ -2162,6 +2162,8 @@ font-weight:bold;
              <bool>true</bool>
             </property>
            </widget>
+          </item>
+          <item>
            <widget class="QCheckBox" name="coolingCCDCheck">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
