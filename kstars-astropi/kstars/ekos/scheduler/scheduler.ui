@@ -2162,6 +2162,26 @@ font-weight:bold;
              <bool>true</bool>
             </property>
            </widget>
+           <widget class="QCheckBox" name="coolingCCDCheck">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>Start cooling CCD if enabled in CCD settings</string>
+            </property>
+            <property name="text">
+             <string>CoolingCCD</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">startupProcedureButtonGroup</string>
+            </attribute>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
           </item>
           <item>
            <spacer name="horizontalSpacer_10">
