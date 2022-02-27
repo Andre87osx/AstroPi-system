@@ -177,7 +177,7 @@
       </entry>
       <entry name="useTimeUpdate" type="Bool">
          <label>Automatically updates time and date?</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="independentWindowINDI" type="Bool">
          <label>Make INDI Control Panel window independent of KStars main window</label>
