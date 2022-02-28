@@ -2796,7 +2796,7 @@ bool Scheduler::checkINDIState()
                         //activeJob->setCurrentTemperature(temperature);
                         appendLogText(i18n("Cooling up CCD..."));
                         captureInterface->setProperty("coolerControl", true);
-                        currentCCD->setTemperature(&temperature);
+                        captureInterface->setTemperature(&temperature);
                     }
                 }
                 else
