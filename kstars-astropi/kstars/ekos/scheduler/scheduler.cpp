@@ -2786,6 +2786,18 @@ bool Scheduler::checkINDIState()
                 {
                     warmCCDCheck->setEnabled(hasCoolerControl.toBool());
                     m_CaptureReady = true;
+                    coolingCCDCheck->setEnabled(hasCoolerControl.toBool());
+                    m_CaptureReady = true;
+                    // update temperature
+                    if (currentCCD->hasCooler() && activeJob->getEnforceTemperature())
+                    {
+                        double temperature = -10;
+                        currentCCD->getTemperature(&temperature);
+                        activeJob->setCurrentTemperature(temperature);
+                        appendLogText(i18n("Cooling up CCD..."));
+                        captureInterface->setProperty("coolerControl", true);
+                        currentCCD->setTemperature(cameraTemperatureN->value());
+                    }
                 }
                 else
                     qCWarning(KSTARS_EKOS_SCHEDULER) << "Capture module is not ready yet...";
