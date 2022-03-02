@@ -26,6 +26,7 @@
 #include "dialogs/finddialog.h"
 #include "ekos/manager.h"
 #include "ekos/capture/sequencejob.h"
+#include "ekos/capture/capture.h"
 #include "ekos/capture/placeholderpath.h"
 #include "skyobjects/starobject.h"
 
