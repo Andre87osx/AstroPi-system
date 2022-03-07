@@ -35,7 +35,7 @@ jobs:
       
     - name: Build StellarSolver
       working-directory: ${{github.workspace}}/build
-      run: cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ../stellarsolver/ && make -j4 && sleep 60s && make -j4 && sudo make install
+      run: cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ../stellarsolver && make -j4 && sleep 60s && make -j4 && sudo make install
 
     - name: Configure KStars AstroPi CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
