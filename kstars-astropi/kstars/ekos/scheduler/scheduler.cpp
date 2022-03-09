@@ -234,6 +234,7 @@ Scheduler::Scheduler()
 
     // Connect coolerControl
     connect(temperatureRegulationB, &QPushButton::clicked, this, &Ekos::Capture::showTemperatureRegulation);
+    ISD::CCD *currentCCD { nullptr };
     connect(cameraTemperatureS, &QCheckBox::toggled, [this](bool toggled)
     {
         if (currentCCD)
