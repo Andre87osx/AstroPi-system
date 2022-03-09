@@ -234,7 +234,6 @@ Scheduler::Scheduler()
 
     // Connect coolerControl
     connect(temperatureRegulationB, &QPushButton::clicked, this, &Ekos::Capture::showTemperatureRegulation);
-    ISD::CCD *currentCCD { nullptr };
     connect(cameraTemperatureS, &QCheckBox::toggled, [this](bool toggled)
     {
         if (currentCCD)
@@ -2880,6 +2879,16 @@ bool Scheduler::checkStartupState()
                 startupState = STARTUP_SCRIPT;
                 executeScript(startupScriptURL.toString(QUrl::PreferLocalFile));
                 return false;
+            }
+
+            if (coolingCCDcheck->isEnabled() && coolingCCDCheck->isChecked())
+            {
+                appendLogText(i18n("Cooling up CCD..."));
+
+                // Turn it off
+                //QVariant arg(false);
+                //captureInterface->call(QDBus::AutoDetect, "setCoolerControl", arg);
+                captureInterface->setProperty("coolerControl", true);
             }
 
             startupState = STARTUP_UNPARK_DOME;
