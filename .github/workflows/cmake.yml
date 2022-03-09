@@ -30,12 +30,16 @@ jobs:
       # StellarSolver 2.0 have issue with KStars AstroPi 3.5.4 v1.5. Use GIT for build tag 1.9
       run: git clone -b 1.9 https://github.com/rlancaste/stellarsolver.git
       
-    - name: Build StellarSolver
+    - name: Configure StellarSolver
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/stellarsolver
 
     - name: Build StellarSolver
       working-directory: ${{github.workspace}}/build
-      run: make -j4 && sleep 60s && make -j4 && sudo make install
+      run: make -j4
+
+    - name: Install StellarSolver
+      working-directory: ${{github.workspace}}/build
+      run: sudo make install
       
     - name: Cleaning Build dir
       run: rm -Rf ${{github.workspace}}/build/*
