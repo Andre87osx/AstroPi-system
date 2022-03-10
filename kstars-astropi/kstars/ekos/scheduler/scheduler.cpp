@@ -233,34 +233,36 @@ Scheduler::Scheduler()
     connect(KStarsData::Instance()->clock(), &SimClock::timeChanged, this, &Scheduler::simClockTimeChanged);
 
     // Connect coolerControl
-    connect(temperatureRegulationB, &QPushButton::clicked, this, &Ekos::Capture::showTemperatureRegulation);
-    connect(cameraTemperatureS, &QCheckBox::toggled, [this](bool toggled)
+    if (isINDIConnected())
     {
-        if (currentCCD)
+        connect(temperatureRegulationB, &QPushButton::clicked, this, &Ekos::Capture::showTemperatureRegulation);
+        connect(cameraTemperatureS, &QCheckBox::toggled, [this](bool toggled)
         {
-            QVariantMap auxInfo = currentCCD->getDriverInfo()->getAuxInfo();
-            auxInfo[QString("%1_TC").arg(currentCCD->getDeviceName())] = toggled;
-            currentCCD->getDriverInfo()->setAuxInfo(auxInfo);
-        }
-    });
-    connect(setTemperatureB, &QPushButton::clicked, [&]()
-    {
-        if (currentCCD)
-            currentCCD->setTemperature(cameraTemperatureN->value());
-    });
-    connect(coolerOnB, &QPushButton::clicked, [&]()
-    {
-        if (currentCCD)
-            currentCCD->setCoolerControl(true);
-    });
-    connect(coolerOffB, &QPushButton::clicked, [&]()
-    {
-        if (currentCCD)
-            currentCCD->setCoolerControl(false);
-    });
-    connect(cameraTemperatureN, &QDoubleSpinBox::editingFinished, setTemperatureB,
-            static_cast<void (QPushButton::*)()>(&QPushButton::setFocus));
-
+            if (currentCCD)
+            {
+                QVariantMap auxInfo = currentCCD->getDriverInfo()->getAuxInfo();
+                auxInfo[QString("%1_TC").arg(currentCCD->getDeviceName())] = toggled;
+                currentCCD->getDriverInfo()->setAuxInfo(auxInfo);
+            }
+        });
+        connect(setTemperatureB, &QPushButton::clicked, [&]()
+        {
+            if (currentCCD)
+                currentCCD->setTemperature(cameraTemperatureN->value());
+        });
+        connect(coolerOnB, &QPushButton::clicked, [&]()
+        {
+            if (currentCCD)
+                currentCCD->setCoolerControl(true);
+        });
+        connect(coolerOffB, &QPushButton::clicked, [&]()
+        {
+            if (currentCCD)
+                currentCCD->setCoolerControl(false);
+        });
+        connect(cameraTemperatureN, &QDoubleSpinBox::editingFinished, setTemperatureB,
+                static_cast<void (QPushButton::*)()>(&QPushButton::setFocus));
+    }
     // Connect geographical location - when it is available
     //connect(KStarsData::Instance()..., &LocationDialog::locationChanged..., this, &Scheduler::simClockTimeChanged);
 
