@@ -27,7 +27,6 @@
 #include "ekos/manager.h"
 #include "ekos/capture/sequencejob.h"
 #include "ekos/capture/placeholderpath.h"
-#include "ekos/capture/capture.h" 
 #include "skyobjects/starobject.h"
 
 #include <KNotifications/KNotification>
@@ -232,37 +231,6 @@ Scheduler::Scheduler()
     connect(KStarsData::Instance()->clock(), &SimClock::scaleChanged, this, &Scheduler::simClockScaleChanged);
     connect(KStarsData::Instance()->clock(), &SimClock::timeChanged, this, &Scheduler::simClockTimeChanged);
 
-    // Connect coolerControl
-    if (isINDIConnected())
-    {
-        connect(temperatureRegulationB, &QPushButton::clicked, this, &Ekos::Capture::showTemperatureRegulation);
-        connect(cameraTemperatureS, &QCheckBox::toggled, [this](bool toggled)
-        {
-            if (currentCCD)
-            {
-                QVariantMap auxInfo = currentCCD->getDriverInfo()->getAuxInfo();
-                auxInfo[QString("%1_TC").arg(currentCCD->getDeviceName())] = toggled;
-                currentCCD->getDriverInfo()->setAuxInfo(auxInfo);
-            }
-        });
-        connect(setTemperatureB, &QPushButton::clicked, [&]()
-        {
-            if (currentCCD)
-                currentCCD->setTemperature(cameraTemperatureN->value());
-        });
-        connect(coolerOnB, &QPushButton::clicked, [&]()
-        {
-            if (currentCCD)
-                currentCCD->setCoolerControl(true);
-        });
-        connect(coolerOffB, &QPushButton::clicked, [&]()
-        {
-            if (currentCCD)
-                currentCCD->setCoolerControl(false);
-        });
-        connect(cameraTemperatureN, &QDoubleSpinBox::editingFinished, setTemperatureB,
-                static_cast<void (QPushButton::*)()>(&QPushButton::setFocus));
-    }
     // Connect geographical location - when it is available
     //connect(KStarsData::Instance()..., &LocationDialog::locationChanged..., this, &Scheduler::simClockTimeChanged);
 
@@ -2883,13 +2851,9 @@ bool Scheduler::checkStartupState()
                 return false;
             }
 
-            if (coolingCCDcheck->isEnabled() && coolingCCDCheck->isChecked())
+            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
             {
                 appendLogText(i18n("Cooling up CCD..."));
-
-                // Turn it off
-                //QVariant arg(false);
-                //captureInterface->call(QDBus::AutoDetect, "setCoolerControl", arg);
                 captureInterface->setProperty("coolerControl", true);
             }
 
