@@ -201,6 +201,14 @@ while ${connection}; do
 	# Get full AstoPi System update
 	system_update
 	
+	# Add permanent link in bashrc
+	if [ -n "$(grep 'alias AstroPi=' '${HOME}/.bashrc')" ]; then
+		# The permanent link allredy exist 
+		true
+	else
+		echo "alias AstroPi='/usr/bin/AstroPi.sh'" >>${HOME}/.bashrc
+	fi
+	
 	# Set default wallpaper
 	pcmanfm --set-wallpaper="${appDir}/include/AstroPi_wallpaper.png"
     
