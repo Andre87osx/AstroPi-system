@@ -21,7 +21,7 @@ fi
 
 # Ask super user password.
 # FIXME not now, ask password if needed
-ask_pass
+# ask_pass
 
 # Chk USER and create path
 chkUser
@@ -35,22 +35,29 @@ fi
 
 # Define path bash script
 # FIXME need too???
-Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd )"
+# Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd )"
 
 ########################## Starting AstroPi GUI ##########################
 # Powered with zenity lib. See https://help.gnome.org/users/zenity/stable/
 
 rc=1 # OK button return code =0 , all others =1
+text="<big><b>Wellcome to ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
+\n<b>AdminSystem</b>
+Find all the functions to administer Linux AstroPi; system updates, backups and network management
+\n<b>AdminKStars</b>
+Dedicated functions to administer KStars AstroPi; KStars and INDI updates, KStars backups, and peripheral management
+\n<b>Extra</b>
+Find out the guide for the System and Kstars and many more tricks"
 while [ $rc -eq 1 ]; do
-  ans=$(zenity --info --title="${W_Title}" --width=${W} --height=${H} \
-      --text 'set text' \
+  ans=$(zenity --info --icon-name="solar-system" --title="${W_Title}" --width=${W} --height=${H} \
+      --text="${text}" \
       --ok-label Quit \
       --extra-button AdminSystem \
       --extra-button AdminKStars \
       --extra-button Extra \
        )
   rc=$?
-  echo "${rc}-${ans}"
+  echo "You have chosen to run:"
   echo $ans
   if [[ $ans = "AdminSystem" ]]
   then
