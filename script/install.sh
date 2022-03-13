@@ -130,10 +130,12 @@ function system_pre_update()
 		
 		# Hold some update
 		echo "# Hold some update"
-		echo ${ask_pass} | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
+		echo ${ask_pass} | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data \
 		indi-full libindi-dev libindi1 indi-bin
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		# FIXME temp only for v1.5
+		echo ${ask_pass} | sudo -S apt-mark unhold zenity
 	
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
