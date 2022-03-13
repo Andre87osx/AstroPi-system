@@ -20,6 +20,7 @@ else
 fi
 
 # Ask super user password.
+# FIXME not now, ask password if needed
 ask_pass
 
 # Chk USER and create path
@@ -41,7 +42,7 @@ Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd 
 
 rc=1 # OK button return code =0 , all others =1
 while [ $rc -eq 1 ]; do
-  ans=$(zenity --info --title="${W_Title}" \
+  ans=$(zenity --info --title="${W_Title}" --width=${W} --height=${H} \
       --text 'set text' \
       --ok-label Quit \
       --extra-button AdminSystem \
