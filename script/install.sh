@@ -105,7 +105,13 @@ function install_script()
 	if [[ -f ./autohotspot ]]; then
 		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot /usr/bin/autohotspot
 		echo "Install autohotspot in /usr/bin/"
-	fi 
+	fi
+	cd ${appDir}/include || exit 1
+	if [[ -f ./solar-system.svg ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
+		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+	fi
+	
 }
 
 # Prepair fot update system
