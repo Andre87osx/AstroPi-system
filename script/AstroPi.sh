@@ -12,7 +12,12 @@
 # This script have GUI, is not performed for console
 
 # Import common array and functions
-source ${HOME}/.local/share/astropi/include/functions.sh
+if [ -f ${HOME}/.local/share/astropi/include/functions.sh ]; then
+	source ${HOME}/.local/share/astropi/include/functions.sh
+else
+	zenity --warning --width=300 --text="Something went wrong...
+	AstroPi System is not correctly installed" --title="AstroPi-System" && exit 1
+fi
 
 # Ask super user password.
 ask_pass
@@ -28,10 +33,38 @@ else
 fi
 
 # Define path bash script
+# FIXME need too???
 Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd )"
 
-## Starting AstroPi GUI
-#=========================================================================
+########################## Starting AstroPi GUI ##########################
+# Powered with zenity lib. See https://help.gnome.org/users/zenity/stable/
+
+rc=1 # OK button return code =0 , all others =1
+while [ $rc -eq 1 ]; do
+  ans=$(zenity --info --title="${W_Title}" \
+      --text 'set text' \
+      --ok-label Quit \
+      --extra-button AdminSystem \
+      --extra-button AdminKStars \
+      --extra-button Extra \
+       )
+  rc=$?
+  echo "${rc}-${ans}"
+  echo $ans
+  if [[ $ans = "AdminSystem" ]]
+  then
+        echo "Running the Rover"
+  elif [[ $ans = "AdminKStars" ]]
+  then
+        echo "Stopping the Rover"
+  elif [[ $ans = "Extra" ]]
+  then
+        echo "Rover turning Left"
+  fi
+done
+
+
+
 ans=$( zenity --list --width=${W} --height=$H --title="${W_Title}" --cancel-label=Exit --hide-header --text "Choose an option or exit" --radiolist --column "Pick" --column "Option" \
 	FALSE "Setup my WiFi" \
 	FALSE "$StatHotSpot AstroPi hotspot" \
