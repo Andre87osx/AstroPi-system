@@ -170,7 +170,7 @@ function system_update()
 }
 
 echo "Check for internet connection"
-release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"${AstroPi_v}".tar.gz -O -"
+release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v${AstroPi_v}.tar.gz -O -"
 connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
 while ${connection}; do
 	echo "AstroPi is online!"
