@@ -19,10 +19,6 @@ else
 	AstroPi System is not correctly installed" --title="AstroPi-System" && exit 1
 fi
 
-# Ask super user password.
-# FIXME not now, ask password if needed
-# ask_pass
-
 # Chk USER and create path
 chkUser
 
@@ -33,43 +29,80 @@ else
 	StatHotSpot=Enable		# Hotspot is disabled
 fi
 
-# Define path bash script
-# FIXME need too???
-# Script_Dir="$( cd "$( dirname "${BASH_SOURCE[0]:-$0}" )" >/dev/null 2>&1 && pwd )"
-
 ########################## Starting AstroPi GUI ##########################
 # Powered with zenity lib. See https://help.gnome.org/users/zenity/stable/
 
+function AdminSystem() {
+	rc=1 # OK button return code =0 , all others =1
+	text="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
+	\n<b>Admin System</b>
+	\nFind all the functions to administer Linux AstroPi; system updates, backups and network management
+	\n<b>Admin KStars</b>
+	\nDedicated functions to administer KStars AstroPi; KStars and INDI updates, KStars backups, and peripheral management
+	\n<b>Extra</b>
+	\nFind out the guide for the System and Kstars and many more tricks"
+
+	while [ ${rc} -eq 1 ]; do
+		ans=$(zenity --info --icon-name="solar-system" --title="${W_Title}" --width=${W} --height=${H} \
+			--text="${text}" \
+			--ok-label Quit \
+			--extra-button UpdateSystem \
+			--extra-button CleaningUp \
+			--extra-button $StatHotSpot AstroPi hotspot \
+		)
+		rc=$?
+		echo "You have chosen to run:"
+		echo ${ans}
+		if [[ ${ans} = "AdminSystem" ]]
+		then
+			echo "Running the Rover"
+		elif [[ ${ans} = "AdminKStars" ]]
+		then
+			echo "Stopping the Rover"
+		elif [[ ${ans} = "Extra" ]]
+		then
+			echo "Rover turning Left"
+		fi
+	done
+}
+# Main windows >>>>
 rc=1 # OK button return code =0 , all others =1
 text="<big><b>Wellcome to ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
-\n<b>AdminSystem</b>
+\n<b>Admin System</b>
 Find all the functions to administer Linux AstroPi; system updates, backups and network management
-\n<b>AdminKStars</b>
+\n<b>Admin KStars</b>
 Dedicated functions to administer KStars AstroPi; KStars and INDI updates, KStars backups, and peripheral management
 \n<b>Extra</b>
 Find out the guide for the System and Kstars and many more tricks"
-while [ $rc -eq 1 ]; do
-  ans=$(zenity --info --icon-name="solar-system" --title="${W_Title}" --width=${W} --height=${H} \
-      --text="${text}" \
-      --ok-label Quit \
-      --extra-button AdminSystem \
-      --extra-button AdminKStars \
-      --extra-button Extra \
-       )
-  rc=$?
-  echo "You have chosen to run:"
-  echo $ans
-  if [[ $ans = "AdminSystem" ]]
-  then
-        echo "Running the Rover"
-  elif [[ $ans = "AdminKStars" ]]
-  then
-        echo "Stopping the Rover"
-  elif [[ $ans = "Extra" ]]
-  then
-        echo "Rover turning Left"
-  fi
+
+while [ ${rc} -eq 1 ]; do
+	ans=$(zenity --info --icon-name="solar-system" --title="${W_Title}" --width=${W} --height=${H} \
+		--text="${text}" \
+		--ok-label Quit \
+		--extra-button AdminSystem \
+		--extra-button AdminKStars \
+		--extra-button Extra \
+	)
+	rc=$?
+	echo "You have chosen to run:"
+	echo ${ans}
+	if [[ ${ans} = "AdminSystem" ]]
+	then
+		echo "Running the Rover"
+		AdminSystem
+	elif [[ ${ans} = "AdminKStars" ]]
+	then
+		echo "Stopping the Rover"
+	elif [[ ${ans} = "Extra" ]]
+	then
+		echo "Rover turning Left"
+	elif [[ ${rc} -eq 0 ]]
+	then
+		echo "Quit AstroPi System"
+		exit 0
+	fi
 done
+# Main windows <<<<
 
 
 
