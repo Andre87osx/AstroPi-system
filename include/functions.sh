@@ -34,6 +34,12 @@ W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
 <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
 
+# System full info, linux version and x86 or x64
+sysinfo=$(uname -a)
+
+# Full disk usage
+diskUsage=$(df -h --type=ext4)
+
 # Ask super user password.
 function ask_pass()
 {
@@ -141,7 +147,6 @@ function chkIndexAstro()
 # Check if system work on 64bit kernel
 function chkARM64()
 {
-	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		# Do not force automatic switching to 64bit. Warn only 
 		true
