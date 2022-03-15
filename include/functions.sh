@@ -39,6 +39,7 @@ sysinfo=$(uname -a)
 
 # Full disk usage
 diskUsage=$(df -h --type=ext4)
+diskUsageEXT4=${diskUsage[@]/%/$'\n'} | column
 
 # Ask super user password.
 function ask_pass()
