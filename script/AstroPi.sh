@@ -37,11 +37,11 @@ function AdminSystem() {
 textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 \n<b>${sysinfo}</b>
 \n<b>Storage details:</b>
-${diskUsage[@]/%/$'\n'} | column"
+${diskUsageEXT4}"
 
 ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" \
-	FALSE "Setup my WiFi" \
 	FALSE "$StatHotSpot AstroPi hotspot" \
+	FALSE "Setup my WiFi" \
 	FALSE "System Cleaning" \
 	FALSE "Check for update" )	
     
