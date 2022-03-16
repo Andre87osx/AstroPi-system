@@ -37,29 +37,29 @@ function AdminSystem() {
 textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 \n<b>${sysinfo}</b>
 \n<b>Storage details:</b>
-${diskUsageEXT4}"
+Main disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
-ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" \
-	FALSE "$StatHotSpot AstroPi hotspot" \
-	FALSE "Setup my WiFi" \
-	FALSE "System Cleaning" \
-	FALSE "Check for update" )	
+ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --colum "Details" \
+	FALSE "$StatHotSpot AstroPi hotspot" "On / Off WiFi Hotspot for use AstroPi outdoor" \
+	FALSE "Setup my WiFi" "Add new WiFi SSID connection" \
+	FALSE "System Cleaning" "Delete unused library and script and temp file" \
+	FALSE "Check for System update" "Update Linux AstroPi and chek for new System version" )	
     
 	case $? in
 	0)
-		if [ "$ans" == "Check for update" ]; then
+		if [ "$ans" = "Check for System update" ]; then
 			sysUpgrade
 			chksysHotSpot
 			chkARM64
 			lxpanelctl restart # Restart LX for able new change icon
 	
-		elif [ "$ans" == "Setup my WiFi" ]; then
+		elif [ "$ans" = "Setup my WiFi" ]; then
 			setupWiFi
 
-		elif [ "$ans" == "$StatHotSpot AstroPi hotspot" ]; then
+		elif [ "$ans" = "$StatHotSpot AstroPi hotspot" ]; then
 			chkHotspot
 
-		elif [ "$ans" == "System Cleaning" ]; then
+		elif [ "$ans" = "System Cleaning" ]; then
 			sysClean
 		fi
 	;;
