@@ -84,7 +84,7 @@ Dedicated functions to administer KStars AstroPi; KStars and INDI updates, KStar
 Find out the guide for the System and Kstars and many more tricks"
 
 while [ ${rc} -eq 1 ]; do
-	ans=$(zenity --info --icon-name="solar-system" --title="${W_Title}" --width=${W} --height=${H} \
+	ans=$(zenity --info --icon-name="solar-system-dark" --title="${W_Title}" --width=${W} --height=${H} \
 		--text="${textM}" \
 		--ok-label Quit \
 		--extra-button AdminSystem \
