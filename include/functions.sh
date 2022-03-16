@@ -35,11 +35,12 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
 
 # System full info, linux version and x86 or x64
-sysinfo=${uname -a}
+sysinfo=$(uname -a)
 
 # Full disk usage
-diskUsage=${df -h --type=ext4}
-diskUsageEXT4=${diskUsage[@]/%/$'\n'} | column
+diskUsage=$(df -h --type=ext4)
+diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
+diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
 
 # Ask super user password.
 function ask_pass()
