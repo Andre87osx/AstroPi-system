@@ -105,7 +105,13 @@ function install_script()
 	if [[ -f ./autohotspot ]]; then
 		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot /usr/bin/autohotspot
 		echo "Install autohotspot in /usr/bin/"
-	fi 
+	fi
+	cd ${appDir}/include || exit 1
+	if [[ -f ./solar-system-dark.svg ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
+		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+	fi
+	
 }
 
 # Prepair fot update system
@@ -130,10 +136,12 @@ function system_pre_update()
 		
 		# Hold some update
 		echo "# Hold some update"
-		echo ${ask_pass} | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
+		echo ${ask_pass} | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data \
 		indi-full libindi-dev libindi1 indi-bin
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		# FIXME temp only for v1.5
+		echo ${ask_pass} | sudo -S apt-mark unhold zenity
 	
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
@@ -170,7 +178,7 @@ function system_update()
 }
 
 echo "Check for internet connection"
-release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v"${AstroPi_v}".tar.gz -O -"
+release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v${AstroPi_v}.tar.gz -O -"
 connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
 while ${connection}; do
 	echo "AstroPi is online!"
@@ -200,6 +208,14 @@ while ${connection}; do
 	
 	# Get full AstoPi System update
 	system_update
+	
+	# Add permanent link in bashrc
+	if [ -n "$(grep 'alias AstroPi=' '${HOME}/.bashrc')" ]; then
+		# The permanent link allredy exist 
+		true
+	else
+		echo "alias AstroPi='/usr/bin/AstroPi.sh'" >>${HOME}/.bashrc
+	fi
 	
 	# Set default wallpaper
 	pcmanfm --set-wallpaper="${appDir}/include/AstroPi_wallpaper.png"

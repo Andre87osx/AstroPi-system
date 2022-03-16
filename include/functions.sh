@@ -25,7 +25,7 @@ function next_v()
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
-# New width and height
+# GUI windows width and height
 W=$(( SCREEN_WIDTH / 5 ))
 H=$(( SCREEN_HEIGHT / 3 ))
 Wprogress=$(( SCREEN_WIDTH / 5 ))
@@ -33,6 +33,13 @@ Wprogress=$(( SCREEN_WIDTH / 5 ))
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
 <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
+
+# System full info, linux version and x86 or x64
+sysinfo=${uname -a}
+
+# Full disk usage
+diskUsage=${df -h --type=ext4}
+diskUsageEXT4=${diskUsage[@]/%/$'\n'} | column
 
 # Ask super user password.
 function ask_pass()
@@ -44,7 +51,7 @@ function ask_pass()
 		until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
 			zenity --warning --text="<b>WARNING! The user password not matches...</b>
 			\nTry again or sign out" --width=${W} --title="${W_Title}"
-			if password=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
+			if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
 		done
 	else
 		# User press CANCEL button
@@ -141,7 +148,6 @@ function chkIndexAstro()
 # Check if system work on 64bit kernel
 function chkARM64()
 {
-	sysinfo=$(uname -a)
 	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
 		# Do not force automatic switching to 64bit. Warn only 
 		true

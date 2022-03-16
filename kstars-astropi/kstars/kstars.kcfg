@@ -1573,7 +1573,7 @@
       </entry>
       <entry name="MeridianFlipUnitDegrees" type="Bool">
          <label>Sets the display unit for meridian flip to degrees.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="LeftRightReversed" type="Bool">
          <label>Reverse the direction of right and left buttons in mount control.</label>
@@ -1652,7 +1652,7 @@
       </entry>
       <entry name="ResetMountModelAfterMeridian" type="Bool">
          <label>Reset mount model after meridian flip.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="CalibrationADUValue" type="UInt">
          <label>Desired flat field ADU</label>
@@ -2541,7 +2541,7 @@
       </entry>
       <entry name="DawnOffset" type="Double">
          <label>Offset astronomical dawn by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>0.5</default>
+         <default>1.0</default>
       </entry>
       <entry name="DuskOffset" type="Double">
          <label>Offset astronomical dusk by this many hours to relax twilight restriction when using narrowband filters.</label>

@@ -2786,6 +2786,8 @@ bool Scheduler::checkINDIState()
                 {
                     warmCCDCheck->setEnabled(hasCoolerControl.toBool());
                     m_CaptureReady = true;
+                    coolingCCDCheck->setEnabled(hasCoolerControl.toBool());
+                    m_CaptureReady = true;
                 }
                 else
                     qCWarning(KSTARS_EKOS_SCHEDULER) << "Capture module is not ready yet...";
@@ -2847,6 +2849,12 @@ bool Scheduler::checkStartupState()
                 startupState = STARTUP_SCRIPT;
                 executeScript(startupScriptURL.toString(QUrl::PreferLocalFile));
                 return false;
+            }
+
+            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
+            {
+                appendLogText(i18n("Cooling up CCD..."));
+                captureInterface->setProperty("coolerControl", true);
             }
 
             startupState = STARTUP_UNPARK_DOME;
