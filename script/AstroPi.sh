@@ -73,6 +73,44 @@ ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-la
 }
 # AdminSystem windows <<<<
 
+# AdminSystem KStars >>>>
+function AdminKStars() {
+textS="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team"
+
+ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	FALSE "$StatHotSpot AstroPi hotspot	" "=> On / Off WiFi Hotspot for use AstroPi outdoor" \
+	FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
+	FALSE "System Cleaning	" "=> Delete unused library and script and temp file" \
+	FALSE "Check for System update	" "=> Update Linux AstroPi and chek for new System version" )	
+    
+	case $? in
+	0)
+		if [ "$ans" = "Check for System update" ]; then
+			sysUpgrade
+			chksysHotSpot
+			chkARM64
+			lxpanelctl restart # Restart LX for able new change icon
+	
+		elif [ "$ans" = "Setup my WiFi" ]; then
+			setupWiFi
+
+		elif [ "$ans" = "$StatHotSpot AstroPi hotspot" ]; then
+			chkHotspot
+
+		elif [ "$ans" = "System Cleaning" ]; then
+			sysClean
+		fi
+	;;
+	1)
+	return 0
+	;;
+	-1)
+	zenity --warning --width=${W} --text="Something went wrong... Reload AstroPi System" --title="${W_Title}" && exit 1
+	;;
+	esac
+}
+# AdminSystem KStars <<<<
+
 # Main windows >>>>
 rc=1 # OK button return code =0 , all others =1
 textM="<big><b>Wellcome to ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
@@ -100,7 +138,8 @@ while [ ${rc} -eq 1 ]; do
 		AdminSystem
 	elif [[ ${ans} = "AdminKStars" ]]
 	then
-		echo "Stopping the Rover"
+		AdminKStars
+		echo "Loading AdminKStars"
 	elif [[ ${ans} = "Extra" ]]
 	then
 		echo "Rover turning Left"
