@@ -40,10 +40,10 @@ textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 Main disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
 ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
-	FALSE "$StatHotSpot AstroPi hotspot" "On / Off WiFi Hotspot for use AstroPi outdoor" \
-	FALSE "Setup my WiFi" "Add new WiFi SSID connection" \
-	FALSE "System Cleaning" "Delete unused library and script and temp file" \
-	FALSE "Check for System update" "Update Linux AstroPi and chek for new System version" )	
+	FALSE "$StatHotSpot AstroPi hotspot	" "=> On / Off WiFi Hotspot for use AstroPi outdoor" \
+	FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
+	FALSE "System Cleaning	" "=> Delete unused library and script and temp file" \
+	FALSE "Check for System update	" "=> Update Linux AstroPi and chek for new System version" )	
     
 	case $? in
 	0)
