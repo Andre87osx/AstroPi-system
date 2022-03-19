@@ -48,7 +48,7 @@ if [ ${ask_pass} ]; then
 	until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
 		zenity --warning --text="<b>WARNING! User password is wrong...</b>
 		\nTry again or sign out" --width=${W} --title="${W_Title}"
-		if password=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
+		if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
 	done
 else
 	# User press CANCEL button
@@ -110,8 +110,7 @@ function install_script()
 	if [[ -f ./solar-system-dark.svg ]]; then
 		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
-	fi
-	
+	fi	
 }
 
 # Prepair fot update system
@@ -174,7 +173,6 @@ function system_update()
 			exit 1
 		fi
 	done	
-	
 }
 
 echo "Check for internet connection"
@@ -210,7 +208,7 @@ while ${connection}; do
 	system_update
 	
 	# Add permanent link in bashrc
-	if [ -n "$(grep 'alias AstroPi=' '${HOME}/.bashrc')" ]; then
+	if [ -n "$(grep 'alias AstroPi=' $HOME/.bashrc)" ]; then
 		# The permanent link allredy exist 
 		true
 	else
@@ -230,7 +228,10 @@ while ${connection}; do
 	if [ -f /usr/bin/.Update.sh ]; then	
 		echo ${ask_pass} | sudo -S rm -Rf /usr/bin/.Update.sh || exit 1	
 	fi
-    
+	if [ -f /usr/share/applications/org.kde.kstars.desktop ]; then	
+		echo ${ask_pass} | sudo -S rm -Rf /usr/share/applications/org.kde.kstars.desktop || exit 1	
+	fi
+		
 	# Installation is finished
 	echo ""
 	echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out"
