@@ -93,6 +93,9 @@ Plugin {
       id=kstars.desktop
     }
     Button {
+      id=skycat.desktop
+    }
+    Button {
       id=ASTAP.desktop
     }
     Button {
