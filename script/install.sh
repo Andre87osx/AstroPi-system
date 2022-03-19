@@ -110,7 +110,11 @@ function install_script()
 	if [[ -f ./solar-system-dark.svg ]]; then
 		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
-	fi	
+	fi
+	if [[ -f ./kstars.svg ]]; then
+		echo ${ask_pass} | sudo -S cp ${appDir}/include/kstars.svg /usr/share/icons/gnome/scalable/places/kstars.svg
+		echo "Install KStars icons in /usr/share/icons/gnome/scalable/places"
+	fi
 }
 
 # Prepair fot update system
