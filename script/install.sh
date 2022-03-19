@@ -211,6 +211,22 @@ while ${connection}; do
 	# Get full AstoPi System update
 	system_update
 	
+	# Install ESO Fits view
+	(
+		echo "# Install ESO Fits View"
+		echo "${ask_pass}" | sudo -S apt install skycat -y
+		sleep 1s
+	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+	exit_stat=$?
+	if [ ${exit_stat} -eq 0 ]; then
+		echo "ESO Fits view successfully installed on $(date)" >> ${appDir}/script/update-log.txt
+	elif [ ${exit_stat} -ne 0 ]; then
+		echo "Error running ESO Fits view on $(date), exit status code: ${exit_stat}" >> ${appDir}/script/update-log.txt
+		zenity --error --width=${W} --text="Something went wrong in <b>Error running ESO Fits view</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		exit 1
+	fi
+	
 	# Add permanent link in bashrc
 	if [ -n "$(grep 'alias AstroPi=' $HOME/.bashrc)" ]; then
 		# The permanent link allredy exist 
