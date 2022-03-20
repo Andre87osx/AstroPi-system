@@ -19,6 +19,9 @@ else
 	AstroPi System is not correctly installed" --title="AstroPi-System" && exit 1
 fi
 
+# Ask super user password.
+ask_pass
+
 # Chk USER and create path
 chkUser
 
@@ -48,10 +51,7 @@ ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-la
 	case $? in
 	0)
 		if [ "$ans" = "Check for System update" ]; then
-			sysUpgrade
-			chksysHotSpot
-			chkARM64
-			lxpanelctl restart # Restart LX for able new change icon
+			curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/script/update.sh > update.sh && bash update.sh
 	
 		elif [ "$ans" = "Setup my WiFi" ]; then
 			setupWiFi
@@ -74,31 +74,30 @@ ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-la
 # AdminSystem windows <<<<
 
 # AdminSystem KStars >>>>
+kstarsV=$(kstars -v)
+indiV=$(indiserver -v)
 function AdminKStars() {
-textS="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team"
+textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
+\n<b>KStars AsroPi installed version</b>
+${kstarsV}
+\n<b>INDI Core installed version</b>
+${indiV}"
 
-ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
-	FALSE "$StatHotSpot AstroPi hotspot	" "=> On / Off WiFi Hotspot for use AstroPi outdoor" \
-	FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
-	FALSE "System Cleaning	" "=> Delete unused library and script and temp file" \
-	FALSE "Check for System update	" "=> Update Linux AstroPi and chek for new System version" )	
+ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	FALSE "Update INDI and Driver $Indi_v	" "=> Update INDI core and Driver" \
+	FALSE "Update KStars AstroPi $KStars_v	" "=> Update KStars AstroPi" \
+	FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" )	
     
 	case $? in
 	0)
-		if [ "$ans" = "Check for System update" ]; then
-			sysUpgrade
-			chksysHotSpot
-			chkARM64
-			lxpanelctl restart # Restart LX for able new change icon
-	
-		elif [ "$ans" = "Setup my WiFi" ]; then
-			setupWiFi
+		if [ "$ans" = "Update INDI and Driver $Indi_v" ]; then
+			chkINDI
 
-		elif [ "$ans" = "$StatHotSpot AstroPi hotspot" ]; then
-			chkHotspot
+		elif [ "$ans" = "Update KStars AstroPi $KStars_v" ]; then
+			chkKStars
 
-		elif [ "$ans" = "System Cleaning" ]; then
-			sysClean
+		elif [ "$ans" = "Check GSC and Index" ]; then
+			chkIndexGsc
 		fi
 	;;
 	1)
