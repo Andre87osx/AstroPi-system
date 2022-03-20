@@ -42,7 +42,7 @@ textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 \n<b>Storage details:</b>
 Main disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
-ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
+ansS=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
 	FALSE "$StatHotSpot AstroPi hotspot	" "=> On / Off WiFi Hotspot for use AstroPi outdoor" \
 	FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
 	FALSE "System Cleaning	" "=> Delete unused library and script and temp file" \
@@ -50,16 +50,16 @@ ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-la
     
 	case $? in
 	0)
-		if [ "$ans" = "Check for System update" ]; then
+		if [ "$ansS" == "Check for System update	" ]; then
 			curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/script/update.sh > update.sh && bash update.sh
 	
-		elif [ "$ans" = "Setup my WiFi" ]; then
+		elif [ "$ansS" == "Setup my WiFi	" ]; then
 			setupWiFi
 
-		elif [ "$ans" = "$StatHotSpot AstroPi hotspot" ]; then
+		elif [ "$ansS" == "$StatHotSpot AstroPi hotspot	" ]; then
 			chkHotspot
 
-		elif [ "$ans" = "System Cleaning" ]; then
+		elif [ "$ansS" == "System Cleaning	" ]; then
 			sysClean
 		fi
 	;;
@@ -74,29 +74,29 @@ ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-la
 # AdminSystem windows <<<<
 
 # AdminSystem KStars >>>>
+function AdminKStars() {
 kstarsV=$(kstars -v)
 indiV=$(indiserver -v)
-function AdminKStars() {
 textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 \n<b>KStars AsroPi installed version</b>
 ${kstarsV}
 \n<b>INDI Core installed version</b>
 ${indiV}"
 
-ans=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+ansK=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 	FALSE "Update INDI and Driver $Indi_v	" "=> Update INDI core and Driver" \
 	FALSE "Update KStars AstroPi $KStars_v	" "=> Update KStars AstroPi" \
 	FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" )	
     
 	case $? in
 	0)
-		if [ "$ans" = "Update INDI and Driver $Indi_v" ]; then
+		if [ "$ansK" = "Update INDI and Driver $Indi_v	" ]; then
 			chkINDI
 
-		elif [ "$ans" = "Update KStars AstroPi $KStars_v" ]; then
+		elif [ "$ansK" = "Update KStars AstroPi $KStars_v	" ]; then
 			chkKStars
 
-		elif [ "$ans" = "Check GSC and Index" ]; then
+		elif [ "$ansK" = "Check GSC and Index	" ]; then
 			chkIndexGsc
 		fi
 	;;
