@@ -10,24 +10,21 @@
 # Run this script as USER
 # Type in console 'bash <your script path>/install.sh'
 
+# Import common array and functions
+if [ -f ${HOME}/.local/share/astropi/include/functions.sh ]; then
+	source ${HOME}/.local/share/astropi/include/functions.sh
+else
+	zenity --error --width=300 --text="Something went wrong...
+	AstroPi System is not correctly installed" --title="AstroPi-System" && exit 1
+fi
+
 #=========================================================================
-# Create version of AstroPi
-majorRelease=1                                      # Major Release
-minorRelease=5                                      # Minor Release
-AstroPi_v=${majorRelease}.${minorRelease}           # Actual Stable Release
 
-# Get width and height of screen
-SCREEN_WIDTH=$( xwininfo -root | awk '$1=="Width:" {print $2}' )
-SCREEN_HEIGHT=$( xwininfo -root | awk '$1=="Height:" {print $2}' )
+# Ask super user password.
+ask_pass
 
-# New width and height
-W=$(( SCREEN_WIDTH / 5 ))
-H=$(( SCREEN_HEIGHT / 3 ))
-Wprogress=$(( SCREEN_WIDTH / 5 ))
-
-W_Title="AstroPi System v${AstroPi_v}"
-W_err_generic="<b>Something went wrong...</b>\nContact support at
-https://github.com/Andre87osx/AstroPi-system/issues"
+# Chk USER and create path
+chkUser
 
 apt_commands=(
 'apt-get update'
@@ -37,41 +34,6 @@ apt_commands=(
 'apt autoremove'
 'apt autoclean'
 )
-
-#=========================================================================
-
-# Ask super user password.
-ask_pass=$( zenity --password --title="${W_Title}" )
-if [ ${ask_pass} ]; then
-	# User write password and press OK
-	# Makes sure that the sudo user password matches
-	until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
-		zenity --warning --text="<b>WARNING! User password is wrong...</b>
-		\nTry again or sign out" --width=${W} --title="${W_Title}"
-		if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
-	done
-else
-	# User press CANCEL button
-	# Quit script
-	exit 0
-fi
-
-# Chk USER and create path
-if [[ -z ${USER} ]] && [[ ${USER} != root ]]; then
-	echo "Run this script as user not as root"
-	echo " "
-	echo "Read how to use at top of this script"
-	zenity --error --text="<b>WARNING! Run this script as user not as root</b>
-	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-	exit 1
-else
-	appDir=${HOME}/.local/share/astropi
-	echo "Wellcome to AstroPi System"
-	echo "=========================="
-	if [ ! -d ${appDir} ]; then
-		mkdir -p ${appDir}
-	fi
-fi
 
 # Install all script in default path
 function install_script()
