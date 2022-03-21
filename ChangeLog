@@ -10,12 +10,212 @@
         |=> parking.py          /usr/bin
 => panel                        "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
 -->
-# To obtain ChangeLog use this cmd line in git dir
-$ git log ---after=<date> -date=short --pretty=format:"%h %ad %<(20)%an %<(150,trunc)%s" > ChangeLog
+<!-- 
+To obtain ChangeLog use this cmd line in git dir
+$ cd C:\Users\andre\OneDrive\Documenti\GitHub\AstroPi-system
+$ git log --after=<date> --date=short --pretty=format:"%h %ad %<(20)%an %<(150,trunc)%s" >> ChangeLog
+-->
 
 <<<<<<< Updated upstream
+v1.5
+================================
+6bbeebb 2022-03-21 Andrea Aimone        fix missing icon                                                                                                                                      
+ef3e402 2022-03-20 Andrea Aimone        fix gui bug                                                                                                                                           
+5c0045d 2022-03-20 Andrea Aimone        improve adminKstars                                                                                                                                   
+4b41841 2022-03-20 Andrea Aimone        improve update shell                                                                                                                                  
+e35ff9b 2022-03-20 Andrea Aimone        Create upgrade.sh                                                                                                                                     
+2d0c666 2022-03-19 Andrea Aimone        insert AdminKStars functions                                                                                                                          
+142a5f5 2022-03-19 Andrea Aimone        improve GUI admin astropi system                                                                                                                      
+ee0c58f 2022-03-19 Andrea Aimone        add ESO Skycat to lxpanel                                                                                                                             
+9e39df2 2022-03-19 Andrea Aimone        add ESO Skycat in installations process                                                                                                               
+64ec0c1 2022-03-19 Andrea Aimone        add kstars icons to default path                                                                                                                      
+ed42043 2022-03-19 Andrea Aimone        use astropi icons default path                                                                                                                        
+1f3139b 2022-03-19 Andrea Aimone        use kstars icons default path                                                                                                                         
+b0afc07 2022-03-19 Andrea Aimone        no force fits with kstars                                                                                                                             
+c1cca23 2022-03-19 Andrea Aimone        update install process MAKE STABLE for 1.5                                                                                                            
+0ec0757 2022-03-16 Andrea Aimone        fix list column                                                                                                                                       
+01d71b3 2022-03-16 Andrea Aimone        fix icon name                                                                                                                                         
+051fcdc 2022-03-16 Andrea Aimone        Last minute fix1.5 p2 (#187)                                                                                                                          
+a216796 2022-03-16 Andrea Aimone        new diskUsageFree diskUsagePerc array                                                                                                                 
+820fa20 2022-03-16 Andrea Aimone        fix wrong icons name                                                                                                                                  
+62188e0 2022-03-16 Andrea Aimone        last minute fix 1.5 (#172)                                                                                                                            
+b935db1 2022-02-21 Andrea Aimone        fix 2 wget                                                                                                                                            
+1cecb34 2022-02-21 Andrea Aimone        try fix wget zenity                                                                                                                                   
+83bd655 2022-02-21 Andrea Aimone        fix tab in install wget                                                                                                                               
+abbbd3f 2022-02-20 Andrea Aimone        Create install.sh                                                                                                                                     
+428acd8 2022-02-20 Andrea Aimone        Delete install.sh                                                                                                                                     
+99c887b 2022-02-20 Andrea Aimone        Update install.sh                                                                                                                                     
+c0c334d 2022-02-20 Andrea Aimone        Merge pull request #170 from Andre87osx/fix_kstars_v1.5                                                                                               
+6806f20 2022-02-20 Andrea Aimone        Update kstars.kcfg                                                                                                                                    
+ad517b6 2022-02-20 Andrea Aimone        Update opscatalog.ui                                                                                                                                  
+4318c3c 2022-02-20 Andrea Aimone        Update opscatalog.cpp                                                                                                                                 
+12c713e 2022-02-20 Andrea Aimone        Update schedulerjob.cpp                                                                                                                               
+a5ec0e1 2022-02-20 Andrea Aimone        Update scheduler.ui                                                                                                                                   
+542855a 2022-02-20 Andrea Aimone        Update manager.ui                                                                                                                                     
+f7013b6 2022-02-20 Andrea Aimone        Update indidrivers.xml                                                                                                                                
+54e76e2 2022-02-20 Andrea Aimone        Update CMakeLists.txt                                                                                                                                 
+2d165c4 2022-02-20 Andrea Aimone        restore temp 354 v1.1                                                                                                                                 
+2c08c0b 2022-02-20 Andrea Aimone        temp delete kstars from git                                                                                                                           
+9fb55d4 2022-02-19 Andrea Aimone        fix loop crash                                                                                                                                        
+87ed753 2022-02-19 Andrea Aimone        perform kstars loader                                                                                                                                 
+700b740 2022-02-19 Andrea Aimone        improve hieght for lxbar                                                                                                                              
+02de3b1 2022-02-19 Andrea Aimone        restore v1.5 for kstars                                                                                                                               
+da81078 2022-02-19 Andrea Aimone        restore missing kstars script                                                                                                                         
+ea56024 2022-02-19 Andrea Aimone        add delete old file                                                                                                                                   
+7b6ca11 2022-02-19 Andrea Aimone        Create astrometry.sh                                                                                                                                  
+ac565b9 2022-02-19 Andrea Aimone        Delete astrometry.sh                                                                                                                                  
+3cad398 2022-02-19 Andrea Aimone        Create kstars.sh                                                                                                                                      
+e14a644 2022-02-19 Andrea Aimone        Delete kstars.sh                                                                                                                                      
+7d69927 2022-02-19 Andrea Aimone        Create AstroPi.sh                                                                                                                                     
+bb6429e 2022-02-19 Andrea Aimone        Delete AstroPi.sh                                                                                                                                     
+40a4402 2022-02-19 Andrea Aimone        improve using function import                                                                                                                         
+2fff8dd 2022-02-19 Andrea Aimone        improve functions.sh                                                                                                                                  
+3720178 2022-02-19 Andrea Aimone        fix lxde height                                                                                                                                       
+e007fd0 2022-02-19 Andrea Aimone        fix zenity for update loop                                                                                                                            
+8d7919a 2022-02-19 Andrea Aimone        fix bug in panel                                                                                                                                      
+2991f66 2022-02-19 Andrea Aimone        fix extension wrong kstars..desktop                                                                                                                   
+e745fb4 2022-02-19 Andrea Aimone        restore panel                                                                                                                                         
+292de79 2022-02-18 Andrea Aimone        rework install script and apt update function                                                                                                         
+9ebbbfc 2022-02-17 Andrea Aimone        try until for update                                                                                                                                  
+b64d82e 2022-02-17 Andrea Aimone        del dev/null for source list                                                                                                                          
+979a25f 2022-02-17 Andrea Aimone        add sudo psw for apt                                                                                                                                  
+947ed4c 2022-02-17 Andrea Aimone        fix minor bug                                                                                                                                         
+34e8683 2022-02-17 Andrea Aimone        rewok update loop                                                                                                                                     
+d7d241e 2022-02-16 Andrea Aimone        Update install.sh                                                                                                                                     
+38da923 2022-02-16 Andrea Aimone        starrt using surce import                                                                                                                             
+a921e22 2022-02-16 Andrea Aimone        Create functions.sh                                                                                                                                   
+cb2101b 2022-02-15 Andrea Aimone        add old GIT cleaning on install.sh                                                                                                                    
+5333dde 2022-02-15 Andrea Aimone        add sysupdate on install.sh                                                                                                                           
+9d87af2 2022-02-14 Andrea Aimone        fix tabulations in astrometry.sh                                                                                                                      
+bcf55ba 2022-02-14 Andrea Aimone        rework install loop in install.sh                                                                                                                     
+1f52d94 2022-02-13 Andrea Aimone        use full path for kstars icon                                                                                                                         
+169a3a6 2022-02-13 Andrea Aimone        use full path for icon                                                                                                                                
+8ab0bab 2022-02-13 Andrea Aimone        fix installation cp method                                                                                                                            
+83aa719 2022-02-13 Andrea Aimone        fix tabulations  spaces in install.sh                                                                                                                 
+9d999f3 2022-02-13 Andrea Aimone        reload script in correct path "script"                                                                                                                
+ca59b3c 2022-02-13 Andrea Aimone        fix git bug dir Script = script                                                                                                                       
+42244c9 2022-02-13 Andrea Aimone        Merge pull request #158 from Andre87osx/beta-1.5                                                                                                      
+ea85013 2022-02-13 Andrea Aimone        default guide to def - guide exp 2s                                                                                                                   
+f486be5 2022-02-13 Andrea Aimone        delete wrong test in KStars AstroPi v1.5                                                                                                              
+187a6f1 2022-02-13 Andrea Aimone        perform bash_dir array                                                                                                                                
+0acd3d1 2022-02-13 Andrea Aimone        no need import array use custom value in kstars.sh                                                                                                    
+800bf63 2022-02-13 Andrea Aimone        change path for kstars icon                                                                                                                           
+81347e8 2022-02-13 Andrea Aimone        rework AstroPi.sh for v1.5                                                                                                                            
+706b103 2022-02-12 Andrea Aimone        fix some bug in install.sh                                                                                                                            
+e20edbb 2022-02-12 Andrea Aimone        rework AstroPi.desktop for v1.5                                                                                                                       
+39b49a9 2022-02-12 Andrea Aimone        new "include" dir for media, icons and reuse object                                                                                                   
+c6def8d 2022-02-12 Andrea Aimone        Delete .Update.sh                                                                                                                                     
+27f2260 2022-02-12 Andrea Aimone        rework astrometry.sh for v1.5                                                                                                                         
+f342e0b 2022-02-12 Andrea Aimone        no need source for astrometry.sh                                                                                                                      
+f5929a8 2022-02-11 Andrea Aimone        create install.sh - change icon/media dir                                                                                                             
+d225c17 2022-01-30 Andrea Aimone        fix system update                                                                                                                                     
+284e1e3 2022-01-30 Andrea Aimone        rework hold app and add to hold zenity                                                                                                                
+873797d 2022-01-30 Andrea Aimone        fix source APT list                                                                                                                                   
+a1fa2a5 2022-01-30 Andrea Aimone        fix minor typo                                                                                                                                        
+aca3337 2022-01-30 Andrea Aimone        change method to check if AstroPi.sh started                                                                                                          
+3c17028 2022-01-30 Andrea Aimone        fix statment start AstroPi.sh                                                                                                                         
+882509b 2022-01-30 Andrea Aimone        fix variable AppDir                                                                                                                                   
+d2adc7b 2022-01-30 Andrea Aimone        fix load AstroPi.sh                                                                                                                                   
+50e70f8 2022-01-30 Andrea Aimone        fix internet connection loop                                                                                                                          
+9df9ac4 2022-01-30 Andrea Aimone        correct filename in curl                                                                                                                              
+358392f 2022-01-30 Andrea Aimone        use curl for download correctly script using RAW                                                                                                      
+e06d7dd 2022-01-30 Andrea Aimone        change method update AstroPi System, not use GIT                                                                                                      
+69acfee 2022-01-29 Andrea Aimone        fix sudo password loop                                                                                                                                
+f34f650 2022-01-29 Andrea Aimone        another fix loop password                                                                                                                             
+81b3a01 2022-01-29 Andrea Aimone        bugfix copy parking.py                                                                                                                                
+d4e634e 2022-01-29 Andrea Aimone        correct all if statments command                                                                                                                      
+9ae8040 2022-01-29 Andrea Aimone        !temp! no ask password if password wrong                                                                                                              
+f4896cc 2022-01-29 Andrea Aimone        delete missing ]                                                                                                                                      
+17716ef 2022-01-29 Andrea Aimone        fix loop check user password                                                                                                                          
+71dfd76 2022-01-29 Andrea Aimone        Delete Script/test&hold directory                                                                                                                     
+8db6e38 2022-01-29 Andrea Aimone        Merge pull request #149 from Andre87osx/rework-script                                                                                                 
+b1d2931 2022-01-29 Andrea Aimone        Merge pull request #148 from Andre87osx/control_script                                                                                                
+959f4e0 2022-01-29 Andrea Aimone        bugfix line 222 AstroPi.sh                                                                                                                            
+278216f 2022-01-29 Andrea Aimone        Rework script for v1.5 part 1                                                                                                                         
+8ff32ee 2022-01-23 Andrea Aimone        improove kstars.sh                                                                                                                                    
+7d5cbb5 2022-01-22 Andrea Aimone        correction if syntax                                                                                                                                  
+ac5cdee 2022-01-22 Andrea Aimone        start rework Update.sh                                                                                                                                
+47a83f5 2022-01-19 Andrea Aimone        Prepair KStars AstroPi v1.5                                                                                                                           
+d6a9c7e 2022-01-19 Andrea Aimone        new icon path                                                                                                                                         
+77c82be 2022-01-19 Andrea Aimone        new desktop app for launcher                                                                                                                          
+a313bfc 2022-01-19 Andrea Aimone        set new KStars AstroPi launcher in lxpanel                                                                                                            
+f70f4d0 2022-01-19 Andrea Aimone        Revert "Revert "Merge branch 'control_script' of https://github.com/Andre87osx/AstroPi-system into control_script""                                   
+9bea38a 2022-01-19 Andrea Aimone        Revert "Merge branch 'control_script' of https://github.com/Andre87osx/AstroPi-system into control_script"                                            
+21bf90f 2022-01-19 Andrea Aimone        Merge branch 'control_script' of https://github.com/Andre87osx/AstroPi-system into control_script                                                     
+81bafc4 2022-01-19 Andrea Aimone        new KStars AstroPi icons sets                                                                                                                         
+b05a4dd 2022-01-17 Andrea Aimone        kstars icon                                                                                                                                           
+365d27e 2022-01-17 Andrea Aimone        no need to see kstars output                                                                                                                          
+55f4337 2022-01-16 Andrea Aimone        change method to check if kstars crash or closed by user                                                                                              
+043f49e 2022-01-16 Andrea Aimone        add kstars.sh and parking.py in function update                                                                                                       
+b816b54 2022-01-16 Andrea Aimone        rework indent size                                                                                                                                    
+65e7c7e 2022-01-16 Andrea Aimone        Rename launcher.sh to kstars.sh                                                                                                                       
+5956629 2022-01-16 Andrea Aimone        robust wait park method                                                                                                                               
+7656cf2 2022-01-16 Andrea Aimone        change Wait until PARK is done method                                                                                                                 
+5be0676 2022-01-16 Andrea Aimone        no need to set park coordinate, disconnect mount driver                                                                                               
+36cdba6 2022-01-16 Andrea Aimone        bugfix stop INDI via port var                                                                                                                         
+f6ec31a 2022-01-16 Andrea Aimone        bugfix driver name telescope and add var for INDI port                                                                                                
+2d3ed61 2022-01-15 Andrea Aimone        add pkill kstars after crash, reduce sleep diurin chk                                                                                                 
+45d71a7 2022-01-15 Andrea Aimone        delete telescope simulator to park if crash                                                                                                           
+7f9ba96 2022-01-15 Andrea Aimone        rework some part of launcher                                                                                                                          
+81132cb 2022-01-15 Andrea Aimone        improvements to be tested in launcher.sh                                                                                                              
+f83288f 2022-01-14 Andrea Aimone        use OR for minimum disk space 60% used or 40GB free                                                                                                   
+bc2a01a 2022-01-11 Andrea Aimone        Update and rename control.sh to launcher.sh                                                                                                           
+0205773 2022-01-11 Andrea Aimone        Create parking.py                                                                                                                                     
+6e99187 2022-01-03 Andrea Aimone        Create control.sh                                                                                                                                     
+32a26c6 2022-01-02 Andrea Aimone        increase fontmetrics                                                                                                                                  
+5a95ce1 2022-01-02 Andrea Aimone        Update .gitignore                                                                                                                                     
+463f678 2022-01-02 Andrea Aimone        Merge pull request #50 from Andre87osx/Guide                                                                                                          
+ad1d687 2022-01-02 Andrea Aimone        Merge pull request #147 from Andre87osx/kstars-astropi-1.5                                                                                            
+c134fd3 2022-01-02 Andrea Aimone        edit indi_asi_ccd driver                                                                                                                              
+e294303 2022-01-02 Andrea Aimone        SolverBinningIndex                                                                                                                                    
+5afab3e 2022-01-02 Andrea Aimone        default guide "tramite" use mount as default                                                                                                          
+187dfa2 2022-01-02 Andrea Aimone        Chage guide default option use autostar & autobox                                                                                                     
+d16be60 2022-01-02 Andrea Aimone        minor fix in changelog                                                                                                                                
+ee58932 2021-12-31 Andrea Aimone        use extit after update succerfull                                                                                                                     
+acfed39 2021-12-30 Andrea Aimone        Update index.md                                                                                                                                       
+78fbb3b 2021-12-30 Andrea Aimone        Create old_origin                                                                                                                                     
+4cc40a1 2021-12-30 Andrea Aimone        test in pages index                                                                                                                                   
+a0b6568 2021-12-30 Andrea Aimone        Create index.md                                                                                                                                       
+1ecea27 2021-12-30 Andrea Aimone        Set theme jekyll-theme-cayman                                                                                                                         
+4f7c6e5 2021-12-30 Andrea Aimone        update gitignore for kstars-astropi dir                                                                                                               
+faf5b8b 2021-12-30 Andrea Aimone        Update .gitignore                                                                                                                                     
+12d2716 2021-12-30 Andrea Aimone        fix kstars-astropi cmake dir                                                                                                                          
+27d5221 2021-12-30 Andrea Aimone        add clean message at finishing                                                                                                                        
+0f21297 2021-12-30 Andrea Aimone        Merge pull request #141 from Andre87osx/kstars-astropi-1.5                                                                                            
+a8bf312 2021-12-30 Andrea Aimone        fix source list chmod                                                                                                                                 
+2dc1ce2 2021-12-30 Andrea Aimone        Merge pull request #140 from Andre87osx/kstars-astropi-1.5                                                                                            
+2338133 2021-12-30 Andrea Aimone        another fix sourcelist                                                                                                                                
+26ec879 2021-12-30 Andrea Aimone        Merge pull request #139 from Andre87osx/kstars-astropi-1.5                                                                                            
+5fabe57 2021-12-30 Andrea Aimone        minor fix                                                                                                                                             
+1f9d780 2021-12-30 Andrea Aimone        fix bug in source list                                                                                                                                
+7fcc9be 2021-12-29 Andrea Aimone        Merge pull request #137 from Andre87osx/kstars-astropi-1.5                                                                                            
+345c24b 2021-12-29 Andrea Aimone        Adding timer for mount handle                                                                                                                         
+5341013 2021-12-27 Andrea Aimone        Update and rename CHANGELOG to ChangeLog                                                                                                              
+d793a97 2021-12-27 Andrea Aimone        Update CHANGELOG                                                                                                                                      
+e1db691 2021-12-24 Andrea Aimone        Create CHANGELOG                                                                                                                                      
+5880ec1 2021-12-18 Andrea Aimone        fix last to wifi functiont                                                                                                                            
+bfc4f02 2021-12-16 Andrea Aimone        start rework setupWiFi                                                                                                                                
+69b834b 2021-12-16 Andrea Aimone        fix chkWhoami                                                                                                                                         
+b0ad823 2021-12-16 Andrea Aimone        fix minor typo                                                                                                                                        
+82fdc46 2021-12-16 Andrea Aimone        Chk and create secure user path                                                                                                                       
+545e1c7 2021-12-11 Andrea Aimone        fix sysUpgrade function for indesiderate update                                                                                                       
+84d9a9c 2021-12-11 Andrea Aimone        change sheduler loop method use REPEAT FOR as default                                                                                                 
+59457bf 2021-12-10 Andrea Aimone        adjust width and height calculation                                                                                                                   
+1365160 2021-12-10 Andrea Aimone        fix bug in AstroPi System password request                                                                                                            
+d368ad4 2021-12-10 Andrea Aimone        fix typo in AstroPi_v variable                                                                                                                        
+4f1d0a2 2021-12-10 Andrea Aimone        rework chkKStars functions for KStars installation                                                                                                    
+a318045 2021-12-10 Andrea Aimone        prepare to v1.5 use AstroPi_v as git TAG                                                                                                              
+c0360e0 2021-12-09 Andrea Aimone        adjus ekos width                                                                                                                                      
+9be14c9 2021-12-08 Andrea Aimone        chkIndexGsc fix some bug and add more description                                                                                                     
+db02c2b 2021-12-08 Andrea Aimone        rework chkIndexGsc functions                                                                                                                          
+bb262a5 2021-12-08 Andrea Aimone        rework sysclean add gitignore clean                                                                                                                   
+48c1b5f 2021-12-08 Andrea Aimone        add kstars-astropi dir to git ignore                                                                                                                  
+8c401b6 2021-12-08 Andrea Aimone        Create .gitignore                                                                                                                                     
+6079d4e 2021-11-27 Andrea Aimone        set default worm ccd if possible                                                                                                                      
+5dd3c7c 2021-11-27 Andrea Aimone        best default ekos Width e Height                                                                                                                      
+5ddae41 2021-11-27 Andrea Aimone        correction value in ErrorHandlingStrategyDelay 
 
-v.1.4
+v1.4
 ================================
 8d2a4fc 2021-11-23 Andrea Aimone        Delete kstars make                                                                                                                                    
 e9620aa 2021-11-11 Andrea Aimone        Merge pull request #107 from Andre87osx/fixKstasrs1.3                                                                                                 
