@@ -125,11 +125,9 @@ int main(int argc, char *argv[])
                   "Stable release.",
               i18n(notice)),
         "https://github.com/Andre87osx/AstroPi-system");
-    aboutData.addAuthor(i18n("Jason Harris"), i18n("Original Author"),
-                        "jharris@30doradus.org", "http://www.30doradus.org");
-    aboutData.addAuthor(i18n("Aimone Andrea"), i18n("KStars AstroPi Author - Project manager"),
+    aboutData.addAuthor(i18n("Aimone Andrea"), i18n("AstroPi System Author - Project manager and Developer"),
                         "andrea.aimone@outlook.com", "https://github.com/Andre87osx/AstroPi-system");
-    aboutData.addAuthor(i18n("Dott. Ing. Ostorero Roberto"), i18n("Projects mechanical parts & Development AstroPi"),
+    aboutData.addAuthor(i18n("Dott. Ing. Ostorero Roberto"), i18n("Projects mechanical parts & Development AstroPi & BETA tester"),
                         "robywan64@yahoo.it", "");
 
     // Active developers
@@ -138,8 +136,9 @@ int main(int argc, char *argv[])
     aboutData.addAuthor(i18n("Dott. Ghio Giorgio"), i18n("Scientific and mathematical consultant"),
                         "ghiogiorgio@yahoo.it", "");
   
-
     // Inactive developers
+    aboutData.addAuthor(i18n("Jason Harris"), i18n("Original Author"),
+                        "jharris@30doradus.org", "http://www.30doradus.org");
     aboutData.addAuthor(i18n("Jasem Mutlaq"), i18n("Old Maintainer"),
                         "mutlaqja@ikarustech.com", "https://www.indilib.org");
     aboutData.addAuthor(i18n("Akarsh Simha"), QString(), "akarsh@kde.org",
