@@ -19,6 +19,9 @@ $ git log --after=<date> --date=short --pretty=format:"%h %ad %<(20)%an %<(150,t
 <<<<<<< Updated upstream
 v1.5
 ================================
+6b94c85 2022-03-23 Andrea Aimone        Rename upgrade.sh to update.sh                                                                                                                        
+1eb8177 2022-03-23 Andrea Aimone        fix contributors                                                                                                                                      
+f740e77 2022-03-21 Andrea Aimone        Update ChangeLog   
 6bbeebb 2022-03-21 Andrea Aimone        fix missing icon                                                                                                                                      
 ef3e402 2022-03-20 Andrea Aimone        fix gui bug                                                                                                                                           
 5c0045d 2022-03-20 Andrea Aimone        improve adminKstars                                                                                                                                   
