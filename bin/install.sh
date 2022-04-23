@@ -13,7 +13,7 @@
 #=========================================================================
 # Create version of AstroPi
 majorRelease=1                                      # Major Release
-minorRelease=5                                      # Minor Release
+minorRelease=6                                      # Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}           # Actual Stable Release
 
 # Get width and height of screen

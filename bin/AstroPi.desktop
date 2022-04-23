@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=AstroPi-System
+GenericName=AstroPi-System
+Comment=Gear for astrophotography experience
+Icon=/usr/share/icons/gnome/scalable/places/solar-system.svg
+Exec=/usr/bin/AstroPi.sh
+Terminal=false
+NotShowIn=GNOME;XFCE
+StartupNotify=false
+Categories=Utility
+NoDisplay=false
