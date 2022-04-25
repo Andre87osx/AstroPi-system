@@ -8,7 +8,7 @@
 ########### AstroPi System ###########
 
 # Run this script as USER
-# Type in console 'bash <your script path>/install.sh'
+# Type in console 'bash <your script path>/update.sh'
 
 # Import common array and functions
 if [ -f ${HOME}/.local/share/astropi/include/functions.sh ]; then
@@ -18,14 +18,13 @@ else
 	AstroPi System is not correctly installed" --title="AstroPi-System" && exit 1
 fi
 
-#=========================================================================
-
 # Ask super user password.
 ask_pass
 
 # Chk USER and create path
 chkUser
 
+# List APT cmd to perform full system update
 apt_commands=(
 'apt-get update'
 'apt-get upgrade'
@@ -38,45 +37,42 @@ apt_commands=(
 # Install all script in default path
 function install_script()
 {
-	exit_stat=1
-	cd ${appDir}/script || exit 1
-	if [[ -f ./AstroPi.sh ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/script/AstroPi.sh /usr/bin/AstroPi.sh
-		echo "Install AstroPi.sh in /usr/bin/"
-	fi
-	if [[ -f ./kstars.sh ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/script/kstars.sh /usr/bin/kstars.sh
-		echo "Install kstars.sh in /usr/bin/"
-	fi
-	if [[ -f ./AstroPi.desktop ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/script/AstroPi.desktop /usr/share/applications/AstroPi.desktop
-		echo "Install AstroPi.desktop in /usr/share/applications/"
-	fi
-	if [[ -f ./kstars.desktop ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/script/kstars.desktop /usr/share/applications/kstars.desktop
-		echo "Install kstars.desktop in /usr/share/applications/"
-	fi
-	if  [[ -f ./panel ]]; then
-		cp ${appDir}/script/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
-		echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
-	fi
-	if [[ -f ./autohotspot.service ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot.service /etc/systemd/system/autohotspot.service
-		echo "Install autohotspot.service in /etc/systemd/system/"
-	fi
-	if [[ -f ./autohotspot ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/script/autohotspot /usr/bin/autohotspot
-		echo "Install autohotspot in /usr/bin/"
-	fi
-	cd ${appDir}/include || exit 1
-	if [[ -f ./solar-system-dark.svg ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
-		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
-	fi
-	if [[ -f ./kstars.svg ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/include/kstars.svg /usr/share/icons/gnome/scalable/places/kstars.svg
-		echo "Install KStars icons in /usr/share/icons/gnome/scalable/places"
-	fi
+	for FILE in ${appDir}/bin/*; do
+		cd ${appDir}/bin || exit 1
+		if [ echo ${ask_pass} | sudo -S cp ./AstroPi.sh /usr/bin/AstroPi.sh ]; then
+			echo "Install AstroPi.sh in /usr/bin/"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./kstars.sh /usr/bin/kstars.sh ]; then
+			echo "Install kstars.sh in /usr/bin/"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./AstroPi.desktop /usr/share/applications/AstroPi.desktop ]; then
+			echo "Install AstroPi.desktop in /usr/share/applications/"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./kstars.desktop /usr/share/applications/kstars.desktop ]; then
+			echo "Install kstars.desktop in /usr/share/applications/"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./bin/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel ]; then
+			echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./autohotspot.service /etc/systemd/system/autohotspot.service ]; then
+			echo "Install autohotspot.service in /etc/systemd/system/"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./autohotspot /usr/bin/autohotspot ]; then	
+			echo "Install autohotspot in /usr/bin/"
+		fi
+	done
+	for FILE in ${appDir}/include/*; do
+		cd ${appDir}/include || exit 1
+		if [ echo ${ask_pass} | sudo -S cp ./solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg ]; then
+			echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg ]; then
+			echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+		fi
+		if [ echo ${ask_pass} | sudo -S cp ./kstars.svg /usr/share/icons/gnome/scalable/places/kstars.svg ]; then
+			echo "Install KStars icons in /usr/share/icons/gnome/scalable/places"
+		fi
+	done
 }
 
 # Prepair fot update system
@@ -87,7 +83,7 @@ function system_pre_update()
 		sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f "${sources}" ]; then
 			echo ${ask_pass} | sudo -S chmod 777 "${sources}"
-			echo -e "# Stop unwonted update deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
+			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 			echo ${ask_pass} | sudo -S chmod 644 "${sources}"
@@ -105,8 +101,6 @@ function system_pre_update()
 		indi-full libindi-dev libindi1 indi-bin
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# FIXME temp only for v1.5
-		echo ${ask_pass} | sudo -S apt-mark unhold zenity
 	
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
@@ -131,9 +125,9 @@ function system_update()
 		) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 		exit_stat=$?
 		if [ ${exit_stat} -eq 0 ]; then
-			echo "System successfully updated on $(date)" >> ${appDir}/script/update-log.txt
+			echo "System successfully updated on $(date)" >> ${appDir}/bin/update-log.txt
 		elif [ ${exit_stat} -ne 0 ]; then
-			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> ${appDir}/script/update-log.txt
+			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> ${appDir}/bin/update-log.txt
 			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
 			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 			exit 1
@@ -155,11 +149,11 @@ while ${connection}; do
 	echo ""
 
 	# Make all script executable
-	for f in ${appDir}/script/*.sh; do
+	for f in ${appDir}/bin/*.sh; do
 		echo "Make executable ${f} script"
 		echo "${ask_pass}" | sudo -S chmod +x "${f}"
 	done
-	for f in ${appDir}/script/*.py; do
+	for f in ${appDir}/bin/*.py; do
 		echo "Make executable ${f} script"
 		echo "${ask_pass}" | sudo -S chmod +x "${f}"
 	done
@@ -172,22 +166,6 @@ while ${connection}; do
 	
 	# Get full AstoPi System update
 	system_update
-	
-	# Install ESO Fits view
-	(
-		echo "# Install ESO Fits View"
-		echo "${ask_pass}" | sudo -S apt install skycat -y
-		sleep 1s
-	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
-	exit_stat=$?
-	if [ ${exit_stat} -eq 0 ]; then
-		echo "ESO Fits view successfully installed on $(date)" >> ${appDir}/script/update-log.txt
-	elif [ ${exit_stat} -ne 0 ]; then
-		echo "Error running ESO Fits view on $(date), exit status code: ${exit_stat}" >> ${appDir}/script/update-log.txt
-		zenity --error --width=${W} --text="Something went wrong in <b>Error running ESO Fits view</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-		exit 1
-	fi
 	
 	# Add permanent link in bashrc
 	if [ -n "$(grep 'alias AstroPi=' $HOME/.bashrc)" ]; then
@@ -205,13 +183,21 @@ while ${connection}; do
 	
 	# Delete old AstroPi installations and GIT	
 	if [ -d ${HOME}/.AstroPi-system ]; then	
-		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/.AstroPi-system || exit 1	
+		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/.AstroPi-system || exit 1
+		echo "Remoove unused and old script"
 	fi
 	if [ -f /usr/bin/.Update.sh ]; then	
-		echo ${ask_pass} | sudo -S rm -Rf /usr/bin/.Update.sh || exit 1	
+		echo ${ask_pass} | sudo -S rm -Rf /usr/bin/.Update.sh || exit 1
+		echo "Remoove unused and old script"
+	
 	fi
 	if [ -f /usr/share/applications/org.kde.kstars.desktop ]; then	
-		echo ${ask_pass} | sudo -S rm -Rf /usr/share/applications/org.kde.kstars.desktop || exit 1	
+		echo ${ask_pass} | sudo -S rm -Rf /usr/share/applications/org.kde.kstars.desktop || exit 1
+		echo "Remoove unused and old script"
+	fi
+	if [ -d ${appDir}/script ]; then	
+		echo ${ask_pass} | sudo -S rm -Rf -d ${appDir}/script || exit 1
+		echo "Remoove unused and old script"
 	fi
 		
 	# Installation is finished

@@ -8,11 +8,11 @@
 ########### AstroPi System ###########
 
 # Create version of AstroPi
-majorRelease=1						# Major Release
-minorRelease=5						# Minor Release
-AstroPi_v=${majorRelease}.${minorRelease}		# Actual Stable Release
-KStars_v=3.5.4v1.5					# Based on KDE Kstrs v.3.5.4
-Indi_v=1.9.1						# Based on INDI 1.9.1 Core
+majorRelease=1								# Major Release
+minorRelease=6								# Minor Release
+AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
+KStars_v=3.5.4v1.6							# Based on KDE Kstrs v.3.5.4
+Indi_v=1.9.1								# Based on INDI 1.9.1 Core
 
 # Create next AstoPi versions
 function next_v()
@@ -37,7 +37,7 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 # System full info, linux version and x86 or x64
 sysinfo=$(uname -a)
 
-# Full disk usage
+# Disk usage
 diskUsage=$(df -h --type=ext4)
 diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
 diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
@@ -45,19 +45,32 @@ diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
 # Ask super user password.
 function ask_pass()
 {
-	ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" )
-	if [ ${ask_pass} ]; then
-		# User write password and press OK
-		# Makes sure that the sudo user password matches
-		until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
-			zenity --warning --text="<b>WARNING! The user password not matches...</b>
-			\nTry again or sign out" --width=${W} --title="${W_Title}"
-			if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
-		done
+	# Ask for the password only if the array "ask_pass" is empty. 
+	# Otherwise check only if the password is correct
+	if (( ${#ask_pass[@]} != 0 )); then
+    	if [ ${ask_pass} ]; then
+			# Check the user password stored
+			until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
+				zenity --warning --text="<b>WARNING! User password is wrong...</b>
+				\nTry again or sign out" --width=${W} --title="${W_Title}"
+				if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
+			done
+		fi
 	else
-		# User press CANCEL button
-		# Quit script
-		exit 0
+		ask_pass=$( zenity --password --title="${W_Title}" )
+		if [ ${ask_pass} ]; then
+			# User write password and press OK
+			# Makes sure that the sudo user password matches
+			until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
+				zenity --warning --text="<b>WARNING! User password is wrong...</b>
+				\nTry again or sign out" --width=${W} --title="${W_Title}"
+				if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
+			done
+		else
+			# User press CANCEL button
+			# Quit script
+			exit 0
+		fi
 	fi
 }
 
@@ -73,7 +86,7 @@ function chkUser()
 		exit 1
 	else
 		appDir=${HOME}/.local/share/astropi		# Defaul application path
-		WorkDir="${HOME}"/.Projects				# Working path for cmake
+		WorkDir=${HOME}/.Projects				# Working path for cmake
 		echo "Wellcome to AstroPi System"
 		echo "=========================="
 	fi
