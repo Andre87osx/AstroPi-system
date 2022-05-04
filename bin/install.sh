@@ -7,6 +7,7 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
+# rev 1.6 april 2022
 # Run this script as USER
 # Type in console 'bash <your script path>/install.sh'
 
