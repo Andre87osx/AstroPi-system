@@ -6,6 +6,7 @@
 #  / ____ \__ \ |_| | | (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
+# rev 1.6 april 2022
 
 # Source http://data.astrometry.net
 # "4200-series" index files for Astrometry.net
@@ -38,7 +39,7 @@
 # Scales 08-19 are named like index-40XX.fits.bz2 and each one covers
 # the whole sky.
 
-IndexPath="${HOME}"/.local/share/kstars/astrometry
+IndexPath=${HOME}/.local/share/kstars/astrometry
 
 cd ${IndexPath} || exit 1
 for y in `seq -w 00 47`; do
