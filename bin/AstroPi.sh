@@ -32,47 +32,6 @@ chkUser
 ########################## Starting AstroPi GUI ##########################
 # Powered with zenity lib. See https://help.gnome.org/users/zenity/stable/
 
-# Main windows >>>>
-rc=1 # OK button return code =0 , all others =1
-textM="<big><b>Wellcome to ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
-\n<b>Admin System</b>
-Find all the functions to administer Linux AstroPi; system updates, backups and network management
-\n<b>Admin KStars</b>
-Dedicated functions to administer KStars AstroPi; KStars and INDI updates, KStars backups, and devices management
-\n<b>Extra</b>
-Find out the guide for the System and Kstars and many more tricks"
-
-while [ ${rc} -eq 1 ]; do
-	ans=$(zenity --info --icon-name="solar-system-dark" --title="${W_Title}" --width=${W} --height=${H} \
-		--text="${textM}" \
-		--ok-label Quit \
-		--extra-button AdminSystem \
-		--extra-button AdminKStars \
-		--extra-button Extra \
-	)
-	rc=$?
-	echo "You have chosen to run:"
-	echo ${ans}
-	if [[ ${ans} == "AdminSystem" ]]
-	then
-		echo "Loading AdminSystem"
-		AdminSystem
-	elif [[ ${ans} == "AdminKStars" ]]
-	then
-		AdminKStars
-		echo "Loading AdminKStars"
-	elif [[ ${ans} == "Extra" ]]
-	then
-		Extra
-		echo "Loading Extra"
-	elif [[ ${rc} -eq 0 ]]
-	then
-		echo "Quit AstroPi System"
-		exit 0
-	fi
-done
-# Main windows <<<<
-
 # AdminSystem windows >>>>
 function AdminSystem() {
 	# Define if hotspot is active or disabled
@@ -167,3 +126,43 @@ ansK=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-l
 }
 # AdminSystem KStars <<<<
 
+# Main windows >>>>
+rc=1 # OK button return code =0 , all others =1
+textM="<big><b>Wellcome to ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
+\n<b>Admin System</b>
+Find all the functions to administer Linux AstroPi; system updates, backups and network management
+\n<b>Admin KStars</b>
+Dedicated functions to administer KStars AstroPi; KStars and INDI updates, KStars backups, and devices management
+\n<b>Extra</b>
+Find out the guide for the System and Kstars and many more tricks"
+
+while [ ${rc} -eq 1 ]; do
+	ans=$(zenity --info --icon-name="solar-system-dark" --title="${W_Title}" --width=${W} --height=${H} \
+		--text="${textM}" \
+		--ok-label Quit \
+		--extra-button AdminSystem \
+		--extra-button AdminKStars \
+		--extra-button Extra \
+	)
+	rc=$?
+	echo "You have chosen to run:"
+	echo ${ans}
+	if [[ ${ans} == "AdminSystem" ]]
+	then
+		echo "Loading AdminSystem"
+		AdminSystem
+	elif [[ ${ans} == "AdminKStars" ]]
+	then
+		AdminKStars
+		echo "Loading AdminKStars"
+	elif [[ ${ans} == "Extra" ]]
+	then
+		Extra
+		echo "Loading Extra"
+	elif [[ ${rc} -eq 0 ]]
+	then
+		echo "Quit AstroPi System"
+		exit 0
+	fi
+done
+# Main windows <<<<
