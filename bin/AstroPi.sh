@@ -19,7 +19,8 @@ if [ -f ${appDir}/include/functions.sh ] && [ -f ${appDir}/include/array.sh ]; t
 	source ${appDir}/include/array.sh
 else
 	zenity --error --width=300 --text="Something went wrong...
-	AstroPi System is not correctly installed" --title="AstroPi-System" && exit 1
+	AstroPi System is not correctly installed" --title="AstroPi-System"
+	exit 1
 fi
 
 # Ask super user password.
@@ -62,6 +63,7 @@ while [ ${rc} -eq 1 ]; do
 		echo "Loading AdminKStars"
 	elif [[ ${ans} == "Extra" ]]
 	then
+		Extra
 		echo "Loading Extra"
 	elif [[ ${rc} -eq 0 ]]
 	then
@@ -95,8 +97,10 @@ function AdminSystem() {
 	0)
 		if [ "$ansS" == "Check for System update	" ]; then
 			connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
+			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/update.sh )
 			if ${connection}; then
-				curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/script/update.sh > update.sh
+				( curl ${updateSH} > update.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width=420
 				bash update.sh&
 				exit 0
 			else
