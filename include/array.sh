@@ -29,7 +29,7 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
 
 # System full info, linux version and aarch
-sysinfo=$(uname -a)
+sysinfo=$(uname -sonmr)
 
 # Disk usage
 diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
