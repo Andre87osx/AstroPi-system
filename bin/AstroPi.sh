@@ -3,7 +3,7 @@
 #     /\       | |           |  __ (_)
 #    /  \   ___| |_ _ __ ___ | |__) |
 #   / /\ \ / __| __| '__/ _ \|  ___/ |
-#  / ____ \__ \ |_| | | (_) | |   | |
+#  / ____ \__ \ |_| | |  (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
@@ -15,12 +15,11 @@
 # Import common array and functions
 appDir=${HOME}/.local/share/astropi
 if [ -f ${appDir}/include/functions.sh ] && [ -f ${appDir}/include/array.sh ]; then
-	source ${appDir}/include/functions.sh
-	source ${appDir}/include/array.sh
+	source ${appDir}/include/functions.sh || errorMsg "Source script not work propertly"
+	source ${appDir}/include/array.sh || errorMsg "Source script not work propertly"
 else
-	zenity --error --width=300 --text="Something went wrong...
-	AstroPi System is not correctly installed" --title="AstroPi-System"
-	exit 1
+	zenity --error --width=300 --text="<b>WARNING! Something went wrong...</b>
+	AstroPi System is not correctly installed..." --title="AstroPi System" && exit 1 ""
 fi
 
 # Ask super user password.
@@ -45,12 +44,12 @@ function AdminSystem() {
 	\n<b>Storage details:</b>
 	Main disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
-	ansS=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
-		FALSE "$StatHotSpot AstroPi hotspot	" "=> On / Off WiFi Hotspot for use AstroPi outdoor" \
+	ansS=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
+		FALSE "$StatHotSpot AstroPi hotspot	" "=> On/Off WiFi Hotspot for use AstroPi outdoor" \
 		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
-		FALSE "System Cleaning	" "=> Delete unused library and script and temp file" \
-		FALSE "Check for System update	" "=> Update Linux AstroPi and chek for new System version" \
-		FALSE "System Backup	" "=> Perform complete AstroPi backup in single compressed file" )	
+		FALSE "System Cleaning	" "=> Delete unused library and script" \
+		FALSE "Check for System update	" "=> Update Linux AstroPi" \
+		FALSE "System Backup	" "=> Perform complete AstroPi backup" )	
     
 	case $? in
 	0)
@@ -59,10 +58,11 @@ function AdminSystem() {
 			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/update.sh )
 			if ${connection}; then
 				( curl ${updateSH} > update.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width=420
+				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width=${Wprogress}
 				bash update.sh&
 				exit 0
 			else
+				warningMsg "Intrnet connection required!" 
 			fi
 	
 		elif [ "$ansS" == "Setup my WiFi	" ]; then
@@ -75,14 +75,14 @@ function AdminSystem() {
 			sysClean
 
 		elif [ "$ansS" == "System Backup	" ]; then
-			# do somethings
+			sysBackup
 		fi
 	;;
 	1)
 	return 0
 	;;
 	-1)
-	zenity --warning --width=${W} --text="Something went wrong... Reload AstroPi System" --title="${W_Title}" && exit 1
+	errorMsg "Reload AstroPi System"
 	;;
 	esac
 }
@@ -90,41 +90,76 @@ function AdminSystem() {
 
 # AdminSystem KStars >>>>
 function AdminKStars() {
-kstarsV=$(kstars -v)
-indiV=$(indiserver -v)
-textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
-\n<b>KStars AsroPi installed version</b>
-${kstarsV}
-\n<b>INDI Core installed version</b>
-${indiV}"
+	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
+	\n<b>KStars AsroPi installed version</b>
+	${kstarsV}
+	\n<b>INDI Core installed version</b>
+	${indiV}"
 
-ansK=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
-	FALSE "Update INDI and Driver $Indi_v	" "=> Update INDI core and Driver" \
-	FALSE "Update KStars AstroPi $KStars_v	" "=> Update KStars AstroPi" \
-	FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" \
-	FALSE "Backup/Restore KStars	" "=> Make a backup or restore all KStars and INDI data" )	
+	ansK=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+		FALSE "Update INDI and Driver	" "=> Update INDI core and Driver" \
+		FALSE "Update KStars AstroPi	" "=> Update KStars AstroPi" \
+		FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" \
+		FALSE "Backup/Restore KStars	" "=> Make a backup or restore all KStars and INDI data" )	
     
 	case $? in
 	0)
-		if [ "$ansK" = "Update INDI and Driver $Indi_v	" ]; then
+		if [ "$ansK" = "Update INDI and Driver	" ]; then
 			chkINDI
 
-		elif [ "$ansK" = "Update KStars AstroPi $KStars_v	" ]; then
+		elif [ "$ansK" = "Update KStars AstroPi	" ]; then
 			chkKStars
 
 		elif [ "$ansK" = "Check GSC and Index	" ]; then
 			chkIndexGsc
+			chkIndexAstro
+		elif [ "$ansK" = "Backup/Restore KStars	" ]; then
+			ksBackup
 		fi
 	;;
 	1)
 	return 0
 	;;
 	-1)
-	zenity --warning --width=${W} --text="Something went wrong... Reload AstroPi System" --title="${W_Title}" && exit 1
+	errorMsg "Reload AstroPi System"
 	;;
 	esac
 }
 # AdminSystem KStars <<<<
+
+# Extra function >>>>
+function Extra()
+{
+	#//FIXME improve function
+	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
+	\n<small>Aimone A. | Ing Ostorero R. | Dr. Leali R. R. | Dr. Ghio G.</small>"
+
+	ansE=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+		FALSE "Credits	" "=> Authors and more" \
+		FALSE "AstroPi Handbook	" "=> Complete AstroPi guidelines" \
+		FALSE "KDE KStars guide	" "=> Original tutorial (not AstroPi ver.)" )	
+    
+	case $? in
+	0)
+		if [ "$ansE" = "Credits	" ]; then
+			credits
+
+		elif [ "$ansE" = "AstroPi Handbook	" ]; then
+			handBook
+
+		elif [ "$ansE" = "KDE KStars Handbook	" ]; then
+			kdeHandBook
+		fi
+	;;
+	1)
+	return 0
+	;;
+	-1)
+	errorMsg "Reload AstroPi System"
+	;;
+	esac
+}
+# Extra function <<<<
 
 # Main windows >>>>
 rc=1 # OK button return code =0 , all others =1
@@ -134,7 +169,7 @@ Find all the functions to administer Linux AstroPi; system updates, backups and 
 \n<b>Admin KStars</b>
 Dedicated functions to administer KStars AstroPi; KStars and INDI updates, KStars backups, and devices management
 \n<b>Extra</b>
-Find out the guide for the System and Kstars and many more tricks"
+Find out AstroPi System and KStars Handbook and much more"
 
 while [ ${rc} -eq 1 ]; do
 	ans=$(zenity --info --icon-name="solar-system-dark" --title="${W_Title}" --width=${W} --height=${H} \
@@ -149,16 +184,16 @@ while [ ${rc} -eq 1 ]; do
 	echo ${ans}
 	if [[ ${ans} == "AdminSystem" ]]
 	then
-		echo "Loading AdminSystem"
+		echo "Loading Admin System"
 		AdminSystem
 	elif [[ ${ans} == "AdminKStars" ]]
 	then
 		AdminKStars
-		echo "Loading AdminKStars"
+		echo "Loading Admin KStars"
 	elif [[ ${ans} == "Extra" ]]
 	then
 		Extra
-		echo "Loading Extra"
+		echo "Loading Extra functions"
 	elif [[ ${rc} -eq 0 ]]
 	then
 		echo "Quit AstroPi System"
