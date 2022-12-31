@@ -21,11 +21,11 @@ function ask_pass()
 	# Ask for the password only if the array "ask_pass" is empty. 
 	# Otherwise check only if the password is correct
 	if (( ${#ask_pass[@]} != 0 )); then
-    	if [ ${ask_pass} ]; then
+    	if [ "${ask_pass}" ]; then
 			# Check the user password stored
 			until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
 				zenity --warning --text="<b>WARNING! User password is wrong...</b>
-				\nTry again or sign out" --width=${W} --title="${W_Title}"
+				\nTry again or sign out" --width="${W}" --title="${W_Title}"
 				if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
 			done
 		fi
@@ -97,14 +97,14 @@ function chkIndexGsc()
 				echo "export GSCDAT=/usr/share/GSC" >> /etc/profile
 			fi
 		else
-			zenity --info --width=${W} --text="<b>GSC allredy exist.</b>
+			zenity --info --width="${W}" --text="<b>GSC allredy exist.</b>
 			\nFor issue contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		fi
 	
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
-		zenity --error --width=${W} --text="Something went wrong in <b>Install GSC.</b>
+		zenity --error --width="${W}" --text="Something went wrong in <b>Install GSC.</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		exit 1
 	fi
@@ -123,10 +123,10 @@ function chkIndexAstro()
 		echo "${ask_pass}" | sudo -S chown -R "${USER}":"${USER}" "${IndexPath}"
 	fi
 	echo "Check all Index, if missing download it..."
-	if ${appDir}/script/astrometry.sh; then
+	if "${appDir}"/script/astrometry.sh; then
 		true
 	else
-		zenity --error --width=${W} --text="Something went wrong in <b>Install Index Astrometry.</b>
+		zenity --error --width="${W}" --text="Something went wrong in <b>Install Index Astrometry.</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		exit 1
 	fi
@@ -139,7 +139,7 @@ function chkARM64()
 		# Do not force automatic switching to 64bit. Warn only 
 		true
 	else
-		zenity --warning --width=${W} --text="Your system is NOT 64 bit.
+		zenity --warning --width="${W}" --text="Your system is NOT 64 bit.
 		\n${sysinfo}
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 	fi
@@ -182,8 +182,8 @@ function sysClean()
 		if [ -d "${WorkDir}" ]; then 
 			echo "${ask_pass}" | sudo -S rm -rf "${WorkDir}"
 		fi
-		zenity --info --width=${W} --text="Cleaning was done correctly" --title="${W_Title}"
-	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
+	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
 		zenity --error --width=${W} --text="Something went wrong in <b>System Cleanup</b>
@@ -200,7 +200,7 @@ function sysUpgrade()
 		if [ -f "${sources}" ]; then
 			echo "${ask_pass}" | sudo -S chmod 777 "${sources}"
 			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
-			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
+			(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>sources.list.d</b>
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 			echo "${ask_pass}" | sudo -S chmod 644 "${sources}"
 		fi
@@ -208,29 +208,29 @@ function sysUpgrade()
 		echo "# Preparing update"
 		# Implement USB memory dump
 		echo "${ask_pass}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
+		(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>usbfs_memory_mb.</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		
 		# Hold some update
 		echo "${ask_pass}" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
 		indi-full libindi-dev libindi1 indi-bin
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
+		(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>hold some application</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		
 		echo "# Run Linux AstroPi full upgrade..."
 		# Run APT FULL upgrade
 		echo "${ask_pass}" | sudo -S apt update && echo "${ask_pass}" | sudo -S apt -y full-upgrade
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>Updating system AstroPi</b>
+		(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>Updating system AstroPi</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
 		# =================================================================
 		echo "# All have done"
-		zenity --info --width=${W} --text="All updates have been successfully installed" --title="${W_Title}"
+		zenity --info --width="${W}" --text="All updates have been successfully installed" --title="${W_Title}"
 
-	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
-			zenity --error --width=${W} --text="Something went wrong in <b>System Update</b>
+			zenity --error --width="${W}" --text="Something went wrong in <b>System Update</b>
 			Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 			exit 1
 	fi
@@ -297,7 +297,7 @@ function chkHotspot()
 		echo "${ask_pass}" | sudo -S systemctl disable autohotspot.service
 		(($? != 0)) && zenity --error --width=${W} --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		echo "${ask_pass}" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
-		(($? != 0)) && zenity --error --width=${W} --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>"--title="${W_Title}" && exit 1
+		(($? != 0)) && zenity --error --width=${W} --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		zenity --info --width=${W} --text "The auto hotspot service is now <b>disable</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" --title="${W_Title}"
 	else
 	# Enable AstroPi auto hotspot
