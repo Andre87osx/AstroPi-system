@@ -6,7 +6,7 @@
 #  / ____ \__ \ |_| | |  (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
-# rev 1.6 april 2022
+# rev 1.6 genuary 2023
 
 # Source http://data.astrometry.net
 # "4200-series" index files for Astrometry.net
