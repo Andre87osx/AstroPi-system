@@ -85,7 +85,7 @@ function chkIndexGsc()
 			mv gsc.exe gsc
 			echo "${ask_pass}" | sudo -S cp gsc /usr/bin/
 			cp -r "${HOME}"/gsc /usr/share/
-			echo "${askP}" | sudo -S mv /usr/share/gsc /usr/share/GSC
+			echo "${ask_pass}" | sudo -S mv /usr/share/gsc /usr/share/GSC
 			echo "${ask_pass}" | sudo -S rm -r /usr/share/GSC/bin-dos
 			echo "${ask_pass}" | sudo -S rm -r /usr/share/GSC/src
 			echo "${ask_pass}" | sudo -S rm /usr/share/GSC/bincats_GSC_1.2.tar.gz
@@ -186,7 +186,7 @@ function sysClean()
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
-		zenity --error --width=${W} --text="Something went wrong in <b>System Cleanup</b>
+		zenity --error --width="${W}" --text="Something went wrong in <b>System Cleanup</b>
 		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		exit 1
 	fi
@@ -256,11 +256,11 @@ function setupWiFi()
 			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n   key_mgmt=WPA-PSK\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
 			case $? in
 			0)
-				zenity --info --width=${W} --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
+				zenity --info --width="${W}" --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
 				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			1)
-				zenity --error --width=${W} --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+				zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			esac
@@ -269,21 +269,21 @@ function setupWiFi()
 			echo "\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$((PRIORITY--))\"\n   key_mgmt=WPA-PSK\n}\n" | tee -a /etc/wpa_supplicant/wpa_supplicant.conf
 			case $? in
 			0)
-				zenity --info --width=${W} --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
+				zenity --info --width="${W}" --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
 				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			1)
-				zenity --error --width=${W} --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+				zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			esac	
 		fi
 	;;
 	1)
-		zenity --info --width=${W} --text "No changes have been made to your current configuration" --title="${W_Title}"
+		zenity --info --width="${W}" --text "No changes have been made to your current configuration" --title="${W_Title}"
 	;;
 	-1)
-		zenity --error --width=${W} --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 	;;
 	esac
 }

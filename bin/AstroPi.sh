@@ -7,19 +7,19 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
-# rev 1.6 april 2022
+# rev 1.6 genuary 2023
 # Run this script as USER
 # Type in console bash 'AstroPi'
 # This script have GUI powered by zenity lib
 
 # Import common array and functions
 appDir=${HOME}/.local/share/astropi
-if [ -f ${appDir}/include/functions.sh ] && [ -f ${appDir}/include/array.sh ]; then
+if [ -f "${appDir}"/include/functions.sh ] && [ -f "${appDir}"/include/array.sh ]; then
 	source ${appDir}/include/functions.sh || errorMsg "Source script not work propertly"
 	source ${appDir}/include/array.sh || errorMsg "Source script not work propertly"
 else
 	zenity --error --width=300 --text="<b>WARNING! Something went wrong...</b>
-	AstroPi System is not correctly installed..." --title="AstroPi System" && exit 1 ""
+	AstroPi System is not correctly installed..." --title="AstroPi System" && exit1 ""
 fi
 
 # Ask super user password.
@@ -44,7 +44,7 @@ function AdminSystem() {
 	\n<b>Storage details:</b>
 	Main disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
-	ansS=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	ansS=$( zenity --list --width=$((W+220)) --height="${H}" --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "$StatHotSpot AstroPi hotspot	" "=> On/Off WiFi Hotspot for use AstroPi outdoor" \
 		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
 		FALSE "System Cleaning	" "=> Delete unused library and script" \
@@ -57,8 +57,8 @@ function AdminSystem() {
 			connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
 			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/update.sh )
 			if ${connection}; then
-				( curl ${updateSH} > update.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width=${Wprogress}
+				( curl "${updateSH}" > update.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
 				bash update.sh&
 				exit 0
 			else

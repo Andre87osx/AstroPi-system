@@ -44,7 +44,7 @@ apt_commands=(
 # Ask for the password only if the array "ask_pass" is empty. 
 # Otherwise check only if the password is correct
 if (( ${#ask_pass[@]} != 0 )); then
-    if [ ${ask_pass} ]; then
+    if [ "${ask_pass}" ]; then
 		# Check the user password stored
 		until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
 			zenity --warning --text="<b>WARNING! User password is wrong...</b>
@@ -54,7 +54,7 @@ if (( ${#ask_pass[@]} != 0 )); then
 	fi
 else
 	ask_pass=$( zenity --password --title="${W_Title}" )
-	if [ ${ask_pass} ]; then
+	if [ "${ask_pass}" ]; then
 		# User write password and press OK
 		# Makes sure that the sudo user password matches
 		until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
@@ -81,8 +81,8 @@ else
 	appDir=${HOME}/.local/share/astropi
 	echo "Wellcome to AstroPi System"
 	echo "=========================="
-	if [ ! -d ${appDir} ]; then
-		mkdir -p ${appDir}
+	if [ ! -d "${appDir}" ]; then
+		mkdir -p "${appDir}"
 	fi
 fi
 
@@ -90,42 +90,42 @@ fi
 function install_script()
 {
 	exit_stat=1
-	cd ${appDir}/bin || exit 1
+	cd "${appDir}"/bin || exit 1
 	if [[ -f ./AstroPi.sh ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/bin/AstroPi.sh /usr/bin/AstroPi.sh
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/AstroPi.sh /usr/bin/AstroPi.sh
 		echo "Install AstroPi.sh in /usr/bin/"
 	fi
 	if [[ -f ./kstars.sh ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/bin/kstars.sh /usr/bin/kstars.sh
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/kstars.sh /usr/bin/kstars.sh
 		echo "Install kstars.sh in /usr/bin/"
 	fi
 	if [[ -f ./AstroPi.desktop ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		echo "Install AstroPi.desktop in /usr/share/applications/"
 	fi
 	if [[ -f ./kstars.desktop ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/bin/kstars.desktop /usr/share/applications/kstars.desktop
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/kstars.desktop /usr/share/applications/kstars.desktop
 		echo "Install kstars.desktop in /usr/share/applications/"
 	fi
 	if  [[ -f ./panel ]]; then
-		cp ${appDir}/bin/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
+		cp "${appDir}"/bin/panel "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
 		echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
 	fi
 	if [[ -f ./autohotspot.service ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/bin/autohotspot.service /etc/systemd/system/autohotspot.service
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/autohotspot.service /etc/systemd/system/autohotspot.service
 		echo "Install autohotspot.service in /etc/systemd/system/"
 	fi
 	if [[ -f ./autohotspot ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/bin/autohotspot /usr/bin/autohotspot
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/autohotspot /usr/bin/autohotspot
 		echo "Install autohotspot in /usr/bin/"
 	fi
-	cd ${appDir}/include || exit 1
+	cd "${appDir}"/include || exit 1
 	if [[ -f ./solar-system-dark.svg ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
 	fi
 	if [[ -f ./solar-system.svg ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
+		echo "${ask_pass}" | sudo -S cp "${appDir}"/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
 	fi
 	if [[ -f ./kstars.svg ]]; then
@@ -179,14 +179,14 @@ function system_update()
 		echo ""
 		(
 			echo "# Running Update ${CMD}"
-			echo "${ask_pass}" | sudo -S ${CMD} -y
+			echo "${ask_pass}" | sudo -S "${CMD}" -y
 			sleep 1s
 		) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 		exit_stat=$?
 		if [ ${exit_stat} -eq 0 ]; then
-			echo "System successfully updated on $(date)" >> ${appDir}/bin/update-log.txt
+			echo "System successfully updated on $(date)" >> "${appDir}"/bin/update-log.txt
 		elif [ ${exit_stat} -ne 0 ]; then
-			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> ${appDir}/bin/update-log.txt
+			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> "${appDir}"/bin/update-log.txt
 			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
 			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 			exit 1
@@ -202,7 +202,7 @@ while ${connection}; do
 	echo ""
 	echo "Downloading AstroPi v${AstroPi_v}..."
 	echo ""
-	( wget -c ${release} | tar --strip-components=1 -xz -C "${appDir}" ) 2>&1 | \
+	( wget -c "${release}" | tar --strip-components=1 -xz -C "${appDir}" ) 2>&1 | \
 	sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
 	echo ""
