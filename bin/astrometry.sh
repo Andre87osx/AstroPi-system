@@ -3,9 +3,10 @@
 #     /\       | |           |  __ (_)
 #    /  \   ___| |_ _ __ ___ | |__) |
 #   / /\ \ / __| __| '__/ _ \|  ___/ |
-#  / ____ \__ \ |_| | | (_) | |   | |
+#  / ____ \__ \ |_| | |  (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
+# rev 1.6 genuary 2023
 
 # Source http://data.astrometry.net
 # "4200-series" index files for Astrometry.net
@@ -38,13 +39,13 @@
 # Scales 08-19 are named like index-40XX.fits.bz2 and each one covers
 # the whole sky.
 
-IndexPath="${HOME}"/.local/share/kstars/astrometry
+IndexPath=${HOME}/.local/share/kstars/astrometry
 
-cd ${IndexPath} || exit 1
-for y in `seq -w 00 47`; do
-	for x in `seq -w 00 04`; do
+cd "${IndexPath}" || exit 1
+for y in $(seq -w 00 47); do
+	for x in $(seq -w 00 04); do
 		Index=("index-42${x}-${y}.fits")
-		if [ ! -f ${Index} ]; then
+		if [ ! -f "${Index}" ]; then
         		# Download missing Index file
         		( wget http://data.astrometry.net/4200/index-42${x}-${y}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 			zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
@@ -54,10 +55,10 @@ for y in `seq -w 00 47`; do
 	done
 done
 
-for y in `seq -w 00 11`; do
-	for x in `seq -w 05 07`; do
+for y in $(seq -w 00 11); do
+	for x in $(seq -w 05 07); do
 		Index=("index-42${x}-${y}.fits")
-		if [ ! -f ${Index} ]; then
+		if [ ! -f "${Index}" ]; then
         		# Download missing Index file
         		( wget http://data.astrometry.net/4200/index-42${x}-${y}.fits ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 			zenity --progress --title="Downloading ${Index}..." --pulsate --auto-close --auto-kill --width=420
@@ -67,7 +68,7 @@ for y in `seq -w 00 11`; do
 	done
 done
 
-for x in `seq -w 4208 4219`; do
+for x in $(seq -w 4208 4219); do
 	Index=("index-${x}.fits")
 	if [ ! -f ${Index} ]; then
         	# Download missing Index file
@@ -80,7 +81,7 @@ done
 
 # Check Thyco2 Index for Astrometry
 # Tycho-2 catalog; scales 7-19 available, good for images wider than 1 degree.
-for x in `seq -w 4107 4119`; do
+for x in $(seq -w 4107 4119); do
 	Index=("index-${x}.fits")
 	if [ ! -f ${Index} ]; then
         	# Download missing Index file
