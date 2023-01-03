@@ -44,23 +44,23 @@ apt_commands=(
 # Ask for the password only if the array "ask_pass" is empty. 
 # Otherwise check only if the password is correct
 if (( ${#ask_pass[@]} != 0 )); then
-    if [ "${ask_pass}" ]; then
+    if [ ${ask_pass} ]; then
 		# Check the user password stored
 		until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
 			zenity --warning --text="<b>WARNING! User password is wrong...</b>
-			\nTry again or sign out" --width=${W} --title="${W_Title}"
-			if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
+			\nTry again or sign out" --width=${W} --title=${W_Title}
+			if ask_pass=$( zenity --password  --width=${W} --title=${W_Title} ); then break; else exit 0; fi
 		done
 	fi
 else
 	ask_pass=$( zenity --password --title="${W_Title}" )
-	if [ "${ask_pass}" ]; then
+	if [ ${ask_pass} ]; then
 		# User write password and press OK
 		# Makes sure that the sudo user password matches
 		until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
 			zenity --warning --text="<b>WARNING! User password is wrong...</b>
-			\nTry again or sign out" --width=${W} --title="${W_Title}"
-			if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
+			\nTry again or sign out" --width=${W} --title=${W_Title}
+			if ask_pass=$( zenity --password  --width=${W} --title=${W_Title} ); then break; else exit 0; fi
 		done
 	else
 		# User press CANCEL button
@@ -75,14 +75,14 @@ if [[ -z ${USER} ]] && [[ ${USER} != root ]]; then
 	echo " "
 	echo "Read how to use at top of this script"
 	zenity --error --text="<b>WARNING! Run this script as user not as root</b>
-	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title=${W_Title}
 	exit 1
 else
 	appDir=${HOME}/.local/share/astropi
 	echo "Wellcome to AstroPi System"
 	echo "=========================="
-	if [ ! -d "${appDir}" ]; then
-		mkdir -p "${appDir}"
+	if [ ! -d ${appDir} ]; then
+		mkdir -p ${appDir}
 	fi
 fi
 
@@ -90,42 +90,42 @@ fi
 function install_script()
 {
 	exit_stat=1
-	cd "${appDir}"/bin || exit 1
+	cd ${appDir}/bin || exit 1
 	if [[ -f ./AstroPi.sh ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/AstroPi.sh /usr/bin/AstroPi.sh
+		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/AstroPi.sh /usr/bin/AstroPi.sh
 		echo "Install AstroPi.sh in /usr/bin/"
 	fi
 	if [[ -f ./kstars.sh ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/kstars.sh /usr/bin/kstars.sh
+		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/kstars.sh /usr/bin/kstars.sh
 		echo "Install kstars.sh in /usr/bin/"
 	fi
 	if [[ -f ./AstroPi.desktop ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
 		echo "Install AstroPi.desktop in /usr/share/applications/"
 	fi
 	if [[ -f ./kstars.desktop ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/kstars.desktop /usr/share/applications/kstars.desktop
+		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/kstars.desktop /usr/share/applications/kstars.desktop
 		echo "Install kstars.desktop in /usr/share/applications/"
 	fi
 	if  [[ -f ./panel ]]; then
-		cp "${appDir}"/bin/panel "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
+		cp ${appDir}/bin/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
 		echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
 	fi
 	if [[ -f ./autohotspot.service ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/autohotspot.service /etc/systemd/system/autohotspot.service
+		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/autohotspot.service /etc/systemd/system/autohotspot.service
 		echo "Install autohotspot.service in /etc/systemd/system/"
 	fi
 	if [[ -f ./autohotspot ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/bin/autohotspot /usr/bin/autohotspot
+		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/autohotspot /usr/bin/autohotspot
 		echo "Install autohotspot in /usr/bin/"
 	fi
 	cd "${appDir}"/include || exit 1
 	if [[ -f ./solar-system-dark.svg ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
+		echo "${ask_pass}" | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
 	fi
 	if [[ -f ./solar-system.svg ]]; then
-		echo "${ask_pass}" | sudo -S cp "${appDir}"/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
+		echo "${ask_pass}" | sudo -S cp ${appDir}/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
 	fi
 	if [[ -f ./kstars.svg ]]; then
@@ -141,18 +141,18 @@ function system_pre_update()
 		# Check APT Source and stops unwanted updates
 		sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f "${sources}" ]; then
-			echo ${ask_pass} | sudo -S chmod 777 "${sources}"
-			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
+			echo "${ask_pass}" | sudo -S chmod 777 ${sources}
+			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
-			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-			echo ${ask_pass} | sudo -S chmod 644 "${sources}"
+			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+			echo "${ask_pass}" | sudo -S chmod 644 ${sources}
 		fi
 		
 		# Implement USB memory dump
 		echo "# Preparing update"
-		echo ${ask_pass} | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+		echo "${ask_pass}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		
 		# Hold some update
 		echo "# Hold some update"
@@ -161,11 +161,11 @@ function system_pre_update()
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 	
-	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
 		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>
-		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 		exit 1
 	fi
 }
@@ -179,16 +179,16 @@ function system_update()
 		echo ""
 		(
 			echo "# Running Update ${CMD}"
-			echo "${ask_pass}" | sudo -S "${CMD}" -y
+			echo "${ask_pass}" | sudo -S ${CMD} -y
 			sleep 1s
-		) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 		exit_stat=$?
 		if [ ${exit_stat} -eq 0 ]; then
 			echo "System successfully updated on $(date)" >> "${appDir}"/bin/update-log.txt
 		elif [ ${exit_stat} -ne 0 ]; then
-			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> "${appDir}"/bin/update-log.txt
+			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> ${appDir}/bin/update-log.txt
 			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
-			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 			exit 1
 		fi
 	done	
@@ -202,7 +202,7 @@ while ${connection}; do
 	echo ""
 	echo "Downloading AstroPi v${AstroPi_v}..."
 	echo ""
-	( wget -c "${release}" | tar --strip-components=1 -xz -C "${appDir}" ) 2>&1 | \
+	( wget -c ${release} | tar --strip-components=1 -xz -C ${appDir} ) 2>&1 | \
 	sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
 	echo ""
@@ -210,11 +210,11 @@ while ${connection}; do
 	# Make all script executable
 	for f in ${appDir}/bin/*.sh; do
 		echo "Make executable ${f} script"
-		echo "${ask_pass}" | sudo -S chmod +x "${f}"
+		echo "${ask_pass}" | sudo -S chmod +x ${f}
 	done
 	for f in ${appDir}/bin/*.py; do
 		echo "Make executable ${f} script"
-		echo "${ask_pass}" | sudo -S chmod +x "${f}"
+		echo "${ask_pass}" | sudo -S chmod +x ${f}
 	done
     
 	# Install all script in default path
@@ -231,14 +231,14 @@ while ${connection}; do
 	# 	echo "# Install ESO Fits View"
 	# 	echo "${ask_pass}" | sudo -S apt install skycat -y
 	# 	sleep 1s
-	# ) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+	# ) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	# exit_stat=$?
 	# if [ ${exit_stat} -eq 0 ]; then
 	# 	echo "ESO Fits view successfully installed on $(date)" >> ${appDir}/script/update-log.txt
 	# elif [ ${exit_stat} -ne 0 ]; then
 	# 	echo "Error running ESO Fits view on $(date), exit status code: ${exit_stat}" >> ${appDir}/script/update-log.txt
 	# 	zenity --error --width=${W} --text="Something went wrong in <b>Error running ESO Fits view</b>
-	# 	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+	# 	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 	# 	exit 1
 	# fi
 	
@@ -274,7 +274,7 @@ while ${connection}; do
 	echo ""
 	echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out"
 	zenity --info --width=${W} --text="<b><big>The installation of AstroPi v${AstroPi_v} is completed.</big>
-	\nLaunch AstroPi to try it out</b>" --title="${W_Title}"
+	\nLaunch AstroPi to try it out</b>" --title=${W_Title}
     
 	# STOP LOOP
 	break
