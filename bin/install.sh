@@ -119,7 +119,7 @@ function install_script()
 		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/autohotspot /usr/bin/autohotspot
 		echo "Install autohotspot in /usr/bin/"
 	fi
-	cd "${appDir}"/include || exit 1
+	cd ${appDir}/include || exit 1
 	if [[ -f ./solar-system-dark.svg ]]; then
 		echo "${ask_pass}" | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
 		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
@@ -140,7 +140,7 @@ function system_pre_update()
 	(	
 		# Check APT Source and stops unwanted updates
 		sources=/etc/apt/sources.list.d/astroberry.list
-		if [ -f "${sources}" ]; then
+		if [ -f ${sources} ]; then
 			echo "${ask_pass}" | sudo -S chmod 777 ${sources}
 			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
@@ -184,7 +184,7 @@ function system_update()
 		) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 		exit_stat=$?
 		if [ ${exit_stat} -eq 0 ]; then
-			echo "System successfully updated on $(date)" >> "${appDir}"/bin/update-log.txt
+			echo "System successfully updated on $(date)" >> ${appDir}/bin/update-log.txt
 		elif [ ${exit_stat} -ne 0 ]; then
 			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> ${appDir}/bin/update-log.txt
 			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
