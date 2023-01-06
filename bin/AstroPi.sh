@@ -55,11 +55,11 @@ function AdminSystem() {
 	0)
 		if [ "$ansS" == "Check for System update	" ]; then
 			connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
-			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/update.sh )
+			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/install.sh )
 			if ${connection}; then
-				( curl "${updateSH}" > update.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+				( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
-				bash update.sh&
+				bash install.sh&
 				exit 0
 			else
 				warningMsg "Intrnet connection required!" 
