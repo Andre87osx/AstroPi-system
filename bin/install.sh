@@ -220,7 +220,7 @@ while ${connection}; do
 	echo "Downloading AstroPi v${AstroPi_v}..."
 	echo ""
 	( 
-		echo "# Check fo AstroPi v${AstroPi_v} download" 
+		echo "# Check for AstroPi v${AstroPi_v} download" 
 		wget -c ${release} | tar --strip-components=1 -xz -C ${appDir} ) | \
 		zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
 	echo ""
