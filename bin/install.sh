@@ -7,9 +7,11 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
-# rev 1.6 april 2022
+# rev 1.6 genuary 2023
 # Run this script as USER
 # Type in console 'bash <your script path>/install.sh'
+# Autoload script, open console and paste
+# curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/install.sh > install.sh && bash install.sh
 
 #=========================================================================
 # Create version of AstroPi
@@ -89,49 +91,64 @@ fi
 # Install all script in default path
 function install_script()
 {
-	exit_stat=1
-	cd ${appDir}/bin || exit 1
-	if [[ -f ./AstroPi.sh ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/AstroPi.sh /usr/bin/AstroPi.sh
-		echo "Install AstroPi.sh in /usr/bin/"
-	fi
-	if [[ -f ./kstars.sh ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/kstars.sh /usr/bin/kstars.sh
-		echo "Install kstars.sh in /usr/bin/"
-	fi
-	if [[ -f ./AstroPi.desktop ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
-		echo "Install AstroPi.desktop in /usr/share/applications/"
-	fi
-	if [[ -f ./kstars.desktop ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/kstars.desktop /usr/share/applications/kstars.desktop
-		echo "Install kstars.desktop in /usr/share/applications/"
-	fi
-	if  [[ -f ./panel ]]; then
-		cp ${appDir}/bin/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
-		echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
-	fi
-	if [[ -f ./autohotspot.service ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/autohotspot.service /etc/systemd/system/autohotspot.service
-		echo "Install autohotspot.service in /etc/systemd/system/"
-	fi
-	if [[ -f ./autohotspot ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/bin/autohotspot /usr/bin/autohotspot
-		echo "Install autohotspot in /usr/bin/"
-	fi
-	cd ${appDir}/include || exit 1
-	if [[ -f ./solar-system-dark.svg ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
-		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
-	fi
-	if [[ -f ./solar-system.svg ]]; then
-		echo "${ask_pass}" | sudo -S cp ${appDir}/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
-		echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
-	fi
-	if [[ -f ./kstars.svg ]]; then
-		echo ${ask_pass} | sudo -S cp ${appDir}/include/kstars.svg /usr/share/icons/gnome/scalable/places/kstars.svg
-		echo "Install KStars icons in /usr/share/icons/gnome/scalable/places"
-	fi
+	(	
+		exit_stat=1
+		cd ${appDir}/bin || exit 1
+		if [[ -f ./AstroPi.sh ]]; then
+			echo "# Install AstroPi.sh in /usr/bin/"
+			echo "Install AstroPi.sh in /usr/bin/"
+			echo ${ask_pass} | sudo -S cp ${appDir}/bin/AstroPi.sh /usr/bin/AstroPi.sh
+		fi
+		if [[ -f ./kstars.sh ]]; then
+			echo "# Install kstars.sh in /usr/bin/"
+			echo "Install kstars.sh in /usr/bin/"
+			echo ${ask_pass} | sudo -S cp ${appDir}/bin/kstars.sh /usr/bin/kstars.sh
+		fi
+		if [[ -f ./AstroPi.desktop ]]; then
+			echo "# Install AstroPi.desktop in /usr/share/applications/"
+			echo "Install AstroPi.desktop in /usr/share/applications/"
+			echo ${ask_pass} | sudo -S cp ${appDir}/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+			
+		fi
+		if [[ -f ./kstars.desktop ]]; then
+			echo "# Install kstars.desktop in /usr/share/applications/"
+			echo "Install kstars.desktop in /usr/share/applications/"
+			echo ${ask_pass} | sudo -S cp ${appDir}/bin/kstars.desktop /usr/share/applications/kstars.desktop
+			
+		fi
+		if  [[ -f ./panel ]]; then
+			echo "# Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+			echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+			cp ${appDir}/bin/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
+		fi
+		if [[ -f ./autohotspot.service ]]; then
+			echo "# Install autohotspot.service in /etc/systemd/system/"
+			echo "Install autohotspot.service in /etc/systemd/system/"
+			echo ${ask_pass} | sudo -S cp ${appDir}/bin/autohotspot.service /etc/systemd/system/autohotspot.service
+			
+		fi
+		if [[ -f ./autohotspot ]]; then
+			echo "# Install autohotspot in /usr/bin/"
+			echo "Install autohotspot in /usr/bin/"
+			echo ${ask_pass} | sudo -S cp ${appDir}/bin/autohotspot /usr/bin/autohotspot
+		fi
+		cd ${appDir}/include || exit 1
+		if [[ -f ./solar-system-dark.svg ]]; then
+			echo "# Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
+		fi
+		if [[ -f ./solar-system.svg ]]; then
+			echo "# Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			echo ${ask_pass} | sudo -S cp ${appDir}/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
+		fi
+		if [[ -f ./kstars.svg ]]; then
+			echo "# Install KStars icons in /usr/share/icons/gnome/scalable/places"
+			echo "Install KStars icons in /usr/share/icons/gnome/scalable/places"
+			echo ${ask_pass} | sudo -S cp ${appDir}/include/kstars.svg /usr/share/icons/gnome/scalable/places/kstars.svg
+		fi
+	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 }
 
 # Prepair fot update system
@@ -141,16 +158,16 @@ function system_pre_update()
 		# Check APT Source and stops unwanted updates
 		sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f ${sources} ]; then
-			echo "${ask_pass}" | sudo -S chmod 777 ${sources}
+			echo ${ask_pass} | sudo -S chmod 777 ${sources}
 			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
-			echo "${ask_pass}" | sudo -S chmod 644 ${sources}
+			echo ${ask_pass} | sudo -S chmod 644 ${sources}
 		fi
 		
 		# Implement USB memory dump
 		echo "# Preparing update"
-		echo "${ask_pass}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+		echo ${ask_pass} | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
 		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
 		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		
@@ -179,7 +196,7 @@ function system_update()
 		echo ""
 		(
 			echo "# Running Update ${CMD}"
-			echo "${ask_pass}" | sudo -S ${CMD} -y
+			echo ${ask_pass} | sudo -S ${CMD} -y
 			sleep 1s
 		) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 		exit_stat=$?
@@ -202,19 +219,21 @@ while ${connection}; do
 	echo ""
 	echo "Downloading AstroPi v${AstroPi_v}..."
 	echo ""
-	( wget -c ${release} | tar --strip-components=1 -xz -C ${appDir} ) 2>&1 | \
-	sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
+	( 
+		echo "# Check fo AstroPi v${AstroPi_v} download" 
+		wget -c ${release} | tar --strip-components=1 -xz -C ${appDir} ) | \
+		zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=420
 	echo ""
 
 	# Make all script executable
+	
 	for f in ${appDir}/bin/*.sh; do
 		echo "Make executable ${f} script"
-		echo "${ask_pass}" | sudo -S chmod +x ${f}
+		echo ${ask_pass} | sudo -S chmod +x ${f} || echo "Error"
 	done
 	for f in ${appDir}/bin/*.py; do
 		echo "Make executable ${f} script"
-		echo "${ask_pass}" | sudo -S chmod +x ${f}
+		echo ${ask_pass} | sudo -S chmod +x ${f} || echo "Error"
 	done
     
 	# Install all script in default path
@@ -257,11 +276,11 @@ while ${connection}; do
 	lxpanelctl restart
 	
 	# Delete old AstroPi installations and GIT	
-	if [ -d ${HOME}/.AstroPi-system ]; then	
-		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/.AstroPi-system || exit 1	
+	if [ -f ${HOME}/AstroPi* ]; then	
+		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/AstroPi* || exit 1	
 	fi
-	if [ -f /usr/bin/.Update.sh ]; then	
-		echo ${ask_pass} | sudo -S rm -Rf /usr/bin/.Update.sh || exit 1	
+	if [ -f ${HOME}/.Update.sh ]; then	
+		echo ${ask_pass} | sudo -S rm -Rf ${HOME}/.Update.sh || exit 1	
 	fi
 	if [ -f /usr/share/applications/org.kde.kstars.desktop ]; then	
 		echo ${ask_pass} | sudo -S rm -Rf /usr/share/applications/org.kde.kstars.desktop || exit 1	
