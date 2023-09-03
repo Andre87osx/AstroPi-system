@@ -55,17 +55,25 @@ function AdminSystem() {
 	case $? in
 	0)
 		if [ "$ansS" == "Check for System update	" ]; then
-			connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
 			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/install.sh )
-			if ${connection}; then
-				( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
-				bash install.sh&
-				exit 0
-			else
-				warningMsg "Intrnet connection required!" 
-			fi
-	
+			echo "wellcome to AstroPi installer"
+			echo ""
+			echo "Check internet connectionions and if Git exist"
+			echo ""
+			case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
+ 				[23]) echo "HTTP connectivity is up"
+  					( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+					zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
+					bash install.sh&
+					exit 0
+					echo "Library downloaded";;
+ 				5)	echo "The web proxy won't let us through"
+  					zenity --error --text="The web proxy won't let us through"
+					exit 1;;
+  				*)	echo "The network is down or very slow"
+					zenity --error --text="The network is down or very slow"
+					exit 1;;
+			esac
 		elif [ "$ansS" == "Setup my WiFi	" ]; then
 			setupWiFi
 
@@ -83,7 +91,7 @@ function AdminSystem() {
 		return 0
 	;;
 	-1)
-		errorMsg "Reload AstroPi System"
+		zenity --error --text="Reload AstroPi System"
 	;;
 	esac
 }
@@ -118,7 +126,7 @@ function AdminKStars() {
 		return 0
 	;;
 	-1)
-		errorMsg "Reload AstroPi System"
+		zenity --error --text="Reload AstroPi System"
 	;;
 	esac
 }
@@ -152,7 +160,7 @@ function Extra()
 		return 0
 	;;
 	-1)
-		errorMsg "Reload AstroPi System"
+		zenity --error --text="Reload AstroPi System"
 	;;
 	esac
 }
