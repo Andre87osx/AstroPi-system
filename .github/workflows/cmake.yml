@@ -1,4 +1,4 @@
-name: CMake
+name: Test compiling KStars AstroPi and dependencies
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container: ["ubuntu", "debian", "debian-buster", "fedora"]
+        container: ["debian", "debian-buster",]
     
     steps:
     - uses: actions/checkout@v2
@@ -29,7 +29,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get -y upgrade && sudo apt-get install libkf5doctools-dev
 
     - name: Preparing system prerequisites for KStars AstroPi
-      run: sudo apt-add-repository ppa:mutlaqja/ppa && sudo apt-get -y install build-essential cmake git libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev=1.9.1+dfsg-1 extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme xterm libqt5datavisualization5-dev git cmake qtbase5-dev libcfitsio-dev libgsl-dev wcslib-dev
+      run: sudo apt-add-repository ppa:mutlaqja/ppa && sudo apt-get -y install build-essential cmake git libeigen3-dev libcfitsio-dev zlib1g-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme xterm libqt5datavisualization5-dev git cmake qtbase5-dev libcfitsio-dev libgsl-dev wcslib-dev
 
     - name: Download StellarSolver
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -37,6 +37,11 @@ jobs:
       # StellarSolver 2.0 have issue with KStars AstroPi 3.5.4 v1.5. Use GIT for build tag 1.9
       run: git clone -b 1.9 https://github.com/rlancaste/stellarsolver.git
       
+    - name: Download indilib-AstroPi
+      run: |
+          https://github.com/Andre87osx/indi-AstroPi.git
+          indi-AstroPi/scripts/indi-core-build.sh
+
     - name: Configure StellarSolver
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/stellarsolver
 
