@@ -33,7 +33,7 @@ jobs:
     
     - name: Download indilib-AstroPi
       run: |
-          https://github.com/Andre87osx/indi-AstroPi.git
+          git clone https://github.com/Andre87osx/indi-AstroPi.git
           indi-AstroPi/scripts/indi-core-build.sh
 
     - name: Download StellarSolver
