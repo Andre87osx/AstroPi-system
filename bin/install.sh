@@ -55,22 +55,17 @@ while [ "${CONN}" == "true" ]; do
 	# Ask for the password only if the array "ask_pass" is empty. 
 	# Otherwise check only if the password is correct
 	# Ask super user password.
-	ask_pass=( )
-	ask_pass=$( zenity --password --title="${W_Title}" )
-		if [ ${ask_pass} ]; then
-			# User write password and press OK
-			# Makes sure that the sudo user password matches
-			while $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
-				zenity --warning --text="<b>WARNING! User password is wrong...</b>
-				\nTry again or sign out" --width=${W} --title="${W_Title}"
-				if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
-			done
-		else
-			# User press CANCEL button
-			# Quit script
-			exit 0; break
-		fi
-
+	ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" )
+	case $? in
+	0)	until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
+			zenity --warning --text="<b>WARNING! User password is wrong...</b>
+			\nTry again or sign out" --width=${W} --title="${W_Title}"
+			ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" )
+		done ;;
+	1)
+		# Close form input password
+		exit 0;;
+	esac
 	
 	# Grant superuser command without password
 	echo "${ask_pass}" | sudo -S echo '' 2>/dev/null
