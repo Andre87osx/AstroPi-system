@@ -64,9 +64,10 @@ function AdminSystem() {
  				[23]) echo "HTTP connectivity is up"
   					( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
 					zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
+					echo "Library downloaded"
 					bash install.sh&
 					exit 0
-					echo "Library downloaded";;
+					;;
  				5)	echo "The web proxy won't let us through"
   					zenity --error --text="The web proxy won't let us through"
 					exit 1;;
