@@ -61,6 +61,9 @@ while [ "${CONN}" == "true" ]; do
 			zenity --warning --text="<b>WARNING! User password is wrong...</b>
 			\nTry again or sign out" --width=${W} --title="${W_Title}"
 			ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" )
+			case $? in
+				1) exit 0;;
+			esac
 		done ;;
 	1)
 		# Close form input password
