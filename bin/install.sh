@@ -24,7 +24,7 @@ echo ""
 case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
   [23]) echo "HTTP connectivity is up"  && CONN="true"
   		#curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/include/functions.sh > "${HOME}"/functions.sh
-		curl https://github.com/Andre87osx/AstroPi-system/blob/v1.6beta/include/functions.sh > "${HOME}"/functions.sh
+		curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/v1.6beta/include/functions.sh > "${HOME}"/functions.sh
 		echo ""
 		echo "Library downloaded";;
   5)	echo "The web proxy won't let us through" && CONN="false"
@@ -82,7 +82,7 @@ while [ "${CONN}" == "true" ]; do
 
 	# Download last AstroPi System script project
 	#release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v${AstroPi_v}.tar.gz -O -"
-	release="https://github.com/Andre87osx/AstroPi-system/archive/refs/heads/v1.6beta.zip -O -"
+	release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v1.6.tar.gz -O -"
 	echo "Downloading AstroPi v${AstroPi_v}..."
 	echo ""
 	( 
