@@ -67,7 +67,7 @@ while [ "${CONN}" == "true" ]; do
 		else
 			# User press CANCEL button
 			# Quit script
-			exit 0
+			exit 0; break
 		fi
 
 	
@@ -101,14 +101,15 @@ while [ "${CONN}" == "true" ]; do
 	# Get full AstoPi System update
 	system_update
 	
-	#//FIXME
-	# Add permanent link in bashrc
-	#if  grep -q 'alias AstroPi=' "${HOME}"/.bashrc ; then
-	#	# The permanent link allredy exist 
-	#	true
-	#else
-	#	echo "alias AstroPi='/usr/bin/AstroPi.sh'" >>"${HOME}"/.bashrc
-	#fi
+	# Add AstroPi link in console 
+	local isInFile=$(cat "${HOME}"/.bashrc | grep -c "alias AstroPi=")
+	if [ $isInFile -eq 0 ]; then
+		#string not contained in file
+   		echo "alias AstroPi='/usr/bin/AstroPi.sh'" >>"${HOME}"/.bashrc
+	else
+   		#string is in file at least once
+   		true
+	fi
 	
 	# Set default wallpaper
 	pcmanfm --set-wallpaper="${appDir}/include/AstroPi_wallpaper.png"

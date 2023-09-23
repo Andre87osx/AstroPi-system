@@ -41,16 +41,6 @@ diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
 # Default app directory
 appDir=${HOME}/.local/share/astropi
 
-# APT Default commands for up to date the system
-apt_commands=(
-'apt-get update'
-'apt-get upgrade'
-'apt-get full-upgrade'
-'apt autopurge'
-'apt autoremove'
-'apt autoclean'
-)
-
 # Create next AstoPi versions
 #//FIXME
 function next_v()
@@ -120,7 +110,7 @@ function install_script()
 		if  [[ -f ./panel ]]; then
 			echo "# Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
 			echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
-			cp "${appDir}"/bin/panel ${HOME}/.config/lxpanel/LXDE-pi/panels/panel
+			cp "${appDir}"/bin/panel "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
 		else
 			echo "Error in addigng AstroPi system files"
 			exit 1
@@ -221,6 +211,15 @@ function system_pre_update()
 # Get full AstoPi System update
 function system_update()
 {
+	# APT Default commands for up to date the system
+	apt_commands=(
+	'apt-get update'
+	'apt-get upgrade'
+	'apt-get full-upgrade'
+	'apt autopurge'
+	'apt autoremove'
+	'apt autoclean'
+	)
 	for CMD in "${apt_commands[@]}"; do
 		echo ""
 		echo "Running $CMD"
@@ -309,7 +308,7 @@ function chkIndexAstro()
 		echo "${ask_pass}" | sudo -S chown -R "${USER}":"${USER}" "${IndexPath}"
 	fi
 	echo "Check all Index, if missing download it..."
-	if "${appDir}"/script/astrometry.sh; then
+	if "${appDir}"/bin/astrometry.sh; then
 		true
 	else
 		zenity --error --width="${W}" --text="Something went wrong in <b>Install Index Astrometry.</b>
