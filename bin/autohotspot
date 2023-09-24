@@ -34,7 +34,7 @@ case $? in
 		date -s "$day" || zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong by updating the date and time\nCurrent day and time: 'echo $day $hour'" && exit 1
 		date -s "$hour" || zenity --error --width=400 --height=200  --title="AstroPi system" --text="Something went wrong by updating the date and time\nCurrent day and time: 'echo $day $hour'" && exit 1
 		case $? in
-			0) zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent day and time: 'echo $day $hour'" && exit 0
+			0) zenity --info --width=400 --height=200  --title="AstroPi system" --text="The date and time have been updated correctly\nCurrent day and time: $day $hour" && exit 0
 			;;
 			esac
 	;;
