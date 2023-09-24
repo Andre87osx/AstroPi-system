@@ -52,8 +52,6 @@ while [ "${CONN}" == "true" ]; do
 	}
 	import "functions" 
 
-	# Ask for the password only if the array "ask_pass" is empty. 
-	# Otherwise check only if the password is correct
 	# Ask super user password.
 	ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" )
 	case $? in
@@ -88,7 +86,6 @@ while [ "${CONN}" == "true" ]; do
 		wget -c ${release} | tar --strip-components=1 -xz -C "${appDir}" ) | \
 	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=${Wprogress}
 	echo ""
-
 	# Make all script executable
 	make_executable
     
