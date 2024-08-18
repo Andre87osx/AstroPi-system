@@ -120,6 +120,7 @@ while [ "${CONN}" == "true" ]; do
  	'AstroPi-system'
 	'AstroPi system updater'
 	'Update'
+ 	'.Update'
 	'install'
 	'functions'
 	'wget-log'
