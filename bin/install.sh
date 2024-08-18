@@ -117,6 +117,8 @@ while [ "${CONN}" == "true" ]; do
 	# Delete old AstroPi installations and GIT
 	file_old=(
 	'AstroPi'
+ 	'AstroPi-system'
+	'AstroPi system updater'
 	'Update'
 	'install'
 	'functions'
