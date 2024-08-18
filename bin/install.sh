@@ -99,7 +99,7 @@ while [ "${CONN}" == "true" ]; do
 	system_update
 	
 	# Add AstroPi link in console 
-	local isInFile=$(cat "${HOME}"/.bashrc | grep -c "alias AstroPi=")
+	isInFile=$(cat "${HOME}"/.bashrc | grep -c "alias AstroPi=")
 	if [ $isInFile -eq 0 ]; then
 		#string not contained in file
    		echo "alias AstroPi='/usr/bin/AstroPi.sh'" >>"${HOME}"/.bashrc
