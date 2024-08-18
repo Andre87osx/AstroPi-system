@@ -58,7 +58,9 @@ function chkUser()
 		break
 	else
 		appDir=${HOME}/.local/share/astropi		# Default application path
-		WorkDir=${HOME}/.Projects				# Working path for cmake
+		WorkDir=${HOME}/.Projects			# Working path for cmake
+  		mkdir -p ${HOME}/.local/share/astropi
+    		mkdir -p ${HOME}/.Projects
 		echo "Wellcome to AstroPi System"
 		echo "=========================="
 		echo " "
