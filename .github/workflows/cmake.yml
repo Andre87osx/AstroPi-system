@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        container: ["debian", "debian-buster",]
+        container: ["AstroPi System @ debian buster",]
     
     steps:
     - uses: actions/checkout@v2
@@ -31,10 +31,10 @@ jobs:
     - name: Preparing system prerequisites for KStars AstroPi
       run: sudo apt-add-repository ppa:mutlaqja/ppa && sudo apt-get -y install build-essential cmake git libeigen3-dev libcfitsio-dev zlib1g-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme xterm libqt5datavisualization5-dev git cmake qtbase5-dev libcfitsio-dev libgsl-dev wcslib-dev
     
-    - name: Download indilib-AstroPi
-      run: |
-          git clone https://github.com/Andre87osx/indi-AstroPi.git
-          bash indi-AstroPi/scripts/indi-core-build.sh
+    #- name: Download indilib-AstroPi
+    #  run: |
+    #      git clone https://github.com/Andre87osx/indi-AstroPi.git
+    #      bash indi-AstroPi/scripts/indi-core-build.sh
 
     - name: Download StellarSolver
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
