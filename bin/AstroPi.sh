@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck source=/dev/null
 #               _             _____ _
 #     /\       | |           |  __ (_)
 #    /  \   ___| |_ _ __ ___ | |__) |
@@ -13,17 +14,18 @@
 # This script have GUI powered by zenity lib
 
 # Import common array and functions
-appDir=${HOME}/.local/share/astropi
-if [ -f "${appDir}"/include/functions.sh ] && [ -f "${appDir}"/include/array.sh ]; then
-	source ${appDir}/include/functions.sh || errorMsg "Source script not work propertly"
-	source ${appDir}/include/array.sh || errorMsg "Source script not work propertly"
-else
-	zenity --error --width=300 --text="<b>WARNING! Something went wrong...</b>
-	AstroPi System is not correctly installed..." --title="AstroPi System" && exit1 ""
-fi
-
-# Ask super user password.
-ask_pass
+# Usage: import "mylib"
+function import() {
+	local file="${HOME}/.local/share/astropi/include/${1}.sh"
+	if [ -f "${file}" ]; then
+		source "${file}"
+	else
+		echo "Error: Cannot find library at: ${file}"
+		zenity --error --text="Could not find library at: ${file}"
+		exit 1
+	fi
+}
+import "functions"
 
 # Chk USER and create path
 chkUser
@@ -41,8 +43,7 @@ function AdminSystem() {
 	fi
 	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 	\n<b>${sysinfo}</b>
-	\n<b>Storage details:</b>
-	Main disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
+	\n<b>Storage details:</b>\nMain disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
 	ansS=$( zenity --list --width=$((W+220)) --height="${H}" --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "$StatHotSpot AstroPi hotspot	" "=> On/Off WiFi Hotspot for use AstroPi outdoor" \
@@ -54,17 +55,26 @@ function AdminSystem() {
 	case $? in
 	0)
 		if [ "$ansS" == "Check for System update	" ]; then
-			connection=$( wget -q --spider https://github.com/Andre87osx/AstroPi-system )
 			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/install.sh )
-			if ${connection}; then
-				( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-				zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
-				bash install.sh&
-				exit 0
-			else
-				warningMsg "Intrnet connection required!" 
-			fi
-	
+			echo "wellcome to AstroPi installer"
+			echo ""
+			echo "Check internet connectionions and if Git exist"
+			echo ""
+			case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
+ 				[23]) echo "HTTP connectivity is up"
+  					( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+					zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
+					echo "Library downloaded"
+					bash install.sh&
+					exit 0
+					;;
+ 				5)	echo "The web proxy won't let us through"
+  					zenity --error --text="The web proxy won't let us through"
+					exit 1;;
+  				*)	echo "The network is down or very slow"
+					zenity --error --text="The network is down or very slow"
+					exit 1;;
+			esac
 		elif [ "$ansS" == "Setup my WiFi	" ]; then
 			setupWiFi
 
@@ -79,10 +89,10 @@ function AdminSystem() {
 		fi
 	;;
 	1)
-	return 0
+		return 0
 	;;
 	-1)
-	errorMsg "Reload AstroPi System"
+		zenity --error --text="Reload AstroPi System"
 	;;
 	esac
 }
@@ -90,11 +100,7 @@ function AdminSystem() {
 
 # AdminSystem KStars >>>>
 function AdminKStars() {
-	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
-	\n<b>KStars AsroPi installed version</b>
-	${kstarsV}
-	\n<b>INDI Core installed version</b>
-	${indiV}"
+	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team"
 
 	ansK=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Update INDI and Driver	" "=> Update INDI core and Driver" \
@@ -118,10 +124,10 @@ function AdminKStars() {
 		fi
 	;;
 	1)
-	return 0
+		return 0
 	;;
 	-1)
-	errorMsg "Reload AstroPi System"
+		zenity --error --text="Reload AstroPi System"
 	;;
 	esac
 }
@@ -152,10 +158,10 @@ function Extra()
 		fi
 	;;
 	1)
-	return 0
+		return 0
 	;;
 	-1)
-	errorMsg "Reload AstroPi System"
+		zenity --error --text="Reload AstroPi System"
 	;;
 	esac
 }

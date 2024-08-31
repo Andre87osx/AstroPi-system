@@ -1,4 +1,4 @@
-#!/bin/bash
+# shellcheck disable=SC2034
 #               _             _____ _
 #     /\       | |           |  __ (_)
 #    /  \   ___| |_ _ __ ___ | |__) |
@@ -6,45 +6,43 @@
 #  / ____ \__ \ |_| | | (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
-# rev 1.6 april 2022
+# rev 1.6 april 2022 
+
+# Common array anf functions
+
+# Create version of AstroPi
+majorRelease=1								# Major Release
+minorRelease=6								# Minor Release
+AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
+KStars_v=3.5.4v1.6							# Based on KDE Kstrs v.3.5.4
+Indi_v=1.9.1								# Based on INDI 1.9.1 Core
+
+# Get width and height of screen
+SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
+SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
+
+# GUI windows width and height
+W=$(( SCREEN_WIDTH / 5 ))
+H=$(( SCREEN_HEIGHT / 3 ))
+Wprogress=$(( SCREEN_WIDTH / 5 ))
+
+W_Title="AstroPi System v${AstroPi_v}"
+W_err_generic="<b>Something went wrong...</b>\nContact support at
+<b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
+
+# System full info, linux version and aarch
+sysinfo=$(uname -sonmr)
+
+# Disk usage
+diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
+diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
 
 # Create next AstoPi versions
+#//FIXME
 function next_v()
 {
 	#//FIXME
 	next_AstroPi_v=("${AstroPi_v%.*}.$((${AstroPi_v##*.}+1))")
-}
-
-# Ask super user password.
-function ask_pass()
-{
-	# Ask for the password only if the array "ask_pass" is empty. 
-	# Otherwise check only if the password is correct
-	if (( ${#ask_pass[@]} != 0 )); then
-    	if [ "${ask_pass}" ]; then
-			# Check the user password stored
-			until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
-				zenity --warning --text="<b>WARNING! User password is wrong...</b>
-				\nTry again or sign out" --width="${W}" --title="${W_Title}"
-				if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
-			done
-		fi
-	else
-		ask_pass=$( zenity --password --title="${W_Title}" )
-		if [ ${ask_pass} ]; then
-			# User write password and press OK
-			# Makes sure that the sudo user password matches
-			until $( echo "${ask_pass}" | sudo -S echo '' 2>/dev/null ); do
-				zenity --warning --text="<b>WARNING! User password is wrong...</b>
-				\nTry again or sign out" --width=${W} --title="${W_Title}"
-				if ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" ); then break; else exit 0; fi
-			done
-		else
-			# User press CANCEL button
-			# Quit script
-			exit 0
-		fi
-	fi
 }
 
 # Chk USER and create path
@@ -57,12 +55,211 @@ function chkUser()
 		zenity --error --text="<b>WARNING! Run this script as user not as root</b>
 		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
 		exit 1
+		break
 	else
-		appDir=${HOME}/.local/share/astropi		# Defaul application path
-		WorkDir=${HOME}/.Projects				# Working path for cmake
+		appDir=${HOME}/.local/share/astropi		# Default application path
+		WorkDir=${HOME}/.Projects			# Working path for cmake
+  		mkdir -p ${HOME}/.local/share/astropi
+    		mkdir -p ${HOME}/.Projects
 		echo "Wellcome to AstroPi System"
 		echo "=========================="
+		echo " "
 	fi
+}
+
+# Install all script in default path
+function install_script()
+{
+	(	
+		cd "${appDir}"/bin || exit 1
+		if [[ -f ./AstroPi.sh ]]; then
+			echo "# Install AstroPi.sh in /usr/bin/"
+			echo "Install AstroPi.sh in /usr/bin/"
+			sudo cp "${appDir}"/bin/AstroPi.sh /usr/bin/AstroPi.sh
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+		if [[ -f ./kstars.sh ]]; then
+			echo "# Install kstars.sh in /usr/bin/"
+			echo "Install kstars.sh in /usr/bin/"
+			sudo cp "${appDir}"/bin/kstars.sh /usr/bin/kstars.sh
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+		if [[ -f ./AstroPi.desktop ]]; then
+			echo "# Install AstroPi.desktop in /usr/share/applications/"
+			echo "Install AstroPi.desktop in /usr/share/applications/"
+			sudo cp "${appDir}"/bin/AstroPi.desktop /usr/share/applications/AstroPi.desktop
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+			
+		fi
+		if [[ -f ./kstars.desktop ]]; then
+			echo "# Install kstars.desktop in /usr/share/applications/"
+			echo "Install kstars.desktop in /usr/share/applications/"
+			sudo cp "${appDir}"/bin/kstars.desktop /usr/share/applications/kstars.desktop
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+			
+		fi
+		if  [[ -f ./panel ]]; then
+			echo "# Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+			echo "Install panel in ${HOME}/.config/lxpanel/LXDE-pi/panels/"
+			cp "${appDir}"/bin/panel "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+		if [[ -f ./autohotspot.service ]]; then
+			echo "# Install autohotspot.service in /etc/systemd/system/"
+			echo "Install autohotspot.service in /etc/systemd/system/"
+			sudo cp "${appDir}"/bin/autohotspot.service /etc/systemd/system/autohotspot.service
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+			
+		fi
+		if [[ -f ./autohotspot ]]; then
+			echo "# Install autohotspot in /usr/bin/"
+			echo "Install autohotspot in /usr/bin/"
+			sudo cp "${appDir}"/bin/autohotspot /usr/bin/autohotspot
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+		cd "${appDir}"/include || exit 1
+		if [[ -f ./solar-system-dark.svg ]]; then
+			echo "# Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			sudo cp "${appDir}"/include/solar-system-dark.svg /usr/share/icons/gnome/scalable/places/solar-system-dark.svg
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+		if [[ -f ./solar-system.svg ]]; then
+			echo "# Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			echo "Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
+			sudo cp "${appDir}"/include/solar-system.svg /usr/share/icons/gnome/scalable/places/solar-system.svg
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+		if [[ -f ./kstars.svg ]]; then
+			echo "# Install KStars icons in /usr/share/icons/gnome/scalable/places"
+			echo "Install KStars icons in /usr/share/icons/gnome/scalable/places"
+			sudo cp "${appDir}"/include/kstars.svg /usr/share/icons/gnome/scalable/places/kstars.svg
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+		fi
+	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+}
+
+# Make all script executable
+function make_executable()
+{
+	for f in "${appDir}"/bin/*.*; do
+		if sudo chmod +x "${f}"; then
+			echo "Make executable ${f} script"
+			else
+			echo "Error in ${f} script"
+		fi
+	done
+}
+
+#//FIXME
+# Prepair fot update system
+function system_pre_update()
+{
+	(	
+		# Check APT Source and stops unwanted updates
+		sources=/etc/apt/sources.list.d/astroberry.list
+		if [ -f ${sources} ]; then
+			#sudo chmod 777 ${sources}
+			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
+			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
+			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+			#sudo chmod 644 ${sources}
+		fi
+		
+		# Implement USB memory dump
+		echo "# Preparing update"
+		sudo sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+		
+		# Hold some update
+		echo "# Hold some update"
+		sudo apt-mark hold kstars-bleeding kstars-bleeding-data indi-full libindi-dev libindi1 indi-bin
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
+		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	
+	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+	exit_stat=$?
+	if [ ${exit_stat} -ne 0 ]; then
+		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>
+		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+		exit 1
+		break
+	fi
+}
+
+# Get full AstoPi System update
+function system_update()
+{
+	# APT Default commands for up to date the system
+	apt_commands=(
+	'apt-get update'
+	'apt-get upgrade'
+	'apt-get full-upgrade'
+	'apt autopurge'
+	'apt autoremove'
+	'apt autoclean'
+	)
+	for CMD in "${apt_commands[@]}"; do
+		echo ""
+		echo "Running $CMD"
+		echo ""
+		(
+			echo "# Running Update ${CMD}"
+			sudo ${CMD} -y
+			sleep 1s
+		) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		exit_stat=$?
+		if [ ${exit_stat} -eq 0 ]; then
+			echo "System successfully updated on $(date)" >> "${appDir}"/bin/update-log.txt
+		elif [ ${exit_stat} -ne 0 ]; then
+			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> "${appDir}"/bin/update-log.txt
+			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
+			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+			exit 1
+			break
+		fi
+	done	
 }
 
 # Check if GSC exist for simulator solving
@@ -115,7 +312,16 @@ function chkIndexAstro()
 {
 	IndexPath="${HOME}"/.local/share/kstars/astrometry
 	WrongPath=/usr/local/share/astrometry
-	echo "Check old Index installations..."	
+	echo "Check old Index installations..."
+	for file in "${$WrongPath}"/*.fits; do
+		if [ -e "$file" ]; then
+    		echo "Move Index files to correct path"
+			cd /usr/local/share/astrometry || exit 1
+			sudo mv *.fits "${IndexPath}"
+		echo "${ask_pass}" | sudo -S chown -R "${USER}":"${USER}" "${IndexPath}"
+    	break
+  		fi
+	done
 	if [ -f "${WrongPath}"/*.fits ]; then
 		echo "Move Index files to correct path"
 		cd /usr/local/share/astrometry || exit 1
@@ -123,7 +329,7 @@ function chkIndexAstro()
 		echo "${ask_pass}" | sudo -S chown -R "${USER}":"${USER}" "${IndexPath}"
 	fi
 	echo "Check all Index, if missing download it..."
-	if "${appDir}"/script/astrometry.sh; then
+	if "${appDir}"/bin/astrometry.sh; then
 		true
 	else
 		zenity --error --width="${W}" --text="Something went wrong in <b>Install Index Astrometry.</b>
