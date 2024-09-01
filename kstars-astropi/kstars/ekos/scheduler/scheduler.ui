@@ -1804,7 +1804,7 @@ font-weight:bold;
              <string notr="true">shutdownProcedureGroup</string>
             </attribute>
             <property name="checked">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -2159,7 +2159,7 @@ font-weight:bold;
              <string notr="true">startupProcedureButtonGroup</string>
             </attribute>
             <property name="checked">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
