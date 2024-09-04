@@ -34,10 +34,21 @@ jobs:
     - name: Preparing system prerequisites for INDI AstroPi
       run:  sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libraw-dev libusb-dev zlib1g-dev libftdi-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libusb-1.0-0-dev libdc1394-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev
  
-    - name: Download indilib-AstroPi
+    - name: Download indilib-AstroPi an configure
       run: |
           git clone https://github.com/Andre87osx/indi-AstroPi.git
-          bash indi-AstroPi/scripts/indi-core-build.sh
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/indi
+          
+    - name: Build INDI Lib
+      working-directory: ${{github.workspace}}/build
+      run: make -j4
+
+    - name: Install INDI Lib
+      working-directory: ${{github.workspace}}/build
+      run: sudo make install
+      
+    - name: Cleaning Build dir
+      run: rm -Rf ${{github.workspace}}/build/*
 
     - name: Download StellarSolver
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
