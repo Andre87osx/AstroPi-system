@@ -37,7 +37,7 @@ jobs:
     - name: Download indilib-AstroPi an configure
       run: |
           git clone https://github.com/Andre87osx/indi-AstroPi.git
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/indi
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/indi-AstroPi
           
     - name: Build INDI Lib
       working-directory: ${{github.workspace}}/build
