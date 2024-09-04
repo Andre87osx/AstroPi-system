@@ -33,7 +33,8 @@ jobs:
 
     - name: Preparing system prerequisites for INDI AstroPi
       run:  sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libraw-dev libusb-dev zlib1g-dev libftdi-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libusb-1.0-0-dev libdc1394-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev
- 
+            sudo apt-get -y install libavcodec libavdevice libavformat libavutil libswscale
+            
     - name: Download indilib-AstroPi an configure
       run: |
           git clone https://github.com/Andre87osx/indi-AstroPi.git
