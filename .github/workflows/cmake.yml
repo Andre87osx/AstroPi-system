@@ -42,7 +42,7 @@ jobs:
 
         
     - name: Download indilib-AstroPi an configure
-      run: bash https://github.com/Andre87osx/AstroPi-system/blob/AstroPi_v1.7-rework/include/test_install.sh
+      run: curl https://github.com/Andre87osx/AstroPi-system/blob/AstroPi_v1.7-rework/include/test_install.sh > install.sh && bash install.sh
       
     - name: Download StellarSolver
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
