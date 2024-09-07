@@ -85,7 +85,7 @@ jobs:
       run: git clone -b 1.9 https://github.com/rlancaste/stellarsolver.git
       
     - name: Configure StellarSolver
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/stellarsolver
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off ${{github.workspace}}/stellarsolver
 
     - name: Build StellarSolver
       working-directory: ${{github.workspace}}/build
