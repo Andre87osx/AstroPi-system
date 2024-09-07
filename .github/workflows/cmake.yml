@@ -42,7 +42,6 @@ jobs:
 
         
     - name: Download indilib-AstroPi an configure
-      working-directory: ${{github.workspace}}/build
       run: |
             git clone https://github.com/Andre87osx/indi-AstroPi.git
             bash indi-AstroPi/scripts/indi-core-build.sh
