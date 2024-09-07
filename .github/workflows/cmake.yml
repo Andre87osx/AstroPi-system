@@ -58,6 +58,24 @@ jobs:
             rm -Rf ${{github.workspace}}/build/*
 ## <<<<
 
+## INDI3rdLIB SETUP >>>>
+    - name: Dowload indilib3rd-AstroPi an configure
+      run: git clone https://github.com/Andre87osx/indi3rd-AstroPi.git
+
+    - name: Configure indilib3rd-AstroPi
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_LIBS=1 -DBUILD_TESTER=ON ${{github.workspace}}/indi3rd-AstroPi
+
+    - name: Build indilib3rd-AstroPi
+      working-directory: ${{github.workspace}}/build
+      run: make -j4
+
+    - name: Install indilib3rd-AstroPi and celean BUILD dir
+      working-directory: ${{github.workspace}}/build
+      run: |
+            sudo make install
+            rm -Rf ${{github.workspace}}/build/*
+## <<<<
+
     - name: Download StellarSolver
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
