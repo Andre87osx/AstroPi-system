@@ -30,11 +30,11 @@ jobs:
 
     - name: Preparing system prerequisites for KStars AstroPi
       run: |
-            sudo apt-add-repository ppa:mutlaqja/ppa
+            #sudo apt-add-repository ppa:mutlaqja/ppa
             sudo apt-get -y install build-essential cmake git libeigen3-dev libcfitsio-dev zlib1g-dev libkf5doctools-dev libqt5datavisualization5-dev
             sudo apt-get -y install extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev 
             sudo apt-get -y install libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev 
-            sudo apt-get -y install libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme qt5-default
+            sudo apt-get -y install libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme
 
     - name: Preparing system prerequisites for INDI AstroPi
       run: | 
