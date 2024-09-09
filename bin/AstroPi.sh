@@ -37,7 +37,7 @@ chkUser
 function AdminSystem() {
 	# Define if hotspot is active or disabled
 	if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
-		StatHotSpot=Disable		# Hotspot is active
+		StatHotSpot=Disable		# Hotspot is active in AUTO MODE
 	else
 		StatHotSpot=Enable		# Hotspot is disabled
 	fi
@@ -46,7 +46,7 @@ function AdminSystem() {
 	\n<b>Storage details:</b>\nMain disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
 	ansS=$( zenity --list --width=$((W+220)) --height="${H}" --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
-		FALSE "$StatHotSpot AstroPi hotspot	" "=> On/Off WiFi Hotspot for use AstroPi outdoor" \
+		FALSE "$StatHotSpot AstroPi hotspot	" "=> AUTO/Off WiFi Hotspot for use AstroPi outdoor" \
 		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
 		FALSE "System Cleaning	" "=> Delete unused library and script" \
 		FALSE "Check for System update	" "=> Update Linux AstroPi" \
