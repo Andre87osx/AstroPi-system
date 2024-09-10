@@ -12,7 +12,7 @@
 
 # Create version of AstroPi
 majorRelease=1								# Major Release
-minorRelease=6								# Minor Release
+minorRelease=7								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
 KStars_v=3.5.4v1.7							# Based on KDE Kstrs v.3.5.4
 Indi_v=1.9.1								# Based on INDI 1.9.1 Core
