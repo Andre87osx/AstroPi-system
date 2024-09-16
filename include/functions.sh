@@ -625,7 +625,7 @@ function chkKStars()
 		(($? != 0)) && zenity --error --width=${W} --text="Error MKdir <b>KStars log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		cd "${WorkDir}"/kstars-cmake || exit 1
 		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "${appDir}"/kstars-astropi
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		(($? != 0)) && zenity --error --width=${W} --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && sudo rm -rf "${WorkDir}" && exit 1
 	
 		# =================================================================
 		echo "# Install KStars AstroPi $KStars_v"
