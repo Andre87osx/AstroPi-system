@@ -6,7 +6,7 @@
 #  / ____ \__ \ |_| | | (_) | |   | |
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
-# rev 1.6 april 2022 
+# rev 1.7 sept 2024 
 
 # Common array anf functions
 
