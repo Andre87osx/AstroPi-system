@@ -113,6 +113,9 @@ while [ "${CONN}" == "true" ]; do
     
 	# Restart LX for able new change icon and wallpaper
 	lxpanelctl restart
+ 
+ 	# Restart or force autohotspot services
+   	sudo systemctl enable autohotspot.service
 	
 	# Delete old AstroPi installations and GIT
 	file_old=(
