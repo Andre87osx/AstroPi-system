@@ -294,7 +294,7 @@ function chkIndexGsc()
 				echo "export GSCDAT=/usr/share/GSC" >> /etc/profile
 			fi
 		else
-			zenity --info --width="${W}" --text="<b>GSC allredy exist.</b>
+			zenity --info --width="${W}" --text="<b>GSC (Guide Star Catalog - NASA v1.3) allredy exist.</b>
 			\nFor issue contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		fi
 	
@@ -311,6 +311,9 @@ function chkIndexGsc()
 function chkIndexAstro()
 {
 	echo "Check all Index, if missing download it..."
+	zenity --info --width="${W}" --text="<b>check if all astrometric index are present</b>
+			\nThis may take a few hours, depending on how many indexes are missing
+			\nFor issue contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 	if "${appDir}"/bin/astrometry.sh; then
 		true
 	else
