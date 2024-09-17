@@ -78,7 +78,7 @@ function AdminSystem() {
 		elif [ "$ansS" == "Setup my WiFi	" ]; then
 			setupWiFi
 
-		elif [ "$ansS" == "$StatHotSpot AstroPi hotspot	" ]; then
+		elif [ "$ansS" == "Hotspot Manager is $StatHotSpot	" ]; then
 			chkHotspot
 
 		elif [ "$ansS" == "System Cleaning	" ]; then
