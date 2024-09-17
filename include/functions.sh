@@ -472,9 +472,11 @@ function setupWiFi()
 	;;
 	1)
 		zenity --info --width="${W}" --text "No changes have been made to your current configuration" --title="${W_Title}"
+		exit 0
 	;;
 	-1)
-		zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+		zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		exit 0
 	;;
 	esac
 }
@@ -485,19 +487,19 @@ function chkHotspot()
 	# Disable AstroPi auto hotspot
 	# =========================================================================
 	if [ "$StatHotSpot" == Enable ]; then
-		echo "${ask_pass}" | sudo -S systemctl disable autohotspot.service
+		sudo systemctl disable autohotspot.service
 		(($? != 0)) && zenity --error --width=${W} --text="I couldn't disable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo "${ask_pass}" | sudo -S sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
+		sudo sed -i '/nohook wpa_supplicant/d' /etc/dhcpcd.conf
 		(($? != 0)) && zenity --error --width=${W} --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 		zenity --info --width=${W} --text "The auto hotspot service is now <b>disable</b>. Remember to turn it back on if you want to use AstroPi in the absence of WiFi" --title="${W_Title}"
 	else
 	# Enable AstroPi auto hotspot
 	# =========================================================================
-		echo "${ask_pass}" | sudo -S echo "nohook wpa_supplicant" >>/etc/dhcpcd.conf
+		sudo echo "nohook wpa_supplicant" >>/etc/dhcpcd.conf
 		(($? != 0)) && zenity --error --width=${W} --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo "${ask_pass}" | sudo -S systemctl enable autohotspot.service
+		sudo systemctl enable autohotspot.service
 		(($? != 0)) && zenity --error --width=${W} --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		zenity --info --width=${W} --text "The auto hotspot service is now <b>active</b>. Connect to AstroPi wifi and use VNC AstroPi hotspot connection" --title="${W_Title}"
+		zenity --info --width=${W} --text "The auto hotspot service is now <b>active</b>. Network Manager create a hotspot if no wifi found" --title="${W_Title}"
 	fi
 }
 

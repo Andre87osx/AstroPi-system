@@ -115,7 +115,11 @@ while [ "${CONN}" == "true" ]; do
 	lxpanelctl restart
  
  	# Restart or force autohotspot services
-   	sudo systemctl enable autohotspot.service
+	sudo echo "nohook wpa_supplicant" >>/etc/dhcpcd.conf
+	(($? != 0)) && zenity --error --width=${W} --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	sudo systemctl enable autohotspot.service
+	(($? != 0)) && zenity --error --width=${W} --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	zenity --info --width=${W} --text "The auto hotspot service is now <b>active</b>. Network Manager create a hotspot if no wifi found" --title="${W_Title}"
 	
 	# Delete old AstroPi installations and GIT
 	file_old=(
