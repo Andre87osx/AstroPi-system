@@ -58,9 +58,9 @@ function chkUser()
 		break
 	else
 		appDir=${HOME}/.local/share/astropi		# Default application path
-		WorkDir=${HOME}/.Projects			# Working path for cmake
+		WorkDir=${HOME}/.Projects				# Working path for cmake
   		mkdir -p ${HOME}/.local/share/astropi
-    		mkdir -p ${HOME}/.Projects
+    	mkdir -p ${HOME}/.Projects
 		echo "Wellcome to AstroPi System"
 		echo "=========================="
 		echo " "
@@ -310,24 +310,6 @@ function chkIndexGsc()
 # Check Astrometry Index for solving
 function chkIndexAstro()
 {
-	IndexPath="${HOME}"/.local/share/kstars/astrometry
-	WrongPath=/usr/local/share/astrometry
-	echo "Check old Index installations..."
-	for file in "${$WrongPath}"/*.fits; do
-		if [ -e "$file" ]; then
-    		echo "Move Index files to correct path"
-			cd /usr/local/share/astrometry || exit 1
-			sudo mv *.fits "${IndexPath}"
-		echo "${ask_pass}" | sudo -S chown -R "${USER}":"${USER}" "${IndexPath}"
-    	break
-  		fi
-	done
-	if [ -f "${WrongPath}"/*.fits ]; then
-		echo "Move Index files to correct path"
-		cd /usr/local/share/astrometry || exit 1
-		echo "${ask_pass}" | sudo -S mv *.fits "${IndexPath}"
-		echo "${ask_pass}" | sudo -S chown -R "${USER}":"${USER}" "${IndexPath}"
-	fi
 	echo "Check all Index, if missing download it..."
 	if "${appDir}"/bin/astrometry.sh; then
 		true
