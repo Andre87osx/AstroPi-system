@@ -9,7 +9,7 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
-# rev 1.6 genuary 2023
+# rev 1.7 sept 2024
 # Run this script as USER
 # Type in console 'bash <your script path>/install.sh'
 # Autoload script, open console and paste
