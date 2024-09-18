@@ -91,7 +91,11 @@ while [ "${CONN}" == "true" ]; do
     
 	# Install all script in default path
 	install_script
-	
+
+ 	# FIX some dipendencies
+  	# This is a temp solution to solve apt update
+ 	sudo apt install -y vlc-bin
+  
 	# Perform PRE update
 	system_pre_update
 	
