@@ -33,6 +33,16 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 # System full info, linux version and aarch
 sysinfo=$(uname -sonmr)
 
+# Calculate cmake processor
+JOBS=$(grep -c ^processor /proc/cpuinfo)
+
+# 64 bit systems need more memory for compilation
+if [ $(getconf LONG_BIT) -eq 64 ] && [ $(grep MemTotal < /proc/meminfo | cut -f 2 -d ':' | sed s/kB//) -lt 5000000 ]
+then
+	echo "Low memory limiting to JOBS=2"
+	JOBS=2
+fi
+
 # Disk usage
 diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
 diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
@@ -569,18 +579,16 @@ function chkKStars()
 	
 		# =================================================================
 		echo "# Install KStars AstroPi $KStars_v"
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
+		make -j $JOBS
 		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
 		# =================================================================
-		echo "${ask_pass}" | sudo -S make install
+		sudo make install
 		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Install</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
 		# =================================================================
 		echo "# Removing the temporary files"
-		echo "${ask_pass}" | sudo -S rm -rf "${WorkDir}"
+		sudo rm -rf "${WorkDir}"
 
 		# =================================================================
 		echo "# All finished."
