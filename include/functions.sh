@@ -58,7 +58,7 @@ function chkUser()
 		break
 	else
 		appDir=${HOME}/.local/share/astropi		# Default application path
-		WorkDir=${HOME}/.Projects				# Working path for cmake
+		WorkDir=${HOME}/.Projects			# Working path for cmake
   		mkdir -p ${HOME}/.local/share/astropi
     	mkdir -p ${HOME}/.Projects
 		echo "Wellcome to AstroPi System"
@@ -191,7 +191,6 @@ function make_executable()
 	done
 }
 
-#//FIXME
 # Prepair fot update system
 function system_pre_update()
 {
@@ -199,11 +198,9 @@ function system_pre_update()
 		# Check APT Source and stops unwanted updates
 		sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f ${sources} ]; then
-			#sudo chmod 777 ${sources}
 			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
-			#sudo chmod 644 ${sources}
 		fi
 		
 		# Implement USB memory dump
@@ -282,13 +279,13 @@ function chkIndexGsc()
 			mv gsc.exe gsc
 			echo "${ask_pass}" | sudo -S cp gsc /usr/bin/
 			cp -r "${HOME}"/gsc /usr/share/
-			echo "${ask_pass}" | sudo -S mv /usr/share/gsc /usr/share/GSC
-			echo "${ask_pass}" | sudo -S rm -r /usr/share/GSC/bin-dos
-			echo "${ask_pass}" | sudo -S rm -r /usr/share/GSC/src
-			echo "${ask_pass}" | sudo -S rm /usr/share/GSC/bincats_GSC_1.2.tar.gz
-			echo "${ask_pass}" | sudo -S rm /usr/share/GSC/bin/gsc.exe
-			echo "${ask_pass}" | sudo -S rm /usr/share/GSC/bin/decode.exe
-			echo "${ask_pass}" | sudo -S rm -r "${HOME}"/gsc
+			sudo mv /usr/share/gsc /usr/share/GSC
+			sudo rm -r /usr/share/GSC/bin-dos
+			sudo rm -r /usr/share/GSC/src
+			sudo rm /usr/share/GSC/bincats_GSC_1.2.tar.gz
+			sudo rm /usr/share/GSC/bin/gsc.exe
+			sudo rm /usr/share/GSC/bin/decode.exe
+			sudo rm -r "${HOME}"/gsc
 			if [ -z "$(grep 'export GSCDAT' /etc/profile)" ]; then
 				cp /etc/profile /etc/profile.copy
 				echo "export GSCDAT=/usr/share/GSC" >> /etc/profile
@@ -311,7 +308,7 @@ function chkIndexGsc()
 function chkIndexAstro()
 {
 	echo "Check all Index, if missing download it..."
-	zenity --info --width="${W}" --text="<b>check if all astrometric index are present</b>
+	zenity --info --width="${W}" --text="<b>Check if all astrometric index are present</b>
 			\nThis may take a few hours, depending on how many indexes are missing
 			\nFor issue contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 	if "${appDir}"/bin/astrometry.sh; then
@@ -343,19 +340,19 @@ function chksysHotSpot()
 	# the issue and also checks dnsmasq is ok so the hotspot can be generated.
 	# Check Hostapd is unmasked and disabled
 	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service masked" >/dev/null 2>&1 ;then
-		echo "${ask_pass}" | sudo -S systemctl unmask hostapd.service >/dev/null 2>&1
+		sudo systemctl unmask hostapd.service >/dev/null 2>&1
 	fi
 	if systemctl -all list-unit-files hostapd.service | grep "hostapd.service enabled" >/dev/null 2>&1 ;then
-		echo "${ask_pass}" | sudo -S systemctl disable hostapd.service >/dev/null 2>&1
-		echo "${ask_pass}" | sudo -S systemctl stop hostapd >/dev/null 2>&1
+		sudo systemctl disable hostapd.service >/dev/null 2>&1
+		sudo systemctl stop hostapd >/dev/null 2>&1
 	fi
 	# Check dnsmasq is disabled
 	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service masked" >/dev/null 2>&1 ;then
-		echo "${ask_pass}" | sudo -S systemctl unmask dnsmasq >/dev/null 2>&1
+		sudo systemctl unmask dnsmasq >/dev/null 2>&1
 	fi
 	if systemctl -all list-unit-files dnsmasq.service | grep "dnsmasq.service enabled" >/dev/null 2>&1 ;then
-		echo "${ask_pass}" | sudo -S systemctl disable dnsmasq >/dev/null 2>&1
-		echo "${ask_pass}" | sudo -S systemctl stop dnsmasq >/dev/null 2>&1
+		sudo systemctl disable dnsmasq >/dev/null 2>&1
+		sudo systemctl stop dnsmasq >/dev/null 2>&1
 	fi
 }
 
@@ -364,15 +361,28 @@ function sysClean()
 {
 	(
 		echo "# Remove unnecessary lib..."
-		echo "${ask_pass}" | sudo -S apt-get clean
+		sudo apt-get clean
 		echo "# Delete old AstroPi version"
 		if [ -d "${GitDir}" ]; then
-			echo "${ask_pass}" | sudo -S rm -rf "${GitDir}"
+			sudo rm -rf "${GitDir}"
 		fi
 		echo "# Cleaning CMake Project..."
 		if [ -d "${WorkDir}" ]; then 
-			echo "${ask_pass}" | sudo -S rm -rf "${WorkDir}"
+			sudo rm -rf "${WorkDir}"
 		fi
+  		# Delete old AstroPi installations and GIT
+		file_old=(
+		'AstroPi'
+ 		'AstroPi-system'
+		'AstroPi system updater'
+		'Update'
+ 		'.Update'
+		'install'
+		'functions'
+		'wget-log'
+		)
+		for f in "${HOME}"/"${file_old[@]}".*; do sudo rm -Rf "$f"; done
+  
 		zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
 	exit_stat=$?
@@ -380,50 +390,6 @@ function sysClean()
 		zenity --error --width="${W}" --text="Something went wrong in <b>System Cleanup</b>
 		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		exit 1
-	fi
-}
-
-# Update RaspberryPi OS, library, app and AstroPi System
-function sysUpgrade()
-{
-		# Check APT Source stops unwanted updates
-		sources=/etc/apt/sources.list.d/astroberry.list
-		if [ -f "${sources}" ]; then
-			echo "${ask_pass}" | sudo -S chmod 777 "${sources}"
-			echo -e "# deb https://www.astroberry.io/repo/ buster main" | sudo tee "${sources}"
-			(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>sources.list.d</b>
-			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-			echo "${ask_pass}" | sudo -S chmod 644 "${sources}"
-		fi
-	(
-		echo "# Preparing update"
-		# Implement USB memory dump
-		echo "${ask_pass}" | sudo -S sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
-		(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>usbfs_memory_mb.</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		
-		# Hold some update
-		echo "${ask_pass}" | sudo -S apt-mark hold kstars-bleeding kstars-bleeding-data zenity \
-		indi-full libindi-dev libindi1 indi-bin
-		(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>hold some application</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		
-		echo "# Run Linux AstroPi full upgrade..."
-		# Run APT FULL upgrade
-		echo "${ask_pass}" | sudo -S apt update && echo "${ask_pass}" | sudo -S apt -y full-upgrade
-		(($? != 0)) && zenity --error --width="${W}" --text="Something went wrong in <b>Updating system AstroPi</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-
-		# =================================================================
-		echo "# All have done"
-		zenity --info --width="${W}" --text="All updates have been successfully installed" --title="${W_Title}"
-
-	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
-	exit_stat=$?
-	if [ ${exit_stat} -ne 0 ]; then
-			zenity --error --width="${W}" --text="Something went wrong in <b>System Update</b>
-			Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-			exit 1
 	fi
 }
 
@@ -443,31 +409,18 @@ function setupWiFi()
 	case "$?" in
 	0)
 		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
-			echo "${ask_pass}" | sudo -S chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
-			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n   key_mgmt=WPA-PSK\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
+			sudo chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
+			echo -e "country=IT\nctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nap_scan=1\n\nupdate_config=1\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
 			case $? in
 			0)
 				zenity --info --width="${W}" --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
-				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+				sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			1)
 				zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+				sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
 			;;
 			esac
-		else
-			echo "${ask_pass}" | sudo -S chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
-			echo "\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$((PRIORITY--))\"\n   key_mgmt=WPA-PSK\n}\n" | tee -a /etc/wpa_supplicant/wpa_supplicant.conf
-			case $? in
-			0)
-				zenity --info --width="${W}" --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
-				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
-			;;
-			1)
-				zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-				echo "${ask_pass}" | sudo -S chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
-			;;
-			esac	
 		fi
 	;;
 	1)
