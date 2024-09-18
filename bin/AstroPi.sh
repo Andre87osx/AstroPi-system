@@ -8,7 +8,7 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
-# rev 1.6 genuary 2023
+# rev 1.7 sept 2024
 # Run this script as USER
 # Type in console bash 'AstroPi'
 # This script have GUI powered by zenity lib
