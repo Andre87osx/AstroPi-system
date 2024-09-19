@@ -1,16 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2019 Hy Murveit <hy-1@murveit.com>
+/*  Ekos
+    Copyright (C) 2019 Hy Murveit <hy-1@murveit.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "focusalgorithms.h"
 
 #include "polynomialfit.h"
 #include <QVector>
 #include "kstars.h"
-#include "fitsviewer/fitsstardetector.h"
-#include "focusstars.h"
+
 #include <ekos_focus_debug.h>
 
 namespace Ekos
@@ -41,47 +43,9 @@ class LinearFocusAlgorithm : public FocusAlgorithmInterface
 
         // Pass in the measurement for the last requested position. Returns the position for the next
         // requested measurement, or -1 if the algorithm's done or if there's an error.
-        // If stars is not nullptr, then the relativeHFR scheme is used to modify the HFR value.
-        int newMeasurement(int position, double value, const QList<Edge*> *stars) override;
+        int newMeasurement(int position, double value) override;
 
         FocusAlgorithmInterface *Copy() override;
-
-        void getMeasurements(QVector<int> *pos, QVector<double> *hfrs) const override
-        {
-            *pos = positions;
-            *hfrs = values;
-        }
-
-        void getPass1Measurements(QVector<int> *pos, QVector<double> *hfrs) const override
-        {
-            *pos = pass1Positions;
-            *hfrs = pass1Values;
-        }
-
-        double latestHFR() const override
-        {
-            if (values.size() > 0)
-                return values.last();
-            return -1;
-        }
-
-        QString getTextStatus() override
-        {
-            if (done)
-            {
-                if (focusSolution > 0)
-                    return QString("Solution: %1").arg(focusSolution);
-                else
-                    return "Failed";
-            }
-            if (solutionPending)
-                return QString("Pending: %1,  %2").arg(solutionPendingPosition).arg(solutionPendingValue, 0, 'f', 2);
-            if (inFirstPass)
-                return "1st Pass";
-            else
-                return QString("2nd Pass. 1st: %1,  %2")
-                       .arg(firstPassBestPosition).arg(firstPassBestValue, 0, 'f', 2);
-        }
 
     private:
 
@@ -94,7 +58,7 @@ class LinearFocusAlgorithm : public FocusAlgorithmInterface
         // Called when we've found a solution, e.g. the HFR value is within tolerance of the desired value.
         // It it returns true, then it's decided tht we should try one more sample for a possible improvement.
         // If it returns false, then "play it safe" and use the current position as the solution.
-        bool setupPendingSolution(int position);
+        bool setupPendingSolution(int position, int step);
 
         // Determines the desired focus position for the first sample.
         void computeInitialPosition();
@@ -112,19 +76,13 @@ class LinearFocusAlgorithm : public FocusAlgorithmInterface
         // Adds to the debug log a line summarizing the result of running this algorithm.
         void debugLog();
 
-        // Use the detailed star measurements to adjust the HFR value.
-        // See comment above method definition.
-        double relativeHFR(double origHFR, const QList<Edge*> *stars);
-
         // Used to time the focus algorithm.
         QTime stopWatch;
 
         // A vector containing the HFR values sampled by this algorithm so far.
         QVector<double> values;
-        QVector<double> pass1Values;
         // A vector containing the focus positions corresponding to the HFR values stored above.
         QVector<int> positions;
-        QVector<int> pass1Positions;
 
         // Focus position requested by this algorithm the previous step.
         int requestedPosition;
@@ -156,19 +114,6 @@ class LinearFocusAlgorithm : public FocusAlgorithmInterface
         bool inFirstPass;
         // True if the 2nd pass has found a solution, and it's now optimizing the solution.
         bool solutionPending;
-        // When we're near done, but the HFR just got worse, we may retry the current position
-        // in case the HFR value was noisy.
-        int retryNumber = 0;
-
-        // Keep the solution-pending position/value for the status messages.
-        double solutionPendingValue = 0;
-        int solutionPendingPosition = 0;
-
-        // RelativeHFR variables
-        bool relativeHFREnabled = false;
-        QVector<FocusStars> starLists;
-        double bestRelativeHFR = 0;
-        int bestRelativeHFRIndex = 0;
 };
 
 // Copies the object. Used in testing to examine alternate possible inputs given
@@ -202,7 +147,6 @@ void LinearFocusAlgorithm::computeInitialPosition()
     stepSize = params.initialStepSize;
     inFirstPass = true;
     solutionPending = false;
-    retryNumber = 0;
     firstPassBestValue = -1;
     firstPassBestPosition = 0;
     numPolySolutionsFound = 0;
@@ -223,125 +167,14 @@ void LinearFocusAlgorithm::computeInitialPosition()
                                .arg(requestedPosition).arg(params.initialStepSize);
 }
 
-// The Problem:
-// The HFR values passed in to these focus algorithms are simply the mean or median HFR values
-// for all stars detected (with some other constraints). However, due to randomness in the
-// star detection scheme, two sets of star measurements may use different sets of actual stars to
-// compute their mean HFRs. This adds noise to determining best focus (e.g. including a
-// wider star in one set but not the other will tend to increase the HFR for that star set).
-// relativeHFR tries to correct for this by comparing two sets of stars only using their common stars.
-//
-// The Solution:
-// We maintain a reference set of stars, along with the HFR computed for those reference stars (bestRelativeHFR).
-// We find the common set of stars between an input star set and those reference stars. We compute
-// HFRs for the input stars in that common set, and for the reference common set as well.
-// The ratio of those common-set HFRs multiply bestRelativeHFR to generate the relative HFR for this
-// input star set--that is, it's the HFR "relative to the reference set". E.g. if the common-set HFR
-// for the input stars is twice worse than that from the reference common stars, then the relative HFR
-// would be 2 * bestRelativeHFR.
-// The reference set is the best HFR set of stars seen so far, but only from the 1st pass.
-// Thus, in the 2nd pass, the reference stars would be the best HFR set from the 1st pass.
-//
-// In unusual cases, e.g. when the common set can't be computed, we just return the input origHFR.
-double LinearFocusAlgorithm::relativeHFR(double origHFR, const QList<Edge*> *stars)
+int LinearFocusAlgorithm::newMeasurement(int position, double value)
 {
-    constexpr double minHFR = 0.3;
-    if (origHFR < minHFR) return origHFR;
-
-    const int currentIndex = values.size();
-    const bool isFirstSample = (currentIndex == 0);
-    double relativeHFR = origHFR;
-
-    if (isFirstSample && stars != nullptr)
-        relativeHFREnabled = true;
-
-    if (relativeHFREnabled && stars == nullptr)
-    {
-        // Error--we have been getting relativeHFR stars, and now we're not.
-        qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: Error: Inconsistent relativeHFR, disabling.");
-        relativeHFREnabled = false;
-    }
-
-    if (!relativeHFREnabled)
-        return origHFR;
-
-    if (starLists.size() != positions.size())
-    {
-        // Error--inconsistent data structures!
-        qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: Error: Inconsistent relativeHFR data structures, disabling.");
-        relativeHFREnabled = false;
-        return origHFR;
-    }
-
-    // Copy the input stars.
-    // FocusStars enables us to measure HFR relatively consistently,
-    // by using the same stars when comparing two measurements.
-    constexpr int starDistanceThreshold = 5;  // Max distance (pixels) for two positions to be considered the same star.
-    FocusStars fs(*stars, starDistanceThreshold);
-    starLists.push_back(fs);
-    auto &currentStars = starLists.back();
-
-    if (isFirstSample)
-    {
-        relativeHFR = currentStars.getHFR();
-        if (relativeHFR <= 0)
-        {
-            // Fall back to the simpler scheme.
-            relativeHFREnabled = false;
-            return origHFR;
-        }
-        // 1st measurement. By definition this is the best HFR.
-        bestRelativeHFR = relativeHFR;
-        bestRelativeHFRIndex = currentIndex;
-    }
-    else
-    {
-        // HFR computed relative to the best measured so far.
-        auto &bestStars = starLists[bestRelativeHFRIndex];
-        double hfr = currentStars.relativeHFR(bestStars, bestRelativeHFR);
-        if (hfr > 0)
-        {
-            relativeHFR = hfr;
-        }
-        else
-        {
-            relativeHFR = currentStars.getHFR();
-            if (relativeHFR <= 0)
-                return origHFR;
-        }
-
-        // In the 1st pass we compute the current HFR relative to the best HFR measured yet.
-        // In the 2nd pass we compute the current HFR relative to the best HFR in the 1st pass.
-        if (inFirstPass && relativeHFR <= bestRelativeHFR)
-        {
-            bestRelativeHFR = relativeHFR;
-            bestRelativeHFRIndex = currentIndex;
-        }
-    }
-
-    qCDebug(KSTARS_EKOS_FOCUS) << QString("RelativeHFR: orig %1 computed %2 relative %3")
-                               .arg(origHFR).arg(currentStars.getHFR()).arg(relativeHFR);
-
-    return relativeHFR;
-}
-
-int LinearFocusAlgorithm::newMeasurement(int position, double value, const QList<Edge*> *stars)
-{
-    double origValue = value;
-    value = relativeHFR(value, stars);
     int thisStepSize = stepSize;
     ++numSteps;
-    if (inFirstPass)
-        qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: step %1, newMeasurement(%2, %3 -> %4, %5)")
-                                   .arg(numSteps).arg(position).arg(origValue).arg(value)
-                                   .arg(stars == nullptr ? 0 : stars->size());
-    else
-        qCDebug(KSTARS_EKOS_FOCUS)
-                << QString("Linear: step %1, newMeasurement(%2, %3 -> %4, %5) 1stBest %6 %7").arg(numSteps)
-                .arg(position).arg(origValue).arg(value).arg(stars == nullptr ? 0 : stars->size())
-                .arg(firstPassBestPosition).arg(firstPassBestValue, 0, 'f', 3);
+    qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: step %1, newMeasurement(%2, %3)").arg(numSteps).arg(position).arg(value);
 
-    const int LINEAR_POSITION_TOLERANCE = params.initialStepSize;
+    // Not sure how to get a general value for this. Skip this check?
+    constexpr int LINEAR_POSITION_TOLERANCE = 25;
     if (abs(position - requestedPosition) > LINEAR_POSITION_TOLERANCE)
     {
         qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: error didn't get the requested position");
@@ -359,22 +192,14 @@ int LinearFocusAlgorithm::newMeasurement(int position, double value, const QList
     // Store the sample values.
     values.push_back(value);
     positions.push_back(position);
-    if (inFirstPass)
-    {
-        pass1Values.push_back(value);
-        pass1Positions.push_back(position);
-    }
 
-    // If we're in the 2nd pass and either
-    // - the current value is within tolerance, or
-    // - we're optimizing because we've previously found a within-tolerance solution,
-    // then setupPendingSolution decides whether to continue optimizing or to complete.
-    if (solutionPending ||
-            (!inFirstPass && (value < firstPassBestValue * (1.0 + params.focusTolerance))))
+    // If we've already found a pretty good solution and we're just optimizing, then either
+    // continue optimizing or complete.
+    if (solutionPending)
     {
-        if (setupPendingSolution(position))
+        if (setupPendingSolution(position, thisStepSize))
             // We can continue to look a little further.
-            return completeIteration(retryNumber > 0 ? 0 : stepSize);
+            return completeIteration(thisStepSize);
         else
             // Finish now
             return setupSolution(position, value);
@@ -391,7 +216,7 @@ int LinearFocusAlgorithm::newMeasurement(int position, double value, const QList
         {
             PolynomialFit fit(2, positions, values);
             double minPos, minVal;
-            bool foundFit = fit.findMinimum(position, 0, params.maxPositionAllowed, &minPos, &minVal);
+            bool foundFit = fit.findMinimum(position, 0, 100000, &minPos, &minVal);
             if (!foundFit)
             {
                 // I've found that the first sample can be odd--perhaps due to backlash.
@@ -399,7 +224,7 @@ int LinearFocusAlgorithm::newMeasurement(int position, double value, const QList
                 if (values.size() > kMinPolynomialPoints)
                 {
                     PolynomialFit fit2(2, positions.mid(1), values.mid(1));
-                    foundFit = fit2.findMinimum(position, 0, params.maxPositionAllowed, &minPos, &minVal);
+                    foundFit = fit2.findMinimum(position, 0, 100000, &minPos, &minVal);
                     minPos = minPos + 1;
                 }
             }
@@ -484,11 +309,26 @@ int LinearFocusAlgorithm::newMeasurement(int position, double value, const QList
             // Simply step the focus in one more time and iterate.
         }
     }
-    else if (gettingWorse())
+    else
     {
-        // Doesn't look like we'll find something close to the min. Retry the 2nd pass.
-        qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: getting worse, re-running 2nd pass");
-        return setupSecondPass(firstPassBestPosition, firstPassBestValue);
+        // In a 2nd pass looking to recreate the 1st pass' minimum.
+
+        // If the current HFR is good-enough to complete.
+        if (value < firstPassBestValue * (1.0 + params.focusTolerance))
+        {
+            if (setupPendingSolution(position, thisStepSize))
+                // We could finish now, but let's look a little further.
+                return completeIteration(thisStepSize);
+            else
+                // We're done.
+                return setupSolution(position, value);
+        }
+        else if (gettingWorse())
+        {
+            // Doesn't look like we'll find something close to the min. Retry the 2nd pass.
+            qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: getting worse, re-running 2nd pass");
+            return setupSecondPass(firstPassBestPosition, firstPassBestValue);
+        }
     }
 
     return completeIteration(thisStepSize);
@@ -540,66 +380,29 @@ int LinearFocusAlgorithm::completeIteration(int step)
     return requestedPosition;
 }
 
-// This is called in the 2nd pass, when we've found a sample point that's within tolerance
-// of the 1st pass' best value. Since it's within tolerance, the 2nd pass might finish, using
-// the current value as the final solution. However, this method checks to see if we might go
-// a bit further. Once solutionPending is true, it's committed to finishing soon.
-// It goes further if:
-// - the current HFR value is an improvement on the previous 2nd-pass value,
+// This is called in the 2nd pass, when we've found a sample point that's within tolerance of the 1st pass'
+// best value. The 2nd pass could simply finish, using this value as the final solution.
+// However, this method checks to see if we might go a bit further. It does so if
+// - the current value is an improvement on the previous 2nd-pass value (or if this is the 1st 2nd-pass value),
+// - the current position is greater than the min of the v-curve computed by the 1st pass,
 // - the number of steps taken so far is not close the max number of allowable steps.
-// If instead the HFR got worse, we retry the current position a few times to see if it might
-// get better before giving up.
-bool LinearFocusAlgorithm::setupPendingSolution(int position)
+bool LinearFocusAlgorithm::setupPendingSolution(int position, int step)
 {
     const int length = values.size();
     const int secondPassIndex = length - secondPassStartIndex;
-    const double thisValue = values[length - 1];
-
-    // ReferenceValue is the value used in the notGettingWorse computation.
-    // Basically, it's the previous value, or the value before retries.
-    double referenceValue = (secondPassIndex <= 1) ? 1e6 : values[length - 2];
-    if (retryNumber > 0 && length - (2 + retryNumber) >= 0)
-        referenceValue = values[length - (2 + retryNumber)];
-
-    // NotGettingWorse: not worse than the previous (non-repeat) 2nd pass sample, or the 1st 2nd pass sample.
-    const bool notGettingWorse = (secondPassIndex <= 1) || (thisValue <= referenceValue);
-
-    // CouldGoFurther: Not near a boundary in position or number of steps.
-    const bool couldGoFather = (numSteps < params.maxIterations - 2) && (position - stepSize > minPositionLimit);
-
-    // Allow passing the 1st pass' minimum HFR position, but take smaller steps and don't retry as much.
-    int maxNumRetries = 3;
-    if (position - stepSize / 2 < firstPassBestPosition)
+    // This is either the first sample in the 2nd pass, or an improvement over the previous sample.
+    bool notGettingWorse = (secondPassIndex <= 1) || (values[length - 1] < values[length - 2]);
+    if (notGettingWorse &&
+            position - step > firstPassBestPosition &&
+            numSteps < params.maxIterations - 2 &&
+            position - step > minPositionLimit
+       )
     {
-        stepSize = std::max(2, params.initialStepSize / 4);
-        maxNumRetries = 1;
-    }
-
-    if (notGettingWorse && couldGoFather)
-    {
-        qCDebug(KSTARS_EKOS_FOCUS)
-                << QString("Linear: %1: Position(%2) & HFR(%3) -- Pass1: %4 %5, solution pending, searching further")
-                .arg(length).arg(position).arg(thisValue, 0, 'f', 3).arg(firstPassBestPosition).arg(firstPassBestValue, 0, 'f', 3);
+        qCDebug(KSTARS_EKOS_FOCUS) << QString("Linear: Position(%1) & HFR(%2) good, but searching further")
+                                   .arg(position).arg(values[length - 1]);
         solutionPending = true;
-        solutionPendingPosition = position;
-        solutionPendingValue = thisValue;
-        retryNumber = 0;
         return true;
     }
-    else if (solutionPending && couldGoFather && retryNumber < maxNumRetries &&
-             (secondPassIndex > 1) && (thisValue >= referenceValue))
-    {
-        qCDebug(KSTARS_EKOS_FOCUS)
-                << QString("Linear: %1: Position(%2) & HFR(%3) -- Pass1: %4 %5, solution pending, got worse, retrying")
-                .arg(length).arg(position).arg(thisValue, 0, 'f', 3).arg(firstPassBestPosition).arg(firstPassBestValue, 0, 'f', 3);
-        // Try this poisition again.
-        retryNumber++;
-        return true;
-    }
-    qCDebug(KSTARS_EKOS_FOCUS)
-            << QString("Linear: %1: Position(%2) & HFR(%3) -- Pass1: %4 %5, finishing, can't go further")
-            .arg(length).arg(position).arg(thisValue, 0, 'f', 3).arg(firstPassBestPosition).arg(firstPassBestValue, 0, 'f', 3);
-    retryNumber = 0;
     return false;
 }
 
