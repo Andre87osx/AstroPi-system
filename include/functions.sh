@@ -238,7 +238,12 @@ function system_pre_update()
 # Get full AstoPi System update
 function system_update()
 {
-	# APT Default commands for up to date the system
+	# Ensure unbuffer is installed
+	if ! command -v unbuffer &> /dev/null; then
+    		sudo apt-get install -y expect
+	fi
+ 
+ 	# APT Default commands for up to date the system
 	apt_commands=(
 	'apt-get update'
 	'apt-get upgrade'
