@@ -246,6 +246,7 @@ function system_update()
  	# APT Default commands for up to date the system
 	apt_commands=(
 	'apt-get update'
+ 	'apt install vlc-bin'
 	'apt-get upgrade'
 	'apt-get full-upgrade'
 	'apt autopurge'
