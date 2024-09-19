@@ -1,21 +1,12 @@
-/***************************************************************************
-                          fitssepdetector.cpp  -  FITS Image
-                             -------------------
-    begin                : Sun March 29 2020
-    copyright            : (C) 2004 by Jasem Mutlaq, (C) 2020 by Eric Dejouhanet
-    email                : eric.dejouhanet@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq
+    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
- *   See http://members.aol.com/pkirchg for more details.                  *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
+    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
+*/
 
 #include "config-kstars.h"
 
@@ -92,7 +83,7 @@ bool FITSSEPDetector::findSourcesAndBackground(QRect const &boundary)
             break;
     }
 
-    QString savedOptionsProfiles = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + filename;
+    QString savedOptionsProfiles = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(filename);
     QList<SSolver::Parameters> optionsList;
     if(QFile(savedOptionsProfiles).exists())
         optionsList = StellarSolver::loadSavedOptionsProfiles(savedOptionsProfiles);
@@ -121,32 +112,20 @@ bool FITSSEPDetector::findSourcesAndBackground(QRect const &boundary)
     }
     else
         solver->setParameters(SSolver::Parameters()); // This is default
-    //connect(solver, &StellarSolver::logOutput, Ekos::Manager::Instance()->focusModule(), &Ekos::Focus::appendLogText);
-    //    if(Options::focusLogging())
-    //        solver->setSSLogLevel(SSolver::LOG_NORMAL);
-    //    else
-    //        solver->setSSLogLevel(SSolver::LOG_OFF);
 
     // Wait synchronously
 
     QEventLoop loop;
     connect(solver, &StellarSolver::finished, &loop, &QEventLoop::quit);
     QList<FITSImage::Star> stars;
-    //    if (!boundary.isNull())
-    //    {
-
     const bool runHFR = group != Ekos::AlignProfiles;
-    solver->extract(runHFR, boundary);
+
+    if (boundary.isValid())
+        solver->extract(runHFR, boundary);
+    else
+        solver->extract(runHFR);
     loop.exec(QEventLoop::ExcludeUserInputEvents);
     stars = solver->getStarList();
-    //    }
-
-    //    if (stars.empty())
-    //    {
-    //        solver->extract(true);
-    //        loop.exec();
-    //        stars = solver->getStarList();
-    //    }
 
     if (stars.empty())
         return false;

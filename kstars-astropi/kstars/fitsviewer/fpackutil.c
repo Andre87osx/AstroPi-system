@@ -1,5 +1,8 @@
 /* FPACK utility routines
-   R. Seaman, NOAO & W. Pence, NASA/GSFC
+    SPDX-FileCopyrightText: William D. Pence <https://heasarc.gsfc.nasa.gov/fitsio/>
+    SPDX-FileCopyrightText: R. Seaman
+
+    SPDX-License-Identifier: LicenseRef-NASA-FV-License-Agreement
 */
 
 #include <time.h>
@@ -123,7 +126,7 @@ int _fp_tmpnam(char *suffix, char *rootname, char *tmpnam)
     int maxtry = 30, ii;
 
     if (strlen(suffix) + strlen(rootname) > SZ_STR-5) {
-        fp_msg ("Error: filename is too long to create tempory file\n"); exit (-1);
+        fp_msg ("Error: filename is too long to create temporary file\n"); exit (-1);
     }
 
     strcpy (tmpnam, rootname);  /* start with rootname */
@@ -957,7 +960,7 @@ int fp_unpack (char *infits, char *outfits, fpstate fpvar)
 {
     fitsfile *infptr, *outfptr;
     int stat=0, hdutype, extnum, single = 0;
-    char *loc, *hduloc, hduname[SZ_STR] = { 0 };
+    char *loc, *hduloc = 0, hduname[SZ_STR] = { 0 };
 
     fits_open_file (&infptr, infits, READONLY, &stat);
     fits_create_file (&outfptr, outfits, &stat);

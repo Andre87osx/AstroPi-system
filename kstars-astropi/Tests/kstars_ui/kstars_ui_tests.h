@@ -1,23 +1,17 @@
-/*  KStars UI tests
-    Copyright (C) 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
+/*
+    SPDX-FileCopyrightText: 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
-#include "config-kstars.h"
-#include "kstars.h"
+#include "../testhelpers.h"
 #include "kstarsdata.h"
 
 #include <QMutex>
-#include <QObject>
 #include <QTimer>
 #include <QApplication>
-#include <QtTest>
 #include <QSystemTrayIcon>
 
 class KStars;
@@ -52,6 +46,7 @@ extern void execute_tests();
             if (!strcmp("-functions", argv[i])) \
                 return QTest::qExec(&tc, argc, argv); \
         QApplication* app = new QApplication(argc, argv); \
+        KTEST_BEGIN(); \
         prepare_tests(); \
         int failure = 0; \
         QTimer::singleShot(1000, app, [&] { \
@@ -66,6 +61,7 @@ extern void execute_tests();
             app->quit(); \
         }); \
         execute_tests(); \
+        KTEST_END(); \
         return failure; }
 
 // All QTest features are macros returning with no error code.

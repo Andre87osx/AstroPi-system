@@ -1,11 +1,8 @@
-/*  INDI CCD
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -15,6 +12,7 @@
 #include "fitsviewer/fitscommon.h"
 #include "fitsviewer/fitsview.h"
 #include "fitsviewer/fitsviewer.h"
+#include "ekos/capture/placeholderpath.h"
 
 #include <QStringList>
 #include <QPointer>
@@ -184,6 +182,13 @@ class CCD : public DeviceDecorator
             BLOB_OTHER
         } BType;
         typedef enum { TELESCOPE_PRIMARY, TELESCOPE_GUIDE, TELESCOPE_UNKNOWN } TelescopeType;
+        typedef enum
+        {
+            ERROR_CAPTURE,              /** INDI Camera error */
+            ERROR_SAVE,                 /** Saving to disk error */
+            ERROR_LOAD,                 /** Loading image buffer error */
+            ERROR_VIEWER                /** Loading in FITS Viewer Error */
+        } ErrorType;
 
         void registerProperty(INDI::Property prop) override;
         void removeProperty(const QString &name) override;
@@ -234,14 +239,14 @@ class CCD : public DeviceDecorator
         {
             seqPrefix = preFix;
         }
+        void setPlaceholderPath(Ekos::PlaceholderPath php)
+        {
+            placeholderPath = php;
+        }
         void setNextSequenceID(int count)
         {
             nextSequenceID = count;
         }
-        //        void setFilter(const QString &newFilter)
-        //        {
-        //            filter = newFilter;
-        //        }
 
         // Gain controls
         bool hasGain()
@@ -317,20 +322,16 @@ class CCD : public DeviceDecorator
         bool setFITSHeader(const QMap<QString, QString> &values);
 
         CCDChip *getChip(CCDChip::ChipType cType);
-        void setFITSDir(const QString &dir)
-        {
-            fitsDir = dir;
-        }
 
         TransferFormat getTargetTransferFormat() const;
         void setTargetTransferFormat(const TransferFormat &value);
 
-        bool setExposureLoopingEnabled(bool enable);
-        bool isLooping() const
+        bool setFastExposureEnabled(bool enable);
+        bool isFastExposureEnabled() const
         {
-            return IsLooping;
+            return m_FastExposureEnabled;
         }
-        bool setExposureLoopCount(uint32_t count);
+        bool setFastCount(uint32_t count);
 
         const QMap<QString, double> &getExposurePresets() const
         {
@@ -362,29 +363,30 @@ class CCD : public DeviceDecorator
         void newVideoFrame(const QSharedPointer<QImage> &frame);
         void coolerToggled(bool enabled);
         void ready();
-        void captureFailed();
+        void error(ErrorType type);
         void newImage(const QSharedPointer<FITSData> &data);
 
     private:
         void processStream(IBLOB *bp);
-        void loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data);
-        bool generateFilename(const QString &format, bool batch_mode, QString *filename);
+        void loadImageInView(ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data);
+        bool generateFilename(bool batch_mode, const QString &extension, QString *filename);
         // Saves an image to disk on a separate thread.
         bool writeImageFile(const QString &filename, IBLOB *bp, bool is_fits);
+        bool WriteImageFileInternal(const QString &filename, char *buffer, const size_t size);
         // Creates or finds the FITSViewer.
-        void setupFITSViewerWindows();
+        QPointer<FITSViewer> getFITSViewer();
         void handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, QSharedPointer<FITSData> data);
 
-        //QString filter;
         bool ISOMode { true };
         bool HasGuideHead { false };
         bool HasCooler { false };
         bool CanCool { false };
         bool HasCoolerControl { false };
         bool HasVideoStream { false };
-        bool IsLooping { false };
+        bool m_FastExposureEnabled { false };
         QString seqPrefix;
-        QString fitsDir;
+        Ekos::PlaceholderPath placeholderPath;
+
         int nextSequenceID { 0 };
         std::unique_ptr<StreamWG> streamWindow;
         int streamW { 0 };

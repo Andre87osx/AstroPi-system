@@ -1,11 +1,8 @@
-/*  INDI Property
-    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "indiproperty.h"
 
@@ -37,24 +34,18 @@ extern const char *libindi_strings_context;
 /*******************************************************************
 ** INDI Property: contains widgets, labels, and their status
 *******************************************************************/
-INDI_P::INDI_P(INDI_G *ipg, INDI::Property prop)
-    : pg(ipg)
-    , dataProp(prop)
+INDI_P::INDI_P(INDI_G *ipg, INDI::Property prop) : QWidget(ipg), pg(ipg), dataProp(prop)
 {
     name = QString(prop.getName());
 
-    PHBox.reset(new QHBoxLayout());
+    PHBox = new QHBoxLayout(this);
+    PHBox->setObjectName("Property Horizontal Layout");
     PHBox->setContentsMargins(0, 0, 0, 0);
-    PVBox = new QVBoxLayout();
+    PVBox = new QVBoxLayout;
     PVBox->setContentsMargins(0, 0, 0, 0);
+    PVBox->setObjectName("Property Vertical Layout");
 
     initGUI();
-}
-
-INDI_P::~INDI_P()
-{
-    qDeleteAll(elementList);
-    elementList.clear();
 }
 
 void INDI_P::updateStateLED()
@@ -77,9 +68,6 @@ void INDI_P::updateStateLED()
         case IPS_ALERT:
             ledStatus->setColor(Qt::red);
             break;
-
-        default:
-            break;
     }
 }
 
@@ -93,20 +81,19 @@ void INDI_P::initGUI()
         label = dataProp.getLabel();
 
     /* add to GUI group */
-    ledStatus.reset(new KLed(pg->getContainer()));
+    ledStatus = new KLed(this);
     ledStatus->setMaximumSize(16, 16);
     ledStatus->setLook(KLed::Sunken);
 
     updateStateLED();
 
     /* Create a horizontally layout widget around light and label */
-    QWidget *labelWidget = new QWidget();
-    QHBoxLayout *labelLayout =  new QHBoxLayout();
+    QWidget *labelWidget = new QWidget(this);
+    QHBoxLayout *labelLayout =  new QHBoxLayout(labelWidget);
     labelLayout->setContentsMargins(0, 0, 0, 0);
-    labelWidget->setLayout(labelLayout);
 
     /* #1 First widget is the LED status indicator */
-    labelLayout->addWidget(ledStatus.get());
+    labelLayout->addWidget(ledStatus);
 
     if (label.isEmpty())
     {
@@ -114,10 +101,10 @@ void INDI_P::initGUI()
         if (label == "(I18N_EMPTY_MESSAGE)")
             label = name.toUtf8();
 
-        labelW.reset(new KSqueezedTextLabel(label, pg->getContainer()));
+        labelW = new KSqueezedTextLabel(label, this);
     }
     else
-        labelW.reset(new KSqueezedTextLabel(label, pg->getContainer()));
+        labelW = new KSqueezedTextLabel(label, this);
 
     //labelW->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     labelW->setFrameShape(QFrame::Box);
@@ -128,7 +115,7 @@ void INDI_P::initGUI()
     labelW->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
     labelW->setWordWrap(true);
 
-    labelLayout->addWidget(labelW.get());
+    labelLayout->addWidget(labelW);
     PHBox->addWidget(labelWidget, 0, Qt::AlignTop | Qt::AlignLeft);
 
     ledStatus->show();
@@ -181,7 +168,7 @@ void INDI_P::buildSwitchGUI()
     if (!svp)
         return;
 
-    groupB.reset(new QButtonGroup());
+    groupB = new QButtonGroup(this);
 
     if (guiType == PG_BUTTONS)
     {
@@ -194,12 +181,12 @@ void INDI_P::buildSwitchGUI()
         groupB->setExclusive(false);
 
     if (svp->p != IP_RO)
-        QObject::connect(groupB.get(), SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(newSwitch(QAbstractButton*)));
+        QObject::connect(groupB, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(newSwitch(QAbstractButton*)));
 
-    for (auto &it: *svp)
+    for (auto &it : *svp)
     {
         auto lp = new INDI_E(this, dataProp);
-        lp->buildSwitch(groupB.get(), &it);
+        lp->buildSwitch(groupB, &it);
         elementList.append(lp);
     }
 
@@ -215,7 +202,7 @@ void INDI_P::buildTextGUI()
     if (!tvp)
         return;
 
-    for (auto &it: *tvp)
+    for (auto &it : *tvp)
     {
         auto lp = new INDI_E(this, dataProp);
         lp->buildText(&it);
@@ -243,7 +230,7 @@ void INDI_P::buildNumberGUI()
     if (!nvp)
         return;
 
-    for (auto &it: *nvp)
+    for (auto &it : *nvp)
     {
         auto lp = new INDI_E(this, dataProp);
         lp->buildNumber(&it);
@@ -267,7 +254,7 @@ void INDI_P::buildLightGUI()
     if (!lvp)
         return;
 
-    for (auto &it: *lvp)
+    for (auto &it : *lvp)
     {
         auto ep = new INDI_E(this, dataProp);
         ep->buildLight(&it);
@@ -286,7 +273,7 @@ void INDI_P::buildBLOBGUI()
     if (!bvp)
         return;
 
-    for (auto &it: *bvp)
+    for (auto &it : *bvp)
     {
         auto lp = new INDI_E(this, dataProp);
         lp->buildBLOB(&it);
@@ -325,7 +312,7 @@ void INDI_P::newSwitch(QAbstractButton *button)
 
     buttonText.remove('&');
 
-    foreach (INDI_E *el, elementList)
+    for (auto &el : elementList)
     {
         if (el->getLabel() == buttonText)
         {
@@ -342,7 +329,7 @@ void INDI_P::resetSwitch()
     if (!svp)
         return;
 
-    if (menuC.get() != nullptr)
+    if (menuC != nullptr)
     {
         menuC->setCurrentIndex(svp->findOnSwitchIndex());
     }
@@ -407,7 +394,7 @@ void INDI_P::sendSwitch()
 
     svp->setState(IPS_BUSY);
 
-    foreach (INDI_E *el, elementList)
+    for (auto &el : elementList)
         el->syncSwitch();
 
     updateStateLED();
@@ -428,7 +415,7 @@ void INDI_P::sendText()
 
             tvp->setState(IPS_BUSY);
 
-            foreach (INDI_E *el, elementList)
+            for (auto &el : elementList)
                 el->updateTP();
 
             pg->getDevice()->getClientManager()->sendNewText(tvp);
@@ -444,7 +431,7 @@ void INDI_P::sendText()
 
             nvp->setState(IPS_BUSY);
 
-            foreach (INDI_E *el, elementList)
+            for (auto &el : elementList)
                 el->updateNP();
 
             pg->getDevice()->getClientManager()->sendNewNumber(nvp);
@@ -467,12 +454,12 @@ void INDI_P::buildMenuGUI()
     if (!svp)
         return;
 
-    menuC.reset(new QComboBox(pg->getContainer()));
+    menuC = new QComboBox(this);
 
     if (svp->getPermission() == IP_RO)
-        connect(menuC.get(), SIGNAL(activated(int)), this, SLOT(resetSwitch()));
+        connect(menuC, SIGNAL(activated(int)), this, SLOT(resetSwitch()));
     else
-        connect(menuC.get(), SIGNAL(activated(int)), this, SLOT(newSwitch(int)));
+        connect(menuC, SIGNAL(activated(int)), this, SLOT(newSwitch(int)));
 
     for (int i = 0; i < svp->nsp; i++)
     {
@@ -500,20 +487,20 @@ void INDI_P::buildMenuGUI()
 
     horSpacer = new QSpacerItem(20, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
 
-    PHBox->addWidget(menuC.get());
+    PHBox->addWidget(menuC);
     PHBox->addItem(horSpacer);
 }
 
 void INDI_P::setupSetButton(const QString &caption)
 {
-    setB.reset(new QPushButton(caption, pg->getContainer()));
+    setB = new QPushButton(caption, this);
     setB->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     setB->setMinimumWidth(MIN_SET_WIDTH * KStars::Instance()->devicePixelRatio());
     setB->setMaximumWidth(MAX_SET_WIDTH * KStars::Instance()->devicePixelRatio());
 
-    connect(setB.get(), SIGNAL(clicked()), this, SLOT(processSetButton()));
+    connect(setB, SIGNAL(clicked()), this, SLOT(processSetButton()));
 
-    PHBox->addWidget(setB.get());
+    PHBox->addWidget(setB);
 }
 
 void INDI_P::addWidget(QWidget *w)
@@ -618,11 +605,8 @@ void INDI_P::sendBlob()
 
 void INDI_P::newTime()
 {
-    INDI_E *timeEle;
-    INDI_E *offsetEle;
-
-    timeEle   = getElement("UTC");
-    offsetEle = getElement("OFFSET");
+    INDI_E *timeEle   = getElement("UTC");
+    INDI_E *offsetEle = getElement("OFFSET");
     if (!timeEle || !offsetEle)
         return;
 

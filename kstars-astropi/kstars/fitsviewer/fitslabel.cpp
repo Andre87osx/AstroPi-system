@@ -1,11 +1,8 @@
-/*  FITS Label
-    Copyright (C) 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    Copyright (C) 2016-2017 Robert Lancaster <rlancaste@gmail.com>
+/*
+    SPDX-FileCopyrightText: 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2016-2017 Robert Lancaster <rlancaste@gmail.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "fitslabel.h"
@@ -167,18 +164,12 @@ void FITSLabel::mouseMoveEvent(QMouseEvent *e)
 
     if (view_data->hasWCS() && view->getCursorMode() != FITSView::selectCursor)
     {
-        int index = x + y * m_Width;
-
-        FITSImage::wcs_point *wcs_coord = view_data->getWCSCoord();
-
-        if (wcs_coord)
+        QPointF wcsPixelPoint(x, y);
+        SkyPoint wcsCoord;
+        if(view_data->pixelToWCS(wcsPixelPoint, wcsCoord))
         {
-            if (index > m_Size)
-                return;
-
-            m_RA.setD(wcs_coord[index].ra);
-            m_DE.setD(wcs_coord[index].dec);
-
+            m_RA = wcsCoord.ra0();
+            m_DE = wcsCoord.dec0();
             emit newStatus(QString("%1 , %2").arg(m_RA.toHMSString(), m_DE.toDMSString()), FITS_WCS);
         }
 
@@ -219,6 +210,12 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
 {
     float scale = (view->getCurrentZoom() / ZOOM_DEFAULT);
 
+    double x = round(e->x() / scale);
+    double y = round(e->y() / scale);
+
+    x = KSUtils::clamp(x, 1.0, m_Width);
+    y = KSUtils::clamp(y, 1.0, m_Height);
+
     if (view->getCursorMode() == FITSView::dragCursor)
     {
         mouseButtonDown = true;
@@ -231,24 +228,20 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
         const QSharedPointer<FITSData> &view_data = view->imageData();
         if (view_data->hasWCS())
         {
-            FITSImage::wcs_point *wcs_coord = view_data->getWCSCoord();
-            if (wcs_coord)
+            QPointF wcsPixelPoint(x, y);
+            SkyPoint wcsCoord;
+            if(view_data->pixelToWCS(wcsPixelPoint, wcsCoord))
             {
-                double x, y;
-                x = round(e->x() / scale);
-                y = round(e->y() / scale);
-
-                x         = KSUtils::clamp(x, 1.0, m_Width);
-                y         = KSUtils::clamp(y, 1.0, m_Height);
-                int index = x + y * m_Width;
+                auto ra = wcsCoord.ra0();
+                auto dec = wcsCoord.dec0();
                 if (KMessageBox::Continue == KMessageBox::warningContinueCancel(
                             nullptr,
-                            "Slewing to Coordinates: \nRA: " + dms(wcs_coord[index].ra).toHMSString() +
-                            "\nDec: " + dms(wcs_coord[index].dec).toDMSString(),
+                            "Slewing to Coordinates: \nRA: " + ra.toHMSString() +
+                            "\nDec: " + dec.toDMSString(),
                             i18n("Continue Slew"), KStandardGuiItem::cont(),
                             KStandardGuiItem::cancel(), "continue_slew_warning"))
                 {
-                    centerTelescope(wcs_coord[index].ra / 15.0, wcs_coord[index].dec);
+                    centerTelescope(ra.Hours(), dec.Degrees());
                     view->setCursorMode(view->lastMouseMode);
                     view->updateScopeButton();
                 }
@@ -257,13 +250,6 @@ void FITSLabel::mousePressEvent(QMouseEvent *e)
 #endif
     }
 
-    double x, y;
-
-    x = round(e->x() / scale);
-    y = round(e->y() / scale);
-
-    x = KSUtils::clamp(x, 1.0, m_Width);
-    y = KSUtils::clamp(y, 1.0, m_Height);
 
 #ifdef HAVE_INDI
     const QSharedPointer<FITSData> &view_data = view->imageData();

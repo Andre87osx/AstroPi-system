@@ -1,11 +1,8 @@
-/*  INDI CCD
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "indiccd.h"
 
@@ -27,8 +24,10 @@
 #endif
 
 #include <KNotifications/KNotification>
+#include "auxiliary/ksmessagebox.h"
 #include "ksnotification.h"
 #include <QImageReader>
+#include <QFileInfo>
 #include <QStatusBar>
 #include <QtConcurrent>
 
@@ -39,32 +38,6 @@ const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw"
 const QString &getFITSModeStringString(FITSMode mode)
 {
     return FITSModes[mode];
-}
-
-namespace
-{
-// Internal function to write an image blob to disk.
-bool WriteImageFileInternal(const QString &filename, char *buffer, const size_t size)
-{
-    QFile file(filename);
-    if (!file.open(QIODevice::WriteOnly))
-    {
-        qCCritical(KSTARS_INDI) << "ISD:CCD Error: Unable to open write file: " <<
-                                filename;
-        return false;
-    }
-    size_t n = 0;
-    QDataStream out(&file);
-    for (size_t nr = 0; nr < size; nr += n)
-        n = out.writeRawData(buffer + nr, size - nr);
-    file.flush();
-    file.close();
-    file.setPermissions(QFileDevice::ReadUser |
-                        QFileDevice::WriteUser |
-                        QFileDevice::ReadGroup |
-                        QFileDevice::ReadOther);
-    return true;
-}
 }
 
 namespace ISD
@@ -427,7 +400,7 @@ bool CCDChip::capture(double exposure)
             {
                 double diff = 1e6;
                 double closestMatch = exposure;
-                for (auto oneValue : exposurePresets.values())
+                for (const auto &oneValue : exposurePresets.values())
                 {
                     double newDiff = std::fabs(exposure - oneValue);
                     if (newDiff < diff)
@@ -1013,17 +986,13 @@ void CCD::registerProperty(INDI::Property prop)
             }
         }
     }
-    else if (prop->isNameMatch("CCD_EXPOSURE_LOOP"))
+    else if (prop->isNameMatch("CCD_FAST_TOGGLE"))
     {
         auto sp = prop->getSwitch();
         if (sp)
-        {
-            auto looping = sp->findWidgetByName("LOOP_ON");
-            if (looping && looping->getState() == ISS_ON)
-                IsLooping = true;
-            else
-                IsLooping = false;
-        }
+            m_FastExposureEnabled = sp->findOnSwitchIndex() == 0;
+        else
+            m_FastExposureEnabled = false;
     }
     else if (prop->isNameMatch("TELESCOPE_TYPE"))
     {
@@ -1102,7 +1071,7 @@ void CCD::processNumber(INumberVectorProperty *nvp)
         if (np)
             emit newExposureValue(primaryChip.get(), np->value, nvp->s);
         if (nvp->s == IPS_ALERT)
-            emit captureFailed();
+            emit error(ERROR_CAPTURE);
     }
     else if (!strcmp(nvp->name, "CCD_TEMPERATURE"))
     {
@@ -1269,13 +1238,9 @@ void CCD::processSwitch(ISwitchVectorProperty *svp)
         else
             telescopeType = TELESCOPE_GUIDE;
     }
-    else if (!strcmp(svp->name, "CCD_EXPOSURE_LOOP"))
+    else if (!strcmp(svp->name, "CCD_FAST_TOGGLE"))
     {
-        ISwitch *looping = IUFindSwitch(svp, "LOOP_ON");
-        if (looping && looping->s == ISS_ON)
-            IsLooping = true;
-        else
-            IsLooping = false;
+        m_FastExposureEnabled = IUFindOnSwitchIndex(svp) == 0;
     }
     else if (streamWindow && !strcmp(svp->name, "CONNECTION"))
     {
@@ -1343,8 +1308,8 @@ void CCD::processStream(IBLOB *bp)
     }
     else
     {
-        int x, y, w, h;
-        int binx, biny;
+        int x = 0, y = 0, w = 0, h = 0;
+        int binx = 1, biny = 1;
 
         primaryChip->getFrame(&x, &y, &w, &h);
         primaryChip->getBinning(&binx, &biny);
@@ -1358,42 +1323,19 @@ void CCD::processStream(IBLOB *bp)
     streamWindow->newFrame(bp);
 }
 
-bool CCD::generateFilename(const QString &format, bool batch_mode, QString *filename)
+bool CCD::generateFilename(bool batch_mode, const QString &extension, QString *filename)
 {
-    QString currentDir;
-    if (batch_mode)
-        currentDir = fitsDir.isEmpty() ? Options::fitsDir() : fitsDir;
-    else
-        currentDir = KSPaths::writableLocation(QStandardPaths::TempLocation);
 
-    if (QDir(currentDir).exists() == false)
-        QDir().mkpath(currentDir);
+    placeholderPath.generateFilename("%p1/%t/%T/%F/%t_%T_%F_%e_%D_%s3", ISOMode,
+                                     batch_mode, nextSequenceID, extension, filename);
 
-    if (currentDir.endsWith('/') == false)
-        currentDir.append('/');
-
-    // IS8601 contains colons but they are illegal under Windows OS, so replacing them with '-'
-    // The timestamp is no longer ISO8601 but it should solve interoperality issues
-    // between different OS hosts
-    QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-
-    if (seqPrefix.contains("_ISO8601"))
-    {
-        QString finalPrefix = seqPrefix;
-        finalPrefix.replace("ISO8601", ts);
-        *filename = currentDir + finalPrefix +
-                    QString("_%1%2").arg(QString().asprintf("%03d", nextSequenceID), format);
-    }
-    else
-        *filename = currentDir + seqPrefix + (seqPrefix.isEmpty() ? "" : "_") +
-                    QString("%1%2").arg(QString().asprintf("%03d", nextSequenceID), format);
+    QDir currentDir = QFileInfo(*filename).dir();
+    if (currentDir.exists() == false)
+        QDir().mkpath(currentDir.path());
 
     QFile test_file(*filename);
     if (!test_file.open(QIODevice::WriteOnly))
-    {
-        qCCritical(KSTARS_INDI) << "ISD:CCD Error: Unable to open " << test_file.fileName();
         return false;
-    }
     test_file.flush();
     test_file.close();
     return true;
@@ -1430,8 +1372,7 @@ bool CCD::writeImageFile(const QString &filename, IBLOB *bp, bool is_fits)
         // Copy memory, and write file on a separate thread.
         // Probably too late to return an error if the file couldn't write.
         memcpy(fileWriteBuffer, bp->blob, bp->size);
-        fileWriteThread = QtConcurrent::run(WriteImageFileInternal, fileWriteFilename, fileWriteBuffer, bp->size);
-        //filter = "";
+        fileWriteThread = QtConcurrent::run(this, &ISD::CCD::WriteImageFileInternal, fileWriteFilename, fileWriteBuffer, bp->size);
     }
     else
     {
@@ -1441,13 +1382,22 @@ bool CCD::writeImageFile(const QString &filename, IBLOB *bp, bool is_fits)
     return true;
 }
 
-void CCD::setupFITSViewerWindows()
+// Get or Create FITSViewer if we are using FITSViewer
+// or if capture mode is calibrate since for now we are forced to open the file in the viewer
+// this should be fixed in the future and should only use FITSData
+QPointer<FITSViewer> CCD::getFITSViewer()
 {
+    // if the FITS viewer exists, return it
+    if (m_FITSViewerWindow != nullptr && ! m_FITSViewerWindow.isNull())
+        return m_FITSViewerWindow;
+
+    // otherwise, create it
     normalTabID = calibrationTabID = focusTabID = guideTabID = alignTabID = -1;
 
     m_FITSViewerWindow = KStars::Instance()->createFITSViewer();
 
-    connect(m_FITSViewerWindow, &FITSViewer::closed, [&](int tabIndex)
+    // Check if ONE tab of the viewer was closed.
+    connect(m_FITSViewerWindow, &FITSViewer::closed, this, [this](int tabIndex)
     {
         if (tabIndex == normalTabID)
             normalTabID = -1;
@@ -1460,6 +1410,19 @@ void CCD::setupFITSViewerWindows()
         else if (tabIndex == alignTabID)
             alignTabID = -1;
     });
+
+    // If FITS viewer was completed closed. Reset everything
+    connect(m_FITSViewerWindow, &FITSViewer::destroyed, this, [this]()
+    {
+        normalTabID = -1;
+        calibrationTabID = -1;
+        focusTabID = -1;
+        guideTabID = -1;
+        alignTabID = -1;
+        m_FITSViewerWindow.clear();
+    });
+
+    return m_FITSViewerWindow;
 }
 
 void CCD::processBLOB(IBLOB *bp)
@@ -1530,21 +1493,24 @@ void CCD::processBLOB(IBLOB *bp)
     {
         // If either generating file name or writing the image file fails
         // then return
-        if (!generateFilename(format, targetChip->isBatchMode(), &filename) ||
+        if (!generateFilename(targetChip->isBatchMode(), format, &filename) ||
                 !writeImageFile(filename, bp, BType == BLOB_FITS))
         {
+            connect(KSMessageBox::Instance(), &KSMessageBox::accepted, this, [ = ]()
+            {
+                KSMessageBox::Instance()->disconnect(this);
+                emit error(ERROR_SAVE);
+            });
+            KSMessageBox::Instance()->error(i18n("Failed writing image to %1\nPlease check folder, filename & permissions.",
+                                                 filename),
+                                            i18n("Image Write Failed"), 30);
+
             emit BLOBUpdated(nullptr);
             return;
         }
     }
     else
         filename = QDir::tempPath() + QDir::separator() + "image" + format;
-
-    // store file name
-    //    strncpy(BLOBFilename, filename.toLatin1(), MAXINDIFILENAME);
-    //    bp->aux0 = targetChip;
-    //    bp->aux1 = &BType;
-    //    bp->aux2 = BLOBFilename;
 
     if (targetChip->getCaptureMode() == FITS_NORMAL && targetChip->isBatchMode() == true)
     {
@@ -1665,7 +1631,7 @@ void CCD::processBLOB(IBLOB *bp)
         // If reading the blob fails, we treat it the same as exposure failure
         // and recapture again if possible
         qCCritical(KSTARS_INDI) << "failed reading FITS memory buffer";
-        emit newExposureValue(targetChip, 0, IPS_ALERT);
+        emit error(ERROR_LOAD);
         return;
     }
 
@@ -1677,15 +1643,6 @@ void CCD::processBLOB(IBLOB *bp)
 void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, QSharedPointer<FITSData> data)
 {
     FITSMode captureMode = targetChip->getCaptureMode();
-
-    // Get or Create FITSViewer if we are using FITSViewer
-    // or if capture mode is calibrate since for now we are forced to open the file in the viewer
-    // this should be fixed in the future and should only use FITSData
-    if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
-    {
-        if (m_FITSViewerWindow.isNull() && (captureMode == FITS_NORMAL || captureMode == FITS_CALIBRATE))
-            setupFITSViewerWindows();
-    }
 
     // Add metadata
     data->setProperty("device", getDeviceName());
@@ -1700,6 +1657,11 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
         {
             if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
             {
+                // No need to wait until the image is loaded in the view, but emit AFTER checking
+                // batch mode, since newImage() may change it
+                emit BLOBUpdated(bp);
+                emit newImage(data);
+
                 bool success = false;
                 int tabIndex = -1;
                 int *tabID = (captureMode == FITS_NORMAL) ? &normalTabID : &calibrationTabID;
@@ -1722,39 +1684,43 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
                             previewTitle = i18n("Preview");
                     }
 
-                    success = m_FITSViewerWindow->loadData(data, fileURL, &tabIndex, captureMode, captureFilter, previewTitle);
+                    success = getFITSViewer()->loadData(data, fileURL, &tabIndex, captureMode, captureFilter, previewTitle);
                 }
                 else
-                    success = m_FITSViewerWindow->updateData(data, fileURL, *tabID, &tabIndex, captureFilter);
+                    success = getFITSViewer()->updateData(data, fileURL, *tabID, &tabIndex, captureFilter);
 
                 if (!success)
                 {
                     // If opening file fails, we treat it the same as exposure failure
                     // and recapture again if possible
                     qCCritical(KSTARS_INDI) << "error adding/updating FITS";
-                    emit newExposureValue(targetChip, 0, IPS_ALERT);
+                    emit error(ERROR_VIEWER);
                     return;
                 }
                 *tabID = tabIndex;
-                targetChip->setImageView(m_FITSViewerWindow->getView(tabIndex), captureMode);
+                targetChip->setImageView(getFITSViewer()->getView(tabIndex), captureMode);
                 if (Options::focusFITSOnNewImage())
-                    m_FITSViewerWindow->raise();
+                    getFITSViewer()->raise();
             }
-
-            emit BLOBUpdated(bp);
-            emit newImage(data);
+            else
+            {
+                emit BLOBUpdated(bp);
+                emit newImage(data);
+            }
         }
         break;
 
         case FITS_FOCUS:
         case FITS_GUIDE:
         case FITS_ALIGN:
-            loadImageInView(bp, targetChip, data);
+            loadImageInView(targetChip, data);
+            emit BLOBUpdated(bp);
+            emit newImage(data);
             break;
     }
 }
 
-void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data)
+void CCD::loadImageInView(ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data)
 {
     FITSMode mode = targetChip->getCaptureMode();
     FITSView *view = targetChip->getImageView(mode);
@@ -1766,7 +1732,7 @@ void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPoin
         //if (!view->loadFITSFromData(data, filename))
         if (!view->loadData(data))
         {
-            emit newExposureValue(targetChip, 0, IPS_ALERT);
+            emit error(ERROR_LOAD);
             return;
 
         }
@@ -1776,10 +1742,7 @@ void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPoin
         // NORMAL is used for raw INDI drivers without Ekos.
         if ( (Options::useFITSViewer() || targetChip->isBatchMode() == false) &&
                 (mode == FITS_NORMAL || mode == FITS_CALIBRATE))
-            m_FITSViewerWindow->show();
-
-        emit BLOBUpdated(bp);
-        emit newImage(data);
+            getFITSViewer()->show();
     }
 }
 
@@ -2523,12 +2486,12 @@ bool CCD::setBLOBEnabled(bool enable, const QString &prop)
     return true;
 }
 
-bool CCD::setExposureLoopingEnabled(bool enable)
+bool CCD::setFastExposureEnabled(bool enable)
 {
     // Set value immediately
-    IsLooping = enable;
+    m_FastExposureEnabled = enable;
 
-    auto svp = baseDevice->getSwitch("CCD_EXPOSURE_LOOP");
+    auto svp = baseDevice->getSwitch("CCD_FAST_TOGGLE");
 
     if (!svp)
         return false;
@@ -2540,9 +2503,9 @@ bool CCD::setExposureLoopingEnabled(bool enable)
     return true;
 }
 
-bool CCD::setExposureLoopCount(uint32_t count)
+bool CCD::setFastCount(uint32_t count)
 {
-    auto nvp = baseDevice->getNumber("CCD_EXPOSURE_LOOP_COUNT");
+    auto nvp = baseDevice->getNumber("CCD_FAST_COUNT");
 
     if (!nvp)
         return false;
@@ -2611,5 +2574,36 @@ bool CCD::setTemperatureRegulation(double ramp, double threshold)
     regulation.getNumber()->at(1)->setValue(threshold);
     clientManager->sendNewNumber(regulation->getNumber());
     return true;
+}
+
+// Internal function to write an image blob to disk.
+bool CCD::WriteImageFileInternal(const QString &filename, char *buffer, const size_t size)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        qCCritical(KSTARS_INDI) << "ISD:CCD Error: Unable to open write file: " <<
+                                filename;
+        return false;
+    }
+    int n = 0;
+    QDataStream out(&file);
+    bool ok = true;
+    for (size_t nr = 0; nr < size; nr += n)
+    {
+        n = out.writeRawData(buffer + nr, size - nr);
+        if (n < 0)
+        {
+            ok = false;
+            break;
+        }
+    }
+    ok = file.flush() && ok;
+    file.close();
+    file.setPermissions(QFileDevice::ReadUser |
+                        QFileDevice::WriteUser |
+                        QFileDevice::ReadGroup |
+                        QFileDevice::ReadOther);
+    return ok;
 }
 }

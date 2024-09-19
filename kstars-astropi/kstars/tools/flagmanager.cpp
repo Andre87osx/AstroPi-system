@@ -1,18 +1,8 @@
-/***************************************************************************
-                          flagmanager.cpp  -  Flags manager
-                             -------------------
-    begin                : Mon Feb 01 2009
-    copyright            : (C) 2009 by Jerome SONRIER
-    email                : jsid@emor3j.fr.eu.org
- ***************************************************************************/
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2009 Jerome SONRIER <jsid@emor3j.fr.eu.org>
+
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "flagmanager.h"
 
@@ -57,7 +47,7 @@ FlagManager::FlagManager(QWidget *ks) : QDialog(ks)
 
     ui = new FlagManagerUI(this);
 
-    setWindowTitle(i18n("Flag Manager"));
+    setWindowTitle(i18nc("@title:window", "Flag Manager"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ui);
@@ -72,7 +62,7 @@ FlagManager::FlagManager(QWidget *ks) : QDialog(ks)
     ui->hintLabel->setText(i18n("To add custom icons, just add images in %1. File names must begin with flag. "
                                 "For example, the file <i>flagSmall_red_cross.png</i> will be shown as <b>Small red "
                                 "cross</b> in the combo box.",
-                                KSPaths::writableLocation(QStandardPaths::GenericDataLocation)));
+                                KSPaths::writableLocation(QStandardPaths::AppDataLocation)));
     //Set up the Table Views
     m_Model = new QStandardItemModel(0, 5, this);
     m_Model->setHorizontalHeaderLabels(QStringList() << i18nc("Right Ascension", "RA") << i18nc("Declination", "Dec")
@@ -139,7 +129,7 @@ void FlagManager::clearFields()
     ui->flagLabel->clear();
     ui->flagLabel->setFocus();
 
-    //disable "Save changes" button
+    //disable "Save Changes" button
     ui->saveButton->setEnabled(false);
 
     //unselect item from flagList

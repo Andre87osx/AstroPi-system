@@ -1,19 +1,8 @@
-/***************************************************************************
-                          opscolors.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Feb 29  2004
-    copyright            : (C) 2004 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "opscolors.h"
 
@@ -78,7 +67,7 @@ OpsColors::OpsColors() : QFrame(KStars::Instance())
 
     QFile file;
     QString line, schemeName, filename;
-    file.setFileName(KSPaths::locate(QStandardPaths::GenericDataLocation, "colors.dat"));
+    file.setFileName(KSPaths::locate(QStandardPaths::AppDataLocation, "colors.dat"));
     if (file.exists() && file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);
@@ -173,7 +162,7 @@ bool OpsColors::setColors(const QString &filename)
     //check if colorscheme is removable...
     QFile test;
     //try filename in local user KDE directory tree.
-    test.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + filename);
+    test.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(filename));
     if (test.exists())
     {
         RemovePreset->setEnabled(true);
@@ -253,8 +242,8 @@ void OpsColors::slotRemovePreset()
     QString name     = current->text();
     QString filename = PresetFileList[PresetBox->currentRow()];
     QFile cdatFile;
-    cdatFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                         "colors.dat"); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    cdatFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("colors.dat"));
 
     //Remove action from color-schemes menu
     KStars::Instance()->removeColorMenuItem(QString("cs_" + filename.left(filename.indexOf(".colors"))).toUtf8());
@@ -291,8 +280,8 @@ void OpsColors::slotRemovePreset()
         if (removed) //Entry was removed; delete the corresponding .colors file.
         {
             QFile colorFile;
-            colorFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                                  filename); //determine filename in local user KDE directory tree.
+            //determine filename in local user KDE directory tree.
+            colorFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(filename));
             if (!colorFile.remove())
             {
                 QString message = i18n("Could not delete the file: %1", colorFile.fileName());

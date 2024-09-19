@@ -1,9 +1,6 @@
 /*  Structure Definitions for KStars and StellarSolver Internal Library, developed by Robert Lancaster, 2020
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 #ifndef STRUCTUREDEFINITIONS_H
 #define STRUCTUREDEFINITIONS_H
@@ -80,14 +77,6 @@ typedef struct
     double raError;     // The error between the search_ra position and the solution ra position in arcseconds
     double decError;    // The error between the search_dec position and the solution dec position in arcseconds
 } Solution;
-
-// This is point in the World Coordinate System with both RA and DEC.
-// It is used to create an array of positions for the image pixels
-typedef struct
-{
-    float ra;           // The Right Ascension in degrees
-    float dec;          // The Declination in degrees
-} wcs_point;
 
 } // FITSImage
 

@@ -1,11 +1,8 @@
-/*  StellarSolver Profile
-    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    Copyright (C) 2017 Robert Lancaster <rlancaste@gmail.com>
+/*
+    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2017 Robert Lancaster <rlancaste@gmail.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "stellarsolverprofile.h"
@@ -27,7 +24,8 @@ QList<Parameters> getDefaultFocusOptionsProfiles()
     focusDefault.keepNum = 100;
     focusDefault.minarea = 20;
     focusDefault.maxEllipse = 1.5;
-    StellarSolver::createConvFilterFromFWHM(&focusDefault, 2);
+    // JM 2021.10.03: Seems to be a lot more reliable than 2 FWHM
+    StellarSolver::createConvFilterFromFWHM(&focusDefault, 1);
     focusDefault.r_min = 5;
     focusDefault.maxSize = 10;
     focusDefault.removeBrightest = 10;
@@ -154,6 +152,8 @@ QList<SSolver::Parameters> getDefaultAlignOptionsProfiles()
     SSolver::Parameters defaultProfile;
     defaultProfile.listName = "1-Default";
     defaultProfile.description = i18n("Default profile. Generic and not optimized for any specific purpose.");
+    // JM 2021.10.03: Seems to help in cases where solver fails to solve any images.
+    StellarSolver::createConvFilterFromFWHM(&defaultProfile, 1);
     profileList.append(defaultProfile);
 
     SSolver::Parameters fastSolving;

@@ -1,23 +1,13 @@
-/***************************************************************************
-                          timeunitbox.h  -  description
-                             -------------------
-    begin                : Sat Apr 27 2002
-    copyright            : (C) 2002 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
 #include <QWidget>
+#include <QAction>
 
 class QToolButton;
 
@@ -82,6 +72,9 @@ class TimeUnitBox : public QWidget
     bool daysOnly() const { return DaysOnly; }
     void setDaysOnly(bool daysonly);
 
+    QAction *increaseUnitsAction() const { return IncreaseAction; }
+    QAction *decreaseUnitsAction() const { return DecreaseAction; }
+
   signals:
     void valueChanged(int);
 
@@ -95,6 +88,8 @@ class TimeUnitBox : public QWidget
     bool DaysOnly { false };
     QToolButton *UpButton { nullptr };
     QToolButton *DownButton { nullptr };
+    QAction *IncreaseAction { nullptr };
+    QAction *DecreaseAction { nullptr };
     int MinimumValue { 0 };
     int MaximumValue { 0 };
     int Value { 0 };

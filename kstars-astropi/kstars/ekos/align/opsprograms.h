@@ -1,11 +1,8 @@
-/*  Astrometry.net Options Editor
-    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    Copyright (C) 2017 Robert Lancaster <rlancaste@gmail.com>
+/*
+    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2017 Robert Lancaster <rlancaste@gmail.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -27,20 +24,15 @@ class OpsPrograms : public QWidget, public Ui::OpsPrograms
   public:
     explicit OpsPrograms(Align *parent);
     virtual ~OpsPrograms() override = default;
-    bool brewInstalled();
-    bool pythonInstalled();
-    bool astropyInstalled();
 
   protected:
   private slots:
     void loadDefaultPaths(int option);
     void toggleSolverInternal();
-    void setupPython();
     void toggleConfigInternal();
     void toggleWCSInternal();
     void toggleSextractorInternal();
     void slotApply();
-    void togglePythonDefault();
 
   signals:
     void settingsUpdated();

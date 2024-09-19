@@ -1,21 +1,10 @@
-/***************************************************************************
-                          FITSViewer.cpp  -  A FITSViewer for KStars
-                             -------------------
-    begin                : Thu Jan 22 2004
-    copyright            : (C) 2004 by Jasem Mutlaq
-    email                : mutlaqja@ikarustech.com
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
- 2006-03-03	Using CFITSIO, Porting to Qt4
- ***************************************************************************/
+    2006-03-03	Using CFITSIO, Porting to Qt4
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "fitsviewer.h"
 
@@ -250,7 +239,7 @@ FITSViewer::FITSViewer(QWidget *parent) : KXmlGuiWindow(parent)
     /* Create GUI */
     createGUI("fitsviewerui.rc");
 
-    setWindowTitle(i18n("KStars FITS Viewer"));
+    setWindowTitle(i18nc("@title:window", "KStars FITS Viewer"));
 
     /* initially resize in accord with KDE rules */
     show();
@@ -562,6 +551,11 @@ bool FITSViewer::updateFITSCommon(FITSTab *tab, const QUrl &imageName)
     if (tab->isVisible())
         led.setColor(Qt::green);
 
+    if (tab->shouldComputeHFR())
+        updateStatusBar(HFRStatusString(tab->getView()->imageData()), FITS_HFR);
+    else
+        updateStatusBar("", FITS_HFR);
+
     return true;
 }
 
@@ -639,7 +633,7 @@ void FITSViewer::starProfileButtonOff()
 
 void FITSViewer::openFile()
 {
-    QUrl fileURL = QFileDialog::getOpenFileUrl(KStars::Instance(), i18n("Open Image"), lastURL,
+    QUrl fileURL = QFileDialog::getOpenFileUrl(KStars::Instance(), i18nc("@title:window", "Open Image"), lastURL,
                    "Images (*.fits *.fits.fz *.fit *.fts "
                    "*.jpg *.jpeg *.png *.gif *.bmp "
                    "*.cr2 *.cr3 *.crw *.nef *.raf *.dng *.arw *.orf)");

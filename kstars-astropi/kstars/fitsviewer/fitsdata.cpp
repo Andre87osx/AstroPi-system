@@ -1,21 +1,11 @@
-/***************************************************************************
-                          FITSImage.cpp  -  FITS Image
-                             -------------------
-    begin                : Thu Jan 22 2004
-    copyright            : (C) 2004 by Jasem Mutlaq
-    email                : mutlaqja@ikarustech.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
- *   See http://members.aol.com/pkirchg for more details.                  *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
+    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
+*/
 
 #include "fitsdata.h"
 #include "fitsbahtinovdetector.h"
@@ -59,7 +49,12 @@
 #define ZOOM_LOW_INCR  10
 #define ZOOM_HIGH_INCR 50
 
-const QString FITSData::m_TemporaryPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+QString getTemporaryPath()
+{
+    return QDir(KSPaths::writableLocation(QStandardPaths::TempLocation) + "/" +
+                qAppName()).path();
+}
+
 const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw", "orf" };
 
 FITSData::FITSData(FITSMode fitsMode): m_Mode(fitsMode)
@@ -111,8 +106,6 @@ FITSData::~FITSData()
 
     if (starCenters.count() > 0)
         qDeleteAll(starCenters);
-
-    delete[] m_WCSCoordinates;
 
     if (m_SkyObjects.count() > 0)
         qDeleteAll(m_SkyObjects);
@@ -176,7 +169,9 @@ bool fitsOpenError(int status, const QString &message, bool silent)
 
 bool FITSData::privateLoad(const QByteArray &buffer, const QString &extension, bool silent)
 {
-    m_isTemporary = m_Filename.startsWith(m_TemporaryPath);
+    m_isTemporary = m_Filename.startsWith(KSPaths::writableLocation(QStandardPaths::TempLocation));
+    cacheHFR = -1;
+    cacheEccentricity = -1;
 
     if (extension.contains("fit"))
         return loadFITSImage(buffer, extension, silent);
@@ -727,40 +722,40 @@ bool FITSData::saveImage(const QString &newFilename)
     long nelements;
     fitsfile * new_fptr;
 
-    if (HasDebayer && m_Filename.isEmpty() == false)
-    {
-        fits_flush_file(fptr, &status);
-        /* close current file */
-        if (fits_close_file(fptr, &status))
-        {
-            recordLastError(status);
-            return status;
-        }
+    //    if (HasDebayer && m_Filename.isEmpty() == false)
+    //    {
+    //        fits_flush_file(fptr, &status);
+    //        /* close current file */
+    //        if (fits_close_file(fptr, &status))
+    //        {
+    //            recordLastError(status);
+    //            return status;
+    //        }
 
-        // Skip "!" in the beginning of the new file name
-        QString finalFileName(newFilename);
+    //        // Skip "!" in the beginning of the new file name
+    //        QString finalFileName(newFilename);
 
-        finalFileName.remove('!');
+    //        finalFileName.remove('!');
 
-        // Remove first otherwise copy will fail below if file exists
-        QFile::remove(finalFileName);
+    //        // Remove first otherwise copy will fail below if file exists
+    //        QFile::remove(finalFileName);
 
-        if (!QFile::copy(m_Filename, finalFileName))
-        {
-            qCCritical(KSTARS_FITS()) << "FITS: Failed to copy " << m_Filename << " to " << finalFileName;
-            fptr = nullptr;
-            return false;
-        }
+    //        if (!QFile::copy(m_Filename, finalFileName))
+    //        {
+    //            qCCritical(KSTARS_FITS()) << "FITS: Failed to copy " << m_Filename << " to " << finalFileName;
+    //            fptr = nullptr;
+    //            return false;
+    //        }
 
-        m_Filename = finalFileName;
+    //        m_Filename = finalFileName;
 
-        // Use open diskfile as it does not use extended file names which has problems opening
-        // files with [ ] or ( ) in their names.
-        fits_open_diskfile(&fptr, m_Filename.toLocal8Bit(), READONLY, &status);
-        fits_movabs_hdu(fptr, 1, IMAGE_HDU, &status);
+    //        // Use open diskfile as it does not use extended file names which has problems opening
+    //        // files with [ ] or ( ) in their names.
+    //        fits_open_diskfile(&fptr, m_Filename.toLocal8Bit(), READONLY, &status);
+    //        fits_movabs_hdu(fptr, 1, IMAGE_HDU, &status);
 
-        return true;
-    }
+    //        return true;
+    //    }
 
     // Read the image back into buffer in case we debyayed
     nelements = m_Statistics.samples_per_channel * m_Statistics.channels;
@@ -786,15 +781,9 @@ bool FITSData::saveImage(const QString &newFilename)
     // Create image
     long naxis = m_Statistics.channels == 1 ? 2 : 3;
     long naxes[3] = {m_Statistics.width, m_Statistics.height, naxis};
+
     // JM 2020-12-28: Here we to use bitpix values
     if (fits_create_img(fptr, m_FITSBITPIX, naxis, naxes, &status))
-    {
-        recordLastError(status);
-        return false;
-    }
-
-    // Here we need to use the actual data type
-    if (fits_write_img(fptr, m_Statistics.dataType, 1, nelements, m_ImageBuffer, &status))
     {
         recordLastError(status);
         return false;
@@ -928,6 +917,13 @@ bool FITSData::saveImage(const QString &newFilename)
         rotWCSFITS(rot, mirror);
 
     rotCounter = flipHCounter = flipVCounter = 0;
+
+    // Here we need to use the actual data type
+    if (fits_write_img(fptr, m_Statistics.dataType, 1, nelements, m_ImageBuffer, &status))
+    {
+        recordLastError(status);
+        return false;
+    }
 
     m_Filename = newFilename;
 
@@ -1704,13 +1700,11 @@ int FITSData::filterStars(const float innerRadius, const float outerRadius)
 
 double FITSData::getHFR(HFRType type)
 {
-    // This method is less susceptible to noise
-    // Get HFR for the brightest star only, instead of averaging all stars
-    // It is more consistent.
-    // TODO: Try to test this under using a real CCD.
-
     if (starCenters.empty())
         return -1;
+
+    if (cacheHFR >= 0 && cacheHFRType == type)
+        return cacheHFR;
 
     m_SelectedHFRStar = nullptr;
 
@@ -1729,7 +1723,9 @@ double FITSData::getHFR(HFRType type)
         }
 
         m_SelectedHFRStar = starCenters[maxIndex];
-        return starCenters[maxIndex]->HFR;
+        cacheHFR = starCenters[maxIndex]->HFR;
+        cacheHFRType = type;
+        return cacheHFR;
     }
     else if (type == HFR_HIGH)
     {
@@ -1747,13 +1743,18 @@ double FITSData::getHFR(HFRType type)
             return -1;
 
         m_SelectedHFRStar = starCenters[static_cast<int>(starCenters.size() * 0.05)];
-        return m_SelectedHFRStar->HFR;
+        cacheHFR = m_SelectedHFRStar->HFR;
+        cacheHFRType = type;
+        return cacheHFR;
     }
     else if (type == HFR_MEDIAN)
     {
         std::nth_element(starCenters.begin(), starCenters.begin() + starCenters.size() / 2, starCenters.end());
         m_SelectedHFRStar = starCenters[starCenters.size() / 2];
-        return m_SelectedHFRStar->HFR;
+
+        cacheHFR = m_SelectedHFRStar->HFR;
+        cacheHFRType = type;
+        return cacheHFR;
     }
 
     // We may remove saturated stars from the HFR calculation, if we have enough stars.
@@ -1805,7 +1806,9 @@ double FITSData::getHFR(HFRType type)
         if (num_remaining > 0) m = sum / num_remaining;
     }
 
-    return m;
+    cacheHFR = m;
+    cacheHFRType = HFR_AVERAGE;
+    return cacheHFR;
 }
 
 double FITSData::getHFR(int x, int y)
@@ -1830,6 +1833,8 @@ double FITSData::getEccentricity()
 {
     if (starCenters.empty())
         return -1;
+    if (cacheEccentricity >= 0)
+        return cacheEccentricity;
     std::vector<float> eccs;
     for (const auto &s : starCenters)
         eccs.push_back(s->ellipticity);
@@ -1842,6 +1847,7 @@ double FITSData::getEccentricity()
     // e = sqrt(ellipticity * (2 - ellipticity))
     // https://en.wikipedia.org/wiki/Eccentricity_(mathematics)#Ellipses
     const float eccentricity = sqrt(medianEllipticity * (2 - medianEllipticity));
+    cacheEccentricity = eccentricity;
     return eccentricity;
 }
 
@@ -2362,8 +2368,6 @@ bool FITSData::loadWCS(bool extras)
     int status = 0;
     char * header;
     int nkeyrec, nreject, nwcs;
-    int w  = width();
-    int h = height();
 
     if (fits_hdr2str(fptr, 1, nullptr, 0, &header, &nkeyrec, &status))
     {
@@ -2413,63 +2417,7 @@ bool FITSData::loadWCS(bool extras)
         return false;
     }
 
-    delete[] m_WCSCoordinates;
-
-    m_WCSCoordinates = new FITSImage::wcs_point[w * h];
-
-    if (m_WCSCoordinates == nullptr)
-    {
-        wcsvfree(&m_nwcs, &m_WCSHandle);
-        m_WCSHandle = nullptr;
-        m_LastError = "Not enough memory for WCS data!";
-        m_WCSState = Failure;
-        return false;
-    }
-
-    m_WCSState = Busy;
-
-    if (extras)
-    {
-        const int nThreads = QThread::idealThreadCount();
-        QList<QFuture<void>> futures;
-        // Calculate how many elements we process per thread
-        uint32_t tStride = m_Statistics.samples_per_channel / nThreads;
-        // Calculate the final stride since we can have some left over due to division above
-        uint32_t fStride = tStride + (m_Statistics.samples_per_channel - (tStride * nThreads));
-
-        for (int i = 0; i < nThreads; i++)
-        {
-            uint32_t cStart = i * tStride;
-            uint32_t cEnd = cStart + ((i == (nThreads - 1)) ? fStride : tStride);
-            // Run threads
-            futures.append(QtConcurrent::run([ = ]()
-            {
-                double phi = 0, theta = 0, world[2], pixcrd[2], imgcrd[2];
-                int stat[2];
-                FITSImage::wcs_point *wcsPointer = m_WCSCoordinates + cStart;
-                for (uint32_t i = cStart; i < cEnd; i++)
-                {
-                    uint32_t x = i % w;
-                    uint32_t y = i / w;
-                    pixcrd[0] = x;
-                    pixcrd[1] = y;
-                    if (wcsp2s(m_WCSHandle, 1, 2, &pixcrd[0], &imgcrd[0], &phi, &theta, &world[0], &stat[0]) == 0)
-                    {
-                        wcsPointer->ra  = world[0];
-                        wcsPointer->dec = world[1];
-                    }
-                    wcsPointer++;
-                }
-            }));
-        }
-
-        for (auto &oneFuture : futures)
-            oneFuture.waitForFinished();
-
-        SkyPoint startPoint(m_WCSCoordinates->ra / 15.0, m_WCSCoordinates->dec);
-        SkyPoint endPoint( (m_WCSCoordinates + w * h - 1)->ra / 15.0, (m_WCSCoordinates + w * h - 1)->dec);
-        findObjectsInImage(startPoint, endPoint);
-    }
+    m_ObjectsSearched = false;
     m_WCSState = Success;
     FullWCS = extras;
     HasWCS = true;
@@ -2553,10 +2501,92 @@ bool FITSData::pixelToWCS(const QPointF &wcsPixelPoint, SkyPoint &wcsCoord)
 }
 
 #if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
-void FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
+bool FITSData::searchObjects()
+{
+    if (m_ObjectsSearched)
+        return true;
+
+    m_ObjectsSearched = true;
+
+    SkyPoint startPoint;
+    SkyPoint endPoint;
+
+    pixelToWCS(QPointF(0, 0), startPoint);
+    pixelToWCS(QPointF(width() - 1, height() - 1), endPoint);
+
+    return findObjectsInImage(startPoint, endPoint);
+}
+
+bool FITSData::findWCSBounds(double &minRA, double &maxRA, double &minDec, double &maxDec)
+{
+    if (m_WCSHandle == nullptr)
+    {
+        m_LastError = i18n("No world coordinate systems found.");
+        return false;
+    }
+
+    maxRA  = -1000;
+    minRA  = 1000;
+    maxDec = -1000;
+    minDec = 1000;
+
+    auto updateMinMax = [&](int x, int y)
+    {
+        int stat[2];
+        double imgcrd[2], phi, pixcrd[2], theta, world[2];
+
+        pixcrd[0] = x;
+        pixcrd[1] = y;
+
+        if (wcsp2s(m_WCSHandle, 1, 2, &pixcrd[0], &imgcrd[0], &phi, &theta, &world[0], &stat[0]))
+            return;
+
+        minRA = std::min(minRA, world[0]);
+        maxRA = std::max(maxRA, world[0]);
+        minDec = std::min(minDec, world[1]);
+        maxDec = std::max(maxDec, world[1]);
+    };
+
+    // Find min and max values from edges
+    for (int y = 0; y < height(); y++)
+    {
+        updateMinMax(0, y);
+        updateMinMax(width() - 1, y);
+    }
+
+    for (int x = 1; x < width() - 1; x++)
+    {
+        updateMinMax(x, 0);
+        updateMinMax(x, height() - 1);
+    }
+
+    // Check if either pole is in the image
+    SkyPoint NCP(0, 90);
+    SkyPoint SCP(0, -90);
+    QPointF pixelPoint, imagePoint, pPoint;
+    if (wcsToPixel(NCP, pPoint, imagePoint))
+    {
+        if (pPoint.x() > 0 && pPoint.x() < width() && pPoint.y() > 0 && pPoint.y() < height())
+        {
+            maxDec = 90;
+        }
+    }
+    if (wcsToPixel(SCP, pPoint, imagePoint))
+    {
+        if (pPoint.x() > 0 && pPoint.x() < width() && pPoint.y() > 0 && pPoint.y() < height())
+        {
+            minDec = -90;
+        }
+    }
+    return true;
+}
+#endif
+
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
+bool FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
 {
     if (KStarsData::Instance() == nullptr)
-        return;
+        return false;
 
     int w = width();
     int h = height();
@@ -2612,6 +2642,7 @@ void FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
     }
 
     delete (num);
+    return true;
 }
 #endif
 
@@ -3344,7 +3375,8 @@ bool FITSData::debayer_8bit()
     }
     catch (const std::bad_alloc &e)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"), 10);
         return false;
     }
 
@@ -3353,7 +3385,8 @@ bool FITSData::debayer_8bit()
 
     if (bayer_destination_buffer == nullptr)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer."), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer."), i18n("Debayer error"), 10);
         return false;
     }
 
@@ -3373,7 +3406,7 @@ bool FITSData::debayer_8bit()
 
     if (error_code != DC1394_SUCCESS)
     {
-        KSNotification::error(i18n("Debayer failed (%1)", error_code), i18n("Debayer error"));
+        KSNotification::error(i18n("Debayer failed (%1)", error_code), i18n("Debayer error"), 10);
         m_Statistics.channels = 1;
         delete[] destinationBuffer;
         return false;
@@ -3389,7 +3422,8 @@ bool FITSData::debayer_8bit()
         catch (const std::bad_alloc &e)
         {
             delete[] destinationBuffer;
-            KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+            logOOMError(rgb_size);
+            KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"), 10);
             return false;
         }
 
@@ -3430,7 +3464,8 @@ bool FITSData::debayer_16bit()
     }
     catch (const std::bad_alloc &e)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"), 10);
         return false;
     }
 
@@ -3439,7 +3474,8 @@ bool FITSData::debayer_16bit()
 
     if (bayer_destination_buffer == nullptr)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer."), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer."), i18n("Debayer error"), 10);
         return false;
     }
 
@@ -3474,8 +3510,9 @@ bool FITSData::debayer_16bit()
         }
         catch (const std::bad_alloc &e)
         {
+            logOOMError(rgb_size);
             delete[] destinationBuffer;
-            KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+            KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"), 10);
             return false;
         }
 
@@ -3502,6 +3539,12 @@ bool FITSData::debayer_16bit()
     m_Statistics.dataType = TUSHORT;
     delete[] destinationBuffer;
     return true;
+}
+
+void FITSData::logOOMError(uint32_t requiredMemory)
+{
+    qCCritical(KSTARS_FITS) << "Debayed memory allocation failure. Required Memory:" << KFormat().formatByteSize(requiredMemory)
+                            << "Available system memory:" << KSUtils::getAvailableRAM();
 }
 
 double FITSData::getADU() const
@@ -3667,7 +3710,7 @@ bool FITSData::ImageToFITS(const QString &filename, const QString &format, QStri
         return false;
     }
 
-    output = QString(KSPaths::writableLocation(QStandardPaths::TempLocation) + QFileInfo(filename).fileName() + ".fits");
+    output = QDir(getTemporaryPath()).filePath(filename + ".fits");
 
     //This section sets up the FITS File
     fitsfile *fptr = nullptr;
@@ -3899,7 +3942,7 @@ template <typename T> void FITSData::constructHistogramInternal()
         m_HistogramIntensity[n].fill(0, m_HistogramBinCount + 1);
         m_HistogramFrequency[n].fill(0, m_HistogramBinCount + 1);
         m_CumulativeFrequency[n].fill(0, m_HistogramBinCount + 1);
-        m_HistogramBinWidth[n] = (m_Statistics.max[n] - m_Statistics.min[n]) / (m_HistogramBinCount - 1);
+        m_HistogramBinWidth[n] = qMax(1.0, (m_Statistics.max[n] - m_Statistics.min[n]) / (m_HistogramBinCount - 1));
     }
 
     QVector<QFuture<void>> futures;

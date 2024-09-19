@@ -1,19 +1,8 @@
-/***************************************************************************
-                          kstars.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon Feb  5 01:11:45 PST 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "kstars.h"
 
@@ -68,7 +57,7 @@ KStars::KStars(bool doSplash, bool clockrun, const QString &startdate)
     if (i18n("Sky") == "السماء")
         qApp->setLayoutDirection(Qt::RightToLeft);
 
-    setWindowTitle(i18n("KStars"));
+    setWindowTitle(i18nc("@title:window", "KStars"));
 
     // Set thread stack size to 32MB
 #if QT_VERSION >= QT_VERSION_CHECK(5,10,0)
@@ -351,8 +340,8 @@ void KStars::applyConfig(bool doApplyFocus)
 
     actionCollection()
     ->action("coordsys")
-    ->setText(Options::useAltAz() ? i18n("Switch to star globe view (Equatorial &Coordinates)") :
-              i18n("Switch to horizonal view (Horizontal &Coordinates)"));
+    ->setText(Options::useAltAz() ? i18n("Switch to Star Globe View (Equatorial &Coordinates)") :
+              i18n("Switch to Horizonal View (Horizontal &Coordinates)"));
 
     actionCollection()->action("show_time_box")->setChecked(Options::showTimeBox());
     actionCollection()->action("show_location_box")->setChecked(Options::showGeoBox());

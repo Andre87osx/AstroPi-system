@@ -1,11 +1,8 @@
-/*  Correspondence class.
-    Copyright (C) 2020 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "starcorrespondence.h"
 
@@ -236,7 +233,7 @@ void StarCorrespondence::makeOffsets(const QVector<Offsets> &offsets, QVector<Of
 }
 
 // We create an imaginary star from the ones we did find.
-Vector StarCorrespondence::inventStarPosition(const QList<Edge> &stars, QVector<int> &starMap,
+GuiderUtils::Vector StarCorrespondence::inventStarPosition(const QList<Edge> &stars, QVector<int> &starMap,
         QVector<Offsets> offsets, Offsets offset) const
 {
     QVector<double> xPositions, yPositions;
@@ -250,7 +247,7 @@ Vector StarCorrespondence::inventStarPosition(const QList<Edge> &stars, QVector<
         }
     }
     if (xPositions.size() == 0)
-        return Vector(-1, -1, -1);
+        return GuiderUtils::Vector(-1, -1, -1);
 
     // Compute the median x and y values. After gathering the values above,
     // we sort them and use the middle positions.
@@ -276,7 +273,7 @@ Vector StarCorrespondence::inventStarPosition(const QList<Edge> &stars, QVector<
         xVal = xPositions[middle];
         yVal = yPositions[middle];
     }
-    return Vector(xVal - offset.x, yVal - offset.y, -1);
+    return GuiderUtils::Vector(xVal - offset.x, yVal - offset.y, -1);
 }
 
 namespace
@@ -290,11 +287,11 @@ void unmapStarMap(const QVector<int> &sortedStarMap, const QVector<int> &sortedT
 }
 }
 
-Vector StarCorrespondence::find(const QList<Edge> &stars, double maxDistance,
-                                QVector<int> *starMap, bool adapt, double minFraction)
+GuiderUtils::Vector StarCorrespondence::find(const QList<Edge> &stars, double maxDistance,
+        QVector<int> *starMap, bool adapt, double minFraction)
 {
     *starMap = QVector<int>(stars.size(), -1);
-    if (!initialized)  return Vector(-1, -1, -1);
+    if (!initialized)  return GuiderUtils::Vector(-1, -1, -1);
     int numFound, numNotFound;
 
     // findClosestStar needs an input with stars sorted by their x.
@@ -307,14 +304,14 @@ Vector StarCorrespondence::find(const QList<Edge> &stars, double maxDistance,
     int bestStarIndex = findInternal(sortedStars, maxDistance, &sortedStarMap, guideStarIndex,
                                      guideStarOffsets, &numFound, &numNotFound, minFraction);
 
-    Vector starPosition(-1, -1, -1);
+    GuiderUtils::Vector starPosition(-1, -1, -1);
     if (bestStarIndex > -1)
     {
         // Convert back to the unsorted index value.
         bestStarIndex = sortedToOriginal[bestStarIndex];
         unmapStarMap(sortedStarMap, sortedToOriginal, starMap);
 
-        starPosition = Vector(stars[bestStarIndex].x, stars[bestStarIndex].y, -1);
+        starPosition = GuiderUtils::Vector(stars[bestStarIndex].x, stars[bestStarIndex].y, -1);
         qCDebug(KSTARS_EKOS_GUIDE)
                 << " StarCorrespondence found guideStar at " << bestStarIndex << "found/not"
                 << numFound << numNotFound;
@@ -326,7 +323,7 @@ Vector StarCorrespondence::find(const QList<Edge> &stars, double maxDistance,
         // See if we can get a reasonable solution from the other stars.
         int bestNumFound = 0;
         int bestNumNotFound = 0;
-        Vector bestPosition(-1, -1, -1);
+        GuiderUtils::Vector bestPosition(-1, -1, -1);
         for (int gStarIndex = 0; gStarIndex < guideStarOffsets.size(); gStarIndex++)
         {
             if (gStarIndex == guideStarIndex)
@@ -339,8 +336,8 @@ Vector StarCorrespondence::find(const QList<Edge> &stars, double maxDistance,
                                                  &numFound, &numNotFound, minFraction);
             if (detectedStarIndex >= 0 && numFound > bestNumFound)
             {
-                Vector position = inventStarPosition(sortedStars, newStarMap, gStarOffsets,
-                                                     guideStarOffsets[gStarIndex]);
+                GuiderUtils::Vector position = inventStarPosition(sortedStars, newStarMap, gStarOffsets,
+                                               guideStarOffsets[gStarIndex]);
                 if (position.x < 0 || position.y < 0)
                     continue;
 

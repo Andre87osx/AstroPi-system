@@ -1,19 +1,8 @@
-/***************************************************************************
-                          locationdialog.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Feb 11 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "locationdialog.h"
 
@@ -63,7 +52,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
 
     ld->MapView->setLocationDialog(this);
 
-    setWindowTitle(i18n("Set Geographic Location"));
+    setWindowTitle(i18nc("@title:window", "Set Geographic Location"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -111,7 +100,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
     connect(ld->GetLocationButton, SIGNAL(clicked()), this, SLOT(requestUpdate()));
 #endif
 
-    ld->DSTLabel->setText("<a href=\"showrules\">" + i18n("DST Rule:") + "</a>");
+    ld->DSTLabel->setText("<a href=\"showrules\">" + i18n("DST rule:") + "</a>");
     connect(ld->DSTLabel, SIGNAL(linkActivated(QString)), this, SLOT(showTZRules()));
 
     dataModified = false;
@@ -354,7 +343,7 @@ bool LocationDialog::updateCity(CityOperation operation)
     }*/
 
     QSqlDatabase mycitydb = QSqlDatabase::database("mycitydb");
-    QString dbfile        = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "mycitydb.sqlite";
+    QString dbfile        = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("mycitydb.sqlite");
 
     // If it doesn't exist, create it
     if (QFile::exists(dbfile) == false)

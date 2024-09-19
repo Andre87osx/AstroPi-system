@@ -1,11 +1,8 @@
-/*  PolarAlign class.
-    Copyright (C) 2021 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "polaralign.h"
 #include "poleaxis.h"
@@ -74,7 +71,7 @@ bool PolarAlign::prepareAzAlt(const QSharedPointer<FITSData> &image, const QPoin
 {
     // WCS must be set up for this image.
     SkyPoint coords;
-    if (image->pixelToWCS(pixel, coords))
+    if (image && image->pixelToWCS(pixel, coords))
     {
         coords.apparentCoord(static_cast<long double>(J2000), image->getDateTime().djd());
         *point = SkyPoint::timeTransformed(&coords, image->getDateTime(), geoLocation, 0);
@@ -155,8 +152,7 @@ bool PolarAlign::findAzAlt(const QSharedPointer<FITSData> &image, double azimuth
     {
         QString debugString =
             QString("PolarAlign: Couldn't get pixel from WCS for az %1 alt %2 with j2000 RA %3 DEC %4")
-            .arg(azimuth).arg(altitude).arg(j2000Coord.ra0().toHMSString())
-            .arg(j2000Coord.dec0().toDMSString());
+            .arg(QString::number(azimuth), QString::number(altitude), j2000Coord.ra0().toHMSString(), j2000Coord.dec0().toDMSString());
         qCDebug(KSTARS_EKOS_ALIGN) << debugString;
         return false;
     }

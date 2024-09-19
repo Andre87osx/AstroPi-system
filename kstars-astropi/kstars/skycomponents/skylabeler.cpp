@@ -1,19 +1,8 @@
-/***************************************************************************
-                         skylabeler.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2007-07-10
-    copyright            : (C) 2007 by James B. Bowlin
-    email                : bowlin@mindspring.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2007 James B. Bowlin <bowlin@mindspring.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "skylabeler.h"
 
@@ -419,7 +408,6 @@ void SkyLabeler::draw(QPainter &p)
 bool SkyLabeler::markText(const QPointF &p, const QString &text, qreal padding_factor)
 {
     static const auto ramp_zoom = log10(MINZOOM) + log10(MAXZOOM) * .3;
-    static const auto logmin{ log10(MINZOOM) };
 
     if (padding_factor != 1)
     {

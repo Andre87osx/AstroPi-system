@@ -1,19 +1,8 @@
-/***************************************************************************
-                          scriptbuilder.cpp  -  description
-                             -------------------
-    begin                : Thu Apr 17 2003
-    copyright            : (C) 2003 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2003 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "scriptbuilder.h"
 
@@ -60,7 +49,7 @@ OptionsTreeView::OptionsTreeView(QWidget *p) : QDialog(p)
     mainLayout->addWidget(otvw.get());
     setLayout(mainLayout);
 
-    setWindowTitle(i18n("Options"));
+    setWindowTitle(i18nc("@title:window", "Options"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -134,7 +123,7 @@ ScriptNameDialog::ScriptNameDialog(QWidget *p) : QDialog(p)
     mainLayout->addWidget(snw);
     setLayout(mainLayout);
 
-    setWindowTitle(i18n("Script Data"));
+    setWindowTitle(i18nc("@title:window", "Script Data"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -175,7 +164,7 @@ ScriptBuilder::ScriptBuilder(QWidget *parent)
     mainLayout->addWidget(sb);
     setLayout(mainLayout);
 
-    setWindowTitle(i18n("Script Builder"));
+    setWindowTitle(i18nc("@title:window", "Script Builder"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
     mainLayout->addWidget(buttonBox);
@@ -758,8 +747,8 @@ void ScriptBuilder::initViewOptions()
 
     QFile file;
     QString line;
-    file.setFileName(KSPaths::locate(QStandardPaths::GenericDataLocation,
-                                     "colors.dat")); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(KSPaths::locate(QStandardPaths::AppDataLocation, "colors.dat"));
     if (file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);

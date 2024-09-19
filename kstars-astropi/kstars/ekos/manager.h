@@ -1,11 +1,8 @@
-/*  Ekos
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -18,6 +15,9 @@
 #include "ui_manager.h"
 
 #include "ekos.h"
+#include "manager/focusmanager.h"
+#include "manager/guidemanager.h"
+#include "fitsviewer/summaryfitsview.h"
 #include "align/align.h"
 #include "auxiliary/dome.h"
 #include "auxiliary/weather.h"
@@ -31,7 +31,7 @@
 #include "analyze/analyze.h"
 #include "observatory/observatory.h"
 #include "auxiliary/filtermanager.h"
-#include "auxiliary/serialportassistant.h"
+#include "auxiliary/portselector.h"
 #include "ksnotification.h"
 // Can't use forward declaration with QPointer. QTBUG-29588
 #include "auxiliary/opslogs.h"
@@ -50,7 +50,6 @@ class Message;
 class Media;
 }
 
-class QProgressIndicator;
 class DriverInfo;
 class ProfileInfo;
 class KPageWidgetItem;
@@ -73,7 +72,7 @@ class KPageWidgetItem;
  *  Ekos Manager provides a summary of operations progress in the <i>Summary</i> section of the <i>Setup</i> tab.
  *
  * @author Jasem Mutlaq
- * @version 1.7
+ * @version 1.8
  */
 namespace Ekos
 {
@@ -333,6 +332,11 @@ class Manager : public QDialog, public Ui::Manager
          */
         Q_SCRIPTABLE void setEkosLiveUser(const QString &username, const QString &password);
 
+        /**
+         * @brief acceptPortSelection Accept current port selection settings in the Selector Dialog
+         */
+        Q_SCRIPTABLE void acceptPortSelection();
+
     signals:
         // Have to use full Ekos::CommunicationStatus for DBus signal to work
         void ekosStatusChanged(Ekos::CommunicationStatus status);
@@ -423,32 +427,31 @@ class Manager : public QDialog, public Ui::Manager
         void wizardProfile();
 
         // Mount Summary
-        void updateMountCoords(const QString &ra, const QString &dec, const QString &az, const QString &alt, int pierSide,
-                               const QString &ha);
+        void updateMountCoords(const SkyPoint position, ISD::Telescope::PierSide pierSide, const dms &ha);
         void updateMountStatus(ISD::Telescope::Status status);
         void setTarget(SkyObject *o);
 
         // Capture Summary
         void updateCaptureStatus(CaptureState status);
         void updateCaptureProgress(SequenceJob *job, const QSharedPointer<FITSData> &data);
-        void updateDownloadProgress(double timeLeft);
         void updateExposureProgress(SequenceJob *job);
         void updateCaptureCountDown();
 
         // Focus summary
-        void setFocusStatus(FocusState status);
-        void updateFocusStarPixmap(QPixmap &starPixmap);
-        void updateFocusProfilePixmap(QPixmap &profilePixmap);
+        void updateFocusStatus(FocusState status);
         void updateCurrentHFR(double newHFR, int position);
-        void updateFocusDetailView();
+        const QString getFocusStatusText()
+        {
+            return focusManager->focusStatus->text();
+        }
 
         // Guide Summary
         void updateGuideStatus(GuideState status);
-        void updateGuideStarPixmap(QPixmap &starPix);
-        void updateGuideProfilePixmap(QPixmap &profilePix);
-        void updateGuidePlotPixmap(QPixmap &plotPix);
         void updateSigmas(double ra, double de);
-        void updateGuideDetailView();
+        const QString getGuideStatusText()
+        {
+            return guideManager->guideStatus->text();
+        }
 
     private:
         explicit Manager(QWidget *parent);
@@ -497,6 +500,8 @@ class Manager : public QDialog, public Ui::Manager
         {
             m_ProfileMapping = payload;
         }
+        // Port Selector Save profile when connect all is pressed
+        void setPortSelectionComplete();
         // Check if the driver binary must be one only to avoid duplicate instances
         // Some driver binaries support multiple devices per binary
         // so we only need to start a single instance to handle them all.
@@ -559,40 +564,20 @@ class Manager : public QDialog, public Ui::Manager
         QSharedPointer<FilterManager> filterManager;
 
         // Mount Summary
-        QProgressIndicator *mountPI { nullptr };
         QPointer<QProcess> indiHubAgent;
 
         // Capture Summary
-        QTime imageCountDown;
-        QTime overallCountDown;
-        QTime sequenceCountDown;
-        QTimer countdownTimer;
+        QTimer m_CountdownTimer;
         QTimer settleTimer;
-        QProgressIndicator *capturePI { nullptr };
         // Preview Frame
-        std::unique_ptr<FITSView> summaryPreview;
-
-        // Focus Summary
-        QProgressIndicator *focusPI { nullptr };
-        std::unique_ptr<QPixmap> focusStarPixmap;
-        std::unique_ptr<QPixmap> focusProfilePixmap;
-        int currentFocusPixmapIndex = 0;
-        const QString focusDetailViewTooltips[2] = {"Focus Profile", "Focus Star"};
-
-
-        // Guide Summary
-        QProgressIndicator *guidePI { nullptr };
-        std::unique_ptr<QPixmap> guideStarPixmap;
-        std::unique_ptr<QPixmap> guideProfilePixmap;
-        std::unique_ptr<QPixmap> guidePlotPixmap;
-        int currentGuidePixmapIndex = 0;
-        const QString guideDetailViewTooltips[3] = {"Guide Profile", "Guide Plot", "Guide Star"};
+        std::unique_ptr<SummaryFITSView> summaryPreview;
 
         ProfileInfo *currentProfile { nullptr };
         bool profileWizardLaunched { false };
 
-        // Serial Port Assistant
-        std::unique_ptr<SerialPortAssistant> serialPortAssistant;
+        // Port Selector
+        std::unique_ptr<Selector::Dialog> m_PortSelector;
+        QTimer m_PortSelectorTimer;
 
         // Logs
         QPointer<OpsLogs> opsLogs;

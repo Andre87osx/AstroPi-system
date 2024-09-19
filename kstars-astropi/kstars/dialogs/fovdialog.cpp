@@ -1,19 +1,8 @@
-/***************************************************************************
-                          fovdialog.cpp  -  description
-                             -------------------
-    begin                : Fri 05 Sept 2003
-    copyright            : (C) 2003 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2003 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "fovdialog.h"
 
@@ -85,7 +74,7 @@ FOVDialog::FOVDialog(QWidget *p) : QDialog(p)
         fovID = qRegisterMetaType<FOV *>("FOV*");
     fov = new FOVDialogUI(this);
 
-    setWindowTitle(i18n("Set FOV Indicator"));
+    setWindowTitle(i18nc("@title:window", "Set FOV Indicator"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(fov);
@@ -185,7 +174,7 @@ NewFOV::NewFOV(QWidget *parent, const FOV *fov) : QDialog(parent), f()
 {
     ui = new NewFOVUI(this);
 
-    setWindowTitle(i18n("New FOV Indicator"));
+    setWindowTitle(i18nc("@title:window", "New FOV Indicator"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ui);
@@ -402,7 +391,7 @@ void NewFOV::slotDetectFromINDI()
 
 TelescopeFL::TelescopeFL(QWidget *parent) : QDialog(parent), aperture(nullptr), fNumber(nullptr), apertureUnit(nullptr)
 {
-    setWindowTitle(i18n("Telescope Focal Length Calculator"));
+    setWindowTitle(i18nc("@title:window", "Telescope Focal Length Calculator"));
 
     //QWidget *mainWidget = new QWidget( this );
     QGridLayout *mainLayout = new QGridLayout(this);

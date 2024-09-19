@@ -1,11 +1,8 @@
-/*  Ekos
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "sequencejob.h"
 
@@ -46,6 +43,9 @@ SequenceJob::SequenceJob(XMLEle *root):
     XMLEle *ep    = nullptr;
     XMLEle *subEP = nullptr;
 
+    // We expect all data read from the XML to be in the C locale - QLocale::c().
+    QLocale cLocale = QLocale::c();
+
     const QMap<QString, CCDFrameType> frameTypes =
     {
         { "Light", FRAME_LIGHT }, { "Dark", FRAME_DARK }, { "Bias", FRAME_BIAS }, { "Flat", FRAME_FLAT }
@@ -74,11 +74,12 @@ SequenceJob::SequenceJob(XMLEle *root):
         {
             /* Record frame type and mark presence of light frames for this sequence */
             QString frameTypeStr = QString(pcdataXMLEle(ep));
-            if (frameTypes.contains(frameTypeStr)) {
+            if (frameTypes.contains(frameTypeStr))
+            {
                 frameType = frameTypes[frameTypeStr];
             }
             //if (FRAME_LIGHT == frameType && nullptr != schedJob)
-                //schedJob->setLightFramesRequired(true);
+            //schedJob->setLightFramesRequired(true);
         }
         else if (!strcmp(tagXMLEle(ep), "Prefix"))
         {
@@ -119,13 +120,76 @@ SequenceJob::SequenceJob(XMLEle *root):
         {
             setUploadMode(static_cast<ISD::CCD::UploadMode>(atoi(pcdataXMLEle(ep))));
         }
-    }
-}
+        else if (!strcmp(tagXMLEle(ep), "Calibration"))
+        {
+            subEP = findXMLEle(ep, "FlatSource");
+            if (subEP)
+            {
+                XMLEle * typeEP = findXMLEle(subEP, "Type");
+                if (typeEP)
+                {
+                    if (!strcmp(pcdataXMLEle(typeEP), "Manual"))
+                        setFlatFieldSource(SOURCE_MANUAL);
+                    else if (!strcmp(pcdataXMLEle(typeEP), "FlatCap"))
+                        setFlatFieldSource(SOURCE_FLATCAP);
+                    else if (!strcmp(pcdataXMLEle(typeEP), "DarkCap"))
+                        setFlatFieldSource(SOURCE_DARKCAP);
+                    else if (!strcmp(pcdataXMLEle(typeEP), "Wall"))
+                    {
+                        XMLEle * azEP  = findXMLEle(subEP, "Az");
+                        XMLEle * altEP = findXMLEle(subEP, "Alt");
 
-void SequenceJob::reset()
-{
-    // Reset to default values
-    activeChip->setBatchMode(false);
+                        if (azEP && altEP)
+                        {
+                            setFlatFieldSource(SOURCE_WALL);
+                            SkyPoint wallCoord;
+                            wallCoord.setAz(dms::fromString(pcdataXMLEle(azEP), true));
+                            wallCoord.setAlt(dms::fromString(pcdataXMLEle(altEP), true));
+                            setWallCoord(wallCoord);
+                        }
+                    }
+                    else
+                        setFlatFieldSource(SOURCE_DAWN_DUSK);
+                }
+            }
+
+            subEP = findXMLEle(ep, "FlatDuration");
+            if (subEP)
+            {
+                XMLEle * typeEP = findXMLEle(subEP, "Type");
+                if (typeEP)
+                {
+                    if (!strcmp(pcdataXMLEle(typeEP), "Manual"))
+                        setFlatFieldDuration(DURATION_MANUAL);
+                }
+
+                XMLEle * aduEP = findXMLEle(subEP, "Value");
+                if (aduEP)
+                {
+                    setFlatFieldDuration(DURATION_ADU);
+                    setTargetADU(cLocale.toDouble(pcdataXMLEle(aduEP)));
+                }
+
+                aduEP = findXMLEle(subEP, "Tolerance");
+                if (aduEP)
+                {
+                    setTargetADUTolerance(cLocale.toDouble(pcdataXMLEle(aduEP)));
+                }
+            }
+
+            subEP = findXMLEle(ep, "PreMountPark");
+            if (subEP)
+            {
+                setPreMountPark(!strcmp(pcdataXMLEle(subEP), "True"));
+            }
+
+            subEP = findXMLEle(ep, "PreDomePark");
+            if (subEP)
+            {
+                setPreDomePark(!strcmp(pcdataXMLEle(subEP), "True"));
+            }
+        }
+    }
 }
 
 void SequenceJob::resetStatus()
@@ -299,14 +363,21 @@ SequenceJob::CAPTUREResult SequenceJob::capture(bool autofocusReady)
 {
     activeChip->setBatchMode(!preview);
 
-    if (localDirectory.isEmpty() == false)
-        activeCCD->setFITSDir(localDirectory + directoryPostfix);
-
     activeCCD->setISOMode(timeStampPrefixEnabled);
 
     activeCCD->setSeqPrefix(fullPrefix);
 
-    activeCCD->setUploadMode(uploadMode);
+    auto placeholderPath = Ekos::PlaceholderPath(localDirectory + "/sequence.esq");
+    placeholderPath.setGenerateFilenameSettings(*this);
+    activeCCD->setPlaceholderPath(placeholderPath);
+
+    if (preview)
+    {
+        if (activeCCD->getUploadMode() != ISD::CCD::UPLOAD_CLIENT)
+            activeCCD->setUploadMode(ISD::CCD::UPLOAD_CLIENT);
+    }
+    else
+        activeCCD->setUploadMode(uploadMode);
 
     QMapIterator<QString, QMap<QString, double>> i(customProperties);
     while (i.hasNext())

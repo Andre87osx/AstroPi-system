@@ -1,12 +1,8 @@
 /*  KStars UI tests
-    Copyright (C) 2020
-    Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 
 #include "test_ekos_scheduler.h"
@@ -18,6 +14,14 @@
 #include "test_ekos_simulator.h"
 
 TestEkosScheduler::TestEkosScheduler(QObject *parent) : QObject(parent)
+{
+}
+
+void TestEkosScheduler::init()
+{
+}
+
+void TestEkosScheduler::cleanup()
 {
 }
 
@@ -37,16 +41,6 @@ void TestEkosScheduler::cleanupTestCase()
     KTRY_EKOS_STOP_SIMULATORS();
     KTRY_CLOSE_EKOS();
     KVERIFY_EKOS_IS_HIDDEN();
-}
-
-void TestEkosScheduler::init()
-{
-
-}
-
-void TestEkosScheduler::cleanup()
-{
-
 }
 
 void TestEkosScheduler::testScheduleManipulation_data()

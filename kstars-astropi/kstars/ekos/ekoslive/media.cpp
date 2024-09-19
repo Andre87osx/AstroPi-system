@@ -1,21 +1,18 @@
-/*  Ekos Live Media
-
-    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Media Channel
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "media.h"
 #include "commands.h"
 #include "profileinfo.h"
-
+#include "skymapcomposite.h"
 #include "fitsviewer/fitsview.h"
 #include "fitsviewer/fitsdata.h"
+#include "hips/hipsfinder.h"
 
 #include "ekos_debug.h"
 
@@ -71,8 +68,8 @@ void Media::onConnected()
 {
     qCInfo(KSTARS_EKOS) << "Connected to media Websocket server at" << m_URL.toDisplayString();
 
-    connect(&m_WebSocket, &QWebSocket::textMessageReceived,  this, &Media::onTextReceived);
-    connect(&m_WebSocket, &QWebSocket::binaryMessageReceived, this, &Media::onBinaryReceived);
+    connect(&m_WebSocket, &QWebSocket::textMessageReceived,  this, &Media::onTextReceived, Qt::UniqueConnection);
+    connect(&m_WebSocket, &QWebSocket::binaryMessageReceived, this, &Media::onBinaryReceived, Qt::UniqueConnection);
 
     m_isConnected = true;
     m_ReconnectTries = 0;
@@ -127,10 +124,59 @@ void Media::onTextReceived(const QString &message)
         extension = payload["ext"].toString();
     else if (command == commands[SET_BLOBS])
         m_sendBlobs = msgObj["payload"].toBool();
+    // Get a list of object based on criteria
+    else if (command == commands[ASTRO_GET_OBJECTS_IMAGE])
+    {
+        int level = payload["level"].toInt(5);
+        double zoom = payload["zoom"].toInt(20000);
+
+        // Object Names
+        QVariantList objectNames = payload["names"].toArray().toVariantList();
+
+        for (auto &oneName : objectNames)
+        {
+            const QString name = oneName.toString();
+            SkyObject *oneObject = KStarsData::Instance()->skyComposite()->findByName(name);
+            if (oneObject)
+            {
+                QImage centerImage(HIPS_TILE_WIDTH, HIPS_TILE_HEIGHT, QImage::Format_ARGB32_Premultiplied);
+                double fov_w = 0, fov_h = 0;
+                if (HIPSFinder::Instance()->render(oneObject, level, zoom, &centerImage, fov_w, fov_h))
+                {
+                    QByteArray jpegData;
+                    QBuffer buffer(&jpegData);
+                    buffer.open(QIODevice::WriteOnly);
+
+                    // Send everything as strings
+                    QJsonObject metadata =
+                    {
+                        {"uuid", "hips"},
+                        {"name", name},
+                        {"resolution", QString("%1x%2").arg(HIPS_TILE_WIDTH).arg(HIPS_TILE_HEIGHT)},
+                        {"bin", "1x1"},
+                        {"fov_w", QString::number(fov_w)},
+                        {"fov_h", QString::number(fov_h)},
+                        {"ext", "jpg"}
+                    };
+
+                    // First METADATA_PACKET bytes of the binary data is always allocated
+                    // to the metadata, the rest to the image data.
+                    QByteArray meta = QJsonDocument(metadata).toJson(QJsonDocument::Compact);
+                    meta = meta.leftJustified(METADATA_PACKET, 0);
+                    buffer.write(meta);
+                    centerImage.save(&buffer, "jpg", 90);
+                    buffer.close();
+
+                    emit newImage(jpegData);
+                }
+            }
+        }
+    }
 }
 
 void Media::onBinaryReceived(const QByteArray &message)
 {
+    // Sometimes this is triggered even though it's a text message
     Ekos::Align * align = m_Manager->alignModule();
     if (align)
     {
@@ -255,23 +301,22 @@ void Media::upload(FITSView * view)
     // For low bandwidth images
     if (!m_Options[OPTION_SET_HIGH_BANDWIDTH] || m_UUID[0] == "+")
     {
-        QPixmap scaledImage = view->getDisplayPixmap().scaledToWidth(HB_WIDTH / 2, Qt::FastTransformation);
+        QPixmap scaledImage = view->getDisplayPixmap().width() > HB_IMAGE_WIDTH / 2 ?
+                              view->getDisplayPixmap().scaledToWidth(HB_IMAGE_WIDTH / 2, Qt::FastTransformation) :
+                              view->getDisplayPixmap();
         scaledImage.save(&buffer, ext.toLatin1().constData(), HB_IMAGE_QUALITY / 2);
-        //ext = "jpg";
     }
     // For high bandwidth images
     else
     {
-        QImage scaledImage = view->getDisplayImage().scaledToWidth(HB_WIDTH, Qt::SmoothTransformation);
+        QImage scaledImage =  view->getDisplayImage().width() > HB_IMAGE_WIDTH ?
+                              view->getDisplayImage().scaledToWidth(HB_IMAGE_WIDTH, Qt::SmoothTransformation) :
+                              view->getDisplayImage();
         scaledImage.save(&buffer, ext.toLatin1().constData(), HB_IMAGE_QUALITY);
-        //ext = "png";
     }
     buffer.close();
 
     emit newImage(jpegData);
-
-    //m_WebSocket.sendTextMessage(QJsonDocument(metadata).toJson(QJsonDocument::Compact));
-    //m_WebSocket.sendBinaryMessage(jpegData);
 
     if (view == previewImage.get())
         previewImage.reset();
@@ -360,7 +405,9 @@ void Media::sendUpdatedFrame(FITSView *view)
     }
     else
     {
-        scaledImage = view->getDisplayPixmap().scaledToWidth(HB_WIDTH / 2, Qt::FastTransformation);
+        scaledImage = view->getDisplayPixmap().width() > HB_IMAGE_WIDTH / 2 ?
+                      view->getDisplayPixmap().scaledToWidth(HB_IMAGE_WIDTH / 2, Qt::FastTransformation) :
+                      view->getDisplayPixmap();
         emit newBoundingRect(QRect(), QSize(), 100);
     }
 
@@ -374,7 +421,7 @@ void Media::sendVideoFrame(const QSharedPointer<QImage> &frame)
     if (m_isConnected == false || m_Options[OPTION_SET_IMAGE_TRANSFER] == false || m_sendBlobs == false || !frame)
         return;
 
-    int32_t width = m_Options[OPTION_SET_HIGH_BANDWIDTH] ? HB_WIDTH : HB_WIDTH / 2;
+    int32_t width = m_Options[OPTION_SET_HIGH_BANDWIDTH] ? HB_VIDEO_WIDTH : HB_VIDEO_WIDTH / 2;
     QByteArray image;
     QBuffer buffer(&image);
     buffer.open(QIODevice::WriteOnly);

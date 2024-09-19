@@ -1,10 +1,7 @@
-/*  Ekos PHD2 Handler
-    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "phd2.h"
@@ -106,9 +103,6 @@ PHD2::PHD2()
     //set_profile
     //shutdown
     methodResults["stop_capture"]           = STOP_CAPTURE_COMMAND_RECEIVED;
-
-    QDir writableDir;
-    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::TempLocation));
 
     abortTimer = new QTimer(this);
     connect(abortTimer, &QTimer::timeout, this, [ = ]

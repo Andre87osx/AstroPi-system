@@ -1,10 +1,7 @@
-/*  Profile Editor
-    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "profileeditor.h"
@@ -47,7 +44,7 @@ ProfileEditor::ProfileEditor(QWidget *w) : QDialog(w)
     mainLayout->addWidget(ui);
     setLayout(mainLayout);
 
-    setWindowTitle(i18n("Profile Editor"));
+    setWindowTitle(i18nc("@title:window", "Profile Editor"));
 
     // Create button box and link it to save and reject functions
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Close, this);
@@ -149,15 +146,15 @@ void ProfileEditor::loadScopeEquipment()
         double Aperture = oneScope->aperture();
 
         ui->primaryScopeCombo->setItemData(i + 1,
-                                           i18nc("F-Number, Focal Length, Aperture",
-                                                   "<nobr>F<b>%1</b> Focal Length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
+                                           i18nc("F-Number, Focal length, Aperture",
+                                                   "<nobr>F<b>%1</b> Focal length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
                                                    QString::number(FocalLength / Aperture, 'f', 1), QString::number(FocalLength, 'f', 2),
                                                    QString::number(Aperture, 'f', 2)),
                                            Qt::ToolTipRole);
 
         ui->guideScopeCombo->setItemData(i + 1,
-                                         i18nc("F-Number, Focal Length, Aperture",
-                                               "<nobr>F<b>%1</b> Focal Length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
+                                         i18nc("F-Number, Focal length, Aperture",
+                                               "<nobr>F<b>%1</b> Focal length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
                                                QString::number(FocalLength / Aperture, 'f', 1), QString::number(FocalLength, 'f', 2),
                                                QString::number(Aperture, 'f', 2)),
                                          Qt::ToolTipRole);
@@ -233,6 +230,8 @@ void ProfileEditor::saveProfile()
 
     // Auto Connect
     pi->autoConnect = ui->autoConnectCheck->isChecked();
+    // Port Selector
+    pi->portSelector = ui->portSelectorCheck->isChecked();
 
     // Guider Type
     pi->guidertype = ui->guideTypeCombo->currentIndex();
@@ -382,6 +381,7 @@ void ProfileEditor::setPi(ProfileInfo *newProfile)
 
     ui->loadSiteCheck->setChecked(!pi->city.isEmpty());
     ui->autoConnectCheck->setChecked(pi->autoConnect);
+    ui->portSelectorCheck->setChecked(pi->portSelector);
 
     if (pi->city.isEmpty() == false)
     {
@@ -589,6 +589,10 @@ void ProfileEditor::loadDrivers()
     QString selectedCamera = ui->ccdCombo->currentText();
     QString selectedGuider = ui->guiderCombo->currentText();
     QString selectedFocuser = ui->focuserCombo->currentText();
+    QString selectedAux1 = ui->aux1Combo->currentText();
+    QString selectedAux2 = ui->aux2Combo->currentText();
+    QString selectedAux3 = ui->aux3Combo->currentText();
+    QString selectedAux4 = ui->aux4Combo->currentText();
 
     QVector<QComboBox *> boxes;
     boxes.append(ui->mountCombo);
@@ -625,21 +629,33 @@ void ProfileEditor::loadDrivers()
     m_GuiderModel = new QStandardItemModel(this);
     delete (m_FocuserModel);
     m_FocuserModel = new QStandardItemModel(this);
+    delete (m_Aux1Model);
+    m_Aux1Model = new QStandardItemModel(this);
+    delete (m_Aux2Model);
+    m_Aux2Model = new QStandardItemModel(this);
+    delete (m_Aux3Model);
+    m_Aux3Model = new QStandardItemModel(this);
+    delete (m_Aux4Model);
+    m_Aux4Model = new QStandardItemModel(this);
 
-    if (ui->localMode->isChecked())
-    {
-        populateManufacturerCombo(m_MountModel, ui->mountCombo, selectedMount, true, KSTARS_TELESCOPE);
-        populateManufacturerCombo(m_CameraModel, ui->ccdCombo, selectedCamera, true, KSTARS_CCD);
-        populateManufacturerCombo(m_GuiderModel, ui->guiderCombo, selectedGuider, true, KSTARS_CCD);
-        populateManufacturerCombo(m_FocuserModel, ui->focuserCombo, selectedFocuser, true, KSTARS_FOCUSER);
-    }
-    else
-    {
-        populateManufacturerCombo(m_MountModel, ui->mountCombo, selectedMount, false, KSTARS_TELESCOPE);
-        populateManufacturerCombo(m_CameraModel, ui->ccdCombo, selectedCamera, false, KSTARS_CCD);
-        populateManufacturerCombo(m_GuiderModel, ui->guiderCombo, selectedGuider, false, KSTARS_CCD);
-        populateManufacturerCombo(m_FocuserModel, ui->focuserCombo, selectedFocuser, false, KSTARS_FOCUSER);
-    }
+    const bool isLocal = ui->localMode->isChecked();
+    const QList<DeviceFamily> auxFamily = QList<DeviceFamily>()
+                                          << KSTARS_AUXILIARY
+                                          << KSTARS_CCD
+                                          << KSTARS_FOCUSER
+                                          << KSTARS_FILTER
+                                          << KSTARS_WEATHER
+                                          << KSTARS_SPECTROGRAPHS
+                                          << KSTARS_DETECTORS;
+
+    populateManufacturerCombo(m_MountModel, ui->mountCombo, selectedMount, isLocal, QList<DeviceFamily>() << KSTARS_TELESCOPE);
+    populateManufacturerCombo(m_CameraModel, ui->ccdCombo, selectedCamera, isLocal, QList<DeviceFamily>() << KSTARS_CCD);
+    populateManufacturerCombo(m_GuiderModel, ui->guiderCombo, selectedGuider, isLocal, QList<DeviceFamily>() << KSTARS_CCD);
+    populateManufacturerCombo(m_FocuserModel, ui->focuserCombo, selectedFocuser, isLocal, QList<DeviceFamily>() << KSTARS_FOCUSER);
+    populateManufacturerCombo(m_Aux1Model, ui->aux1Combo, selectedAux1, isLocal, auxFamily);
+    populateManufacturerCombo(m_Aux2Model, ui->aux2Combo, selectedAux2, isLocal, auxFamily);
+    populateManufacturerCombo(m_Aux3Model, ui->aux3Combo, selectedAux3, isLocal, auxFamily);
+    populateManufacturerCombo(m_Aux4Model, ui->aux4Combo, selectedAux4, isLocal, auxFamily);
 
     for (DriverInfo *dv : DriverManager::Instance()->getDrivers())
     {
@@ -667,17 +683,17 @@ void ProfileEditor::loadDrivers()
                 //                ui->guiderCombo->addItem(icon, dv->getLabel());
                 //                ui->guiderCombo->setItemData(ui->guiderCombo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux1Combo->addItem(icon, dv->getLabel());
-                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux1Combo->addItem(icon, dv->getLabel());
+                //                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux2Combo->addItem(icon, dv->getLabel());
-                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux2Combo->addItem(icon, dv->getLabel());
+                //                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux3Combo->addItem(icon, dv->getLabel());
-                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux3Combo->addItem(icon, dv->getLabel());
+                //                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux4Combo->addItem(icon, dv->getLabel());
-                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux4Combo->addItem(icon, dv->getLabel());
+                //                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
             }
             break;
 
@@ -693,17 +709,17 @@ void ProfileEditor::loadDrivers()
                 //                ui->focuserCombo->addItem(icon, dv->getLabel());
                 //                ui->focuserCombo->setItemData(ui->focuserCombo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux1Combo->addItem(icon, dv->getLabel());
-                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux1Combo->addItem(icon, dv->getLabel());
+                //                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux2Combo->addItem(icon, dv->getLabel());
-                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux2Combo->addItem(icon, dv->getLabel());
+                //                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux3Combo->addItem(icon, dv->getLabel());
-                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux3Combo->addItem(icon, dv->getLabel());
+                //                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux4Combo->addItem(icon, dv->getLabel());
-                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux4Combo->addItem(icon, dv->getLabel());
+                //                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
             }
             break;
 
@@ -712,17 +728,17 @@ void ProfileEditor::loadDrivers()
                 ui->filterCombo->addItem(icon, dv->getLabel());
                 ui->filterCombo->setItemData(ui->filterCombo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux1Combo->addItem(icon, dv->getLabel());
-                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux1Combo->addItem(icon, dv->getLabel());
+                //                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux2Combo->addItem(icon, dv->getLabel());
-                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux2Combo->addItem(icon, dv->getLabel());
+                //                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux3Combo->addItem(icon, dv->getLabel());
-                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux3Combo->addItem(icon, dv->getLabel());
+                //                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux4Combo->addItem(icon, dv->getLabel());
-                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux4Combo->addItem(icon, dv->getLabel());
+                //                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
             }
             break;
 
@@ -738,17 +754,17 @@ void ProfileEditor::loadDrivers()
                 ui->weatherCombo->addItem(icon, dv->getLabel());
                 ui->weatherCombo->setItemData(ui->weatherCombo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux1Combo->addItem(icon, dv->getLabel());
-                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux1Combo->addItem(icon, dv->getLabel());
+                //                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux2Combo->addItem(icon, dv->getLabel());
-                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux2Combo->addItem(icon, dv->getLabel());
+                //                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux3Combo->addItem(icon, dv->getLabel());
-                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux3Combo->addItem(icon, dv->getLabel());
+                //                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux4Combo->addItem(icon, dv->getLabel());
-                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux4Combo->addItem(icon, dv->getLabel());
+                //                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
             }
             break;
 
@@ -756,17 +772,17 @@ void ProfileEditor::loadDrivers()
             case KSTARS_SPECTROGRAPHS:
             case KSTARS_DETECTORS:
             {
-                ui->aux1Combo->addItem(icon, dv->getLabel());
-                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux1Combo->addItem(icon, dv->getLabel());
+                //                ui->aux1Combo->setItemData(ui->aux1Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux2Combo->addItem(icon, dv->getLabel());
-                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux2Combo->addItem(icon, dv->getLabel());
+                //                ui->aux2Combo->setItemData(ui->aux2Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux3Combo->addItem(icon, dv->getLabel());
-                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux3Combo->addItem(icon, dv->getLabel());
+                //                ui->aux3Combo->setItemData(ui->aux3Combo->count() - 1, toolTipText, Qt::ToolTipRole);
 
-                ui->aux4Combo->addItem(icon, dv->getLabel());
-                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
+                //                ui->aux4Combo->addItem(icon, dv->getLabel());
+                //                ui->aux4Combo->setItemData(ui->aux4Combo->count() - 1, toolTipText, Qt::ToolTipRole);
             }
             break;
 
@@ -927,6 +943,7 @@ void ProfileEditor::setSettings(const QJsonObject &profile)
 {
     ui->profileIN->setText(profile["name"].toString());
     ui->autoConnectCheck->setChecked(profile["auto_connect"].toBool(true));
+    ui->portSelectorCheck->setChecked(profile["port_selector"].toBool(false));
     ui->localMode->setChecked(profile["mode"].toString() == "local");
     ui->remoteMode->setChecked(profile["mode"].toString() == "remote");
     ui->remoteHost->setText(profile["remote_host"].toString("localhost"));
@@ -1012,7 +1029,7 @@ void ProfileEditor::scanNetwork()
 {
     delete (m_ProgressDialog);
     m_ProgressDialog = new QProgressDialog(this);
-    m_ProgressDialog->setWindowTitle(i18n("Scanning Network"));
+    m_ProgressDialog->setWindowTitle(i18nc("@title:window", "Scanning Network"));
     m_ProgressDialog->setLabelText(i18n("Scanning network for INDI Web Managers..."));
     connect(m_ProgressDialog, &QProgressDialog::canceled, this, [this]()
     {
@@ -1115,7 +1132,7 @@ void ProfileEditor::showINDIHub()
 }
 
 void ProfileEditor::populateManufacturerCombo(QStandardItemModel *model, QComboBox *combo, const QString &selectedDriver,
-        bool isLocal, int family)
+        bool isLocal, const QList<DeviceFamily> &families)
 {
     if (isLocal)
     {
@@ -1123,7 +1140,7 @@ void ProfileEditor::populateManufacturerCombo(QStandardItemModel *model, QComboB
         model->appendRow(new QStandardItem("--"));
         for (DriverInfo *dv : DriverManager::Instance()->getDrivers())
         {
-            if (dv->getType() != family)
+            if (!families.contains(dv->getType()))
                 continue;
 
             QString manufacturer = dv->manufacturer();
@@ -1177,7 +1194,7 @@ void ProfileEditor::populateManufacturerCombo(QStandardItemModel *model, QComboB
         QIcon icon;
         for (DriverInfo *dv : DriverManager::Instance()->getDrivers())
         {
-            if (dv->getType() != family)
+            if (!families.contains(dv->getType()))
                 continue;
 
             bool locallyAvailable = false;

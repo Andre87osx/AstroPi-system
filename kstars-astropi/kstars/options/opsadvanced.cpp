@@ -1,19 +1,8 @@
-/***************************************************************************
-                          opsadvanced.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun 14 Mar 2004
-    copyright            : (C) 2004 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "opsadvanced.h"
 
@@ -105,7 +94,7 @@ void OpsAdvanced::slotToggleOutputOptions()
 
 void OpsAdvanced::slotShowLogFiles()
 {
-    QUrl path = QUrl::fromLocalFile(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "logs");
+    QUrl path = QUrl::fromLocalFile(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("logs"));
 
     QDesktopServices::openUrl(path);
 }
@@ -120,11 +109,11 @@ void OpsAdvanced::slotPurge()
     connect(KSMessageBox::Instance(), &KSMessageBox::accepted, this, [this]()
     {
         KSMessageBox::Instance()->disconnect(this);
-        QString dbFile = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +  "userdb.sqlite";
+        QString dbFile = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("userdb.sqlite");
         QFile::remove(dbFile);
-        QString configFile = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/kstarsrc";
+        QString configFile = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation)).filePath("kstarsrc");
         QFile::remove(configFile);
-        configFile = QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) + "/kstars.notifyrc";
+        configFile = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation)).filePath("kstars.notifyrc");
         QFile::remove(configFile);
 
         KSMessageBox::Instance()->info(i18n("Purge complete. Please restart KStars."));

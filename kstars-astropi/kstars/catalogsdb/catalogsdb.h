@@ -1,30 +1,25 @@
-/***************************************************************************
-                  catalogsdb.h  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2021-06-03
-    copyright            : (C) 2021 by Valentin Boettcher
-    email                : hiro at protagon.space; @hiro98:tchncs.de
-***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <exception>
+#include <list>
 #include <QString>
 #include <QList>
 #include <catalogsdb_debug.h>
 #include <QSqlQuery>
 #include <QMutex>
+
+#include "polyfills/qstring_hash.h"
+#include <unordered_map>
+
+#include <unordered_set>
 #include <utility>
 #include "catalogobject.h"
 #include "nan.h"
@@ -87,7 +82,8 @@ struct Catalog
     int version = -1;
 
     /**
-     * The catalog color.
+     * The catalog color in the form `[default color];[scheme file
+     * name];[color]...`.
      */
     QString color = "";
 
@@ -129,10 +125,30 @@ constexpr int user_catalog_id   = 0;
 constexpr float default_maglim  = 99;
 const QString flux_unit         = "mag";
 const QString flux_frequency    = "400 nm";
+using CatalogColorMap           = std::map<QString, QColor>;
+using ColorMap                  = std::map<int, CatalogColorMap>;
+using CatalogObjectList         = std::list<CatalogObject>;
+using CatalogObjectVector       = std::vector<CatalogObject>;
 
 /**
- * Manages the catalog database and provides an interface to provide
- * an interface to query and modify the database.
+ * \returns A hash table of the form `color scheme: color` by
+ * parsing a string of the form `[default color];[scheme file
+ * name];[color]...`.
+ */
+CatalogColorMap parse_color_string(const QString &str);
+
+/**
+ * \returns A color string of the form`[default color];[scheme file
+ * name];[color]...`.
+ *
+ * The inverse of `CatalogsDB::parse_color_string`.
+ */
+QString to_color_string(CatalogColorMap colors);
+
+/**
+ * Manages the catalog database and provides an interface to provide an
+ * interface to query and modify the database. For more information on
+ * how the catalog database system works see the KStars Handbook.
  *
  * The class manages a database connection which is assumed to be
  * working (invariant). If the database can't be accessed a
@@ -142,6 +158,23 @@ const QString flux_frequency    = "400 nm";
  * members, only if they are performance critical.
  *
  * Most methods in this class are thread safe.
+ *
+ * The intention is that you access a/the catalogs database directly
+ * locally in the code where objects from the database are required and
+ * not through layers of references and pointers.
+ *
+ * The main DSO database can be accessed as follows:
+ * ```cpp
+ * CatalogsDB::DBManager manager{ CatalogsDB::dso_db_path() };
+ * for(auto& o : manager.get_objects(10)) {
+ *     // do something
+ * }
+ * ```
+ *
+ * To query the database, first check if the required query is already
+ * hardcoded into the `DBManager`. If this is not the case you can either
+ * add it (if it is performance critical and executed frequently) or use
+ * `DBManager::general_master_query` to construct a custom `SQL` query.
  */
 class DBManager
 {
@@ -182,8 +215,6 @@ class DBManager
         m_db.close();
     }
 
-    using CatalogObjectList = std::list<CatalogObject>;
-
     /**
      * @return the filename of the database
      */
@@ -213,7 +244,7 @@ class DBManager
     /**
      * @return return a vector of objects in the trixel with \p id.
      */
-    std::vector<CatalogObject> get_objects_in_trixel(const int trixel);
+    CatalogObjectVector get_objects_in_trixel(const int trixel);
 
     /**
      * \brief Find an objects by name.
@@ -224,10 +255,12 @@ class DBManager
      *
      * \param limit Upper limit to the quanitity of results. `-1` means "no
      * limit"
+     * \param exactMatchOnly If true, the supplied name must match exactly
      *
      * \return a list of matching objects
      */
-    CatalogObjectList find_objects_by_name(const QString &name, const int limit = -1);
+    CatalogObjectList find_objects_by_name(const QString &name, const int limit = -1,
+                                           const bool exactMatchOnly = false);
 
     /**
      * \brief Find an objects by name in the catalog with \p `catalog_id`.
@@ -236,6 +269,29 @@ class DBManager
      */
     CatalogObjectList find_objects_by_name(const int catalog_id, const QString &name,
                                            const int limit = -1);
+
+    /**
+     * \brief Find an objects by searching the name four wildcard. See
+     * the LIKE sqlite statement.
+     *
+     * \return a list of matching objects
+     */
+    CatalogObjectList find_objects_by_wildcard(const QString &wildcard,
+                                               const int limit = -1);
+    /**
+     * \brief Find an objects by searching the master catlog with a
+     * query like `SELECT ... FROM master WHERE \p where ORDER BY \p
+     * order_by ...`.
+     *
+     * To be used if performance does not matter (much).
+     * \p order_by can be ommitted.
+     *
+     * \return wether the query was successful, an error message if
+     * any and a list of matching objects
+     */
+    std::tuple<bool, const QString, CatalogObjectList>
+    general_master_query(const QString &where, const QString &order_by = "",
+                         const int limit = -1);
 
     /**
      * \brief Get an object by \p `oid`. Optinally a \p `catalog_id` can be speicfied.
@@ -324,7 +380,7 @@ class DBManager
      * error message
      */
     std::pair<bool, QString> add_objects(const int catalog_id,
-                                         const std::vector<CatalogObject> &objects);
+                                         const CatalogObjectVector &objects);
 
     /**
      * Remove the catalog object with the \p `oid` from the catalog with the
@@ -439,6 +495,29 @@ class DBManager
      */
     bool update_catalog_views();
 
+    /** \returns the catalog colors as a hash table of the form `catalog id:
+     *  scheme: color`.
+     *
+     *  The colors are loaded from the `Catalog::color` field and the
+     *  `SqlStatements::color_table` in that order.
+     */
+    ColorMap get_catalog_colors();
+
+    /** \returns the catalog colors as a hash table of for the catalog
+     * with \p id in the form `scheme: color`.
+     *
+     *  The colors are loaded from the `Catalog::color` field and the
+     *  `SqlStatements::color_table` in that order.
+     */
+    CatalogColorMap get_catalog_colors(const int id);
+
+    /** Saves the configures colors of the catalog with id \p id in \p
+     * colors into the database.  \returns wether the insertion was
+     * possible and an error message if not.
+     */
+    std::pair<bool, QString> insert_catalog_colors(const int id,
+                                                   const CatalogColorMap &colors);
+
   private:
     /**
      * The backing catalog database.
@@ -447,8 +526,10 @@ class DBManager
 
     /**
      * The filename of the database.
+     *
+     * Will be a reference to a member of `m_db_paths`.
      */
-    QString m_db_file;
+    std::reference_wrapper<const QString> m_db_file;
 
     //@{
     /**
@@ -548,9 +629,17 @@ class DBManager
     CatalogObjectList fetch_objects(QSqlQuery &query) const;
 
     /**
-     * Internal implementation to forcably remove a catalog (even the user catalog, use with caution!)
+     * Internal implementation to forcably remove a catalog (even the
+     * user catalog, use with caution!)
      */
     std::pair<bool, QString> remove_catalog_force(const int id);
+
+    /**
+     * A list of database paths. The index gets stored in the
+     * `CatalogObject` and can be used to retrieve the path to the
+     * database.
+     */
+    static QSet<QString> m_db_paths;
     //@}
 };
 

@@ -1,15 +1,13 @@
 /*  Ekos Scheduler Job
-    Copyright (C) Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "schedulerjob.h"
 
 #include "dms.h"
+#include "artificialhorizoncomponent.h"
 #include "kstarsdata.h"
 #include "skymapcomposite.h"
 #include "Options.h"
@@ -23,11 +21,74 @@
 #include <ekos_scheduler_debug.h>
 
 #define BAD_SCORE -1000
-#define MIN_ALTITUDE 15.00
+#define MIN_ALTITUDE 15.0
 
 
 GeoLocation *SchedulerJob::storedGeo = nullptr;
 KStarsDateTime *SchedulerJob::storedLocalTime = nullptr;
+ArtificialHorizon *SchedulerJob::storedHorizon = nullptr;
+
+QString SchedulerJob::jobStatusString(JOBStatus state)
+{
+    switch(state)
+    {
+        case SchedulerJob::JOB_IDLE:
+            return "JOB_IDLE";
+        case SchedulerJob::JOB_EVALUATION:
+            return "JOB_EVALUATION";
+        case SchedulerJob::JOB_SCHEDULED:
+            return "JOB_SCHEDULED";
+        case SchedulerJob::JOB_BUSY:
+            return "JOB_BUSY";
+        case SchedulerJob::JOB_ERROR:
+            return "JOB_ERROR";
+        case SchedulerJob::JOB_ABORTED:
+            return "JOB_ABORTED";
+        case SchedulerJob::JOB_INVALID:
+            return "JOB_INVALID";
+        case SchedulerJob::JOB_COMPLETE:
+            return "JOB_COMPLETE";
+    }
+    return QString("????");
+}
+
+QString SchedulerJob::jobStageString(JOBStage state)
+{
+    switch(state)
+    {
+        case SchedulerJob::STAGE_IDLE:
+            return "STAGE_IDLE";
+        case SchedulerJob::STAGE_SLEWING:
+            return "STAGE_SLEWING";
+        case SchedulerJob::STAGE_SLEW_COMPLETE:
+            return "STAGE_SLEW_COMPLETE";
+        case SchedulerJob::STAGE_FOCUSING:
+            return "STAGE_FOCUSING";
+        case SchedulerJob::STAGE_FOCUS_COMPLETE:
+            return "STAGE_FOCUS_COMPLETE";
+        case SchedulerJob::STAGE_ALIGNING:
+            return "STAGE_ALIGNING";
+        case SchedulerJob::STAGE_ALIGN_COMPLETE:
+            return "STAGE_ALIGN_COMPLETE";
+        case SchedulerJob::STAGE_RESLEWING:
+            return "STAGE_RESLEWING";
+        case SchedulerJob::STAGE_RESLEWING_COMPLETE:
+            return "STAGE_RESLEWING_COMPLETE";
+        case SchedulerJob::STAGE_POSTALIGN_FOCUSING:
+            return "STAGE_POSTALIGN_FOCUSING";
+        case SchedulerJob::STAGE_POSTALIGN_FOCUSING_COMPLETE:
+            return "STAGE_POSTALIGN_FOCUSING_COMPLETE";
+        case SchedulerJob::STAGE_GUIDING:
+            return "STAGE_GUIDING";
+        case SchedulerJob::STAGE_GUIDING_COMPLETE:
+            return "STAGE_GUIDING_COMPLETE";
+        case SchedulerJob::STAGE_CAPTURING:
+            return "STAGE_CAPTURING";
+        case SchedulerJob::STAGE_COMPLETE:
+            return "STAGE_COMPLETE";
+    }
+    return QString("????");
+}
 
 SchedulerJob::SchedulerJob()
 {
@@ -58,6 +119,16 @@ GeoLocation const *SchedulerJob::getGeo()
     if (hasGeo())
         return storedGeo;
     return KStarsData::Instance()->geo();
+}
+
+ArtificialHorizon const *SchedulerJob::getHorizon()
+{
+    if (hasHorizon())
+        return storedHorizon;
+    if (KStarsData::Instance() == nullptr || KStarsData::Instance()->skyComposite() == nullptr
+            || KStarsData::Instance()->skyComposite()->artificialHorizon() == nullptr)
+        return nullptr;
+    return &KStarsData::Instance()->skyComposite()->artificialHorizon()->getHorizon();
 }
 
 void SchedulerJob::setStartupCondition(const StartupCondition &value)
@@ -112,7 +183,8 @@ void SchedulerJob::setMinAltitude(const double &value)
 
 bool SchedulerJob::hasAltitudeConstraint() const
 {
-    return hasMinAltitude();
+    return hasMinAltitude() ||
+           (enforceArtificialHorizon && (getHorizon() != nullptr) && getHorizon()->altitudeConstraintsExist());
 }
 
 void SchedulerJob::setMinMoonSeparation(const double &value)
@@ -402,6 +474,11 @@ void SchedulerJob::setEnforceTwilight(bool value)
 {
     enforceTwilight = value;
     calculateDawnDusk(startupTime, nextDawn, nextDusk);
+}
+
+void SchedulerJob::setEnforceArtificialHorizon(bool value)
+{
+    enforceArtificialHorizon = value;
 }
 
 void SchedulerJob::setEstimatedTimeCell(QTableWidgetItem *value)
@@ -764,6 +841,15 @@ bool SchedulerJob::increasingStartupTimeOrder(SchedulerJob const *job1, Schedule
     return job1->getStartupTime() < job2->getStartupTime();
 }
 
+// This uses both the user-setting minAltitude, as well as any artificial horizon
+// constraints the user might have setup.
+double SchedulerJob::getMinAltitudeConstraint(double azimuth) const
+{
+    double constraint = getMinAltitude();
+    if (getHorizon() != nullptr && enforceArtificialHorizon)
+        constraint = std::max(constraint, getHorizon()->altitudeConstraint(azimuth));
+    return constraint;
+}
 
 int16_t SchedulerJob::getAltitudeScore(QDateTime const &when, double *altPtr) const
 {
@@ -788,11 +874,14 @@ int16_t SchedulerJob::getAltitudeScore(QDateTime const &when, double *altPtr) co
     CachingDms const LST = getGeo()->GSTtoLST(getGeo()->LTtoUT(ltWhen).gst());
     o.EquatorialToHorizontal(&LST, getGeo()->lat());
     double const altitude = o.alt().Degrees();
+    double const azimuth = o.az().Degrees();
     if (altPtr != nullptr)
         *altPtr = altitude;
 
     double const SETTING_ALTITUDE_CUTOFF = Options::settingAltitudeCutoff();
     int16_t score = BAD_SCORE - 1;
+
+    const double minAlt = getMinAltitudeConstraint(azimuth);
 
     // If altitude is negative, bad score
     // FIXME: some locations may allow negative altitudes
@@ -803,7 +892,7 @@ int16_t SchedulerJob::getAltitudeScore(QDateTime const &when, double *altPtr) co
     else if (hasAltitudeConstraint())
     {
         // If under altitude constraint, bad score
-        if (altitude < getMinAltitude())
+        if (altitude < minAlt)
             score = BAD_SCORE;
         // Else if setting and under altitude cutoff, job would end soon after starting, bad score
         // FIXME: half bad score when under altitude cutoff risk getting positive again
@@ -815,7 +904,7 @@ int16_t SchedulerJob::getAltitudeScore(QDateTime const &when, double *altPtr) co
             else if (offset < 0.0)
                 offset += 24.0;
             if (0.0 <= offset && offset < 12.0)
-                if (altitude - SETTING_ALTITUDE_CUTOFF < getMinAltitude())
+                if (altitude - SETTING_ALTITUDE_CUTOFF < minAlt)
                     score = BAD_SCORE / 2;
         }
     }
@@ -978,8 +1067,10 @@ QDateTime SchedulerJob::calculateAltitudeTime(QDateTime const &when) const
         CachingDms const LST = getGeo()->GSTtoLST(getGeo()->LTtoUT(ltOffset).gst());
         o.EquatorialToHorizontal(&LST, getGeo()->lat());
         double const altitude = o.alt().Degrees();
+        double const azimuth = o.az().Degrees();
+        double const minAlt = getMinAltitudeConstraint(azimuth);
 
-        if (getMinAltitude() <= altitude)
+        if (minAlt <= altitude)
         {
             // Don't test proximity to dawn in this situation, we only cater for altitude here
 
@@ -994,7 +1085,7 @@ QDateTime SchedulerJob::calculateAltitudeTime(QDateTime const &when) const
             else if (offset < 0.0)
                 offset += 24.0;
             if (0.0 <= offset && offset < 12.0)
-                if (altitude - SETTING_ALTITUDE_CUTOFF < getMinAltitude())
+                if (altitude - SETTING_ALTITUDE_CUTOFF < minAlt)
                     continue;
 
             return ltOffset;
@@ -1111,7 +1202,7 @@ void SchedulerJob::calculateDawnDusk(QDateTime const &when, QDateTime &nextDawn,
         startup = getLocalTime();
 
     // Our local midnight - the KStarsDateTime date+time constructor is safe for local times
-    KStarsDateTime midnight(startup.date(), QTime(0,0), Qt::LocalTime);
+    KStarsDateTime midnight(startup.date(), QTime(0, 0), Qt::LocalTime);
 
     QDateTime dawn = startup, dusk = startup;
 
@@ -1123,11 +1214,13 @@ void SchedulerJob::calculateDawnDusk(QDateTime const &when, QDateTime &nextDawn,
 
         // If dawn is in the past compared to this observation, fetch the next dawn
         if (dawn <= startup)
-            dawn = getGeo()->UTtoLT(ksal.getDate().addSecs((ksal.getDawnAstronomicalTwilight() * 24.0 + Options::dawnOffset()) * 3600.0));
+            dawn = getGeo()->UTtoLT(ksal.getDate().addSecs((ksal.getDawnAstronomicalTwilight() * 24.0 + Options::dawnOffset()) *
+                                    3600.0));
 
         // If dusk is in the past compared to this observation, fetch the next dusk
         if (dusk <= startup)
-            dusk = getGeo()->UTtoLT(ksal.getDate().addSecs((ksal.getDuskAstronomicalTwilight() * 24.0 + Options::duskOffset()) * 3600.0));
+            dusk = getGeo()->UTtoLT(ksal.getDate().addSecs((ksal.getDuskAstronomicalTwilight() * 24.0 + Options::duskOffset()) *
+                                    3600.0));
     }
 
     // Now we have the next events:

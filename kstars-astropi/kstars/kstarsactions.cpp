@@ -1,19 +1,8 @@
-/***************************************************************************
-                          kstarsactions.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon Feb 25 2002
-    copyright            : (C) 2002 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 // This file contains function definitions for Actions declared in kstars.h
 
@@ -1239,7 +1228,7 @@ void KStars::slotOpenFITS()
 
     static QUrl path = QUrl::fromLocalFile(QDir::homePath());
     QUrl fileURL =
-        QFileDialog::getOpenFileUrl(KStars::Instance(), i18n("Open Image"), path,
+        QFileDialog::getOpenFileUrl(KStars::Instance(), i18nc("@title:window", "Open Image"), path,
                    "Images (*.fits *.fits.fz *.fit *.fts "
                    "*.jpg *.jpeg *.png *.gif *.bmp "
                    "*.cr2 *.cr3 *.crw *.nef *.raf *.dng *.arw *.orf)");
@@ -1270,7 +1259,7 @@ void KStars::slotExportImage()
     //As of 2014-07-19
     //QUrl fileURL = KFileDialog::getSaveUrl( QDir::homePath(), "image/png image/jpeg image/gif image/x-portable-pixmap image/bmp image/svg+xml" );
     QUrl fileURL =
-        QFileDialog::getSaveFileUrl(KStars::Instance(), i18n("Export Image"), QUrl(),
+        QFileDialog::getSaveFileUrl(KStars::Instance(), i18nc("@title:window", "Export Image"), QUrl(),
                    "Images (*.png *.jpeg *.gif *.bmp *.svg)");
 
     //User cancelled file selection dialog - abort image export
@@ -1658,7 +1647,7 @@ void KStars::slotCoordSys()
         }
         actionCollection()
             ->action("coordsys")
-            ->setText(i18n("Switch to horizonal view (Horizontal &Coordinates)"));
+            ->setText(i18n("Switch to Horizonal View (Horizontal &Coordinates)"));
     }
     else
     {
@@ -1670,7 +1659,7 @@ void KStars::slotCoordSys()
         }
         actionCollection()
             ->action("coordsys")
-            ->setText(i18n("Switch to star globe view (Equatorial &Coordinates)"));
+            ->setText(i18n("Switch to Star Globe View (Equatorial &Coordinates)"));
     }
     map()->forceUpdate();
 }
@@ -1699,9 +1688,7 @@ void KStars::slotMapProjection()
 //Settings Menu:
 void KStars::slotColorScheme()
 {
-    //use mid(3) to exclude the leading "cs_" prefix from the action name
-    QString filename = QString(sender()->objectName()).mid(3) + ".colors";
-    loadColorScheme(filename);
+    loadColorScheme(sender()->objectName());
 }
 
 void KStars::slotTargetSymbol(bool flag)
@@ -1855,7 +1842,7 @@ void KStars::slotTerrain()
 {
     Options::setShowTerrain(!Options::showTerrain());
     actionCollection()->action("toggle_terrain")
-    ->setText(Options::showTerrain() ? i18n("Hide terrain") : i18n("Show terrain"));
+    ->setText(Options::showTerrain() ? i18n("Hide Terrain") : i18n("Show Terrain"));
     KStars::Instance()->map()->forceUpdate();
 }
 
@@ -1911,11 +1898,12 @@ void KStars::slotShowGUIItem(bool show)
             J2000RADecField.show();
     }
 }
-void KStars::addColorMenuItem(const QString &name, const QString &actionName)
+void KStars::addColorMenuItem(QString name, const QString &actionName)
 {
-    KToggleAction *kta = actionCollection()->add<KToggleAction>(actionName);
+    KToggleAction *kta     = actionCollection()->add<KToggleAction>(actionName);
+    const QString filename = QString(actionName).mid(3) + ".colors";
     kta->setText(name);
-    kta->setObjectName(actionName);
+    kta->setObjectName(filename);
     kta->setActionGroup(cschemeGroup);
 
     colorActionMenu->addAction(kta);
@@ -1927,6 +1915,8 @@ void KStars::addColorMenuItem(const QString &name, const QString &actionName)
         kta->setChecked(true);
     }
 
+    //use mid(3) to exclude the leading "cs_" prefix from the action name
+    data()->add_color_scheme(filename, name.replace("&", ""));
     connect(kta, SIGNAL(toggled(bool)), this, SLOT(slotColorScheme()));
 }
 

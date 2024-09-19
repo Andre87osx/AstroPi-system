@@ -1,19 +1,8 @@
-/***************************************************************************
-                          satellitegroup.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Tue 22 Mar 2011
-    copyright            : (C) 2011 by Jerome SONRIER
-    email                : jsid@emor3j.fr.eu.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2011 Jerome SONRIER <jsid@emor3j.fr.eu.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "satellitegroup.h"
 
@@ -81,8 +70,8 @@ void SatelliteGroup::updateSatellitesPos()
 QUrl SatelliteGroup::tleFilename()
 {
     // Return absolute path with "file:" before the path
-    //return QUrl( "file:" + (KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "") + m_tle_file) ;
-    return QUrl::fromLocalFile(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + m_tle_file);
+    //return QUrl( "file:" + (QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(m_tle_file));
+    return QUrl::fromLocalFile(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(m_tle_file));
 }
 
 QUrl SatelliteGroup::tleUrl()

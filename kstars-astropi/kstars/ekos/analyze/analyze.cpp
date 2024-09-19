@@ -1,11 +1,8 @@
-﻿/*  Ekos Analyze
-    Copyright (C) 2020 Hy Murveit <hy@murveit.com>
+/*
+    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "analyze.h"
 
@@ -386,8 +383,7 @@ void Analyze::keepCurrent(int state)
 void Analyze::initInputSelection()
 {
     // Setup the input combo box.
-    dirPath = QUrl::fromLocalFile(KSPaths::writableLocation(
-                                      QStandardPaths::GenericDataLocation) + "analyze/");
+    dirPath = QUrl::fromLocalFile(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("analyze"));
 
     inputCombo->addItem(i18n("Current Session"));
     inputCombo->addItem(i18n("Read from File"));
@@ -413,7 +409,7 @@ void Analyze::initInputSelection()
         else if (index == 1)
         {
             // Input from a file.
-            QUrl inputURL = QFileDialog::getOpenFileUrl(this, i18n("Select input file"), dirPath,
+            QUrl inputURL = QFileDialog::getOpenFileUrl(this, i18nc("@title:window", "Select input file"), dirPath,
                             i18n("Analyze Log (*.analyze);;All Files (*)"));
             if (inputURL.isEmpty())
                 return;
@@ -1988,11 +1984,10 @@ void Analyze::startLog()
         displayStartTime = analyzeStartTime;
     if (logInitialized)
         return;
-    QString  dir = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "analyze/";
-    if (QDir(dir).exists() == false)
-        QDir().mkpath(dir);
+    QDir dir = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation) + "/analyze");
+    dir.mkpath(".");
 
-    logFilename = dir + "ekos-" + QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss") + ".analyze";
+    logFilename = dir.filePath("ekos-" + QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss") + ".analyze");
     logFile.setFileName(logFilename);
     logFile.open(QIODevice::WriteOnly | QIODevice::Text);
 
@@ -2648,22 +2643,14 @@ void Analyze::resetMountState()
     lastMountState = ISD::Telescope::Status::MOUNT_IDLE;
 }
 
-// This message comes from the mount module,
-// ra: telescopeCoord.ra().toHMSString()
-// dec: telescopeCoord.dec().toDMSString()
-// az: telescopeCoord.az().toDMSString()
-// alt: telescopeCoord.alt().toDMSString()
-// pierSide: currentTelescope->pierSide()
-//   which is PIER_UNKNOWN = -1, PIER_WEST = 0, PIER_EAST = 1
-void Analyze::mountCoords(const QString &raStr, const QString &decStr,
-                          const QString &azStr, const QString &altStr, int pierSide,
-                          const QString &haStr)
+// This message comes from the mount module
+void Analyze::mountCoords(const SkyPoint &position, ISD::Telescope::PierSide pierSide, const dms &haValue)
 {
-    double ra = dms(raStr, false).Degrees();
-    double dec = dms(decStr, true).Degrees();
-    double ha = dms(haStr, false).Degrees();
-    double az = dms(azStr, true).Degrees();
-    double alt = dms(altStr, true).Degrees();
+    double ra = position.ra().Degrees();
+    double dec = position.dec().Degrees();
+    double ha = haValue.Degrees();
+    double az = position.az().Degrees();
+    double alt = position.alt().Degrees();
 
     // Only process the message if something's changed by 1/4 degree or more.
     constexpr double MIN_DEGREES_CHANGE = 0.25;

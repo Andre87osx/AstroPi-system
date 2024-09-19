@@ -1,21 +1,11 @@
-/***************************************************************************
-                          fitsimage.cpp  -  FITS Image
-                             -------------------
-    begin                : Tue Feb 24 2004
-    copyright            : (C) 2004 by Jasem Mutlaq
-    email                : mutlaqja@ikarustech.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
- *   See http://members.aol.com/pkirchg for more details.                  *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
+    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
+*/
 
 #pragma once
 
@@ -83,7 +73,7 @@ class FITSData : public QObject
         // Does FITS have WSC header?
         Q_PROPERTY(bool hasWCS READ hasWCS)
         // Does FITS have bayer data?
-        Q_PROPERTY(bool hasDebyaer READ hasDebayer)
+        Q_PROPERTY(bool hasDebayer READ hasDebayer)
 
     public:
         explicit FITSData(FITSMode fitsMode = FITS_NORMAL);
@@ -394,11 +384,6 @@ class FITSData : public QObject
         {
             return m_WCSState;
         }
-        // Get WCS Coordinates
-        FITSImage::wcs_point *getWCSCoord() const
-        {
-            return m_WCSCoordinates;
-        }
 
         /**
              * @brief wcsToPixel Given J2000 (RA0,DE0) coordinates. Find in the image the corresponding pixel coordinates.
@@ -469,7 +454,7 @@ class FITSData : public QObject
         const QVector<uint32_t> &getCumulativeFrequency(uint8_t channel = 0) const
         {
             return m_CumulativeFrequency[channel];
-        };
+        }
         const QVector<double> &getHistogramIntensity(uint8_t channel = 0) const
         {
             return m_HistogramIntensity[channel];
@@ -486,7 +471,7 @@ class FITSData : public QObject
         double getJMIndex() const
         {
             return m_JMIndex;
-        };
+        }
 
         bool isHistogramConstructed()
         {
@@ -536,7 +521,9 @@ class FITSData : public QObject
         ////////////////////////////////////////////////////////////////////////////////////////
 #ifndef KSTARS_LITE
 #ifdef HAVE_WCSLIB
-        void findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint);
+        bool searchObjects();
+        bool findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint);
+        bool findWCSBounds(double &minRA, double &maxRA, double &minDec, double &maxDec);
 #endif
 #endif
         const QList<FITSSkyObject *> &getSkyObjects() const
@@ -601,6 +588,7 @@ class FITSData : public QObject
 
         // Record last FITS error
         void recordLastError(int errorCode);
+        void logOOMError(uint32_t requiredMemory = 0);
 
         // FITS Record
         bool parseHeader();
@@ -683,8 +671,6 @@ class FITSData : public QObject
         /// How many times the image was flipped vertically?
         int flipVCounter { 0 };
 
-        /// Pointer to WCS coordinate data, if any.
-        FITSImage::wcs_point *m_WCSCoordinates { nullptr };
         /// WCS Struct
         struct wcsprm *m_WCSHandle
         {
@@ -721,6 +707,7 @@ class FITSData : public QObject
         QFuture<bool> m_StarFindFuture;
 
         QList<FITSSkyObject *> m_SkyObjects;
+        bool m_ObjectsSearched {false};
 
         QString m_LastError;
 
@@ -737,5 +724,8 @@ class FITSData : public QObject
         double m_JMIndex { 1 };
         bool m_HistogramConstructed { false };
 
-        static const QString m_TemporaryPath;
+        // Cached values for hfr and eccentricity computations
+        double cacheHFR { -1 };
+        HFRType cacheHFRType { HFR_AVERAGE };
+        double cacheEccentricity { -1 };
 };

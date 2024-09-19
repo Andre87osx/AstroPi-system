@@ -1,11 +1,8 @@
-/*  Ekos Capture tool
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -21,6 +18,7 @@
 #include "indi/inditelescope.h"
 #include "ekos/auxiliary/filtermanager.h"
 #include "ekos/scheduler/schedulerjob.h"
+#include "ekos/auxiliary/darkprocessor.h"
 #include "dslrinfodialog.h"
 
 #include <QTimer>
@@ -247,6 +245,12 @@ class Capture : public QWidget, public Ui::Capture
 
         /** DBUS interface function.
              * @param id job number. Job IDs start from 0 to N-1.
+             * @return Returns the job filter name.
+             */
+        Q_SCRIPTABLE QString getJobFilterName(int id);
+
+        /** DBUS interface function.
+             * @param id job number. Job IDs start from 0 to N-1.
              * @return Returns The number of images completed capture in the job.
              */
         Q_SCRIPTABLE int getJobImageProgress(int id);
@@ -268,6 +272,12 @@ class Capture : public QWidget, public Ui::Capture
              * @return Returns the total requested exposure duration in the job.
              */
         Q_SCRIPTABLE double getJobExposureDuration(int id);
+
+        /** DBUS interface function.
+             * @param id job number. Job IDs start from 0 to N-1.
+             * @return Returns the frame type (light, dark, ...) of the job.
+             */
+        Q_SCRIPTABLE CCDFrameType getJobFrameType(int id);
 
         /** DBUS interface function.
              * Clear in-sequence focus settings. It sets the autofocus HFR to zero so that next autofocus value is remembered for the in-sequence focusing.
@@ -803,6 +813,7 @@ class Capture : public QWidget, public Ui::Capture
 
         void checkFocus(double);
         void resetFocus();
+        void abortFocus();
         void suspendGuiding();
         void resumeGuiding();
         void newImage(Ekos::SequenceJob *job, const QSharedPointer<FITSData> &data);
@@ -940,6 +951,12 @@ class Capture : public QWidget, public Ui::Capture
          */
         int getTotalFramesCount(QString signature);
 
+        /**
+         * @brief processCaptureError Handle when image capture fails
+         * @param type error type
+         */
+        void processCaptureError(ISD::CCD::ErrorType type);
+
         double seqExpose { 0 };
         int seqTotalCount;
         int seqCurrentCount { 0 };
@@ -950,7 +967,7 @@ class Capture : public QWidget, public Ui::Capture
         int nextSequenceID { 0 };
         int seqFileCount { 0 };
         bool isBusy { false };
-        bool m_isLooping { false };
+        bool m_isFraming { false };
 
         // Capture timeout timer
         QTimer captureTimeout;
@@ -999,8 +1016,7 @@ class Capture : public QWidget, public Ui::Capture
 
         // Guide Deviation
         bool m_DeviationDetected { false };
-        bool m_SpikeDetected { false };
-        bool m_FilterOverride { false };
+        int m_SpikesDetected { 0 };
         QTimer guideDeviationTimer;
 
         // Autofocus
@@ -1051,7 +1067,6 @@ class Capture : public QWidget, public Ui::Capture
         bool lightBoxLightEnabled { false };
         bool m_TelescopeCoveredDarkExposure { false };
         bool m_TelescopeCoveredFlatExposure { false };
-        ISD::CCD::UploadMode rememberUploadMode { ISD::CCD::UPLOAD_CLIENT };
         QMap<ScriptTypes, QString> m_Scripts;
 
         QUrl dirPath;
@@ -1106,6 +1121,9 @@ class Capture : public QWidget, public Ui::Capture
         // Controls
         double GainSpinSpecialValue { INVALID_VALUE };
         double OffsetSpinSpecialValue { INVALID_VALUE };
+
+        // Dark Processor
+        QPointer<DarkProcessor> m_DarkProcessor;
 
         QList<double> downloadTimes;
         QElapsedTimer downloadTimer;

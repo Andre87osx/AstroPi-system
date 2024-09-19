@@ -1,11 +1,8 @@
-/*  Ekos Dark Library Handler
-    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "darklibrary.h"
 #include "auxiliary/ksmessagebox.h"
@@ -61,9 +58,9 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     histogramView->setProperty("axesLabelEnabled", false);
     //histogramView->setProperty("linear", true);
 
-    QDir writableDir;
-    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks");
-    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "defectmaps");
+    QDir writableDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation));
+    writableDir.mkpath("darks");
+    writableDir.mkpath("defectmaps");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dark Generation Connections
@@ -304,12 +301,25 @@ bool DarkLibrary::findDarkFrame(ISD::CCDChip *m_TargetChip, double duration, QSh
                 }
 
                 // Duration has a higher score priority over temperature
-                double diffMap = std::fabs(map["duration"].toDouble() - duration);
-                double diffBest = std::fabs(bestCandidate["duration"].toDouble() - duration);
-                if (diffMap < diffBest)
-                    thisMapScore += 2;
-                else if (diffBest < diffMap)
-                    bestCandidateScore += 2;
+                {
+                    double diffMap = std::fabs(map["duration"].toDouble() - duration);
+                    double diffBest = std::fabs(bestCandidate["duration"].toDouble() - duration);
+                    if (diffMap < diffBest)
+                        thisMapScore += 2;
+                    else if (diffBest < diffMap)
+                        bestCandidateScore += 2;
+                }
+
+                // More recent has a higher score than older.
+                {
+                    const QDateTime now = QDateTime::currentDateTime();
+                    int64_t diffMap  = map["timestamp"].toDateTime().secsTo(now);
+                    int64_t diffBest = bestCandidate["timestamp"].toDateTime().secsTo(now);
+                    if (diffMap < diffBest)
+                        thisMapScore += 2;
+                    else if (diffBest < diffMap)
+                        bestCandidateScore += 2;
+                }
 
                 // Find candidate with closest time in case we have multiple defect maps
                 if (thisMapScore > bestCandidateScore)
@@ -326,12 +336,15 @@ bool DarkLibrary::findDarkFrame(ISD::CCDChip *m_TargetChip, double duration, QSh
                   QString::number(bestCandidate["duration"].toDouble(), 'f', 1),
                   QString::number(duration, 'f', 1));
 
-    // Finally check if the duration is acceptable
-    QDateTime frameTime = QDateTime::fromString(bestCandidate["timestamp"].toString(), Qt::ISODate);
-    if (frameTime.daysTo(QDateTime::currentDateTime()) > Options::darkLibraryDuration())
-        return false;
-
     QString filename = bestCandidate["filename"].toString();
+
+    // Finally check if the duration is acceptable
+    QDateTime frameTime = bestCandidate["timestamp"].toDateTime();
+    if (frameTime.daysTo(QDateTime::currentDateTime()) > Options::darkLibraryDuration())
+    {
+        emit i18n("Dark frame %s is expired. Please create new master dark.", filename);
+        return false;
+    }
 
     if (m_CachedDarkFrames.contains(filename))
     {
@@ -487,245 +500,9 @@ bool DarkLibrary::cacheDarkFrameFromFile(const QString &filename)
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::normalizeDefects(const QSharedPointer<DefectMap> &defectMap, const QSharedPointer<FITSData> &lightData,
-                                   FITSScale filter, uint16_t offsetX, uint16_t offsetY)
-{
-    switch (lightData->dataType())
-    {
-        case TBYTE:
-            normalizeDefectsInternal<uint8_t>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TSHORT:
-            normalizeDefectsInternal<int16_t>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TUSHORT:
-            normalizeDefectsInternal<uint16_t>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TLONG:
-            normalizeDefectsInternal<int32_t>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TULONG:
-            normalizeDefectsInternal<uint32_t>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TFLOAT:
-            normalizeDefectsInternal<float>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TLONGLONG:
-            normalizeDefectsInternal<int64_t>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TDOUBLE:
-            normalizeDefectsInternal<double>(defectMap, lightData, filter, offsetX, offsetY);
-            break;
-
-        default:
-            break;
-    }
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-void DarkLibrary::normalizeDefectsInternal(const QSharedPointer<DefectMap> &defectMap,
-        const QSharedPointer<FITSData> &lightData, FITSScale filter, uint16_t offsetX, uint16_t offsetY)
-{
-
-    Q_UNUSED(filter);
-    T *lightBuffer = reinterpret_cast<T *>(lightData->getWritableImageBuffer());
-    const uint32_t width = lightData->width();
-
-    // Account for offset X and Y
-    // e.g. if we send a subframed light frame 100x100 pixels wide
-    // but the source defect map covers 1000x1000 pixels array, then we need to only compensate
-    // for the 100x100 region.
-    for (BadPixelSet::const_iterator onePixel = defectMap->hotThreshold();
-            onePixel != defectMap->hotPixels().cend(); ++onePixel)
-    {
-        const uint16_t x = (*onePixel).x;
-        const uint16_t y = (*onePixel).y;
-
-        if (x <= offsetX || y <= offsetY)
-            continue;
-
-        uint32_t offset = (x - offsetX) + (y - offsetY) * width;
-
-        lightBuffer[offset] = median3x3Filter(x - offsetX, y - offsetY, width, lightBuffer);
-    }
-
-    for (BadPixelSet::const_iterator onePixel = defectMap->coldPixels().cbegin();
-            onePixel != defectMap->coldThreshold(); ++onePixel)
-    {
-        const uint16_t x = (*onePixel).x;
-        const uint16_t y = (*onePixel).y;
-
-        if (x <= offsetX || y <= offsetY)
-            continue;
-
-        uint32_t offset = (x - offsetX) + (y - offsetY) * width;
-
-        lightBuffer[offset] = median3x3Filter(x - offsetX, y - offsetY, width, lightBuffer);
-    }
-
-    lightData->calculateStats(true);
-    emit darkFrameCompleted(true);
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-T DarkLibrary::median3x3Filter(uint16_t x, uint16_t y, uint32_t width, T *buffer)
-{
-    T *top = buffer + (y - 1) * width + (x - 1);
-    T *mid = buffer + (y - 0) * width + (x - 1);
-    T *bot = buffer + (y + 1) * width + (x - 1);
-
-    std::array<T, 8> elements;
-
-    // Top
-    elements[0] = *(top + 0);
-    elements[1] = *(top + 1);
-    elements[2] = *(top + 2);
-    // Mid
-    elements[3] = *(mid + 0);
-    // Mid+1 is the defective value, so we skip and go for + 2
-    elements[4] = *(mid + 2);
-    // Bottom
-    elements[5] = *(bot + 0);
-    elements[6] = *(bot + 1);
-    elements[7] = *(bot + 2);
-
-    std::sort(elements.begin(), elements.end());
-    auto median = (elements[3] + elements[4]) / 2;
-    return median;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::subtractDarkData(const QSharedPointer<FITSData> &darkData, const QSharedPointer<FITSData> &lightData,
-                                   FITSScale filter, uint16_t offsetX, uint16_t offsetY)
-{
-    switch (darkData->dataType())
-    {
-        case TBYTE:
-            subtractInternal<uint8_t>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TSHORT:
-            subtractInternal<int16_t>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TUSHORT:
-            subtractInternal<uint16_t>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TLONG:
-            subtractInternal<int32_t>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TULONG:
-            subtractInternal<uint32_t>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TFLOAT:
-            subtractInternal<float>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TLONGLONG:
-            subtractInternal<int64_t>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        case TDOUBLE:
-            subtractInternal<double>(darkData, lightData, filter, offsetX, offsetY);
-            break;
-
-        default:
-            break;
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-void DarkLibrary::subtractInternal(const QSharedPointer<FITSData> &darkData, const QSharedPointer<FITSData> &lightData,
-                                   FITSScale filter, uint16_t offsetX, uint16_t offsetY)
-{
-    Q_UNUSED(filter);
-
-    const uint32_t width = lightData->width();
-    const uint32_t height = lightData->height();
-    T *lightBuffer = reinterpret_cast<T *>(lightData->getWritableImageBuffer());
-
-    const uint32_t darkStride = darkData->width();
-    const uint32_t darkoffset = offsetX + offsetY * darkStride;
-    T const *darkBuffer  = reinterpret_cast<T const*>(darkData->getImageBuffer()) + darkoffset;
-
-    for (uint32_t y = 0; y < height; y++)
-    {
-        for (uint32_t x = 0; x < width; x++)
-            lightBuffer[x] = (lightBuffer[x] > darkBuffer[x]) ? (lightBuffer[x] - darkBuffer[x]) : 0;
-
-        lightBuffer += width;
-        darkBuffer += darkStride;
-    }
-
-    lightData->calculateStats(true);
-    emit darkFrameCompleted(true);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::denoise(ISD::CCDChip *m_TargetChip, const QSharedPointer<FITSData> &targetData,
-                          double duration, FITSScale filter, uint16_t offsetX, uint16_t offsetY)
-{
-    const QString device = m_TargetChip->getCCD()->getDeviceName();
-
-    // Check if we have preference for defect map
-    // If yes, check if defect map exists
-    // If not, we check if we have regular dark frame as backup.
-    if (m_DefectCameras.contains(device))
-    {
-        QSharedPointer<DefectMap> targetDefectMap;
-        if (findDefectMap(m_TargetChip, duration, targetDefectMap))
-        {
-            normalizeDefects(targetDefectMap, targetData, filter, offsetX, offsetY);
-            qCDebug(KSTARS_EKOS) << "Defect map denoising applied";
-            return;
-        }
-    }
-
-    // Check if we have valid dark data and then use it.
-    QSharedPointer<FITSData> darkData;
-    if (findDarkFrame(m_TargetChip, duration, darkData))
-    {
-        subtractDarkData(darkData, targetData, filter, offsetX, offsetY);
-        qCDebug(KSTARS_EKOS) << "Dark frame subtraction applied";
-        return;
-    }
-
-    emit newLog(i18n("No suitable dark frames or defect maps found. Please run the Dark Library wizard in Capture module."));
-    emit darkFrameCompleted(false);
-
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::processNewImage(SequenceJob *job, const QSharedPointer<FITSData> &data)
 {
-    Q_UNUSED(data);
+    Q_UNUSED(data)
     if (job->getStatus() == SequenceJob::JOB_IDLE)
         return;
 
@@ -762,11 +539,15 @@ void DarkLibrary::processNewBLOB(IBLOB *bp)
     QByteArray buffer = QByteArray::fromRawData(reinterpret_cast<char *>(bp->blob), bp->size);
     if (!m_CurrentDarkFrame->loadFromBuffer(buffer, "fits"))
     {
-        m_FileLabel->setText(i18n("Failed to process data."));
+        m_FileLabel->setText(i18n("Failed to process dark data."));
         return;
     }
 
-    m_DarkView->loadData(m_CurrentDarkFrame);
+    if (!m_DarkView->loadData(m_CurrentDarkFrame))
+    {
+        m_FileLabel->setText(i18n("Failed to load dark data."));
+        return;
+    }
 
     uint32_t totalElements = m_CurrentDarkFrame->channels() * m_CurrentDarkFrame->samplesPerChannel();
     if (totalElements != m_DarkMasterBuffer.size())
@@ -780,11 +561,14 @@ void DarkLibrary::processNewBLOB(IBLOB *bp)
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::reset()
+void DarkLibrary::Release()
 {
-    m_Cameras.clear();
-    cameraS->clear();
-    m_CurrentCamera = nullptr;
+    delete (_DarkLibrary);
+    _DarkLibrary = nullptr;
+
+    //    m_Cameras.clear();
+    //    cameraS->clear();
+    //    m_CurrentCamera = nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -792,9 +576,17 @@ void DarkLibrary::reset()
 ///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::closeEvent(QCloseEvent *ev)
 {
-    Q_UNUSED(ev);
+    Q_UNUSED(ev)
     Options::setUseFITSViewer(m_RememberFITSViewer);
     Options::setUseFITSViewer(m_RememberSummaryView);
+    if (!m_RememberFITSDirectory.isEmpty())
+        m_CaptureModule->fileDirectoryT->setText(m_RememberFITSDirectory);
+    if (m_JobsGenerated)
+    {
+        m_JobsGenerated = false;
+        m_CaptureModule->clearSequenceQueue();
+        m_CaptureModule->setPresetSettings(m_PresetSettings);
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -807,6 +599,14 @@ void DarkLibrary::setCompleted()
 
     Options::setUseFITSViewer(m_RememberFITSViewer);
     Options::setUseFITSViewer(m_RememberSummaryView);
+    if (!m_RememberFITSDirectory.isEmpty())
+        m_CaptureModule->fileDirectoryT->setText(m_RememberFITSDirectory);
+    if (m_JobsGenerated)
+    {
+        m_JobsGenerated = false;
+        m_CaptureModule->clearSequenceQueue();
+        m_CaptureModule->setPresetSettings(m_PresetSettings);
+    }
 
     m_CurrentCamera->disconnect(this);
     m_CaptureModule->disconnect(this);
@@ -947,7 +747,7 @@ void DarkLibrary::clearRow()
 ///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::openDarksFolder()
 {
-    QString darkFilesPath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks";
+    QString darkFilesPath = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("darks");
 
     QDesktopServices::openUrl(QUrl::fromLocalFile(darkFilesPath));
 }
@@ -1293,6 +1093,12 @@ void DarkLibrary::generateDarkJobs()
     // Always clear sequence queue before starting
     m_CaptureModule->clearSequenceQueue();
 
+    if (m_JobsGenerated == false)
+    {
+        m_JobsGenerated = true;
+        m_PresetSettings = m_CaptureModule->getPresetSettings();
+    }
+
     QList<double> temperatures;
     if (m_CurrentCamera->hasCoolerControl() && std::fabs(maxTemperatureSpin->value() - minTemperatureSpin->value()) >= 0)
     {
@@ -1525,7 +1331,7 @@ template <typename T>  void DarkLibrary::generateMasterFrameInternal(const QShar
 
 
     QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-    QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks/darkframe_" + ts + ".fits";
+    QString path = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("darks/darkframe_" + ts + ".fits");
 
     data->calculateStats(true);
     if (!data->saveImage(path))
@@ -1556,6 +1362,7 @@ template <typename T>  void DarkLibrary::generateMasterFrameInternal(const QShar
 void DarkLibrary::setCaptureModule(Capture *instance)
 {
     m_CaptureModule = instance;
+    m_RememberFITSDirectory = m_CaptureModule->fileDirectoryT->text();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -1591,7 +1398,8 @@ void DarkLibrary::saveDefectMap()
     if (filename.isEmpty())
     {
         QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-        filename = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "defectmaps/defectmap_" + ts + ".json";
+        filename = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("defectmaps/defectmap_" + ts +
+                   ".json");
         newFile = true;
     }
 

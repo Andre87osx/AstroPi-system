@@ -1,11 +1,8 @@
-/*  FITS Label
-    Copyright (C) 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    Copyright (C) 2016-2017 Robert Lancaster <rlancaste@gmail.com>
+/*
+    SPDX-FileCopyrightText: 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2016-2017 Robert Lancaster <rlancaste@gmail.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -128,7 +125,10 @@ class FITSView : public QScrollArea
         void drawTrackingBox(QPainter *, double scale);
         void drawMarker(QPainter *, double scale);
         void drawCrosshair(QPainter *, double scale);
+
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
         void drawEQGrid(QPainter *, double scale);
+#endif
         void drawObjectNames(QPainter *painter, double scale);
         void drawPixelGrid(QPainter *painter, double scale);
         void drawMagnifyingGlass(QPainter *painter, double scale);
@@ -299,9 +299,6 @@ class FITSView : public QScrollArea
         void pinchTriggered(QPinchGesture *gesture);
 
     protected:
-        template <typename T>
-        bool rescale(FITSZoom type);
-
         double average();
         double stddev();
         void calculateMaxPixel(double min, double max);
@@ -314,6 +311,8 @@ class FITSView : public QScrollArea
 
         double getScale();
 
+        /// Floating toolbar
+        QToolBar *floatingToolBar { nullptr };
         /// WCS Future Watcher
         QFutureWatcher<bool> wcsWatcher;
         /// FITS Future Watcher
@@ -415,8 +414,6 @@ class FITSView : public QScrollArea
         // Magenta Scope Pixmap
         QPixmap magentaScopePixmap;
 
-        // Floating toolbar
-        QToolBar *floatingToolBar { nullptr };
         QAction *centerTelescopeAction { nullptr };
         QAction *toggleEQGridAction { nullptr };
         QAction *toggleObjectsAction { nullptr };

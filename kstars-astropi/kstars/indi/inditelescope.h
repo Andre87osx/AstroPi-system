@@ -1,11 +1,8 @@
-/*  INDI Telescope
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -140,6 +137,8 @@ class Telescope : public DeviceDecorator
         {
             return m_ParkStatus;
         }
+
+        Status status(INumberVectorProperty *nvp);
         Status status();
         const QString getStatusString(Status status);
 
@@ -183,19 +182,48 @@ class Telescope : public DeviceDecorator
          *
          * This function needs a Two-Line-Element and a time window in the form of an initial point and a
          * number of minutes on which the trajectory should start. The function was developed wiht the lx200
-         * in mind. If the trajectory has already started, the current time and a window of 1min are sufficient. 
+         * in mind. If the trajectory has already started, the current time and a window of 1min are sufficient.
          *
          * @param tle Two-line-element.
          * @param satPassStart Start time of the trajectory calculation
          * @param satPassEnd End time of the trajectory calculation
          */
         bool setSatelliteTLEandTrack(QString tle, const KStarsDateTime satPassStart, const KStarsDateTime satPassEnd);
-        
+
+        /**
+         * @brief Hour angle of the current coordinates
+         */
+        const dms hourAngle() const;
+
+        const SkyPoint &currentCoordinates() const
+        {
+            return currentCoords;
+        }
+
 
     protected:
+        /**
+         * @brief Send the coordinates to the mount's INDI driver. Due to the INDI implementation, this
+         * function is shared for syncing, slewing and other (partly scope specific) functions like the
+         * setting parking position. The interpretation of the coordinates depends in the setting of other
+         * INDI switches for slewing, synching, tracking etc.
+         * @param ScopeTarget target coordinates
+         * @return true if sending the coordinates succeeded
+         */
         bool sendCoords(SkyPoint *ScopeTarget);
 
-    public slots:
+        /**
+         * @brief Check whether sending new coordinates will result into a slew
+         */
+        bool slewDefined();
+
+        /**
+         * @brief Helper function to update the J2000 coordinates of a sky point from its JNow coordinates
+         * @param coords sky point with correct JNow values in RA and DEC
+         */
+        void updateJ2000Coordinates(SkyPoint *coords);
+
+public slots:
         virtual bool runCommand(int command, void *ptr = nullptr) override;
         bool Abort();
         bool Park();
@@ -206,14 +234,32 @@ class Telescope : public DeviceDecorator
         bool setTrackMode(uint8_t index);
 
     signals:
-        void newTarget(const QString &);
+        /**
+         * @brief The mount has finished the slew to a new target.
+         * @param currentObject object close to the position the mount is pointing to
+         * @param currentCoords exact position where the mount is positioned
+         */
+        void newTarget(SkyObject &currentObject, SkyPoint &currentCoords);
+        /**
+         * @brief Change in the mount status.
+         */
+        void newStatus(ISD::Telescope::Status status);
+        /**
+         * @brief Update event with the current telescope position
+         * @param position mount position. Independent from the mount type,
+         * the EQ coordinates(both JNow and J2000) as well as the alt/az values are filled.
+         * @param pierside for GEMs report the pier side the scope is currently (PierSide::PIER_WEST means
+         * the mount is on the western side of the pier pointing east of the meridian).
+         * @param ha current hour angle
+         */
+        void newCoords(const SkyPoint &position, const PierSide pierside, const dms &ha);
         void newParkStatus(ISD::ParkStatus status);
         void slewRateChanged(int rate);
         void pierSideChanged(PierSide side);
         void ready();
 
     private:
-        SkyPoint currentCoord;
+        SkyPoint currentCoords;
         double minAlt = 0, maxAlt = 90;
         ParkStatus m_ParkStatus = PARK_UNKNOWN;
         IPState EqCoordPreviousState;

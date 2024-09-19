@@ -1,11 +1,8 @@
-/*  Calibration class.
-    Copyright (C) 2020 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -28,15 +25,25 @@ class Calibration
                            int binX, int binY, ISD::Telescope::PierSide pierSide,
                            const dms &mountRA, const dms &mountDec);
 
+        // Set the current binning, which may be different from what was used during calibration.
+        void setBinningUsed(int x, int y);
+
         // Generate new calibrations according to the input parameters.
         bool calculate1D(double x, double y, int RATotalPulse);
+        bool calculate1D(double start_x, double start_y,
+                         double end_x, double end_y, int RATotalPulse);
+
         bool calculate2D(double ra_x, double ra_y, double dec_x, double dec_y,
                          bool *swap_dec, int RATotalPulse, int DETotalPulse);
+        bool calculate2D(
+            double start_ra_x, double start_ra_y, double end_ra_x, double end_ra_y,
+            double start_dec_x, double start_dec_y, double end_dec_x, double end_dec_y,
+            bool *swap_dec, int RATotalPulse, int DETotalPulse);
 
         // Computes the drift from the detection relative to the reference position.
         // If inputs are in pixels, then drift outputs are in pixels.
         // If inputs are in arcsecond coordinates then drifts are in arcseconds.
-        void computeDrift(const Vector &detection, const Vector &reference,
+        void computeDrift(const GuiderUtils::Vector &detection, const GuiderUtils::Vector &reference,
                           double *raDrift, double *decDrift) const;
 
         double getFocalLength() const
@@ -58,18 +65,18 @@ class Calibration
 
         // Converts the input x & y coordinates from pixels to arc-seconds.
         // Does not rotate the input into RA/DEC.
-        Vector convertToArcseconds(const Vector &input) const;
+        GuiderUtils::Vector convertToArcseconds(const GuiderUtils::Vector &input) const;
 
         // Converts the input x & y coordinates from arc-seconds to pixels.
         // Does not rotate the input into RA/DEC.
-        Vector convertToPixels(const Vector &input) const;
+        GuiderUtils::Vector convertToPixels(const GuiderUtils::Vector &input) const;
         void convertToPixels(double xArcseconds, double yArcseconds,
                              double *xPixel, double *yPixel) const;
 
         // Given offsets, convert to RA and DEC coordinates
         // by rotating according to the calibration.
         // Also inverts the y-axis. Does not convert to arc-seconds.
-        Vector rotateToRaDec(const Vector &input) const;
+        GuiderUtils::Vector rotateToRaDec(const GuiderUtils::Vector &input) const;
         void rotateToRaDec(double dx, double dy, double *ra, double *dec) const;
 
         // Returns the number of milliseconds that should be pulsed to move
@@ -98,10 +105,13 @@ class Calibration
         void save() const;
         // Restore the saved calibration. If the pier side is different than
         // when was calibrated, adjust the angle accordingly.
-        bool restore(ISD::Telescope::PierSide currentPierSide, bool reverseDecOnPierChange, const dms *declination = nullptr);
+        bool restore(ISD::Telescope::PierSide currentPierSide, bool reverseDecOnPierChange,
+                     int currentBinX, int currentBinY,
+                     const dms *declination = nullptr);
         // As above, but for testing.
         bool restore(const QString &encoding, ISD::Telescope::PierSide currentPierSide,
-                     bool reverseDecOnPierChange, const dms *declination = nullptr);
+                     bool reverseDecOnPierChange, int currentBinX, int currentBinY,
+                     const dms *declination = nullptr);
 
         bool declinationSwapEnabled() const
         {
@@ -138,9 +148,20 @@ class Calibration
         void setRaPulseMsPerPixel(double rate);
         void setDecPulseMsPerPixel(double rate);
 
+        // computes the ratio of the binning currently used to the binning in use while calibrating.
+        double binFactor() const;
+        // Inverse of above.
+        double inverseBinFactor() const;
+
         // Sub-binning in X and Y.
         int subBinX { 1 };
         int subBinY { 1 };
+
+        // It is possible that this calibration was done with one binning, but is now
+        // being used with another binning. This is the current binning (as opposed to the above
+        // which is the binning that was in-place during calibration.
+        int subBinXused { 1 };
+        int subBinYused { 1 };
 
         // Pixel width mm, for each pixel,
         // Binning does not affect this.
@@ -156,7 +177,7 @@ class Calibration
 
         // The rotation matrix that converts between pixel coordinates and RA/DEC.
         // This is derived from angle in setAngle().
-        Ekos::Matrix ROT_Z;
+        GuiderUtils::Matrix ROT_Z;
 
         // The angles associated with the calibration that was computerd or
         // restored. They won't change as we change pier sides.

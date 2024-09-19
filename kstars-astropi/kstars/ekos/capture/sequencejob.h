@@ -1,11 +1,8 @@
-/*  Ekos Capture tool
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -58,7 +55,6 @@ class SequenceJob : public QObject
         ~SequenceJob() = default;
 
         CAPTUREResult capture(bool autofocusReady);
-        void reset();
         void abort();
         void done();
         void prepareCapture();
@@ -149,13 +145,13 @@ class SequenceJob : public QObject
         int getCurrentFilter() const;
         void setCurrentFilter(int value);
 
-        const QString &getFilterName()
+        const QString &getFilterName() const
         {
             return filter;
         }
 
         void setFrameType(CCDFrameType type);
-        CCDFrameType getFrameType()
+        CCDFrameType getFrameType() const
         {
             return frameType;
         }
@@ -247,17 +243,26 @@ class SequenceJob : public QObject
         void setPrefixSettings(const QString &rawFilePrefix, bool filterEnabled, bool exposureEnabled, bool tsEnabled);
         void getPrefixSettings(QString &rawFilePrefix, bool &filterEnabled, bool &exposureEnabled, bool &tsEnabled);
 
-        bool isFilterPrefixEnabled()
+        bool isFilterPrefixEnabled() const
         {
             return filterPrefixEnabled;
         }
-        bool isExposurePrefixEnabled()
+        bool isExposurePrefixEnabled() const
         {
             return expPrefixEnabled;
         }
-        bool isTimestampPrefixEnabled()
+        bool isTimestampPrefixEnabled() const
         {
             return timeStampPrefixEnabled;
+        }
+
+        void setTargetName(QString name)
+        {
+            targetName = name;
+        }
+        QString getTargetName() const
+        {
+            return targetName;
         }
 
         double getCurrentTemperature() const;
@@ -422,6 +427,7 @@ class SequenceJob : public QObject
         bool expPrefixEnabled { false };
         bool timeStampPrefixEnabled { false };
         QString m_RawPrefix;
+        QString targetName;
 
         QString m_filename;
 

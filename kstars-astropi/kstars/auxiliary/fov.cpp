@@ -1,19 +1,8 @@
-/***************************************************************************
-                          fov.cpp  -  description
-                             -------------------
-    begin                : Fri 05 Sept 2003
-    copyright            : (C) 2003 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2003 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "fov.h"
 
@@ -62,7 +51,7 @@ bool FOVManager::save()
     QFile f;
 
     // TODO: Move FOVs to user database instead of file!!
-    f.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "fov.dat");
+    f.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("fov.dat"));
 
     if (!f.open(QIODevice::WriteOnly))
     {
@@ -90,7 +79,7 @@ const QList<FOV *> &FOVManager::readFOVs()
     m_FOVs.clear();
 
     QFile f;
-    f.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "fov.dat");
+    f.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("fov.dat"));
 
     if (!f.exists())
     {

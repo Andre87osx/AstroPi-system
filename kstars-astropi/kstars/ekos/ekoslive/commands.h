@@ -1,13 +1,9 @@
-/*  Ekos Live Client
-
-    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Message Channel
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -56,6 +52,8 @@ enum COMMANDS
     DELETE_PROFILE,
     UPDATE_PROFILE,
     SET_PROFILE_MAPPING,
+    SET_PROFILE_PORT_SELECTION,
+    GET_PROFILE_PORT_SELECTION,
 
     // SCOPES
     GET_SCOPES,
@@ -119,6 +117,7 @@ enum COMMANDS
     FOCUS_OUT,
     FOCUS_LOOP,
     FOCUS_SET_SETTINGS,
+    FOCUS_SET_CROSSHAIR,
     FOCUS_SET_PRIMARY_SETTINGS,
     FOCUS_SET_PROCESS_SETTINGS,
     FOCUS_SET_MECHANICS_SETTINGS,
@@ -186,6 +185,14 @@ enum COMMANDS
     // Filter Manager
     FM_GET_DATA,
     FM_SET_DATA,
+
+    // Astronomy Library
+    ASTRO_GET_ALMANC,
+    ASTRO_SEARCH_OBJECTS,
+    ASTRO_GET_OBJECTS_INFO,
+    ASTRO_GET_OBJECTS_IMAGE,
+    ASTRO_GET_OBJECTS_OBSERVABILITY,
+    ASTRO_GET_OBJECTS_RISESET,
 };
 
 static QMap<COMMANDS, QString> const commands =
@@ -227,6 +234,8 @@ static QMap<COMMANDS, QString> const commands =
     {DELETE_PROFILE, "profile_delete"},
     {UPDATE_PROFILE, "profile_update"},
     {SET_PROFILE_MAPPING, "profile_set_mapping"},
+    {SET_PROFILE_PORT_SELECTION, "profile_set_port_selection"},
+    {GET_PROFILE_PORT_SELECTION, "profile_get_port_selection"},
 
     {GET_SCOPES, "get_scopes"},
     {ADD_SCOPE, "scope_add"},
@@ -284,6 +293,7 @@ static QMap<COMMANDS, QString> const commands =
     {FOCUS_OUT, "focus_out"},
     {FOCUS_LOOP, "focus_loop"},
     {FOCUS_SET_SETTINGS, "focus_set_settings"},
+    {FOCUS_SET_CROSSHAIR, "focus_set_crosshair"},
     {FOCUS_SET_PRIMARY_SETTINGS, "focus_set_primary_settings"},
     {FOCUS_SET_PROCESS_SETTINGS, "focus_set_process_settings"},
     {FOCUS_SET_MECHANICS_SETTINGS, "focus_set_mechanics_settings"},
@@ -341,7 +351,14 @@ static QMap<COMMANDS, QString> const commands =
     {DIALOG_GET_RESPONSE, "dialog_get_response"},
 
     {FM_GET_DATA, "fm_get_data"},
-    {FM_SET_DATA, "fm_set_data"}
+    {FM_SET_DATA, "fm_set_data"},
+
+    {ASTRO_GET_ALMANC, "astro_get_almanac"},
+    {ASTRO_SEARCH_OBJECTS, "astro_search_objects"},
+    {ASTRO_GET_OBJECTS_INFO, "astro_get_objects_info"},
+    {ASTRO_GET_OBJECTS_IMAGE, "astro_get_objects_image"},
+    {ASTRO_GET_OBJECTS_OBSERVABILITY, "astro_get_objects_observability"},
+    {ASTRO_GET_OBJECTS_RISESET, "astro_get_objects_riseset"}
 };
 
 }

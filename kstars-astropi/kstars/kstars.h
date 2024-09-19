@@ -1,18 +1,7 @@
-/** *************************************************************************
-                          kstars.h  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon Feb  5 01:11:45 PST 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
-/** *************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -176,7 +165,7 @@ class KStars : public KXmlGuiWindow
              * @param name The name to use in the menu
              * @param actionName The internal name for the action (derived from filename)
              */
-        void addColorMenuItem(const QString &name, const QString &actionName);
+        void addColorMenuItem(QString name, const QString &actionName);
 
         /** Remove an item from the color-scheme action manu
              * @param actionName The internal name of the action (derived from filename)
@@ -442,9 +431,13 @@ class KStars : public KXmlGuiWindow
 
         /** DBUS interface function.  Return XML containing information about a sky object
              * @param objectName name of the object.
+             * @param fallbackToInternet Attempt to resolve the name using internet databases if not found
+             * @param storeInternetResolved If we fell back to the internet, save the result in DSO database for future offline access
              * @note If the object was not found, the XML is empty.
              */
-        Q_SCRIPTABLE QString getObjectDataXML(const QString &objectName);
+        Q_SCRIPTABLE QString getObjectDataXML(const QString &objectName,
+                                              bool fallbackToInternet = false,
+                                              bool storeInternetResolved = true);
 
         /** DBUS interface function.  Return XML containing position info about a sky object
              * @param objectName name of the object.

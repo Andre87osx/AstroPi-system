@@ -1,19 +1,8 @@
-/***************************************************************************
-                          skycalendar.cpp  -  description
-                             -------------------
-    begin                : Wed Jul 16 2008
-    copyright            : (C) 2008 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2008 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "skycalendar.h"
 
@@ -53,7 +42,7 @@ SkyCalendar::SkyCalendar(QWidget *parent) : QDialog(parent)
 
     geo = KStarsData::Instance()->geo();
 
-    setWindowTitle(i18n("Sky Calendar"));
+    setWindowTitle(i18nc("@title:window", "Sky Calendar"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
     mainLayout->addWidget(buttonBox);
@@ -427,7 +416,7 @@ void SkyCalendar::slotPrint()
     //NOTE Changed from pointer to statically allocated object, what effect will it have?
     //QPointer<QPrintDialog> dialog( KdePrint::createPrintDialog( &printer, this ) );
     QPrintDialog dialog(&printer, this);
-    dialog.setWindowTitle(i18n("Print sky calendar"));
+    dialog.setWindowTitle(i18nc("@title:window", "Print sky calendar"));
     if (dialog.exec() == QDialog::Accepted)
     {
         // Change mouse cursor

@@ -1,10 +1,7 @@
-/*  HiPS Options
-    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 
@@ -45,7 +42,7 @@ OpsHIPS::OpsHIPS() : QFrame(KStars::Instance())
     //Get a pointer to the KConfigDialog
     m_ConfigDialog = KConfigDialog::exists("hipssettings");
 
-    QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String("hips_previews/");
+    QString path = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(QLatin1String("hips_previews/"));
     QDir dir;
     dir.mkpath(path);    
 
@@ -173,12 +170,14 @@ void OpsHIPS::setPreview(const QString &id, const QString &url)
     uint hash = qHash(id);
     QString previewName = QString("%1.jpg").arg(hash);
 
-    QString currentPreviewPath = KSPaths::locate(QStandardPaths::GenericDataLocation, QLatin1String("hips_previews/") + previewName);
+    QString currentPreviewPath = QDir(KSPaths::locate(QStandardPaths::AppDataLocation, QLatin1String("hips_previews"))).filePath(previewName);
     if (currentPreviewPath.isEmpty() == false)
+    {
         sourceImage->setPixmap(QPixmap(currentPreviewPath));
+    }
     else
     {
-        currentPreviewPath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String("hips_previews/") + previewName;
+        currentPreviewPath = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(QLatin1String("hips_previews/") + previewName);
 
         previewJob = new FileDownloader();
         connect(previewJob, SIGNAL(downloaded()), this, SLOT(previewReady()));

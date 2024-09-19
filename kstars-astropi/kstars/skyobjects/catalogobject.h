@@ -1,19 +1,9 @@
-/***************************************************************************
-                     catalogobject.h  -  K Desktop Planetarium
-                             -------------------
-    begin                : Jun 2021
-    copyright            : (C) 2021 by Valentin Boettcher, Jason Harris
-    email                : hiro at protagon.space; @hiro98:tchncs.de
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -21,7 +11,6 @@
 #include "skyobject.h"
 #include "nan.h"
 #include "texturemanager.h"
-
 #include <QString>
 #include <QByteArray>
 #include <QImage>
@@ -53,8 +42,7 @@ class CatalogObject : public SkyObject
     friend class AddCatalogObject;
 
   public:
-    using CatalogObjectList = std::list<CatalogObject>;
-    using oid               = QByteArray;
+    using oid = QByteArray;
 
     /**
      * @param id oid (hash) of the object
@@ -79,11 +67,12 @@ class CatalogObject : public SkyObject
                   const QString &lname              = QString(),
                   const QString &catalog_identifier = QString(),
                   const int catalog_id = -1, const float a = 0.0, const float b = 0.0,
-                  const double pa = 0.0, const float flux = 0, QString database_path = "")
+                  const double pa = 0.0, const float flux = 0,
+                  const QString &database_path = "")
         : SkyObject(t, r, d, m, n, catalog_identifier, lname),
           m_catalog_identifier{ catalog_identifier }, m_catalog_id{ catalog_id },
-          m_database_path{ std::move(database_path) }, m_major_axis{ a },
-          m_minor_axis{ b }, m_position_angle{ pa }, m_flux{ flux }
+          m_database_path{ database_path }, m_major_axis{ a }, m_minor_axis{ b },
+          m_position_angle{ pa }, m_flux{ flux }
     {
         if (id.length() == 0)
             m_object_id = getId();
@@ -269,7 +258,7 @@ class CatalogObject : public SkyObject
     /**
      * The database path which this object was loaded from.
      */
-    QString m_database_path;
+    std::reference_wrapper<const QString> m_database_path;
 
     /**
      * Whether the image for this catalog object has been loaded.

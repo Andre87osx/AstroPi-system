@@ -1,19 +1,8 @@
-/***************************************************************************
-                          ConstellationArtComponent.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2015-05-27
-    copyright            : (C) 2015 by M.S.Adityan
-    email                : msadityan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2015 M.S.Adityan <msadityan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "constellationartcomponent.h"
 
@@ -52,7 +41,7 @@ void ConstellationArtComponent::loadData()
     if (m_ConstList.isEmpty())
     {
         QSqlDatabase skydb = QSqlDatabase::addDatabase("QSQLITE", "skycultures");
-        QString dbfile     = KSPaths::locate(QStandardPaths::GenericDataLocation, "skycultures.sqlite");
+        QString dbfile     = KSPaths::locate(QStandardPaths::AppDataLocation, "skycultures.sqlite");
 
         skydb.setDatabaseName(dbfile);
         if (skydb.open() == false)

@@ -1,26 +1,19 @@
-/***************************************************************************
-                          modelmanager.h  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2012/26/05
-    copyright            : (C) 2012 by Samikshan Bairagya
-    email                : samikshan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Samikshan Bairagya <samikshan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
+#include "catalogobject.h"
 #include "skyobjitem.h"
-
+#include "catalogsdb.h"
 #include <QList>
 #include <QObject>
+
+#include "polyfills/qstring_hash.h"
+#include <unordered_map>
 
 class ObsConditions;
 class SkyObjListModel;
@@ -51,6 +44,10 @@ class ModelManager : public QObject
         Asteroids,
         Comets,
         Supernovas,
+        Messier,
+        NGC,
+        IC,
+        Sharpless,
         NumberOfLists
     };
 
@@ -78,6 +75,15 @@ class ModelManager : public QObject
     bool showOnlyFavoriteObjects() { return showOnlyFavorites; }
 
     /**
+     * Load objects from the dso db for the catalog with \p name can
+     * be used to retreive the object lists later.
+     *
+     * This is implemented by searching the dso database for objects
+     * whichs name starts with a prefix to capture subsets of a catalog.
+     */
+    void loadCatalog(const QString &name);
+
+    /**
      * @brief Returns model of given type.
      * @return Pointer to SkyObjListModel of given type.
      * @param modelName Name of sky-object model to be returned.
@@ -98,13 +104,15 @@ class ModelManager : public QObject
     void loadNamedStarList();
     void loadObjectsIntoModel(SkyObjListModel &model, QList<SkyObjItem *> &skyObjectList);
 
-    ObsConditions *m_ObsConditions { nullptr };
+    ObsConditions *m_ObsConditions{ nullptr };
     QList<QList<SkyObjItem *>> m_ObjectList;
     QList<SkyObjListModel *> m_ModelList;
-    bool showOnlyVisible { true };
-    bool showOnlyFavorites { true };
+    bool showOnlyVisible{ true };
+    bool showOnlyFavorites{ true };
     QList<SkyObjItem *> favoriteGalaxies;
     QList<SkyObjItem *> favoriteNebulas;
     QList<SkyObjItem *> favoriteClusters;
-    SkyObjListModel *tempModel { nullptr };
+    SkyObjListModel *tempModel{ nullptr };
+    std::unordered_map<int, CatalogsDB::CatalogObjectList> m_CatalogMap;
+    std::unordered_map<int, std::list<SkyObjItem>> m_CatalogSkyObjItems;
 };

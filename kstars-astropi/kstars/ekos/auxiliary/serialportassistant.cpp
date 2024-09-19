@@ -1,10 +1,7 @@
-/*  Ekos Serial Port Assistant tool
-    Copyright (C) 2019 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2019 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include <QMovie>
@@ -33,7 +30,7 @@ SerialPortAssistant::SerialPortAssistant(ProfileInfo *profile, QWidget *parent) 
     setupUi(this);
 
     QPixmap im;
-    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzserialportassistant.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::AppDataLocation, "wzserialportassistant.png")))
         wizardPix->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzserialportassistant.png"))
