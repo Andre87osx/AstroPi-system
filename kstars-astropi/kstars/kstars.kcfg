@@ -460,7 +460,7 @@
       <entry name="ShowAsteroids" type="Bool">
          <label>Draw asteroids in the sky map?</label>
          <whatsthis>Toggle whether asteroids are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowAsteroidNames" type="Bool">
          <label>Label asteroid names in the sky map?</label>
@@ -474,12 +474,12 @@
       <entry name="ShowComets" type="Bool">
          <label>Draw comets in the sky map?</label>
          <whatsthis>Toggle whether comets are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowCometComas" type="Bool">
          <label>Draw comet comas in the sky map?</label>
          <whatsthis>Toggle whether comet comas are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowCometNames" type="Bool">
          <label>Label comet names in the sky map?</label>
@@ -1467,19 +1467,19 @@
    <group name="Ekos">
     <entry name="EkosWindowWidth" type="UInt">
              <label>Ekos window width</label>
-             <default>600</default>
+             <default>800</default>
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
-             <default>600</default>
+             <default>700</default>
     </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLeftIcons" type="Bool">
        <label>Ekos modules icons are placed to the left of pages</label>
-       <default>false</default>
+       <default>true</default>
     </entry>
     <entry name="RememberCredentials" type="Bool">
        <label>Remember Ekos Live credentials.</label>
@@ -1487,18 +1487,18 @@
     </entry>
     <entry name="AutoStartEkosLive" type="Bool">
        <label>Start Ekos Live on KStars startup.</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLiveOnline" type="Bool">
        <label>Whether EkosLive connection mode is online.</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLiveUsername" type="String">
        <label>EkosLive username</label>
     </entry>
       <entry name="independentWindowEkos" type="Bool">
          <label>Make Ekos window independent of KStars main window</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="profile" type="String">
          <label>Ekos drivers profile</label>
