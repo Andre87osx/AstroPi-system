@@ -251,11 +251,13 @@ function system_update()
 		echo ""
 		echo "Running $CMD"
 		echo ""
-		(
+		{
 			echo "# Running Update ${CMD}"
-			sudo ${CMD} -y
+			sudo ${CMD} -y 2>&1 | while read -r line; do
+    				echo "# $line"
+        		done
 			sleep 1s
-		) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+		} | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 		exit_stat=$?
 		if [ ${exit_stat} -eq 0 ]; then
 			echo "System successfully updated on $(date)" >> "${appDir}"/bin/update-log.txt
