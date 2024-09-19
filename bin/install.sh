@@ -9,7 +9,7 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
-# rev 1.6 genuary 2023
+# rev 1.7 sept 2024
 # Run this script as USER
 # Type in console 'bash <your script path>/install.sh'
 # Autoload script, open console and paste
@@ -89,7 +89,13 @@ while [ "${CONN}" == "true" ]; do
     
 	# Install all script in default path
 	install_script
-	
+
+ 	# >> FIX some dipendencies
+  	# This is a temp solution to solve apt update
+   	sudo apt-get update
+ 	sudo apt install -y vlc-bin
+  	# << FIX some dipendencies
+  
 	# Perform PRE update
 	system_pre_update
 	
@@ -111,6 +117,13 @@ while [ "${CONN}" == "true" ]; do
     
 	# Restart LX for able new change icon and wallpaper
 	lxpanelctl restart
+ 
+ 	# Restart or force autohotspot services
+	sudo echo "nohook wpa_supplicant" >>/etc/dhcpcd.conf
+	(($? != 0)) && zenity --error --width=${W} --text="I couldn't enter the data. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	sudo systemctl enable autohotspot.service
+	(($? != 0)) && zenity --error --width=${W} --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	zenity --info --width=${W} --text "The auto hotspot service is now <b>active</b>. Network Manager create a hotspot if no wifi found" --title="${W_Title}"
 	
 	# Delete old AstroPi installations and GIT
 	file_old=(

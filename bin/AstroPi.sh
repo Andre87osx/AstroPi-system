@@ -8,7 +8,7 @@
 # /_/    \_\___/\__|_|  \___/|_|   |_|
 ########### AstroPi System ###########
 
-# rev 1.6 genuary 2023
+# rev 1.7 sept 2024
 # Run this script as USER
 # Type in console bash 'AstroPi'
 # This script have GUI powered by zenity lib
@@ -37,16 +37,16 @@ chkUser
 function AdminSystem() {
 	# Define if hotspot is active or disabled
 	if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
-		StatHotSpot=Disable		# Hotspot is active
+		StatHotSpot=Enable		# Hotspot is active in AUTO MODE
 	else
-		StatHotSpot=Enable		# Hotspot is disabled
+		StatHotSpot=Disable		# Hotspot is disabled
 	fi
 	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 	\n<b>${sysinfo}</b>
 	\n<b>Storage details:</b>\nMain disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
 	ansS=$( zenity --list --width=$((W+220)) --height="${H}" --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
-		FALSE "$StatHotSpot AstroPi hotspot	" "=> On/Off WiFi Hotspot for use AstroPi outdoor" \
+		FALSE "Hotspot Manager is $StatHotSpot	" "=> AUTO/Off WiFi NETWORK Manager" \
 		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
 		FALSE "System Cleaning	" "=> Delete unused library and script" \
 		FALSE "Check for System update	" "=> Update Linux AstroPi" \
@@ -78,7 +78,7 @@ function AdminSystem() {
 		elif [ "$ansS" == "Setup my WiFi	" ]; then
 			setupWiFi
 
-		elif [ "$ansS" == "$StatHotSpot AstroPi hotspot	" ]; then
+		elif [ "$ansS" == "Hotspot Manager is $StatHotSpot	" ]; then
 			chkHotspot
 
 		elif [ "$ansS" == "System Cleaning	" ]; then
