@@ -2,7 +2,7 @@ PROJECT(kstars CXX C)
 set (KStars_VERSION_MAJOR 3)
 set (KStars_VERSION_MINOR 5)
 set (KStars_VERSION_REVISION 6)
-set (KSTARS_BUILD_RELEASE "Stable")
+set (KSTARS_BUILD_RELEASE "AstroPi v1.7 - Stable")
 set (CMAKE_CXX_STANDARD 14)
 
 set(QT_MIN_VERSION 5.9.0)
