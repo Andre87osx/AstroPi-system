@@ -477,27 +477,58 @@ function chkHotspot()
 # Install / Update INDI 
 function chkINDI()
 {
+	# Ensure unbuffer is installed
+	if ! command -v unbuffer &> /dev/null; then
+    		sudo apt-get install -y expect		
+  	# List of packages to install
+	packages=(
+ 	"build-essential cmake git libeigen3-dev libcfitsio-dev zlib1g-dev libkf5doctools-dev libqt5datavisualization5-dev"
+    	"extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev"
+	"libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev"
+    	"libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme indi-full gsc python3-pybind11"
+	)
+
+	# Total number of packages
+	total_packages=${#packages[@]}
+
+	# Function to install packages
+	install_packages() {
+   	for i in "${!packages[@]}"; do
+        	echo "# Installing: ${packages[$i]}"
+        	sudo apt-get -y install ${packages[$i]} 2>&1 | while read -r line; do
+    				echo "# $line"
+        		done
+        	echo "$(( (i + 1) * 100 / total_packages ))"
+    	done
+	}
+
+	# Run the installation with zenity progress bar
+	install_packages | zenity --progress --title="Installing Packages ${W_Title}" --percentage=0 --auto-close
+
+	if [ $? -eq 0 ]; then
+    		zenity --info --text="All packages installed successfully!"
+	else
+    		zenity --error --text="An error occurred during installation."
+	fi
 	(
-		echo "# Download Indi $Indi_v..."
+		# Ensure unbuffer is installed
+		if ! command -v unbuffer &> /dev/null; then
+    			sudo apt-get install -y expect
+		fi		
+  		echo "# Download Indi $Indi_v..."
 		if [ ! -d "${WorkDir}" ]; then mkdir "${WorkDir}"; fi
 		cd "${WorkDir}" || exit 1
-		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "${WorkDir}"
-		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "${WorkDir}"
-		git clone https://github.com/rlancaste/stellarsolver.git
+		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "${WorkDir}" 2>&1 | while read -r line; do
+    				echo "# $line"
+        		done
+		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "${WorkDir}" 2>&1 | while read -r line; do
+    				echo "# $line"
+        		done
+		git clone https://github.com/rlancaste/stellarsolver.git 2>&1 | while read -r line; do
+    				echo "# $line"
+        		done
 
-		# =================================================================
-		# echo "# Install dependencies..."
-		# #echo "${ask_pass}" | sudo -S apt-get -y install patchelf
-		# #(($? != 0)) && zenity --width=${W} --error --text="Error installing PatchELF\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev gsc gsc-data
-		# (($? != 0)) && zenity --width=${W} --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt-get install -y libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libfftw3-dev
-		# (($? != 0)) && zenity --error --width=${W} --text="Error installing INDI Core dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev
-		# (($? != 0)) && zenity --error --width=${W} --text="Error installing INDI Driver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev libgsl-dev wcslib-dev
-		# (($? != 0)) && zenity --error --width=${W} --text="Error installing Stellarsolver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-
+		
 		# =================================================================
 		echo "# Checking INDI Core..."
 		if [ ! -d "${WorkDir}"/indi-cmake ]; then mkdir -p "${WorkDir}"/indi-cmake; fi
