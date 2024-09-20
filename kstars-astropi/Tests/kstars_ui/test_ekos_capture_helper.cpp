@@ -1,37 +1,35 @@
 /*
     Helper class of KStars UI capture tests
 
-    Copyright (C) 2020
-    Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
+    SPDX-FileCopyrightText: 2020 Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "test_ekos_capture_helper.h"
 
 #include "test_ekos.h"
+#include "ekos/capture/scriptsmanager.h"
+#include "Options.h"
 
-TestEkosCaptureHelper::TestEkosCaptureHelper() : TestEkosHelper() {
-    m_GuiderDevice  = "Guide Simulator";
-    m_FocuserDevice = "Focuser Simulator";
+TestEkosCaptureHelper::TestEkosCaptureHelper(QString guider) : TestEkosHelper(guider) {}
+
+void TestEkosCaptureHelper::init()
+{
+    TestEkosHelper::init();
+    QStandardPaths::setTestModeEnabled(true);
+    QFileInfo test_dir(QStandardPaths::writableLocation(QStandardPaths::DataLocation), "test");
+    destination = new QTemporaryDir(test_dir.absolutePath());
+    QVERIFY(destination->isValid());
+    QVERIFY(destination->autoRemove());
 }
 
-void TestEkosCaptureHelper::initTestCase()
+void TestEkosCaptureHelper::cleanup()
 {
-    TestEkosHelper::initTestCase();
-    // connect to the capture process to receive capture status changes
-    connect(Ekos::Manager::Instance()->captureModule(), &Ekos::Capture::newStatus, this, &TestEkosCaptureHelper::captureStatusChanged,
-            Qt::UniqueConnection);
-}
-
-void TestEkosCaptureHelper::cleanupTestCase()
-{
-    // disconnect to the capture process to receive capture status changes
-    disconnect(Ekos::Manager::Instance()->captureModule(), &Ekos::Capture::newStatus, this, &TestEkosCaptureHelper::captureStatusChanged);
-    TestEkosHelper::cleanupTestCase();
+    // remove destination directory
+    if (destination != nullptr)
+        destination->remove();
+    delete destination;
 }
 
 
@@ -77,16 +75,105 @@ bool TestEkosCaptureHelper::stopCapturing()
     return true;
 }
 
-/* *********************************************************************************
- *
- * Slots for catching state changes
- *
- * ********************************************************************************* */
-
-void TestEkosCaptureHelper::captureStatusChanged(Ekos::CaptureState status) {
-    m_CaptureStatus = status;
-    // check if the new state is the next one expected, then remove it from the stack
-    if (!expectedCaptureStates.isEmpty() && expectedCaptureStates.head() == status)
-        expectedCaptureStates.dequeue();
+QString TestEkosCaptureHelper::calculateSignature(QString target, QString filter)
+{
+    if (target == "")
+        return getImageLocation()->path() + "/Light/" + filter + "/Light";
+    else
+        return getImageLocation()->path() + "/" + target + "/Light/" + filter + "/" + target + "_Light";
 }
 
+QStringList TestEkosCaptureHelper::searchFITS(const QDir &dir) const
+{
+    QStringList list = dir.entryList(QDir::Files);
+
+    //foreach (auto &f, list)
+    //    QWARN(QString(dir.path()+'/'+f).toStdString().c_str());
+
+    foreach (auto &d, dir.entryList(QDir::NoDotAndDotDot | QDir::Dirs))
+        list.append(searchFITS(QDir(dir.path() + '/' + d)));
+
+    return list;
+}
+
+void TestEkosCaptureHelper::ensureCCDShutter(bool shutter)
+{
+    if (m_CCDDevice != "")
+    {
+        // ensure that we know that the CCD has a shutter
+        QStringList shutterlessCCDs = Options::shutterlessCCDs();
+        QStringList shutterfulCCDs  = Options::shutterfulCCDs();
+        if (shutter)
+        {
+            // remove CCD device from shutterless CCDs
+            shutterlessCCDs.removeAll(m_CCDDevice);
+            Options::setShutterlessCCDs(shutterlessCCDs);
+            // add CCD device if necessary to shutterful CCDs
+            if (! shutterfulCCDs.contains(m_CCDDevice))
+            {
+                shutterfulCCDs.append(m_CCDDevice);
+                Options::setShutterfulCCDs(shutterfulCCDs);
+            }
+        }
+        else
+        {
+            // remove CCD device from shutterful CCDs
+            shutterfulCCDs.removeAll(m_CCDDevice);
+            Options::setShutterfulCCDs(shutterfulCCDs);
+            // add CCD device if necessary to shutterless CCDs
+            if (! shutterlessCCDs.contains(m_CCDDevice))
+            {
+                shutterlessCCDs.append(m_CCDDevice);
+                Options::setShutterlessCCDs(shutterlessCCDs);
+            }
+        }
+
+    }
+}
+
+QDir *TestEkosCaptureHelper::getImageLocation()
+{
+    if (imageLocation == nullptr || imageLocation->exists())
+        imageLocation = new QDir(destination->path() + "/images");
+
+    return imageLocation;
+}
+
+bool TestEkosCaptureHelper::fillCaptureSequences(QString target, QString sequence, double exptime, QString fitsDirectory)
+{
+    if (sequence == "")
+        return true;
+
+    for (QString value : sequence.split(","))
+    {
+        KVERIFY_SUB(value.indexOf(":") > -1);
+        QString filter = value.left(value.indexOf(":"));
+        int count      = value.right(value.length()-value.indexOf(":")-1).toInt();
+        KTRY_SET_CHECKBOX_SUB(Ekos::Manager::Instance()->captureModule(), fileTimestampS, true);
+        KTRY_SET_LINEEDIT_SUB(Ekos::Manager::Instance()->captureModule(), filePrefixT, target);
+        if (count > 0)
+            KWRAP_SUB(KTRY_CAPTURE_ADD_LIGHT(exptime, count, 0, filter, fitsDirectory));
+        // ensure that no old values are present
+        Ekos::Manager::Instance()->captureModule()->setCapturedFramesMap(calculateSignature(target, filter), 0);
+    }
+
+    return true;
+}
+
+bool TestEkosCaptureHelper::fillScriptManagerDialog(const QMap<Ekos::ScriptTypes, QString> &scripts)
+{
+    Ekos::ScriptsManager *manager = Ekos::Manager::Instance()->findChild<Ekos::ScriptsManager*>();
+    // fail if manager not found
+    KVERIFY2_SUB(manager != nullptr, "Cannot find script manager!");
+    manager->setScripts(scripts);
+    manager->done(QDialog::Accepted);
+    return true;
+}
+
+void TestEkosCaptureHelper::cleanupScheduler()
+{
+    Ekos::Manager::Instance()->schedulerModule()->stop();
+    QTest::qWait(5000);
+    // remove jobs
+    Ekos::Manager::Instance()->schedulerModule()->removeAllJobs();
+}

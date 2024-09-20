@@ -1,19 +1,8 @@
-/***************************************************************************
-                          skyline.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon June 26 2006
-    copyright            : (C) 2006 by Jason Harris
-    email                : kstarss@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2006 Jason Harris <kstarss@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "skyline.h"
 
@@ -42,7 +31,7 @@ void SkyLine::setPoint(int i, SkyPoint *p)
 {
     if (i < 0 || i >= m_pList.size())
     {
-        qDebug() << "SkyLine index error: no such point: " << i;
+        qDebug() << Q_FUNC_INFO << "SkyLine index error: no such point: " << i;
         return;
     }
     *m_pList[i] = *p;
@@ -52,7 +41,7 @@ dms SkyLine::angularSize(int i) const
 {
     if (i < 0 || i + 1 >= m_pList.size())
     {
-        qDebug() << "SkyLine index error: no such segment: " << i;
+        qDebug() << Q_FUNC_INFO << "SkyLine index error: no such segment: " << i;
         return dms();
     }
 

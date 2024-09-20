@@ -1,21 +1,12 @@
-/***************************************************************************
-                          fitscentroiddetector.cpp  -  FITS Image
-                             -------------------
-    begin                : Sat March 28 2020
-    copyright            : (C) 2004 by Jasem Mutlaq, (C) 2020 by Eric Dejouhanet
-    email                : eric.dejouhanet@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq
+    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
- *   See http://members.aol.com/pkirchg for more details.                  *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
+    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
+*/
 
 #include <math.h>
 #include <cmath>
@@ -23,6 +14,7 @@
 
 #include "fitscentroiddetector.h"
 #include "fits_debug.h"
+#include "fitsdata.h"
 
 //void FITSCentroidDetector::configure(const QString &setting, const QVariant &value)
 //{
@@ -393,7 +385,7 @@ bool FITSCentroidDetector::findSources(const QRect &boundary)
             for (int k = rCenter->width / 2; k >= -(rCenter->width / 2); k--)
             {
                 FSum += buffer[cen_x - k + (cen_y * stats.width)] - min;
-                //qDebug() << image_buffer[cen_x-k+(cen_y*stats.width)] - min;
+                //qDebug() << Q_FUNC_INFO << image_buffer[cen_x-k+(cen_y*stats.width)] - min;
             }
 
             // Half flux
@@ -446,7 +438,7 @@ bool FITSCentroidDetector::findSources(const QRect &boundary)
                 starCenters.removeOne(center);
 
         //foreach(Edge *center, starCenters)
-        //qDebug() << center->x << "," << center->y << "," << center->width << "," << center->val << endl;
+        //qDebug() << Q_FUNC_INFO << center->x << "," << center->y << "," << center->width << "," << center->val << Qt::endl;
     }
 
     m_ImageData->setStarCenters(starCenters);

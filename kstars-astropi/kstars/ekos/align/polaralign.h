@@ -1,11 +1,8 @@
-/*  PolarAlign class.
-    Copyright (C) 2021 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -38,14 +35,28 @@ class TestPolarAlign;
         double altitudeError = axisAlt - latitudeDegrees;
         double azimuthError = axisAz - 0;
  7) Compute the overall error
-        dms polarError(hypot(altitudeError, azimuthError));
- 8) Compute a target correction
+        dms polarError(hypot(azimuthError, altitudeError));
+
+Using the "move star" correction scheme:
+
+ 8a) Compute a target correction
         int correctedX, correctedY;
         if (!polarAlign.findCorrectedPixel(
                imageData, x, y, altitudeError, azimuthError, &correctedX, &correctedY))
           error();
- 9) The user should use the GEM azimuth and altitude adjustments to move the
+ 9a) The user uses the GEM azimuth and altitude adjustments to move the
     object at position x,y in the image to position correctedX, correctedY.
+
+Using the plate solve correction scheme:
+
+ 8b) Compute the remaining axis error (after partial correction)
+         SkyPoint coords, solution;
+         coords = [coordinates from plate-solving a refresh image]
+         // The signs of the error indicate the correction direction
+         processRefreshCoords(coords, currentTime, &azError, &altError);
+ 9b) The user uses the GEM azimuth and altitude adjustments to move the telescope.
+      positive altitude error: reduce altitide.
+      positive azimuth error: point telescope more to the left.
  *********************************************************************/
 
 class PolarAlign
@@ -58,6 +69,14 @@ class PolarAlign
 
         // Add a sample point.
         bool addPoint(const QSharedPointer<FITSData> &image);
+
+        // Returns the i-th point (zero based).
+        const SkyPoint getPoint(int index)
+        {
+            if (index >= 0 && index < points.size())
+                return points[index];
+            return SkyPoint();
+        }
 
         // Finds the mount's axis of rotation. Three points must have been added.
         // Returns false if the axis can't be found.
@@ -87,6 +106,23 @@ class PolarAlign
 
         // Returns the mount's axis--for debugging.
         void getAxis(double *azAxis, double *altAxis) const;
+
+        // This is not required, and is a hint as to how far the pixelError method should search
+        // for a solution. The suggestion may be ignored if it is too large or small, but in
+        // general this should be a degree or so larger than the polar alignment error in degrees.
+        void setMaxPixelSearchRange(double degrees);
+
+        // Compute the remaining polar-alignment azimuth and altitude error from a new image's coordinates
+        // as compared with the coordinates from the last polar-align measurement image.
+        // The differences between the two coordinates is a measure of the rotation that has been
+        // applied during the polar-align correction phase.
+        bool processRefreshCoords(const SkyPoint &coords, const KStarsDateTime &time,
+                                  double *azError, double *altError,
+                                  double *azAdjustment = nullptr, double *altAdjustment = nullptr) const;
+
+        // Find the skypoints where the telescope needs to point (rotated there by adjusting az and alt)
+        // in order for the mount to be properly polar aligned.
+        bool refreshSolution(SkyPoint *solution, SkyPoint *altOnlySolution) const;
 
     private:
         // returns true in the northern hemisphere.
@@ -118,12 +154,15 @@ class PolarAlign
         QVector<SkyPoint> points;
         QVector<KStarsDateTime> times;
 
-        // The geographic location used to compute altitude and azimuth.
+        // The geographic location used to compute azimuth and altitude.
         const GeoLocation *geoLocation;
 
         // Values set by the last call to findAxis() that correspond to the mount's axis.
         double azimuthCenter { 0 };
         double altitudeCenter { 0 };
+
+        // Constrains the search for the correction pixel. Units are degrees.
+        double maxPixelSearchRange { 2 };
 
         friend TestPolarAlign;
 };

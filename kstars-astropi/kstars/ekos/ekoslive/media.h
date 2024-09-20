@@ -1,13 +1,9 @@
-/*  Ekos Live Client
-
-    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Media Channel
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -45,12 +41,11 @@ class Media : public QObject
         void registerCameras();
 
         // Ekos Media Message to User
-        //void sendPreviewJPEG(const QString &filename, QJsonObject metadata);
-        void sendPreviewImage(const QString &filename, const QString &uuid);
-        void sendPreviewImage(const QSharedPointer<FITSData> &data, const QString &uuid);
-        void sendPreviewImage(FITSView * view, const QString &uuid);
-        void sendUpdatedFrame(FITSView * view);
-        void sendModuleFrame(FITSView * view);
+        void sendFile(const QString &filename, const QString &uuid);
+        void sendData(const QSharedPointer<FITSData> &data, const QString &uuid);
+        void sendView(const QSharedPointer<FITSView> &view, const QString &uuid);
+        void sendUpdatedFrame(const QSharedPointer<FITSView> &view);
+        void sendModuleFrame(const QSharedPointer<FITSView> &view);
 
     signals:
         void connected();
@@ -94,15 +89,12 @@ class Media : public QObject
         void onTextReceived(const QString &message);
         void onBinaryReceived(const QByteArray &message);
 
-        // Send image
-        void sendImage();
-
         // Metadata and Image upload
         void uploadMetadata(const QByteArray &metadata);
         void uploadImage(const QByteArray &image);
 
     private:
-        void upload(FITSView * view);
+        void upload(const QSharedPointer<FITSView> &view);
 
         QWebSocket m_WebSocket;
         QJsonObject m_AuthResponse;
@@ -112,17 +104,19 @@ class Media : public QObject
         QString m_UUID;
 
         QMap<int, bool> m_Options;
-        std::unique_ptr<FITSView> previewImage;
 
         QString extension;
         QStringList temporaryFiles;
         QLineF correctionVector;
+        QSharedPointer<FITSView> m_TemporaryView;
 
         bool m_isConnected { false };
         bool m_sendBlobs { true};
 
         // Image width for high-bandwidth setting
-        static const uint16_t HB_WIDTH = 960;
+        static const uint16_t HB_IMAGE_WIDTH = 1920;
+        // Video width for high-bandwidth setting
+        static const uint16_t HB_VIDEO_WIDTH = 1280;
         // Image high bandwidth image quality (jpg)
         static const uint8_t HB_IMAGE_QUALITY = 90;
         // Video high bandwidth video quality (jpg)
@@ -139,5 +133,9 @@ class Media : public QObject
 
         // Binary Metadata Size
         static const uint16_t METADATA_PACKET = 512;
+
+        // HIPS Tile Width and Height
+        static const uint16_t HIPS_TILE_WIDTH = 512;
+        static const uint16_t HIPS_TILE_HEIGHT = 512;
 };
 }

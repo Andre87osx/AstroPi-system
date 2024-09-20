@@ -1,13 +1,10 @@
-/*  Stream Widget
-    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 
     2004-03-16: A class to handle video streaming.
- */
+*/
 
 #include "streamwg.h"
 
@@ -61,7 +58,8 @@ RecordOptions::RecordOptions(QWidget *parent) : QDialog(parent)
 void RecordOptions::selectRecordDirectory()
 {
     QString dir =
-        QFileDialog::getExistingDirectory(KStars::Instance(), i18n("SER Record Directory"), dirPath.toLocalFile());
+        QFileDialog::getExistingDirectory(KStars::Instance(), i18nc("@title:window", "SER Record Directory"),
+                                          dirPath.toLocalFile());
 
     if (dir.isEmpty())
         return;
@@ -96,10 +94,12 @@ StreamWG::StreamWG(ISD::CCD *ccd) : QDialog(KStars::Instance())
     options->recordFilenameEdit->setText(filename);
     options->recordDirectoryEdit->setText(directory);
 
-    setWindowTitle(i18n("%1 Live Video", ccd->getDeviceName()));
+    setWindowTitle(i18nc("@title:window", "%1 Live Video", ccd->getDeviceName()));
 
-#ifdef Q_OS_OSX
+#if defined(Q_OS_OSX)
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
+#else
+    setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
 #endif
     recordIcon = QIcon::fromTheme("media-record");
     stopIcon   = QIcon::fromTheme("media-playback-stop");

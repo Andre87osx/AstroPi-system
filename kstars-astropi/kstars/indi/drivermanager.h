@@ -1,12 +1,8 @@
-/*  INDI Driver Manager
-    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -129,7 +125,7 @@ class DriverManager : public QDialog
          * @param dList list of driver to examine
          * @param uHosts List of unique hosts, each with a group of drivers that belong to it.
          */
-        void getUniqueHosts(QList<DriverInfo *> &dList, QList<QList<DriverInfo *>> &uHosts);
+        void getUniqueHosts(const QList<DriverInfo *> &dList, QList<QList<DriverInfo *>> &uHosts);
 
         void addDriver(DriverInfo *di)
         {
@@ -140,7 +136,7 @@ class DriverManager : public QDialog
             driversList.removeOne(di);
         }
 
-        bool startDevices(QList<DriverInfo *> &dList);
+        void startDevices(QList<DriverInfo *> &dList);
         void stopDevices(const QList<DriverInfo *> &dList);
         void stopAllDevices()
         {
@@ -148,16 +144,22 @@ class DriverManager : public QDialog
         }
         bool restartDriver(DriverInfo *dv);
 
-        bool connectRemoteHost(DriverInfo *dv);
+        void connectRemoteHost(DriverInfo *dv);
         bool disconnectRemoteHost(DriverInfo *dv);
 
         QString getUniqueDeviceLabel(const QString &label);
 
+        void startClientManager(const QList<DriverInfo *> &qdv, const QString &host, int port);
+        void startLocalDrivers(ServerManager *serverManager);
+        void processDriverStartup(DriverInfo *dv);
+        void processDriverFailure(DriverInfo *dv, const QString &message);
+
+        void disconnectClients();
         void clearServers();
 
     private:
         DriverManager(QWidget *parent);
-        ~DriverManager();
+        ~DriverManager() override;
 
         bool checkDriverAvailability(const QString &driver);
 
@@ -195,8 +197,13 @@ class DriverManager : public QDialog
 
         void updateCustomDrivers();
 
-        void processClientTermination(ClientManager *client);
-        void processServerTermination(ServerManager *server);
+        void setClientStarted();
+        void setClientFailed(const QString &message);
+        void setClientTerminated(const QString &message);
+
+        void setServerStarted();
+        void setServerFailed(const QString &message);
+        void setServerTerminated(const QString &message);
 
         void processDeviceStatus(DriverInfo *dv);
 
@@ -206,14 +213,27 @@ class DriverManager : public QDialog
         }
 
     signals:
-        void clientTerminated(ClientManager *);
-        void serverTerminated(const QString &host, const QString &port);
-        void serverStarted(const QString &host, const QString &port);
 
-        /*
-            signals:
-            void newDevice();
-            void newTelescope();
-            void newCCD();
-            */
+        // Server Signals
+
+        // Server started successfully
+        void serverStarted(const QString &host, int port);
+        // Server failed to start.
+        void serverFailed(const QString &host, int port, const QString &message);
+        // Running server was abruptly terminated.
+        void serverTerminated(const QString &host, int port, const QString &message);
+
+        // Client Signals
+        // Client connected to server successfully.
+        void clientStarted(const QString &host, int port);
+        // Client failed to connect to server.
+        void clientFailed(const QString &host, int port, const QString &message);
+        // Running server lost connection to server.
+        void clientTerminated(const QString &host, int port, const QString &message);
+
+        // Driver Signals
+        void driverStarted(DriverInfo *driver);
+        void driverFailed(DriverInfo *driver, const QString &message);
+        void driverStopped(DriverInfo *driver);
+        void driverRestarted(DriverInfo *driver);
 };

@@ -1,10 +1,7 @@
-/*  Astrometry.net Parser - Remote
-    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -56,7 +53,7 @@ class RemoteAstrometryParser : public AstrometryParser
         bool captureRunning { false };
         Align *align { nullptr };
         QElapsedTimer solverTimer;
-        QString parity;
+        FITSImage::Parity parity = FITSImage::BOTH;
         QString targetCCD;
 };
 }

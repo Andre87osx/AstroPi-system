@@ -22,9 +22,16 @@ OpsAstrometryIndexFiles::OpsAstrometryIndexFiles(Align *parent) : QDialog(KStars
     alignModule         = parent;
     manager             = new QNetworkAccessManager();
 
+    indexURL->setText("http://broiler.astrometry.net/~dstn/");
+
     //Get a pointer to the KConfigDialog
     // m_ConfigDialog = KConfigDialog::exists( "alignsettings" );
     connect(openIndexFileDirectory, SIGNAL(clicked()), this, SLOT(slotOpenIndexFileDirectory()));
+    connect(indexURL, &QLineEdit::textChanged, [&]()
+    {
+        indexURL->text();
+    });
+
 
     astrometryIndex[2.8]  = "00";
     astrometryIndex[4.0]  = "01";
@@ -173,9 +180,6 @@ void OpsAstrometryIndexFiles::slotUpdate()
 
     QStringList nameFilter("*.fits");
 
-    //    if (Options::astrometrySolverIsInternal())
-    //        KSUtils::configureLocalAstrometryConfIfNecessary();
-
     QStringList astrometryDataDirs = Options::astrometryIndexFolderList();
 
     bool allDirsSelected = (indexLocations->currentIndex() == 0 && astrometryDataDirs.count() > 1);
@@ -238,13 +242,15 @@ void OpsAstrometryIndexFiles::slotUpdate()
 
     for (auto &skymarksize : astrometryIndex.keys())
     {
+        QString indexName1        = "index_41" + astrometryIndex.value(skymarksize);
+        QString indexName2        = "index_42" + astrometryIndex.value(skymarksize);
+        QString indexName3        = "index_52" + astrometryIndex.value(skymarksize);
+        QCheckBox *indexCheckBox1 = findChild<QCheckBox *>(indexName1);
+        QCheckBox *indexCheckBox2 = findChild<QCheckBox *>(indexName2);
+        QCheckBox *indexCheckBox3 = findChild<QCheckBox *>(indexName3);
         if ((skymarksize >= 0.40 * fov_check && skymarksize <= 0.9 * fov_check) ||
                 (fov_check > last_skymarksize && fov_check < skymarksize))
         {
-            QString indexName1        = "index_41" + astrometryIndex.value(skymarksize);
-            QString indexName2        = "index_42" + astrometryIndex.value(skymarksize);
-            QCheckBox *indexCheckBox1 = findChild<QCheckBox *>(indexName1);
-            QCheckBox *indexCheckBox2 = findChild<QCheckBox *>(indexName2);
             if (indexCheckBox1)
             {
                 indexCheckBox1->setIcon(QIcon(":/icons/astrometry-required.svg"));
@@ -255,13 +261,14 @@ void OpsAstrometryIndexFiles::slotUpdate()
                 indexCheckBox2->setIcon(QIcon(":/icons/astrometry-required.svg"));
                 indexCheckBox2->setToolTip(i18n("Required"));
             }
+            if (indexCheckBox3)
+            {
+                indexCheckBox3->setIcon(QIcon(":/icons/astrometry-required.svg"));
+                indexCheckBox3->setToolTip(i18n("Required"));
+            }
         }
         else if (skymarksize >= 0.10 * fov_check && skymarksize <= fov_check)
         {
-            QString indexName1        = "index_41" + astrometryIndex.value(skymarksize);
-            QString indexName2        = "index_42" + astrometryIndex.value(skymarksize);
-            QCheckBox *indexCheckBox1 = findChild<QCheckBox *>(indexName1);
-            QCheckBox *indexCheckBox2 = findChild<QCheckBox *>(indexName2);
             if (indexCheckBox1)
             {
                 indexCheckBox1->setIcon(QIcon(":/icons/astrometry-recommended.svg"));
@@ -271,6 +278,11 @@ void OpsAstrometryIndexFiles::slotUpdate()
             {
                 indexCheckBox2->setIcon(QIcon(":/icons/astrometry-recommended.svg"));
                 indexCheckBox2->setToolTip(i18n("Recommended"));
+            }
+            if (indexCheckBox3)
+            {
+                indexCheckBox3->setIcon(QIcon(":/icons/astrometry-recommended.svg"));
+                indexCheckBox3->setToolTip(i18n("Recommended"));
             }
         }
 
@@ -298,19 +310,26 @@ void OpsAstrometryIndexFiles::slotUpdate()
     }
 }
 
-bool OpsAstrometryIndexFiles::fileCountMatches(QDir directory, QString indexName)
+int OpsAstrometryIndexFiles::indexFileCount(QString indexName)
 {
-    QString indexNameMatch = indexName.left(10) + "*.fits";
-    QStringList list = directory.entryList(QStringList(indexNameMatch));
     int count = 0;
     if(indexName.contains("4207") || indexName.contains("4206") || indexName.contains("4205"))
         count = 12;
     else if(indexName.contains("4204") || indexName.contains("4203") || indexName.contains("4202")
-            || indexName.contains("4201") || indexName.contains("4200"))
+            || indexName.contains("4201") || indexName.contains("4200") || indexName.contains("5206")
+            || indexName.contains("5205") || indexName.contains("5204") || indexName.contains("5203")
+            || indexName.contains("5202") || indexName.contains("5201") || indexName.contains("5200"))
         count = 48;
     else
         count = 1;
-    return list.count() == count;
+    return count;
+}
+
+bool OpsAstrometryIndexFiles::fileCountMatches(QDir directory, QString indexName)
+{
+    QString indexNameMatch = indexName.left(10) + "*.fits";
+    QStringList list = directory.entryList(QStringList(indexNameMatch));
+    return list.count() == indexFileCount(indexName);
 }
 
 void OpsAstrometryIndexFiles::slotOpenIndexFileDirectory()
@@ -323,7 +342,8 @@ void OpsAstrometryIndexFiles::slotOpenIndexFileDirectory()
 
 bool OpsAstrometryIndexFiles::astrometryIndicesAreAvailable()
 {
-    QNetworkReply *response = manager->get(QNetworkRequest(QUrl("http://broiler.astrometry.net")));
+    QUrl indexUrl = QUrl(this->indexURL->text());
+    QNetworkReply *response = manager->get(QNetworkRequest(QUrl(indexUrl.url(QUrl::RemovePath))));
     QTimer timeout(this);
     timeout.setInterval(5000);
     timeout.setSingleShot(true);
@@ -337,9 +357,11 @@ bool OpsAstrometryIndexFiles::astrometryIndicesAreAvailable()
         }
         qApp->processEvents();
     }
+
     timeout.stop();
     bool wasSuccessful = (response->error() == QNetworkReply::NoError);
     response->deleteLater();
+
     return wasSuccessful;
 }
 
@@ -420,7 +442,7 @@ void OpsAstrometryIndexFiles::downloadIndexFile(const QString &URL, const QStrin
     *cancelConnection = connect(indexDownloadCancel, &QPushButton::clicked,
                                 [ = ]()
     {
-        qDebug() << "Download Cancelled.";
+        qDebug() << Q_FUNC_INFO << "Download Cancelled.";
         timeoutTimer.stop();
         disconnectDownload(cancelConnection, replyConnection, percentConnection);
         if(response)
@@ -464,7 +486,7 @@ void OpsAstrometryIndexFiles::downloadIndexFile(const QString &URL, const QStrin
                     int downloadedFileSize = QFileInfo(file).size();
                     int dtime = downloadTime.elapsed();
                     actualdownloadSpeed = (actualdownloadSpeed + (downloadedFileSize / dtime)) / 2;
-                    qDebug() << "Filesize: " << downloadedFileSize << ", time: " << dtime << ", inst speed: " << downloadedFileSize / dtime <<
+                    qDebug() << Q_FUNC_INFO << "Filesize: " << downloadedFileSize << ", time: " << dtime << ", inst speed: " << downloadedFileSize / dtime <<
                              ", averaged speed: " << actualdownloadSpeed;
 
                 }
@@ -531,7 +553,6 @@ void OpsAstrometryIndexFiles::downloadOrDeleteIndexFiles(bool checked)
         QString indexSeriesName = checkBox->text().remove('&');
         QString filePath        = astrometryDataDir + '/' + indexSeriesName;
         QString fileNumString   = indexSeriesName.mid(8, 2);
-        int indexFileNum        = fileNumString.toInt();
 
         if (checked)
         {
@@ -550,18 +571,27 @@ void OpsAstrometryIndexFiles::downloadOrDeleteIndexFiles(bool checked)
             checkBox->setChecked(!checked);
             if (astrometryIndicesAreAvailable())
             {
+                QString BASE_URL;
                 QString URL;
-                if (indexSeriesName.startsWith(QLatin1String("index-41")))
-                    URL = "http://broiler.astrometry.net/~dstn/4100/" + indexSeriesName;
-                else if (indexSeriesName.startsWith(QLatin1String("index-42")))
-                    URL = "http://broiler.astrometry.net/~dstn/4200/" + indexSeriesName;
-                int maxIndex = 0;
-                if (indexFileNum < 8 && URL.contains("*"))
+
+                if (this->indexURL->text().endsWith("/"))
                 {
-                    maxIndex = 11;
-                    if (indexFileNum < 5)
-                        maxIndex = 47;
+                    BASE_URL = this->indexURL->text();
                 }
+                else
+                {
+                    BASE_URL = this->indexURL->text() + "/";
+                }
+
+                if (indexSeriesName.startsWith(QLatin1String("index-41")))
+                    URL = BASE_URL + "4100/" + indexSeriesName;
+                else if (indexSeriesName.startsWith(QLatin1String("index-42")))
+                    URL = BASE_URL + "4200/" + indexSeriesName;
+                else if (indexSeriesName.startsWith(QLatin1String("index-52")))
+                    URL = "https://portal.nersc.gov/project/cosmo/temp/dstn/index-5200/LITE/" + indexSeriesName;
+
+                int maxIndex = indexFileCount(indexSeriesName) - 1;
+
                 double fileSize = 1E11 * qPow(astrometryIndex.key(fileNumString),
                                               -1.909); //This estimates the file size based on skymark size obtained from the index number.
                 if(maxIndex != 0)
@@ -570,7 +600,7 @@ void OpsAstrometryIndexFiles::downloadOrDeleteIndexFiles(bool checked)
             }
             else
             {
-                KSNotification::sorry(i18n("Could not contact Astrometry Index Server: broiler.astrometry.net"));
+                KSNotification::sorry(i18n("Could not contact Astrometry Index Server."));
             }
         }
         else

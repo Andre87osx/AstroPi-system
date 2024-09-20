@@ -1,18 +1,15 @@
-/*  Ekos Polar Alignment Tool
-    Copyright (C) 2013 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2013 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2013-2021 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2018-2020 Robert Lancaster <rlancaste@gmail.com>
+    SPDX-FileCopyrightText: 2019-2021 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
-
 #include "ui_align.h"
-#include "ui_mountmodel.h"
-#include "ui_manualrotator.h"
 #include "ekos/ekos.h"
 #include "indi/indiccd.h"
 #include "indi/indistd.h"
@@ -20,8 +17,7 @@
 #include "indi/indidome.h"
 #include "ksuserdb.h"
 #include "ekos/auxiliary/filtermanager.h"
-#include "ekos/guide/internalguide/starcorrespondence.h"
-#include "polaralign.h"
+#include "ekos/auxiliary/darkprocessor.h"
 
 #include <QTime>
 #include <QTimer>
@@ -54,18 +50,25 @@ class StellarSolverProfileEditor;
 class OpsPrograms;
 class OpsASTAP;
 class OpsAstrometryIndexFiles;
+class MountModel;
+class PolarAlignmentAssistant;
+class ManualRotator;
 
 /**
  *@class Align
  *@short Align class handles plate-solving and polar alignment measurement and correction using astrometry.net
- * The align class can capture images from the CCD and use either online or offline astrometry.net engine to solve the plate constants and find the center RA/DEC coordinates. The user selects the action
- * to perform when the solver completes successfully.
+ * The align class employs StellarSolver library for local solvers and supports remote INDI-based solver.
+ * StellarSolver supports internal and external solvers (Astrometry.net, ASTAP, Online Astrometry).
+ * If an image is solved successfully, the image central J2000 RA & DE coordinates along with pixel scale, rotation, and partiy are
+ * reported back.
+ * Index files management is supported with ability to download astrometry.net files. The user may select and edit different solver
+ * profiles that provide settings to control both extraction and solving profiles in detail. Manual and automatic field rotation
+ * is supported in order to align the solved images to a particular orientation in the sky. The manual rotation assistant is an interactive
+ * tool that helps the user to arrive at the desired framing.
  * Align module provide Polar Align Helper tool which enables easy-to-follow polar alignment procedure given wide FOVs (> 1.5 degrees)
- * For small FOVs, the Legacy polar alignment measurement should be used.
- * LEGACY: Measurement of polar alignment errors is performed by capturing two images on selected points in the sky and measuring the declination drift to calculate
- * the error in the mount's azimuth and altitude displacement from optimal. Correction is carried by asking the user to re-center a star by adjusting the telescope's azimuth and/or altitude knobs.
+ * Legacy polar aligment is deprecated.
  *@author Jasem Mutlaq
- *@version 1.4
+ *@version 1.5
  */
 class Align : public QWidget, public Ui::Align
 {
@@ -86,69 +89,21 @@ class Align : public QWidget, public Ui::Align
         explicit Align(ProfileInfo *activeProfile);
         virtual ~Align() override;
 
-        typedef enum
-        {
-            AZ_INIT,
-            AZ_FIRST_TARGET,
-            AZ_SYNCING,
-            AZ_SLEWING,
-            AZ_SECOND_TARGET,
-            AZ_CORRECTING,
-            AZ_FINISHED
-        } AZStage;
-        typedef enum
-        {
-            ALT_INIT,
-            ALT_FIRST_TARGET,
-            ALT_SYNCING,
-            ALT_SLEWING,
-            ALT_SECOND_TARGET,
-            ALT_CORRECTING,
-            ALT_FINISHED
-        } ALTStage;
         typedef enum { GOTO_SYNC, GOTO_SLEW, GOTO_NOTHING } GotoMode;
-        //typedef enum { SOLVER_ONLINE, SOLVER_OFFLINE, SOLVER_REMOTE } AstrometrySolverType;
-        //typedef enum { SOLVER_ASTAP, SOLVER_ASTROMETRYNET } SolverBackend;
         typedef enum { SOLVER_LOCAL, SOLVER_REMOTE } SolverMode;
-        typedef enum
-        {
-            PAH_IDLE,
-            PAH_FIRST_CAPTURE,
-            PAH_FIND_CP,
-            PAH_FIRST_ROTATE,
-            PAH_SECOND_CAPTURE,
-            PAH_SECOND_ROTATE,
-            PAH_THIRD_CAPTURE,
-            PAH_STAR_SELECT,
-            PAH_PRE_REFRESH,
-            PAH_REFRESH,
-            PAH_ERROR
-        } PAHStage;
-        typedef enum { NORTH_HEMISPHERE, SOUTH_HEMISPHERE } HemisphereType;
-
-        enum CircleSolution
-        {
-            NO_CIRCLE_SOLUTION,
-            ONE_CIRCLE_SOLUTION,
-            TWO_CIRCLE_SOLUTION,
-            INFINITE_CIRCLE_SOLUTION
-        };
-
-        enum ModelObjectType
-        {
-            OBJECT_ANY_STAR,
-            OBJECT_NAMED_STAR,
-            OBJECT_ANY_OBJECT,
-            OBJECT_FIXED_DEC,
-            OBJECT_FIXED_GRID
-        };
-
         typedef enum
         {
             ALIGN_RESULT_SUCCESS,
             ALIGN_RESULT_WARNING,
             ALIGN_RESULT_FAILED
         } AlignResult;
+
+        typedef enum
+        {
+            BLIND_IDLE,
+            BLIND_ENGAGNED,
+            BLIND_USED
+        } BlindState;
 
         /** @defgroup AlignDBusInterface Ekos DBus Interface - Align Module
              * Ekos::Align interface provides advanced scripting capabilities to solve images using online or offline astrometry.net
@@ -214,7 +169,7 @@ class Align : public QWidget, public Ui::Align
              */
         Q_SCRIPTABLE int getLoadAndSlewStatus()
         {
-            return solveFromFile;
+            return m_SolveFromFile;
         }
 
         /** DBUS interface function.
@@ -226,18 +181,6 @@ class Align : public QWidget, public Ui::Align
         {
             return exposureIN->value();
         }
-
-        /** DBUS interface function.
-             * Sets the arguments that gets passed to the astrometry.net offline solver.
-             * @param value space-separated arguments.
-             */
-        //Q_SCRIPTABLE Q_NOREPLY void setSolverArguments(const QString &value);
-
-        /** DBUS interface function.
-             * Get existing solver options.
-             * @return String containing all arguments.
-             */
-        //Q_SCRIPTABLE QString solverArguments();
 
         /** DBUS interface function.
              * Sets the telescope type (PRIMARY or GUIDE) that should be used for FOV calculations. This value is loaded form driver settings by default.
@@ -291,11 +234,12 @@ class Align : public QWidget, public Ui::Align
 
         void removeDevice(ISD::GDInterface *device);
 
-        /* @brief Set telescope and guide scope info. All measurements is in millimeters.
-        * @param primaryFocalLength Primary Telescope Focal Length. Set to 0 to skip setting this value.
-        * @param primaryAperture Primary Telescope Aperture. Set to 0 to skip setting this value.
-        * @param guideFocalLength Guide Telescope Focal Length. Set to 0 to skip setting this value.
-        * @param guideAperture Guide Telescope Aperture. Set to 0 to skip setting this value.
+        /**
+             * @brief Set telescope and guide scope info. All measurements is in millimeters.
+             * @param primaryFocalLength Primary Telescope Focal Length. Set to 0 to skip setting this value.
+             * @param primaryAperture Primary Telescope Aperture. Set to 0 to skip setting this value.
+             * @param guideFocalLength Guide Telescope Focal Length. Set to 0 to skip setting this value.
+             * @param guideAperture Guide Telescope Aperture. Set to 0 to skip setting this value.
         */
         void setTelescopeInfo(double primaryFocalLength, double primaryAperture, double guideFocalLength, double guideAperture);
 
@@ -309,6 +253,11 @@ class Align : public QWidget, public Ui::Align
              * @brief CCD information is updated, sync them.
              */
         void syncCCDInfo();
+
+        /**
+         * @brief syncCCDControls Update camera controls like gain, offset, ISO..etc.
+         */
+        void syncCCDControls();
 
         /**
              * @brief Generate arguments we pass to the remote solver.
@@ -352,14 +301,31 @@ class Align : public QWidget, public Ui::Align
 
         void setFilterManager(const QSharedPointer<FilterManager> &manager);
 
-        // Ekos Live Client helper functions
-        //int getActiveSolver() const;
+        /**
+             * @brief Sync the telescope to the solved alignment coordinate.
+             */
+        void Sync();
+
+        /**
+             * @brief Slew the telescope to the solved alignment coordinate.
+             */
+        void Slew();
+
+        /**
+             * @brief Sync the telescope to the solved alignment coordinate, and then slew to the target coordinate.
+             */
+        void SlewToTarget();
 
         /**
          * @brief getStellarSolverProfiles
          * @return list of StellarSolver profile names
          */
         QStringList getStellarSolverProfiles();
+
+        GotoMode currentGOTOMode() const
+        {
+            return m_CurrentGotoMode;
+        }
 
         /**
              * @brief generateOptions Generate astrometry.net option given the supplied map
@@ -370,9 +336,20 @@ class Align : public QWidget, public Ui::Align
         static void generateFOVBounds(double fov_h, QString &fov_low, QString &fov_high, double tolerance = 0.05);
 
         // access to the mount model UI, required for testing
-        Ui_mountModel * getMountModelUI() { return &mountModel; }
+        MountModel * mountModel() const
+        {
+            return m_MountModel;
+        }
 
-    public slots:
+        PolarAlignmentAssistant *polarAlignmentAssistant() const
+        {
+            return m_PolarAlignmentAssistant;
+        }
+
+        bool wcsSynced() const
+        {
+            return m_wcsSynced;
+        }
 
         /**
              * @brief Process updated device properties
@@ -428,35 +405,29 @@ class Align : public QWidget, public Ui::Align
          * @brief Stop aligning
          * @param mode stop mode (abort or suspend)
          */
-        void stop(AlignState mode);
+        void stop(Ekos::AlignState mode);
 
         /** DBUS interface function.
              * Aborts the solving operation, handle outside of the align module.
              */
-        Q_SCRIPTABLE Q_NOREPLY void abort() {stop(ALIGN_ABORTED);}
+        Q_SCRIPTABLE Q_NOREPLY void abort()
+        {
+            stop(ALIGN_ABORTED);
+        }
 
         /**
          * @brief Suspend aligning, recovery handled by the align module itself.
          */
-        void suspend() {stop(ALIGN_SUSPENDED);}
+        void suspend()
+        {
+            stop(ALIGN_SUSPENDED);
+        }
 
         /** DBUS interface function.
              * Select the solver mode
              * @param type Set solver type. 0 LOCAL, 1 REMOTE (requires remote astrometry driver to be activated)
              */
         Q_SCRIPTABLE Q_NOREPLY void setSolverMode(int mode);
-
-        /** DBUS interface function.
-             * Select the solver type
-             * @param type Set solver type. 0 ASTAP, 1 astrometry.net
-             */
-        //Q_SCRIPTABLE Q_NOREPLY void setSolverBackend(int type);
-
-        /** DBUS interface function.
-             * Select the astrometry solver type
-             * @param type Set solver type. 0 online, 1 offline, 2 remote
-             */
-        //Q_SCRIPTABLE Q_NOREPLY void setAstrometrySolverType(int type);
 
         /** DBUS interface function.
              * Capture and solve an image using the astrometry.net engine
@@ -477,12 +448,43 @@ class Align : public QWidget, public Ui::Align
              * solve operation is started. In case of SYNC, only the error between the the solution and target
              * coordinates is calculated. When Slew to Target is selected, the mount would be slewed afterwards to
              * this target coordinate.
-             * @param ra J2000 Right Ascension in hours.
-             * @param de J2000 Declination in degrees.
+             * @param ra0 J2000 Right Ascension in hours.
+             * @param de0 J2000 Declination in degrees.
              */
-        Q_SCRIPTABLE Q_NOREPLY void setTargetCoords(double ra, double de);
+        Q_SCRIPTABLE Q_NOREPLY void setTargetCoords(double ra0, double de0);
 
-        Q_SCRIPTABLE Q_NOREPLY void setTargetRotation(double rotation);
+        /**
+         * @brief getTargetCoords QList of target coordinates.
+         * @return First value is J2000 RA in hours. Second value is J2000 DE in degrees.
+         */
+        Q_SCRIPTABLE QList<double> getTargetCoords();
+
+
+        /**
+          * @brief Set the alignment target where the mount is expected to point at.
+          * @param targetCoord exact coordinates of the target position.
+          */
+        void setTarget(const SkyPoint &targetCoord);
+
+        /**
+         * @brief Clear the target, make it invalid.
+         */
+        Q_SCRIPTABLE Q_NOREPLY void clearTarget()
+        {
+            m_targetCoordValid = false;
+        }
+
+        /**
+         * @brief Set the coordinates that the mount reports as its position
+         * @param position current mount position
+         */
+        void setTelescopeCoordinates(const SkyPoint &position)
+        {
+            telescopeCoord = position;
+        }
+
+
+        Q_SCRIPTABLE Q_NOREPLY void setTargetPositionAngle(double value);
 
         /** DBUS interface function.
              * Sets the binning of the selected CCD device.
@@ -505,9 +507,10 @@ class Align : public QWidget, public Ui::Align
         void solverComplete();
 
         /**
-         * @brief syncTargetToScope set Target Coordinates as the current mount coordinates.
+         * @brief If the target is valid (see m_targetCoordValid), simply return. If the target is not valid,
+         * use thecurrent mount coordinates as target coordinates.
          */
-        void syncTargetToMount();
+        void updateTargetCoords();
 
         /**
              * @brief Process solver failure.
@@ -531,61 +534,18 @@ class Align : public QWidget, public Ui::Align
         void setCaptureStatus(Ekos::CaptureState newState);
         // Update Mount module status
         void setMountStatus(ISD::Telescope::Status newState);
-        void setMountCoords(const QString &ra, const QString &dec, const QString &az,
-                            const QString &alt, int pierSide, const QString &ha);
-
-        // PAH Ekos Live
-        QString getPAHStageString() const
-        {
-            return PAHStages[m_PAHStage];
-        }
-        PAHStage getPAHStage() const
-        {
-            return m_PAHStage;
-        }
-        bool isPAHEnabled() const
-        {
-            return isPAHReady;
-        }
-        QString getPAHMessage() const;
-
-        void startPAHProcess();
-        void stopPAHProcess();
-        void setPAHCorrectionOffsetPercentage(double dx, double dy);
-        void setPAHMountDirection(int index)
-        {
-            PAHDirectionCombo->setCurrentIndex(index);
-        }
-        void setPAHMountRotation(int value)
-        {
-            PAHRotationSpin->setValue(value);
-        }
-        void setPAHRefreshDuration(double value)
-        {
-            PAHExposure->setValue(value);
-        }
-        void startPAHRefreshProcess();
-        void setPAHRefreshComplete();
-        void setPAHSlewDone();
-        void setPAHCorrectionSelectionComplete();
-        void zoomAlignView();
-        void setAlignZoom(double scale);
 
         // Align Settings
         QJsonObject getSettings() const;
         void setSettings(const QJsonObject &settings);
 
-        // PAH Settings. PAH should be in separate class
-        QJsonObject getPAHSettings() const;
-        void setPAHSettings(const QJsonObject &settings);
+        void zoomAlignView();
+        void setAlignZoom(double scale);
+
+        // Manual Rotator Dialog
+        void toggleManualRotator(bool toggled);
 
     private slots:
-
-        /* Polar Alignment */
-        void measureAltError();
-        void measureAzError();
-        void correctAzError();
-        void correctAltError();
 
         void setDefaultCCD(QString ccd);
 
@@ -607,12 +567,6 @@ class Align : public QWidget, public Ui::Align
          */
         void prepareCapture(ISD::CCDChip *targetChip);
 
-        // Polar Alignment Helper slots
-
-        void rotatePAH();
-        void setPAHCorrectionOffset(int x, int y);
-        void setWCSToggled(bool result);
-
         //Solutions Display slots
         void buildTarget();
         void handlePointTooltip(QMouseEvent *event);
@@ -621,29 +575,9 @@ class Align : public QWidget, public Ui::Align
         void selectSolutionTableRow(int row, int column);
         void slotClearAllSolutionPoints();
         void slotRemoveSolutionPoint();
-        void slotMountModel();
-
-        //Mount Model Slots
-
-        void slotWizardAlignmentPoints();
-        void slotStarSelected(const QString selectedStar);
-        void slotLoadAlignmentPoints();
-        void slotSaveAsAlignmentPoints();
-        void slotSaveAlignmentPoints();
-        void slotClearAllAlignPoints();
-        void slotRemoveAlignPoint();
-        void slotAddAlignPoint();
-        void slotFindAlignObject();
-        void resetAlignmentProcedure();
-        void startStopAlignmentProcedure();
-        void startAlignmentPoint();
-        void finishAlignmentPoint(bool solverSucceeded);
-        void moveAlignPoint(int logicalIndex, int oldVisualIndex, int newVisualIndex);
-        void exportSolutionPoints();
-        void alignTypeChanged(int alignType);
-        void togglePreviewAlignPoints();
-        void slotSortAlignmentPoints();
         void slotAutoScaleGraph();
+
+        void slotMountModel();
 
         // Settings
         void syncSettings();
@@ -659,38 +593,28 @@ class Align : public QWidget, public Ui::Align
          */
         void refreshAlignOptions();
 
+        void processPAHStage(int stage);
+
     signals:
         void newLog(const QString &text);
         void newStatus(Ekos::AlignState state);
+        void newPAAStage(int stage);
         void newSolution(const QVariantMap &solution);
 
         // This is sent when we load an image in the view
-        void newImage(FITSView *view);
+        void newImage(const QSharedPointer<FITSView> &view);
         // This is sent when the pixmap is updated within the view
-        void newFrame(FITSView *view);
-
-        void polarResultUpdated(QLineF correctionVector, double polarError, double azError, double altError);
-        void newCorrectionVector(QLineF correctionVector);
+        void newFrame(const QSharedPointer<FITSView> &view);
+        // Send new solver results
         void newSolverResults(double orientation, double ra, double dec, double pixscale);
-
-        // Polar Assistant Tool
-        void newPAHStage(PAHStage stage);
-        void newPAHMessage(const QString &message);
-        void newFOVTelescopeType(int index);
-        void PAHEnabled(bool);
 
         // Settings
         void settingsUpdated(const QJsonObject &settings);
 
-    private:
-        bool m_SolveBlindly = false;
-        KPageWidgetItem *indexFilesPage;
-        QString savedOptionsProfiles;
-        /**
-            * @brief Warns the user if the polar alignment might cross the meridian.
-            */
-        bool checkPAHForMeridianCrossing();
+        // Manual Rotator
+        void manualRotatorChanged(double currentPA, double targetPA, double threshold);
 
+    private:
         /**
          * @brief Retrieve the align status indicator
          */
@@ -701,10 +625,7 @@ class Align : public QWidget, public Ui::Align
          */
         void stopProgressAnimation();
 
-        void processPAHRefresh();
-        bool detectStarsPAHRefresh(QList<Edge> *stars, int num, int x, int y, int *xyIndex);
-        int refreshIteration { 0 };
-        StarCorrespondence starCorrespondencePAH;
+        void exportSolutionPoints();
 
         /**
             * @brief Calculate Field of View of CCD+Telescope combination that we need to pass to astrometry.net solver.
@@ -723,37 +644,6 @@ class Align : public QWidget, public Ui::Align
         void calculateAlignTargetDiff();
 
         /**
-             * @brief After a solver process is completed successfully, measure Azimuth or Altitude error as requested by the user.
-             */
-        void executePolarAlign();
-
-        /**
-             * @brief Sync the telescope to the solved alignment coordinate.
-             */
-        void Sync();
-
-        /**
-             * @brief Slew the telescope to the solved alignment coordinate.
-             */
-        void Slew();
-
-        /**
-             * @brief Sync the telescope to the solved alignment coordinate, and then slew to the target coordinate.
-             */
-        void SlewToTarget();
-
-        /**
-             * @brief Calculate polar alignment error magnitude and direction.
-             * The calculation is performed by first capturing and solving a frame, then slewing 30 arcminutes and solving another frame to find the exact coordinates, then computing the error.
-             * @param initRA RA of first frame.
-             * @param initDEC DEC of first frame
-             * @param finalRA RA of second frame
-             * @param finalDEC DEC of second frame
-             * @param initAz Azimuth of first frame
-             */
-        void calculatePolarError(double initRA, double initDEC, double finalRA, double finalDEC, double initAz);
-
-        /**
              * @brief Get formatted RA & DEC coordinates compatible with astrometry.net format.
              * @param ra Right ascension
              * @param dec Declination
@@ -761,14 +651,6 @@ class Align : public QWidget, public Ui::Align
              * @param dec_str will contain the formatted DEC string
              */
         void getFormattedCoords(double ra, double dec, QString &ra_str, QString &dec_str);
-
-        /**
-             * @brief getSolverOptionsFromFITS Generates a set of solver options given the supplied FITS image. The function reads FITS keyword headers and build the argument list accordingly. In case of a missing header keyword, it falls back to
-             * the Alignment module existing values.
-             * @param filename FITS path
-             * @return List of Solver options
-             */
-        // QStringList getSolverOptionsFromFITS(const QString &filename);
 
         uint8_t getSolverDownsample(uint16_t binnedW);
 
@@ -778,40 +660,10 @@ class Align : public QWidget, public Ui::Align
              */
         void setWCSEnabled(bool enable);
 
-        /**
-             * @brief calculatePAHError Calculate polar alignment error in the Polar Alignment Helper (PAH) method
-             */
-        void calculatePAHError();
-
-        /**
-         * @brief syncCorrectionVector Flip correction vector based on user settings.
-         */
-        void syncCorrectionVector();
-
-        void setupCorrectionGraphics(const QPointF &pixel);
-
-        /**
-             * @brief processPAHStage After solver is complete, handle PAH Stage processing
-             */
-        void processPAHStage(double orientation, double ra, double dec, double pixscale, bool eastToTheRight);
-
         void resizeEvent(QResizeEvent *event) override;
 
-        bool alignmentPointsAreBad();
-        bool loadAlignmentPoints(const QString &fileURL);
-        bool saveAlignmentPoints(const QString &path);
-
-        void generateAlignStarList();
-        bool isVisible(const SkyObject *so);
-        double getAltitude(const SkyObject *so);
-        const SkyObject *getWizardAlignObject(double ra, double de);
-        void calculateAngleForRALine(double &raIncrement, double &initRA, double initDEC, double lat, double raPoints,
-                                     double minAlt);
-        void calculateAZPointsForDEC(dms dec, dms alt, dms &AZEast, dms &AZWest);
-        void updatePreviewAlignPoints();
-        int findNextAlignmentPointAfter(int currentSpot);
-        int findClosestAlignmentPointToTelescope();
-        void swapAlignPoints(int firstPt, int secondPt);
+        KPageWidgetItem *m_IndexFilesPage;
+        QString savedOptionsProfiles;
 
         /**
          * @brief React when a mount motion has been detected
@@ -822,6 +674,24 @@ class Align : public QWidget, public Ui::Align
          * @brief Continue aligning according to the current mount status
          */
         void handleMountStatus();
+
+        /**
+         * @brief initPolarAlignmentAssistant Initialize Polar Alignment Asssistant Tool
+         */
+        void initPolarAlignmentAssistant();
+
+        /**
+         * @brief initManualRotator Initialize Manual Rotator Tool
+         */
+        void initManualRotator();
+
+        /**
+         * @brief initDarkProcessor Initialize Dark Processor
+         */
+        void initDarkProcessor();
+
+        bool matchPAHStage(uint32_t stage);
+
 
         // Effective FOV
 
@@ -840,24 +710,28 @@ class Align : public QWidget, public Ui::Align
         bool useGuideHead { false };
         /// Can the mount sync its coordinates to those set by Ekos?
         bool canSync { false };
-        // solveFromFile is true we load an image and solve it, no capture is done.
-        bool solveFromFile { false };
+        // m_SolveFromFile is true we load an image and solve it, no capture is done.
+        bool m_SolveFromFile { false };
         // Target Position Angle of solver Load&Slew image to be used for rotator if necessary
         double loadSlewTargetPA { std::numeric_limits<double>::quiet_NaN() };
         double currentRotatorPA { -1 };
         /// Solver iterations count
         uint8_t solverIterations { 0 };
+        /// Was solving with scale off used?
+        BlindState useBlindScale {BLIND_IDLE};
+        /// Was solving with position off used?
+        BlindState useBlindPosition {BLIND_IDLE};
 
         // FOV
-        double ccd_hor_pixel { -1 };
-        double ccd_ver_pixel { -1 };
-        double focal_length { -1 };
-        double aperture { -1 };
-        double fov_x { 0 };
-        double fov_y { 0 };
-        double fov_pixscale { 0 };
-        int ccd_width { 0 };
-        int ccd_height { 0 };
+        double m_CameraPixelWidth { -1 };
+        double m_CameraPixelHeight { -1 };
+        double m_TelescopeFocalLength { -1 };
+        double m_TelescopeAperture { -1 };
+        double m_FOVWidth { 0 };
+        double m_FOVHeight { 0 };
+        double m_FOVPixelScale { 0 };
+        uint16_t m_CameraWidth { 0 };
+        uint16_t m_CameraHeight { 0 };
 
         // Keep track of solver results
         double sOrientation { INVALID_VALUE };
@@ -867,8 +741,10 @@ class Align : public QWidget, public Ui::Align
         /// Solver alignment coordinates
         SkyPoint alignCoord;
         /// Target coordinates we need to slew to
-        SkyPoint targetCoord;
-        /// Actual current telescope coordinates
+        SkyPoint m_targetCoord;
+        /// do we have valid target coordinates?
+        bool m_targetCoordValid = false;
+        /// Current telescope coordinates
         SkyPoint telescopeCoord;
         /// Coord from Load & Slew
         SkyPoint loadSlewCoord;
@@ -883,17 +759,9 @@ class Align : public QWidget, public Ui::Align
         /// Keep track of how long the solver is running
         QElapsedTimer solverTimer;
 
-        // Polar Alignment
-        AZStage azStage;
-        ALTStage altStage;
-        double azDeviation { 0 };
-        double altDeviation { 0 };
-        double decDeviation { 0 };
-        static const double RAMotion;
-        static const double SIDRATE;
-
-        // StellarSolver Profiles
+        // The StellarSolver
         std::unique_ptr<StellarSolver> m_StellarSolver;
+        // StellarSolver Profiles
         QList<SSolver::Parameters> m_StellarSolverProfiles;
 
         /// Have we slewed?
@@ -950,89 +818,53 @@ class Align : public QWidget, public Ui::Align
         // Track which upload mode the CCD is set to. If set to UPLOAD_LOCAL, then we need to switch it to UPLOAD_CLIENT in order to do focusing, and then switch it back to UPLOAD_LOCAL
         ISD::CCD::UploadMode rememberUploadMode { ISD::CCD::UPLOAD_CLIENT };
 
-        GotoMode currentGotoMode;
+        GotoMode m_CurrentGotoMode;
 
         QString dirPath;
 
         // Timer
         QTimer m_AlignTimer;
 
-        // BLOB Type
-        //        ISD::CCD::BlobType blobType;
-        //        QString blobFileName;
-
         // Align Frame
-        AlignView *alignView { nullptr };
+        QSharedPointer<AlignView> m_AlignView;
 
         // FITS Viewer in case user want to display in it instead of internal view
         QPointer<FITSViewer> fv;
 
-        // Polar Alignment Helper
-        PAHStage m_PAHStage { PAH_IDLE };
-        SkyPoint targetPAH;
-        bool isPAHReady { false };
-
-        // Polar alignment will retry capture & solve a few times if solve fails.
-        int m_PAHRetrySolveCounter { 0 };
+        QUrl alignURL;
+        QUrl alignURLPath;
 
         // keep track of autoWSC
         bool rememberAutoWCS { false };
         bool rememberSolverWCS { false };
-        //bool rememberMeridianFlip { false };
-
-        // Points on the image to correct mount's ra axis.
-        // correctionFrom is the star the user selected (or center of the image at start).
-        // correctionTo is where theuser should move that star.
-        // correctionAltTo is where the use should move that star to only fix altitude.
-        QPointF correctionFrom, correctionTo, correctionAltTo;
-
-        // CCDs using Guide Scope for parameters
-        //QStringList guideScopeCCDs;
-
-        // Which hemisphere are we located on?
-        HemisphereType hemisphere;
 
         // Differential Slewing
         bool differentialSlewingActivated { false };
+        bool targetAccuracyNotMet { false };
 
         // Astrometry Options
         OpsAstrometry *opsAstrometry { nullptr };
         OpsAlign *opsAlign { nullptr };
         OpsPrograms *opsPrograms { nullptr };
-        //OpsAstrometryCfg *opsAstrometryCfg { nullptr };
         OpsAstrometryIndexFiles *opsAstrometryIndexFiles { nullptr };
         OpsASTAP *opsASTAP { nullptr };
         StellarSolverProfileEditor *optionsProfileEditor { nullptr };
+
+        // Drawing
         QCPCurve *centralTarget { nullptr };
         QCPCurve *yellowTarget { nullptr };
         QCPCurve *redTarget { nullptr };
         QCPCurve *concentricRings { nullptr };
-        QDialog mountModelDialog;
-        Ui_mountModel mountModel;
-        int currentAlignmentPoint { 0 };
-        bool mountModelRunning { false };
-        bool mountModelReset { false };
-        bool targetAccuracyNotMet { false };
-        bool previewShowing { false };
-        QDialog manualRotatorDialog;
-        Ui_manualRotator manualRotator;
-        QUrl alignURL;
-        QUrl alignURLPath;
-        QVector<const StarObject *> alignStars;
 
+        // Telescope Settings
         ISD::CCD::TelescopeType rememberTelescopeType = { ISD::CCD::TELESCOPE_UNKNOWN };
-
         double primaryFL = -1, primaryAperture = -1, guideFL = -1, guideAperture = -1;
         double primaryEffectiveFL = -1, guideEffectiveFL = -1;
         bool m_isRateSynced = false;
         bool domeReady = true;
 
-        // Current mount pointing state.
-        dms mountRa, mountDec, mountAz, mountAlt, mountHa;
-        ISD::Telescope::PierSide mountPierSide { ISD::Telescope::PierSide::PIER_UNKNOWN };
-
         // CCD Exposure Looping
-        bool rememberCCDExposureLooping = { false };
+        bool m_RememberCameraFastExposure = { false };
 
         // Controls
         double GainSpinSpecialValue {INVALID_VALUE};
@@ -1047,16 +879,18 @@ class Align : public QWidget, public Ui::Align
         // Active Profile
         ProfileInfo *m_ActiveProfile { nullptr };
 
-        // PAH Stage Map
-        static const QMap<PAHStage, QString> PAHStages;
-
         // Threshold to notify settle time is 3 seconds
         static constexpr uint16_t DELAY_THRESHOLD_NOTIFY { 3000 };
 
-        // Threshold to stop PAH rotation in degrees
-        static constexpr uint8_t PAH_ROTATION_THRESHOLD { 5 };
+        // Mount Model
+        // N.B. We do not need to use "smart pointer" here as the object memroy
+        // is taken care of by the Qt framework.
+        MountModel *m_MountModel {nullptr};
+        PolarAlignmentAssistant *m_PolarAlignmentAssistant {nullptr};
+        ManualRotator *m_ManualRotator {nullptr};
 
-        // Class used to estimate alignment error.
-        PolarAlign polarAlign;
+        // Dark Processor
+        QPointer<DarkProcessor> m_DarkProcessor;
+
 };
 }

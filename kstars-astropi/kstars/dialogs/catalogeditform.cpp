@@ -1,21 +1,12 @@
-/***************************************************************************
-                  catalogeditform.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2021-06-03
-    copyright            : (C) 2021 by Valentin Boettcher
-    email                : hiro at protagon.space; @hiro98:tchncs.de
-***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "catalogeditform.h"
+#include "dialogs/catalogcoloreditor.h"
+#include "kstarsdata.h"
 #include "ui_catalogeditform.h"
 #include "catalogsdb.h"
 #include <QColorDialog>
@@ -51,12 +42,16 @@ CatalogEditForm::CatalogEditForm(QWidget *parent, const CatalogsDB::Catalog &cat
             [&](const QString &s) { m_catalog.maintainer = s; });
 
     connect(ui->color, &QPushButton::clicked, [&]() {
-        QColorDialog picker{};
-        if (picker.exec() != QDialog::Accepted)
+        CatalogColorEditor editor{
+            m_catalog.color == "" ?
+                KStarsData::Instance()->colorScheme()->colorNamed("DSOColor").name() :
+                m_catalog.color
+        };
+
+        if (editor.exec() != QDialog::Accepted)
             return;
 
-        m_catalog.color = picker.currentColor().name();
-        ui->color->setText(m_catalog.color);
+        m_catalog.color = editor.color_string();
     });
 }
 
@@ -69,10 +64,6 @@ void CatalogEditForm::fill_form_from_catalog()
 {
     ui->id->setValue(m_catalog.id);
     ui->name->setText(m_catalog.name);
-    if (m_catalog.color == "")
-        ui->color->setText(i18n("Choose"));
-    else
-        ui->color->setText(m_catalog.color);
     ui->author->setText(m_catalog.author);
     ui->source->setText(m_catalog.source);
     ui->description->setHtml(m_catalog.description);

@@ -1,11 +1,8 @@
-/*  Correspondence class.
-    Copyright (C) 2020 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -17,7 +14,6 @@
 #include "fitsviewer/fitssepdetector.h"
 #include "starcorrespondence.h"
 #include "vect.h"
-#include "matr.h"
 #include "../guideview.h"
 #include "calibration.h"
 
@@ -61,7 +57,8 @@ class GuideStars
 
         // Finds the guide star previously selected with selectGuideStar()
         // in a new image. This sets up internal structures for getDrift().
-        Vector findGuideStar(const QSharedPointer<FITSData> &imageData, const QRect &trackingBox, GuideView *guideView = nullptr);
+        GuiderUtils::Vector findGuideStar(const QSharedPointer<FITSData> &imageData, const QRect &trackingBox,
+                                          QSharedPointer<GuideView> &guideView, bool firstFrame);
 
         // Finds the drift of the star positions in arc-seconds for RA and DEC.
         // Must be called after findGuideStar().
@@ -115,7 +112,7 @@ class GuideStars
         int findAllSEPStars(const QSharedPointer<FITSData> &imageData, QList<Edge*> *sepStars, int num);
 
         // Convert from input image coordinates to output RA and DEC coordinates.
-        Vector point2arcsec(const Vector &p) const;
+        GuiderUtils::Vector point2arcsec(const GuiderUtils::Vector &p) const;
 
         // Returns the RA and DEC distance between the star and the reference star.
         void computeStarDrift(const Edge &star, const Edge &reference,
@@ -131,13 +128,13 @@ class GuideStars
         double findMinDistance(int index, const QList<Edge*> &stars);
 
         // Plot the positions of the neighbor stars on the guideView display.
-        void plotStars(GuideView *guideView, const QRect &trackingBox);
+        void plotStars(QSharedPointer<GuideView> &guideView, const QRect &trackingBox);
 
         // These three methods are useful for testing.
         void setDetectedStars(const QList<Edge> &stars)
         {
             detectedStars = stars;
-        };
+        }
         void setSkyBackground(const SkyBackground &background)
         {
             skyBackground = background;
@@ -171,8 +168,7 @@ class GuideStars
         // Find guide star will allow robust star correspondence.
         bool allowMissingGuideStar { true };
 
-        // counts consecutive missed guide stars.
-        int missedGuideStars { 0 };
+        int unreliableDectionCounter { 0 };
 
         friend class TestGuideStars;
 };

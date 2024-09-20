@@ -1,11 +1,8 @@
-/*  INDI CCD
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -15,6 +12,7 @@
 #include "fitsviewer/fitscommon.h"
 #include "fitsviewer/fitsview.h"
 #include "fitsviewer/fitsviewer.h"
+#include "ekos/capture/placeholderpath.h"
 
 #include <QStringList>
 #include <QPointer>
@@ -49,8 +47,6 @@ class CCDChip
 
         CCDChip(ISD::CCD *ccd, ChipType cType);
 
-        FITSView *getImageView(FITSMode imageType);
-        void setImageView(FITSView *image, FITSMode imageType);
         void setCaptureMode(FITSMode mode)
         {
             captureMode = mode;
@@ -131,21 +127,23 @@ class CCDChip
 
         bool canAbort() const;
         void setCanAbort(bool value);
-
-        const QSharedPointer<FITSData> &getImageData() const;
-        void setImageData(const QSharedPointer<FITSData> &data)
-        {
-            imageData = data;
-        }
-
         int getISOIndex() const;
+        bool getISOValue(QString &value) const;
         bool setISOIndex(int value);
 
         QStringList getISOList() const;
 
+        void setImageData(const QSharedPointer<FITSData> &data)
+        {
+            m_ImageData = data;
+        }
+        const QSharedPointer<FITSData> getImageData() const
+        {
+            return m_ImageData;
+        }
+
     private:
-        QPointer<FITSView> normalImage, focusImage, guideImage, calibrationImage, alignImage;
-        QSharedPointer<FITSData> imageData { nullptr };
+        QSharedPointer<FITSData> m_ImageData;
         FITSMode captureMode { FITS_NORMAL };
         FITSScale captureFilter { FITS_NONE };
         INDI::BaseDevice *baseDevice { nullptr };
@@ -175,7 +173,6 @@ class CCD : public DeviceDecorator
         virtual ~CCD() override;
 
         typedef enum { UPLOAD_CLIENT, UPLOAD_LOCAL, UPLOAD_BOTH } UploadMode;
-        typedef enum { FORMAT_FITS, FORMAT_NATIVE } TransferFormat;
         enum BlobType
         {
             BLOB_IMAGE,
@@ -184,6 +181,13 @@ class CCD : public DeviceDecorator
             BLOB_OTHER
         } BType;
         typedef enum { TELESCOPE_PRIMARY, TELESCOPE_GUIDE, TELESCOPE_UNKNOWN } TelescopeType;
+        typedef enum
+        {
+            ERROR_CAPTURE,              /** INDI Camera error */
+            ERROR_SAVE,                 /** Saving to disk error */
+            ERROR_LOAD,                 /** Loading image buffer error */
+            ERROR_VIEWER                /** Loading in FITS Viewer Error */
+        } ErrorType;
 
         void registerProperty(INDI::Property prop) override;
         void removeProperty(const QString &name) override;
@@ -234,14 +238,14 @@ class CCD : public DeviceDecorator
         {
             seqPrefix = preFix;
         }
+        void setPlaceholderPath(Ekos::PlaceholderPath php)
+        {
+            placeholderPath = php;
+        }
         void setNextSequenceID(int count)
         {
             nextSequenceID = count;
         }
-        //        void setFilter(const QString &newFilter)
-        //        {
-        //            filter = newFilter;
-        //        }
 
         // Gain controls
         bool hasGain()
@@ -278,12 +282,24 @@ class CCD : public DeviceDecorator
         UploadMode getUploadMode();
         bool setUploadMode(UploadMode mode);
 
-        // Transfer Format
-        TransferFormat getTransferFormat()
+        // Encoding Format
+        const QString &getEncodingFormat() const
         {
-            return transferFormat;
+            return m_EncodingFormat;
         }
-        bool setTransformFormat(CCD::TransferFormat format);
+        bool setEncodingFormat(const QString &value);
+        const QStringList &getEncodingFormats() const
+        {
+            return m_EncodingFormats;
+        }
+
+        // Capture Format
+        const QStringList &getCaptureFormats() const
+        {
+            return m_CaptureFormats;
+        }
+        QString getCaptureFormat() const;
+        bool setCaptureFormat(const QString &format);
 
         // BLOB control
         bool isBLOBEnabled();
@@ -317,20 +333,13 @@ class CCD : public DeviceDecorator
         bool setFITSHeader(const QMap<QString, QString> &values);
 
         CCDChip *getChip(CCDChip::ChipType cType);
-        void setFITSDir(const QString &dir)
-        {
-            fitsDir = dir;
-        }
 
-        TransferFormat getTargetTransferFormat() const;
-        void setTargetTransferFormat(const TransferFormat &value);
-
-        bool setExposureLoopingEnabled(bool enable);
-        bool isLooping() const
+        bool setFastExposureEnabled(bool enable);
+        bool isFastExposureEnabled() const
         {
-            return IsLooping;
+            return m_FastExposureEnabled;
         }
-        bool setExposureLoopCount(uint32_t count);
+        bool setFastCount(uint32_t count);
 
         const QMap<QString, double> &getExposurePresets() const
         {
@@ -362,29 +371,29 @@ class CCD : public DeviceDecorator
         void newVideoFrame(const QSharedPointer<QImage> &frame);
         void coolerToggled(bool enabled);
         void ready();
-        void captureFailed();
+        void error(ErrorType type);
         void newImage(const QSharedPointer<FITSData> &data);
 
     private:
         void processStream(IBLOB *bp);
-        void loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPointer<FITSData> &data);
-        bool generateFilename(const QString &format, bool batch_mode, QString *filename);
+        bool generateFilename(bool batch_mode, const QString &extension, QString *filename);
         // Saves an image to disk on a separate thread.
         bool writeImageFile(const QString &filename, IBLOB *bp, bool is_fits);
+        bool WriteImageFileInternal(const QString &filename, char *buffer, const size_t size);
         // Creates or finds the FITSViewer.
-        void setupFITSViewerWindows();
+        QPointer<FITSViewer> getFITSViewer();
         void handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, QSharedPointer<FITSData> data);
 
-        //QString filter;
         bool ISOMode { true };
         bool HasGuideHead { false };
         bool HasCooler { false };
         bool CanCool { false };
         bool HasCoolerControl { false };
         bool HasVideoStream { false };
-        bool IsLooping { false };
+        bool m_FastExposureEnabled { false };
         QString seqPrefix;
-        QString fitsDir;
+        Ekos::PlaceholderPath placeholderPath;
+
         int nextSequenceID { 0 };
         std::unique_ptr<StreamWG> streamWindow;
         int streamW { 0 };
@@ -402,8 +411,10 @@ class CCD : public DeviceDecorator
         std::unique_ptr<CCDChip> primaryChip;
         std::unique_ptr<CCDChip> guideChip;
         std::unique_ptr<WSMedia> m_Media;
-        TransferFormat transferFormat { FORMAT_FITS };
-        TransferFormat targetTransferFormat { FORMAT_FITS };
+        QString m_EncodingFormat {"FITS"};
+        QStringList m_EncodingFormats;
+        QStringList m_CaptureFormats;
+        int m_CaptureFormatIndex;
         TelescopeType telescopeType { TELESCOPE_UNKNOWN };
 
         // Gain, since it is spread among different vector properties, let's try to find the property itself.

@@ -1,13 +1,10 @@
-/*  INDI Element
-    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 
     2004-01-15	INDI element is the most basic unit of the INDI KStars client.
- */
+*/
 
 #include "indielement.h"
 
@@ -39,27 +36,11 @@ extern const char *libindi_strings_context;
 /*******************************************************************
 ** INDI Element
 *******************************************************************/
-INDI_E::INDI_E(INDI_P *gProp, INDI::Property dProp)
-    : guiProp(gProp)
-    , dataProp(dProp)
+INDI_E::INDI_E(INDI_P *gProp, INDI::Property dProp) : QWidget(gProp), guiProp(gProp), dataProp(dProp)
 {
     EHBox = new QHBoxLayout;
+    EHBox->setObjectName("Element Horizontal Layout");
     EHBox->setContentsMargins(0, 0, 0, 0);
-}
-
-INDI_E::~INDI_E()
-{
-    delete (EHBox);
-    delete (label_w);
-    delete (read_w);
-    delete (write_w);
-    delete (spin_w);
-    delete (slider_w);
-    delete (push_w);
-    delete (browse_w);
-    delete (check_w);
-    delete (led_w);
-    delete (hSpacer);
 }
 
 void INDI_E::buildSwitch(QButtonGroup *groupB, ISwitch *sw)
@@ -84,7 +65,8 @@ void INDI_E::buildSwitch(QButtonGroup *groupB, ISwitch *sw)
     switch (guiProp->getGUIType())
     {
         case PG_BUTTONS:
-            push_w = new QPushButton(label, guiProp->getGroup()->getContainer());
+            push_w = new QPushButton(label, this);
+            push_w->setStyleSheet(":checked {background-color: darkGreen}");
             push_w->setCheckable(true);
             groupB->addButton(push_w);
 
@@ -94,13 +76,13 @@ void INDI_E::buildSwitch(QButtonGroup *groupB, ISwitch *sw)
 
             push_w->show();
 
-            if (sw->svp->p == IP_RO)
+            if (dataProp.getPermission() == IP_RO)
                 push_w->setEnabled(sw->s == ISS_ON);
 
             break;
 
         case PG_RADIO:
-            check_w = new QCheckBox(label, guiProp->getGroup()->getContainer());
+            check_w = new QCheckBox(label, this);
             groupB->addButton(check_w);
 
             syncSwitch();
@@ -109,7 +91,7 @@ void INDI_E::buildSwitch(QButtonGroup *groupB, ISwitch *sw)
 
             check_w->show();
 
-            if (sw->svp->p == IP_RO)
+            if (dataProp.getPermission() == IP_RO)
                 check_w->setEnabled(sw->s == ISS_ON);
 
             break;
@@ -164,18 +146,15 @@ void INDI_E::buildText(IText *itp)
     }
 
     guiProp->addLayout(EHBox);
-    //pp->PVBox->addLayout(EHBox);
 }
 
 void INDI_E::setupElementLabel()
 {
     QPalette palette;
 
-    label_w = new KSqueezedTextLabel(guiProp->getGroup()->getContainer());
+    label_w = new KSqueezedTextLabel(this);
     label_w->setMinimumWidth(ELEMENT_LABEL_WIDTH * KStars::Instance()->devicePixelRatio());
     label_w->setMaximumWidth(ELEMENT_LABEL_WIDTH * KStars::Instance()->devicePixelRatio());
-    label_w->setFrameShape(KSqueezedTextLabel::Box);
-    label_w->setFrameShadow(KSqueezedTextLabel::Sunken);
     label_w->setMargin(2);
 
     palette.setColor(label_w->backgroundRole(), QColor(224, 232, 238));
@@ -183,6 +162,8 @@ void INDI_E::setupElementLabel()
     label_w->setTextFormat(Qt::RichText);
     label_w->setAlignment(Qt::AlignCenter);
     label_w->setWordWrap(true);
+
+    label_w->setStyleSheet("border: 1px solid grey; border-radius: 2px");
 
     if (label.length() > MAX_LABEL_LENGTH)
     {
@@ -198,6 +179,9 @@ void INDI_E::setupElementLabel()
 
 void INDI_E::syncSwitch()
 {
+    if (sp == nullptr)
+        return;
+
     QFont buttonFont;
 
     switch (guiProp->getGUIType())
@@ -211,7 +195,7 @@ void INDI_E::syncSwitch()
                 buttonFont.setBold(true);
                 push_w->setFont(buttonFont);
 
-                if (sp->svp->p == IP_RO)
+                if (dataProp.getPermission() == IP_RO)
                     push_w->setEnabled(true);
             }
             else
@@ -222,7 +206,7 @@ void INDI_E::syncSwitch()
                 buttonFont.setBold(false);
                 push_w->setFont(buttonFont);
 
-                if (sp->svp->p == IP_RO)
+                if (dataProp.getPermission() == IP_RO)
                     push_w->setEnabled(false);
             }
             break;
@@ -231,13 +215,13 @@ void INDI_E::syncSwitch()
             if (sp->s == ISS_ON)
             {
                 check_w->setChecked(true);
-                if (sp->svp->p == IP_RO)
+                if (dataProp.getPermission() == IP_RO)
                     check_w->setEnabled(true);
             }
             else
             {
                 check_w->setChecked(false);
-                if (sp->svp->p == IP_RO)
+                if (dataProp.getPermission() == IP_RO)
                     check_w->setEnabled(false);
             }
             break;
@@ -252,7 +236,7 @@ void INDI_E::syncText()
     if (tp == nullptr)
         return;
 
-    if (tp->tvp->p != IP_WO)
+    if (dataProp.getPermission() != IP_WO)
     {
         if (tp->text[0])
             read_w->setText(i18nc(libindi_strings_context, tp->text));
@@ -459,7 +443,7 @@ void INDI_E::buildLight(ILight *ilp)
     if (label == "(I18N_EMPTY_MESSAGE)")
         label = ilp->name;
 
-    led_w = new KLed(guiProp->getGroup()->getContainer());
+    led_w = new KLed(this);
     led_w->setMaximumSize(16, 16);
     led_w->setLook(KLed::Sunken);
 
@@ -494,9 +478,6 @@ void INDI_E::syncLight()
         case IPS_ALERT:
             led_w->setColor(Qt::red);
             break;
-
-        default:
-            break;
     }
 }
 
@@ -505,17 +486,17 @@ void INDI_E::setupElementScale(int length)
     if (np == nullptr)
         return;
 
-    int steps = (int)((np->max - np->min) / np->step);
-    spin_w    = new QDoubleSpinBox(guiProp->getGroup()->getContainer());
+    int steps = static_cast<int>((np->max - np->min) / np->step);
+    spin_w    = new QDoubleSpinBox(this);
     spin_w->setRange(np->min, np->max);
     spin_w->setSingleStep(np->step);
     spin_w->setValue(np->value);
     spin_w->setDecimals(3);
 
-    slider_w = new QSlider(Qt::Horizontal, guiProp->getGroup()->getContainer());
+    slider_w = new QSlider(Qt::Horizontal, this);
     slider_w->setRange(0, steps);
     slider_w->setPageStep(1);
-    slider_w->setValue((int)((np->value - np->min) / np->step));
+    slider_w->setValue(static_cast<int>((np->value - np->min) / np->step));
 
     connect(spin_w, SIGNAL(valueChanged(double)), this, SLOT(spinChanged(double)));
     connect(slider_w, SIGNAL(sliderMoved(int)), this, SLOT(sliderChanged(int)));
@@ -525,8 +506,8 @@ void INDI_E::setupElementScale(int length)
     else
         spin_w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
-    spin_w->setMinimumWidth((int)(length * 0.45));
-    slider_w->setMinimumWidth((int)(length * 0.55));
+    spin_w->setMinimumWidth(static_cast<int>(length * 0.45));
+    slider_w->setMinimumWidth(static_cast<int>(length * 0.55));
 
     EHBox->addWidget(slider_w);
     EHBox->addWidget(spin_w);
@@ -534,7 +515,7 @@ void INDI_E::setupElementScale(int length)
 
 void INDI_E::spinChanged(double value)
 {
-    int slider_value = (int)((value - np->min) / np->step);
+    int slider_value = static_cast<int>((value - np->min) / np->step);
     slider_w->setValue(slider_value);
 }
 
@@ -553,10 +534,10 @@ void INDI_E::setMin()
     }
     if (slider_w)
     {
-        slider_w->setMaximum((int)((np->max - np->min) / np->step));
+        slider_w->setMaximum(static_cast<int>((np->max - np->min) / np->step));
         slider_w->setMinimum(0);
         slider_w->setPageStep(1);
-        slider_w->setValue((int)((np->value - np->min) / np->step));
+        slider_w->setValue(static_cast<int>((np->value - np->min) / np->step));
     }
 }
 
@@ -569,30 +550,29 @@ void INDI_E::setMax()
     }
     if (slider_w)
     {
-        slider_w->setMaximum((int)((np->max - np->min) / np->step));
+        slider_w->setMaximum(static_cast<int>((np->max - np->min) / np->step));
         slider_w->setMinimum(0);
         slider_w->setPageStep(1);
-        slider_w->setValue((int)((np->value - np->min) / np->step));
+        slider_w->setValue(static_cast<int>((np->value - np->min) / np->step));
     }
 }
 
 void INDI_E::setupElementWrite(int length)
 {
-    write_w = new QLineEdit(guiProp->getGroup()->getContainer());
+    write_w = new QLineEdit(this);
     write_w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     write_w->setMinimumWidth(length);
     write_w->setMaximumWidth(length);
 
     write_w->setText(text);
 
-    //QObject::connect(write_w, SIGNAL(returnPressed(QString)), this, SLOT(updateTP()));
     QObject::connect(write_w, SIGNAL(returnPressed()), guiProp, SLOT(sendText()));
     EHBox->addWidget(write_w);
 }
 
 void INDI_E::setupElementRead(int length)
 {
-    read_w = new QLineEdit(guiProp->getGroup()->getContainer());
+    read_w = new QLineEdit(this);
     read_w->setMinimumWidth(length);
     read_w->setFocusPolicy(Qt::NoFocus);
     read_w->setCursorPosition(0);
@@ -605,7 +585,7 @@ void INDI_E::setupElementRead(int length)
 
 void INDI_E::setupBrowseButton()
 {
-    browse_w = new QPushButton(guiProp->getGroup()->getContainer());
+    browse_w = new QPushButton(this);
     browse_w->setIcon(QIcon::fromTheme("document-open"));
     browse_w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
     browse_w->setMinimumWidth(MIN_SET_WIDTH  * KStars::Instance()->devicePixelRatio());
@@ -637,7 +617,7 @@ void INDI_E::browseBlob()
     if ((pos = filename.lastIndexOf(".")) != -1)
         format = filename.mid(pos, filename.length());
 
-    //qDebug() << "Filename is " << fp.fileName() << endl;
+    //qDebug() << Q_FUNC_INFO << "Filename is " << fp.fileName() << Qt::endl;
 
     if (!fp.open(QIODevice::ReadOnly))
     {

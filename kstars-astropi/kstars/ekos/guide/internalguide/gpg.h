@@ -1,11 +1,8 @@
-/*  Gaussian Process Guider support class.
-    Copyright (C) 2020 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -42,8 +39,8 @@ class GPG
         // Should be called while suspended, at the point when
         // guiding would normally occur. GPG gets updated but does not
         // emit a pulse.
-        void suspended(const Vector &guideStarPosition,
-                       const Vector &reticlePosition,
+        void suspended(const GuiderUtils::Vector &guideStarPosition,
+                       const GuiderUtils::Vector &reticlePosition,
                        GuideStars *guideStars,
                        const Calibration &cal);
 
@@ -52,8 +49,8 @@ class GPG
         bool computePulse(double raArcsecError, GuideStars *guideStars,
                           int *pulseLength, GuideDirection *pulseDir,
                           const Calibration &cal);
-        
-  private:
+
+    private:
         std::unique_ptr<GaussianProcessGuider> gpg;
         int gpgSamples = 0;
         int gpgSkippedSamples = 0;

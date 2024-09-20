@@ -1,13 +1,9 @@
 /*  KStars Asynchronous Message Box Implementation for Desktop/Android and EkosLive
     Based on QMessageBox.
 
-    Copyright (C) 2019 Jasem Mutlaq (mutlaqja@ikarustech.com)
+    SPDX-FileCopyrightText: 2019 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -40,9 +36,9 @@ class KSMessageBox: public QMessageBox
                            bool defaultToYes = true, const QString &yesText = i18n("Yes"), const QString &noText = i18n("No"));
         void warningContinueCancel(const QString &message, const QString &title = i18n("Warning"), quint32 timeout = 0,
                                    bool defaultToContinue = true, const QString &continueText = i18n("Continue"), const QString &cancelText = i18n("Cancel"));
-        void error(const QString &message, const QString &title = i18n("Error"));
-        void sorry(const QString &message, const QString &title = i18n("Sorry"));
-        void info(const QString &message, const QString &title = i18n("Info"));
+        void error(const QString &message, const QString &title = i18n("Error"), quint32 timeout = 0);
+        void sorry(const QString &message, const QString &title = i18n("Sorry"), quint32 timeout = 0);
+        void info(const QString &message, const QString &title = i18n("Info"), quint32 timeout = 0);
         /**
          * @brief transient Non modal message box that gets deleted on close.
          * @param message message content
@@ -71,7 +67,11 @@ class KSMessageBox: public QMessageBox
 
         void reset();
         void addOKButton();
-        void setupTimeout();
+        void setupTimeout(quint32 timeout);
+        void resetTimeout()
+        {
+            m_Timeout = 0;
+        }
         QJsonObject createMessageObject();
         KSMessageBox();
 

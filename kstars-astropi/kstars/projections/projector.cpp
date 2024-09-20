@@ -1,20 +1,7 @@
 /*
-    Copyright (C) 2010 Henry de Valence <hdevalence@gmail.com>
+    SPDX-FileCopyrightText: 2010 Henry de Valence <hdevalence@gmail.com>
 
-    This program is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "projector.h"
@@ -113,7 +100,7 @@ bool Projector::onScreen(const QPointF &p) const
     return (0 <= p.x() && p.x() <= m_vp.width && 0 <= p.y() && p.y() <= m_vp.height);
 }
 
-bool Projector::onScreen(const Vector2f &p) const
+bool Projector::onScreen(const Eigen::Vector2f &p) const
 {
     return onScreen(QPointF(p.x(), p.y()));
 }
@@ -123,7 +110,7 @@ QPointF Projector::clipLine(SkyPoint *p1, SkyPoint *p2) const
     return KSUtils::vecToPoint(clipLineVec(p1, p2));
 }
 
-Vector2f Projector::clipLineVec(SkyPoint *p1, SkyPoint *p2) const
+Eigen::Vector2f Projector::clipLineVec(SkyPoint *p1, SkyPoint *p2) const
 {
     /* ASSUMES p1 was not clipped but p2 was.
      * Return the QPoint that barely clips in the line twixt p1 and p2.
@@ -135,7 +122,7 @@ Vector2f Projector::clipLineVec(SkyPoint *p1, SkyPoint *p2) const
     // 2^iterations should be >= max pixels/line
     bool isVisible = true; // so we start at midpoint
     SkyPoint mid;
-    Vector2f oMid;
+    Eigen::Vector2f oMid;
     double x, y, z, dx, dy, dz, ra, dec;
     int newx, newy, oldx, oldy;
     oldx = oldy = -10000; // any old value that is not the first omid
@@ -259,7 +246,7 @@ double Projector::findNorthPA(const SkyPoint *o, float x, float y) const
     SkyPoint test(o->ra().Hours(), newDec);
     if (m_vp.useAltAz)
         test.EquatorialToHorizontal(data->lst(), data->geo()->lat());
-    Vector2f t = toScreenVec(&test);
+    Eigen::Vector2f t = toScreenVec(&test);
     float dx   = t.x() - x;
     float dy   = y - t.y(); //backwards because QWidget Y-axis increases to the bottom
     float north;
@@ -280,9 +267,9 @@ double Projector::findPA(const SkyObject *o, float x, float y) const
     return (findNorthPA(o, x, y) + o->pa());
 }
 
-QVector<Vector2f> Projector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) const
+QVector<Eigen::Vector2f> Projector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) const
 {
-    QVector<Vector2f> ground;
+    QVector<Eigen::Vector2f> ground;
 
     static const QString horizonLabel = i18n("Horizon");
     float marginLeft, marginRight, marginTop, marginBot;
@@ -313,7 +300,7 @@ QVector<Vector2f> Projector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) c
     {
         SkyPoint p   = pointAt(az);
         bool visible = false;
-        Vector2f o   = toScreenVec(&p, false, &visible);
+        Eigen::Vector2f o   = toScreenVec(&p, false, &visible);
         if (visible)
         {
             ground.append(o);
@@ -332,16 +319,16 @@ QVector<Vector2f> Projector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) c
     {
         if (drawLabel)
             *drawLabel = false;
-        return QVector<Vector2f>();
+        return QVector<Eigen::Vector2f>();
     }
 
     if (allGround)
     {
         ground.clear();
-        ground.append(Vector2f(-10., -10.));
-        ground.append(Vector2f(m_vp.width + 10., -10.));
-        ground.append(Vector2f(m_vp.width + 10., m_vp.height + 10.));
-        ground.append(Vector2f(-10., m_vp.height + 10.));
+        ground.append(Eigen::Vector2f(-10., -10.));
+        ground.append(Eigen::Vector2f(m_vp.width + 10., -10.));
+        ground.append(Eigen::Vector2f(m_vp.width + 10., m_vp.height + 10.));
+        ground.append(Eigen::Vector2f(-10., m_vp.height + 10.));
         if (drawLabel)
             *drawLabel = false;
         return ground;
@@ -352,10 +339,10 @@ QVector<Vector2f> Projector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) c
     //FIXME: not just gnomonic
     if (daz < 25.0 || type() == Projector::Gnomonic)
     {
-        ground.append(Vector2f(m_vp.width + 10.f, ground.last().y()));
-        ground.append(Vector2f(m_vp.width + 10.f, m_vp.height + 10.f));
-        ground.append(Vector2f(-10.f, m_vp.height + 10.f));
-        ground.append(Vector2f(-10.f, ground.first().y()));
+        ground.append(Eigen::Vector2f(m_vp.width + 10.f, ground.last().y()));
+        ground.append(Eigen::Vector2f(m_vp.width + 10.f, m_vp.height + 10.f));
+        ground.append(Eigen::Vector2f(-10.f, m_vp.height + 10.f));
+        ground.append(Eigen::Vector2f(-10.f, ground.first().y()));
     }
     else
     {
@@ -368,7 +355,7 @@ QVector<Vector2f> Projector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) c
             dms a(t);
             double sa(0.), ca(0.);
             a.SinCos(sa, ca);
-            ground.append(Vector2f(0.5 * m_vp.width + r * ca, 0.5 * m_vp.height - r * sa));
+            ground.append(Eigen::Vector2f(0.5 * m_vp.width + r * ca, 0.5 * m_vp.height - r * sa));
         }
     }
 
@@ -473,7 +460,7 @@ SkyPoint Projector::fromScreen(const QPointF &p, dms *LST, const dms *lat, bool 
     return result;
 }
 
-Vector2f Projector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibleHemisphere) const
+Eigen::Vector2f Projector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibleHemisphere) const
 {
     double Y, dX;
     double sindX, cosdX, sinY, cosY;
@@ -495,20 +482,20 @@ Vector2f Projector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibl
 
     if (!(std::isfinite(Y) && std::isfinite(dX)))
     {
-        return Vector2f(0, 0);
+        return Eigen::Vector2f(0, 0);
 
         // JM: Enable this again later when trying to find a solution for it
         //     As it is now creating too much noise in the log file.
         /*
-        qDebug() << "Assert in Projector::toScreenVec failed!";
-        qDebug() << "using AltAz?" << m_vp.useAltAz << " Refract? " << oRefract;
+        qDebug() << Q_FUNC_INFO << "Assert in Projector::toScreenVec failed!";
+        qDebug() << Q_FUNC_INFO << "using AltAz?" << m_vp.useAltAz << " Refract? " << oRefract;
         const SkyObject *obj;
-        qDebug() << "Point supplied has RA0 = " << o->ra0().toHMSString() << " Dec0 = " << o->dec0().toDMSString() << "; alt = " << o->alt().toDMSString() << "; az = " << o->az().toDMSString();
+        qDebug() << Q_FUNC_INFO << "Point supplied has RA0 = " << o->ra0().toHMSString() << " Dec0 = " << o->dec0().toDMSString() << "; alt = " << o->alt().toDMSString() << "; az = " << o->az().toDMSString();
         if ( (obj = dynamic_cast<const SkyObject *>(o) ) ) {
-            qDebug() << "Point is object with name = " << obj->name() << " longname = " << obj->longname();
+            qDebug() << Q_FUNC_INFO << "Point is object with name = " << obj->name() << " longname = " << obj->longname();
         }
-        qDebug() << "dX = " << dX << " and isfinite(dX) is" << std::isfinite(dX);
-        qDebug() << "Y = " << Y << " and isfinite(Y) is" << std::isfinite(Y);
+        qDebug() << Q_FUNC_INFO << "dX = " << dX << " and isfinite(dX) is" << std::isfinite(dX);
+        qDebug() << Q_FUNC_INFO << "Y = " << Y << " and isfinite(Y) is" << std::isfinite(Y);
 
         //Q_ASSERT( false );
         */
@@ -517,7 +504,7 @@ Vector2f Projector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibl
     dX = KSUtils::reduceAngle(dX, -dms::PI, dms::PI);
 
     //Convert dX, Y coords to screen pixel coords, using GNU extension if available
-#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1)
+#ifdef HAVE_SINCOS
     sincos(dX, &sindX, &cosdX);
     sincos(Y, &sinY, &cosY);
 #else
@@ -561,5 +548,5 @@ Vector2f Projector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibl
         y = newY;
     }
 #endif
-    return Vector2f(x, y);
+    return Eigen::Vector2f(x, y);
 }

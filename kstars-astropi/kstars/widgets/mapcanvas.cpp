@@ -1,19 +1,8 @@
-/***************************************************************************
-                          mapcanvas.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Tue Apr 10 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "mapcanvas.h"
 #include <cstdlib>
@@ -33,11 +22,17 @@ MapCanvas::MapCanvas(QWidget *parent) : QFrame(parent), ld(nullptr)
 {
     setAutoFillBackground(false);
 
-    QString bgFile = KSPaths::locate(QStandardPaths::GenericDataLocation, "geomap.png");
+    QString bgFile = KSPaths::locate(QStandardPaths::AppLocalDataLocation, "geomap.jpg");
     bgImage        = new QPixmap(bgFile);
-
-    origin.setX(bgImage->width() / 2);
-    origin.setY(bgImage->height() / 2);
+    xsize= width();
+    ysize = height();
+    ximage = bgImage->width();
+    yimage = bgImage->height();
+    ratio = ximage / yimage;
+    xscale = xsize / 360;
+    yscale = ysize / (360 / ratio);
+    origin.setX(width() / 2);
+    origin.setY(height() / 2);
 }
 
 MapCanvas::~MapCanvas()
@@ -62,8 +57,8 @@ void MapCanvas::setGeometry(const QRect &r)
 void MapCanvas::mousePressEvent(QMouseEvent *e)
 {
     //Determine Lat/Long corresponding to event press
-    int lng = (e->x() - origin.x());
-    int lat = (origin.y() - e->y());
+    int lng = ((e->x() - origin.x()) / xscale);
+    int lat = ((origin.y() - e->y()) / yscale);
 
     if (ld)
         ld->findCitiesNear(lng, lat);
@@ -73,6 +68,16 @@ void MapCanvas::paintEvent(QPaintEvent *)
 {
     QPainter p;
 
+    xsize= width();
+    ysize = height();
+    ximage = bgImage->width();
+    yimage = bgImage->height();
+    ratio = ximage / yimage;
+    xscale = xsize / 360;
+    yscale = ysize / (360 / ratio);
+    origin.setX(width() / 2);
+    origin.setY(height() / 2);
+
     //prepare the canvas
     p.begin(this);
     p.drawPixmap(0, 0, bgImage->scaled(size()));
@@ -80,10 +85,10 @@ void MapCanvas::paintEvent(QPaintEvent *)
 
     //Draw cities
     QPoint o;
+
     foreach (GeoLocation *g, KStarsData::Instance()->getGeoList())
     {
-        o.setX(int(g->lng()->Degrees() + origin.x()));
-        o.setY(height() - int(g->lat()->Degrees() + origin.y()));
+        convertAndScale(o, *g);
 
         if (o.x() >= 0 && o.x() <= width() && o.y() >= 0 && o.y() <= height())
         {
@@ -101,8 +106,7 @@ void MapCanvas::paintEvent(QPaintEvent *)
             p.setPen(Qt::white);
             foreach (GeoLocation *g, ld->filteredList())
             {
-                o.setX(int(g->lng()->Degrees() + origin.x()));
-                o.setY(height() - int(g->lat()->Degrees() + origin.y()));
+                convertAndScale(o, *g);
 
                 if (o.x() >= 0 && o.x() <= width() && o.y() >= 0 && o.y() <= height())
                 {
@@ -114,8 +118,7 @@ void MapCanvas::paintEvent(QPaintEvent *)
         GeoLocation *g = ld->selectedCity();
         if (g)
         {
-            o.setX(int(g->lng()->Degrees() + origin.x()));
-            o.setY(height() - int(g->lat()->Degrees() + origin.y()));
+            convertAndScale(o, *g);
 
             p.setPen(Qt::red);
             p.setBrush(Qt::red);
@@ -129,4 +132,12 @@ void MapCanvas::paintEvent(QPaintEvent *)
         }
     }
     p.end();
+}
+
+void MapCanvas::convertAndScale(QPoint &o, GeoLocation &g)
+{
+    int xpos = g.lng()->Degrees();
+    int ypos = g.lat()->Degrees();
+    o.setX((xpos * xscale) + origin.x());
+    o.setY(height() - ((ypos * yscale) + origin.y()));
 }

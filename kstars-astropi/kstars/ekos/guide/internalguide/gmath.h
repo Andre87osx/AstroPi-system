@@ -1,17 +1,14 @@
-/*  Ekos guide tool
-    Copyright (C) 2012 Andrew Stepanenko
+/*
+    SPDX-FileCopyrightText: 2012 Andrew Stepanenko
 
-    Modified by Jasem Mutlaq <mutlaqja@ikarustech.com> for KStars.
+    Modified by Jasem Mutlaq <mutlaqja@ikarustech.com> for KStars:
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
-#include "matr.h"
 #include "vect.h"
 #include "indi/indicommon.h"
 
@@ -31,16 +28,10 @@
 
 #include "gpg.h"
 
-class GuideView;
 class FITSData;
 class Edge;
 
-typedef struct
-{
-    int size;
-    double square;
-} guide_square_t;
-
+// For now also copied in guidealgorithms.cpp
 #define SMART_THRESHOLD    0
 #define SEP_THRESHOLD      1
 #define CENTROID_THRESHOLD 2
@@ -48,25 +39,9 @@ typedef struct
 #define NO_THRESHOLD       4
 #define SEP_MULTISTAR      5
 
-typedef struct
-{
-    int idx;
-    const char name[32];
-} square_alg_t;
-
-// smart threshold algorithm param
-// width of outer frame for background calculation
-#define SMART_FRAME_WIDTH 4
-// cut-factor above average threshold
-#define SMART_CUT_FACTOR 0.1
-
 #define GUIDE_RA    0
 #define GUIDE_DEC   1
 #define CHANNEL_CNT 2
-
-#define MAX_ACCUM_CNT 50
-extern const guide_square_t guide_squares[];
-extern const square_alg_t guide_square_alg[];
 
 // input params
 class cproc_in_params
@@ -75,17 +50,14 @@ class cproc_in_params
         cproc_in_params();
         void reset(void);
 
-        int threshold_alg_idx;
         bool enabled[CHANNEL_CNT];
         bool enabled_axis1[CHANNEL_CNT];
         bool enabled_axis2[CHANNEL_CNT];
         bool average;
-        uint32_t accum_frame_cnt[CHANNEL_CNT];
         double proportional_gain[CHANNEL_CNT];
         double integral_gain[CHANNEL_CNT];
-        double derivative_gain[CHANNEL_CNT];
-        int max_pulse_length[CHANNEL_CNT];
-        int min_pulse_length[CHANNEL_CNT];
+        int max_pulse_arcsec[CHANNEL_CNT];
+        double min_pulse_arcsec[CHANNEL_CNT];
 };
 
 //output params
@@ -119,10 +91,13 @@ class cgmath : public QObject
         // functions
         bool setVideoParameters(int vid_wd, int vid_ht, int binX, int binY);
         bool setGuiderParameters(double ccd_pix_wd, double ccd_pix_ht, double guider_aperture, double guider_focal);
-        bool setReticleParameters(double x, double y);
-        bool getReticleParameters(double *x, double *y) const;
-        int getSquareAlgorithmIndex(void) const;
-        void setSquareAlgorithm(int alg_idx);
+
+        bool setTargetPosition(double x, double y);
+        bool getTargetPosition(double *x, double *y) const;
+
+        int getAlgorithmIndex(void) const;
+        void setAlgorithmIndex(int algorithmIndex);
+        bool usingSEPMultiStar() const;
 
         GPG &getGPG()
         {
@@ -132,21 +107,6 @@ class cgmath : public QObject
         {
             return &out_params;
         }
-        uint32_t getTicks(void) const;
-
-        void setGuideView(GuideView *image);
-
-        GuideView *getGuideView()
-        {
-            return guideView;
-        }
-
-        // Based on PHD2 algorithm
-        QList<Edge *> PSFAutoFind(int extraEdgeAllowance = 0);
-
-        // Rapid Guide
-        void setRapidGuide(bool enable);
-        void setRapidStarData(double dx, double dy);
 
         // Operations
         void start();
@@ -158,23 +118,21 @@ class cgmath : public QObject
 
         // Star tracking
         void getStarScreenPosition(double *dx, double *dy) const;
-        Vector findLocalStarPosition(void);
+        GuiderUtils::Vector findLocalStarPosition(QSharedPointer<FITSData> &imageData,
+                QSharedPointer<GuideView> &guideView, bool firstFrame);
         bool isStarLost() const;
         void setLostStar(bool is_lost);
 
         // Main processing function
-        void performProcessing(Ekos::GuideState state, GuideLog *logger = nullptr);
+        void performProcessing(Ekos::GuideState state,
+                               QSharedPointer<FITSData> &imageData,
+                               QSharedPointer<GuideView> &guideView,
+                               GuideLog *logger = nullptr);
 
-        // Math
-        bool calculateAndSetReticle1D(double start_x, double start_y, double end_x, double end_y, int RATotalPulse);
-        bool calculateAndSetReticle2D(double start_ra_x, double start_ra_y, double end_ra_x, double end_ra_y,
-                                      double start_dec_x, double start_dec_y, double end_dec_x, double end_dec_y,
-                                      bool *swap_dec, int RATotalPulse, int DETotalPulse);
-
-        bool isImageGuideEnabled() const;
-        void setImageGuideEnabled(bool value);
-
-        void setRegionAxis(const uint32_t &value);
+        bool calibrate1D(double start_x, double start_y, double end_x, double end_y, int RATotalPulse);
+        bool calibrate2D(double start_ra_x, double start_ra_y, double end_ra_x, double end_ra_y,
+                         double start_dec_x, double start_dec_y, double end_dec_x, double end_dec_y,
+                         bool *swap_dec, int RATotalPulse, int DETotalPulse);
 
         const Calibration &getCalibration()
         {
@@ -184,7 +142,7 @@ class cgmath : public QObject
         {
             return &calibration;
         }
-        QVector3D selectGuideStar();
+        QVector3D selectGuideStar(const QSharedPointer<FITSData> &imageData);
         double getGuideStarSNR();
 
     signals:
@@ -198,16 +156,12 @@ class cgmath : public QObject
     private:
         // Templated functions
         template <typename T>
-        Vector findLocalStarPosition(void) const;
+        GuiderUtils::Vector findLocalStarPosition(void) const;
 
-        // Creates a new float image from the guideView image data. The returned image MUST be deleted later or memory will leak.
-        float *createFloatImage(const QSharedPointer<FITSData> &target) const;
-
-        void do_ticks(void);
-        Vector point2arcsec(const Vector &p) const;
-        void process_axes(void);
-        void calc_square_err(void);
-        const char *get_direction_string(GuideDirection dir);
+        void updateCircularBuffers(void);
+        GuiderUtils::Vector point2arcsec(const GuiderUtils::Vector &p) const;
+        void calculatePulses(Ekos::GuideState state);
+        void calculateRmsError(void);
 
         // Old-stye Logging--deprecate.
         void createGuideLog();
@@ -215,10 +169,8 @@ class cgmath : public QObject
         // For Analyze.
         void emitStats();
 
-        /// Global channel ticker
-        uint32_t ticks { 0 };
-        /// Pointer to image
-        QPointer<GuideView> guideView;
+        uint32_t iterationCounter { 0 };
+
         /// Video frame width
         int video_width { -1 };
         /// Video frame height
@@ -227,18 +179,22 @@ class cgmath : public QObject
         bool suspended { false };
         bool lost_star { false };
 
-        /// Index of threshold algorithm
-        int square_alg_idx { SMART_THRESHOLD };
+        /// Index of algorithm used
+        int algorithm { SMART_THRESHOLD };
 
-        // sky coord. system vars.
-        /// Star position on the screen
-        Vector scr_star_pos;
-        Vector reticle_pos;
+        // The latest guide star position (x,y on the image),
+        // and target position we're trying to keep it aligned to.
+        GuiderUtils::Vector starPosition;
+        GuiderUtils::Vector targetPosition;
 
         // processing
-        uint32_t channel_ticks[2];
-        uint32_t accum_ticks[2];
+        // Drift is a circular buffer of the arcsecond drift for the 2 channels.
+        // It will be initialized with a double array of size 50.
+        // driftUpto points to the index of the next value to be written.
+        static constexpr int CIRCULAR_BUFFER_SIZE = 50;
         double *drift[2];
+        uint32_t driftUpto[2];
+
         double drift_integral[2];
 
         // overlays...
@@ -247,23 +203,9 @@ class cgmath : public QObject
 
         // stat math...
         bool do_statistics { true };
-        double sum { 0 };
-
-        // rapid guide
-        bool useRapidGuide { false };
-        double rapidDX { 0 };
-        double rapidDY { 0 };
-
-        // Image Guide
-        bool imageGuideEnabled { false };
-        // Partition guideView image into NxN square regions each of size axis*axis. The returned vector contains pointers to
-        // the newly allocated square images. It MUST be deleted later by delete[] or memory will leak.
-        QVector<float *> partitionImage() const;
-        uint32_t regionAxis { 64 };
-        QVector<float *> referenceRegions;
 
         QFile logFile;
-        QTime logTime;
+        QElapsedTimer logTime;
 
         GuideStars guideStars;
 

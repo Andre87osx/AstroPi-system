@@ -1,6 +1,5 @@
-add_subdirectory(hdpi) 
-add_subdirectory(ldpi)
-add_subdirectory(mdpi)
-add_subdirectory(xhdpi)
-add_subdirectory(xxhdpi)
-add_subdirectory(xxxhdpi)
+install( FILES green.png
+    red.png
+    yellow.png
+    grey.png
+    DESTINATION  ${KDE_INSTALL_DATADIR}/kstars/kstarslite/qml/indi/modules/images/xxxhdpi )

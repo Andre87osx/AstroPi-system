@@ -1,19 +1,8 @@
-/***************************************************************************
-                          wiview.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2012/26/05
-    copyright            : (C) 2012 by Samikshan Bairagya
-    email                : samikshan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Samikshan Bairagya <samikshan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "wiview.h"
 
@@ -69,8 +58,10 @@ WIView::WIView(QWidget *parent) : QWidget(parent)
 
     m_Ctxt = m_BaseView->rootContext();
 
-    m_Ctxt->setContextProperty("soListModel",
-                               m_ModManager->getTempModel()); // This is to avoid an error saying it doesn't exist.
+    m_Ctxt->setContextProperty(
+        "soListModel",
+        m_ModManager
+        ->getTempModel()); // This is to avoid an error saying it doesn't exist.
 
     ///Use instead of KDeclarative
     m_Ctxt->setContextObject(new KLocalizedContext(m_BaseView));
@@ -80,11 +71,11 @@ WIView::WIView(QWidget *parent) : QWidget(parent)
 #if defined(Q_OS_OSX)
     WI_Location = QCoreApplication::applicationDirPath() + "/../Resources/kstars/tools/whatsinteresting/qml/wiview.qml";
     if (!QFileInfo(WI_Location).exists())
-        WI_Location = KSPaths::locate(QStandardPaths::AppDataLocation, "tools/whatsinteresting/qml/wiview.qml");
+        WI_Location = KSPaths::locate(QStandardPaths::AppLocalDataLocation, "tools/whatsinteresting/qml/wiview.qml");
 #elif defined(Q_OS_WIN)
     WI_Location = KSPaths::locate(QStandardPaths::GenericDataLocation, "tools/whatsinteresting/qml/wiview.qml");
 #else
-    WI_Location = KSPaths::locate(QStandardPaths::AppDataLocation, "tools/whatsinteresting/qml/wiview.qml");
+    WI_Location = KSPaths::locate(QStandardPaths::AppLocalDataLocation, "tools/whatsinteresting/qml/wiview.qml");
 #endif
 
     m_BaseView->setSource(QUrl::fromLocalFile(WI_Location));
@@ -101,11 +92,14 @@ WIView::WIView(QWidget *parent) : QWidget(parent)
     m_CategoryTitle = m_BaseObj->findChild<QQuickItem *>(QString("categoryTitle"));
 
     m_ViewsRowObj = m_BaseObj->findChild<QQuickItem *>(QString("viewsRowObj"));
-    connect(m_ViewsRowObj, SIGNAL(categorySelected(QString)), this, SLOT(onCategorySelected(QString)));
-    connect(m_ViewsRowObj, SIGNAL(inspectSkyObject(QString)), this, SLOT(inspectSkyObject(QString)));
+    connect(m_ViewsRowObj, SIGNAL(categorySelected(QString)), this,
+            SLOT(onCategorySelected(QString)));
+    connect(m_ViewsRowObj, SIGNAL(inspectSkyObject(QString)), this,
+            SLOT(inspectSkyObject(QString)));
 
     m_SoListObj = m_BaseObj->findChild<QQuickItem *>("soListObj");
-    connect(m_SoListObj, SIGNAL(soListItemClicked(int)), this, SLOT(onSoListItemClicked(int)));
+    connect(m_SoListObj, SIGNAL(soListItemClicked(int)), this,
+            SLOT(onSoListItemClicked(int)));
 
     m_DetailsViewObj = m_BaseObj->findChild<QQuickItem *>("detailsViewObj");
 
@@ -118,34 +112,44 @@ WIView::WIView(QWidget *parent) : QWidget(parent)
     connect(m_PrevObj, SIGNAL(prevObjClicked()), this, SLOT(onPrevObjClicked()));
 
     m_CenterButtonObj = m_BaseObj->findChild<QQuickItem *>("centerButtonObj");
-    connect(m_CenterButtonObj, SIGNAL(centerButtonClicked()), this, SLOT(onCenterButtonClicked()));
+    connect(m_CenterButtonObj, SIGNAL(centerButtonClicked()), this,
+            SLOT(onCenterButtonClicked()));
 
     autoCenterCheckbox = m_DetailsViewObj->findChild<QObject *>("autoCenterCheckbox");
     autoTrackCheckbox  = m_DetailsViewObj->findChild<QObject *>("autoTrackCheckbox");
 
-    m_SlewTelescopeButtonObj = m_BaseObj->findChild<QQuickItem *>("slewTelescopeButtonObj");
-    connect(m_SlewTelescopeButtonObj, SIGNAL(slewTelescopeButtonClicked()), this, SLOT(onSlewTelescopeButtonClicked()));
+    m_SlewTelescopeButtonObj =
+        m_BaseObj->findChild<QQuickItem *>("slewTelescopeButtonObj");
+    connect(m_SlewTelescopeButtonObj, SIGNAL(slewTelescopeButtonClicked()), this,
+            SLOT(onSlewTelescopeButtonClicked()));
 
     m_DetailsButtonObj = m_BaseObj->findChild<QQuickItem *>("detailsButtonObj");
-    connect(m_DetailsButtonObj, SIGNAL(detailsButtonClicked()), this, SLOT(onDetailsButtonClicked()));
+    connect(m_DetailsButtonObj, SIGNAL(detailsButtonClicked()), this,
+            SLOT(onDetailsButtonClicked()));
 
     QObject *settingsIconObj = m_BaseObj->findChild<QQuickItem *>("settingsIconObj");
-    connect(settingsIconObj, SIGNAL(settingsIconClicked()), this, SLOT(onSettingsIconClicked()));
+    connect(settingsIconObj, SIGNAL(settingsIconClicked()), this,
+            SLOT(onSettingsIconClicked()));
 
     inspectIconObj = m_BaseObj->findChild<QQuickItem *>("inspectIconObj");
-    connect(inspectIconObj, SIGNAL(inspectIconClicked(bool)), this, SLOT(onInspectIconClicked(bool)));
+    connect(inspectIconObj, SIGNAL(inspectIconClicked(bool)), this,
+            SLOT(onInspectIconClicked(bool)));
 
     visibleIconObj = m_BaseObj->findChild<QQuickItem *>("visibleIconObj");
-    connect(visibleIconObj, SIGNAL(visibleIconClicked(bool)), this, SLOT(onVisibleIconClicked(bool)));
+    connect(visibleIconObj, SIGNAL(visibleIconClicked(bool)), this,
+            SLOT(onVisibleIconClicked(bool)));
 
     favoriteIconObj = m_BaseObj->findChild<QQuickItem *>("favoriteIconObj");
-    connect(favoriteIconObj, SIGNAL(favoriteIconClicked(bool)), this, SLOT(onFavoriteIconClicked(bool)));
+    connect(favoriteIconObj, SIGNAL(favoriteIconClicked(bool)), this,
+            SLOT(onFavoriteIconClicked(bool)));
 
     QObject *reloadIconObj = m_BaseObj->findChild<QQuickItem *>("reloadIconObj");
-    connect(reloadIconObj, SIGNAL(reloadIconClicked()), this, SLOT(onReloadIconClicked()));
+    connect(reloadIconObj, SIGNAL(reloadIconClicked()), this,
+            SLOT(onReloadIconClicked()));
 
     QObject *downloadIconObj = m_BaseObj->findChild<QQuickItem *>("downloadIconObj");
-    connect(downloadIconObj, SIGNAL(downloadIconClicked()), this, SLOT(onUpdateIconClicked()));
+    connect(downloadIconObj, SIGNAL(downloadIconClicked()), this,
+            SLOT(onUpdateIconClicked()));
 
     m_BaseView->setResizeMode(QQuickView::SizeRootObjectToView);
     m_BaseView->show();
@@ -156,14 +160,14 @@ WIView::WIView(QWidget *parent) : QWidget(parent)
     m_BaseView->setFlags(Qt::WindowCloseButtonHint);
 #endif
 
-
-    connect(KStars::Instance()->map(), SIGNAL(objectClicked(SkyObject*)), this,
-            SLOT(inspectSkyObjectOnClick(SkyObject*)));
+    connect(KStars::Instance()->map(), SIGNAL(objectClicked(SkyObject *)), this,
+            SLOT(inspectSkyObjectOnClick(SkyObject *)));
 
     manager.reset(new QNetworkAccessManager());
 
     setProgressBarVisible(true);
-    connect(m_ModManager.get(), SIGNAL(loadProgressUpdated(double)), this, SLOT(updateProgress(double)));
+    connect(m_ModManager.get(), SIGNAL(loadProgressUpdated(double)), this,
+            SLOT(updateProgress(double)));
     connect(m_ModManager.get(), SIGNAL(modelUpdated()), this, SLOT(refreshListView()));
     m_ViewsRowObj->setProperty("enabled", false);
 
@@ -249,12 +253,23 @@ void WIView::updateObservingConditions()
 void WIView::onCategorySelected(QString model)
 {
     m_CurrentObjectListName = model;
-    m_Ctxt->setContextProperty("soListModel", m_ModManager->returnModel(m_CurrentObjectListName));
+    m_Ctxt->setContextProperty("soListModel",
+                               m_ModManager->returnModel(m_CurrentObjectListName));
     m_CurIndex = -2;
     if (!m_ModManager->showOnlyVisibleObjects())
         visibleIconObj->setProperty("state", "unchecked");
     if (!m_ModManager->showOnlyFavoriteObjects())
         favoriteIconObj->setProperty("state", "unchecked");
+
+    if ((QStringList() << "ngc"
+            << "ic"
+            << "messier"
+            << "sharpless")
+            .contains(model))
+    {
+        QtConcurrent::run(m_ModManager.get(), &ModelManager::loadCatalog, model);
+        return;
+    }
 
     updateModel(*m_Obs);
 }
@@ -271,9 +286,12 @@ void WIView::onNextObjClicked()
     if (!m_CurrentObjectListName.isEmpty())
     {
         int modelSize = m_ModManager->returnModel(m_CurrentObjectListName)->rowCount();
-        SkyObjItem *nextItem =
-            m_ModManager->returnModel(m_CurrentObjectListName)->getSkyObjItem((m_CurIndex + 1) % modelSize);
-        loadDetailsView(nextItem, (m_CurIndex + 1) % modelSize);
+        if (modelSize > 0)
+        {
+            SkyObjItem *nextItem =
+                m_ModManager->returnModel(m_CurrentObjectListName)->getSkyObjItem((m_CurIndex + 1) % modelSize);
+            loadDetailsView(nextItem, (m_CurIndex + 1) % modelSize);
+        }
     }
 }
 
@@ -282,9 +300,12 @@ void WIView::onPrevObjClicked()
     if (!m_CurrentObjectListName.isEmpty())
     {
         int modelSize = m_ModManager->returnModel(m_CurrentObjectListName)->rowCount();
-        SkyObjItem *prevItem =
-            m_ModManager->returnModel(m_CurrentObjectListName)->getSkyObjItem((m_CurIndex - 1 + modelSize) % modelSize);
-        loadDetailsView(prevItem, (m_CurIndex - 1 + modelSize) % modelSize);
+        if (modelSize > 0)
+        {
+            SkyObjItem *prevItem =
+                m_ModManager->returnModel(m_CurrentObjectListName)->getSkyObjItem((m_CurIndex - 1 + modelSize) % modelSize);
+            loadDetailsView(prevItem, (m_CurIndex - 1 + modelSize) % modelSize);
+        }
     }
 }
 
@@ -318,30 +339,24 @@ void WIView::onSlewTelescopeButtonClicked()
             return;
         }
 
-        foreach (ISD::GDInterface *gd, INDIListener::Instance()->getDevices())
+        for (auto oneDevice : INDIListener::Instance()->getDevices())
         {
-            INDI::BaseDevice *bd = gd->getBaseDevice();
-
-            if (gd->getType() != KSTARS_TELESCOPE)
+            if (oneDevice->getType() != KSTARS_TELESCOPE)
                 continue;
 
-            if (bd == nullptr)
-                continue;
-
-            if (bd->isConnected() == false)
+            if (oneDevice->isConnected() == false)
             {
-                KSNotification::error(i18n("Telescope %1 is offline. Please connect and retry again.", gd->getDeviceName()));
+                KSNotification::error(i18n("Telescope %1 is offline. Please connect and retry again.", oneDevice->getDeviceName()));
                 return;
             }
 
             ISD::GDSetCommand SlewCMD(INDI_SWITCH, "ON_COORD_SET", "TRACK", ISS_ON, this);
 
-            gd->setProperty(&SlewCMD);
-            gd->runCommand(INDI_SEND_COORDS, m_CurSoItem->getSkyObject());
+            oneDevice->setProperty(&SlewCMD);
+            oneDevice->runCommand(INDI_SEND_COORDS, m_CurSoItem->getSkyObject());
 
             /// Slew map to selected sky-object
             onCenterButtonClicked();
-
             return;
         }
 
@@ -425,7 +440,7 @@ void WIView::onUpdateIconClicked()
         }
         else
         {
-            qDebug() << "No Objects in List!";
+            qDebug() << Q_FUNC_INFO << "No Objects in List!";
         }
     }
 }
@@ -621,7 +636,7 @@ void WIView::updateWikipediaDescription(SkyObjItem *soitem)
     {
         response->abort();
         response->deleteLater();
-        qDebug() << "Wikipedia Download Timed out.";
+        qDebug() << Q_FUNC_INFO << "Wikipedia Download Timed out.";
     });
     connect(response, &QNetworkReply::finished, this, [soitem, this, response, name]
     {
@@ -665,8 +680,8 @@ void WIView::loadObjectDescription(SkyObjItem *soitem)
 {
     QFile file;
     QString fname = "description-" + soitem->getName().toLower().remove(' ') + ".html";
-    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "descriptions/" +
-                     fname); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("descriptions/" + fname));
 
     if (file.exists())
     {
@@ -696,8 +711,8 @@ void WIView::loadObjectInfoBox(SkyObjItem *soitem)
         return;
     QFile file;
     QString fname = "infoText-" + soitem->getName().toLower().remove(' ') + ".html";
-    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "descriptions/" +
-                     fname); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("descriptions/" + fname));
 
     if (file.exists())
     {
@@ -710,7 +725,7 @@ void WIView::loadObjectInfoBox(SkyObjItem *soitem)
                 infoBoxHTML = in.readAll();
                 QString wikiImageName =
                     QUrl::fromLocalFile(
-                        KSPaths::locate(QStandardPaths::GenericDataLocation,
+                        KSPaths::locate(QStandardPaths::AppLocalDataLocation,
                                         "descriptions/wikiImage-" + soitem->getName().toLower().remove(' ') + ".png"))
                     .url();
                 if (!wikiImageName.isEmpty())
@@ -749,8 +764,8 @@ void WIView::tryToUpdateWikipediaInfoInModel(bool onlyMissing)
         SkyObjItem *soitem = model->getSkyObjItem(i);
         QFile file;
         QString fname = "infoText-" + soitem->getName().toLower().remove(' ') + ".html";
-        file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "descriptions/" +
-                         fname); //determine filename in local user KDE directory tree.
+        //determine filename in local user KDE directory tree.
+        file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("descriptions/" + fname));
 
         if (file.exists() && onlyMissing)
             continue;
@@ -771,7 +786,7 @@ void WIView::tryToUpdateWikipediaInfo(SkyObjItem *soitem, QString name)
     {
         response->abort();
         response->deleteLater();
-        qDebug() << "Wikipedia Download Timed out.";
+        qDebug() << Q_FUNC_INFO << "Wikipedia Download Timed out.";
     });
     connect(response, &QNetworkReply::finished, this, [name, response, soitem, this]
     {
@@ -891,15 +906,15 @@ void WIView::saveObjectInfoBoxText(SkyObjItem *soitem, QString type, QString tex
     QFile file;
     QString fname = type + '-' + soitem->getName().toLower().remove(' ') + ".html";
 
-    QDir writableDir;
-    QString filePath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "descriptions";
-    writableDir.mkpath(filePath);
+    QDir filePath(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/descriptions");
+    filePath.mkpath(".");
 
-    file.setFileName(filePath + '/' + fname); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(filePath.filePath(fname));
 
     if (file.open(QIODevice::WriteOnly) == false)
     {
-        qDebug() << "Image text cannot be saved for later.  file save error";
+        qDebug() << Q_FUNC_INFO << "Image text cannot be saved for later.  file save error";
         return;
     }
     else
@@ -913,8 +928,8 @@ void WIView::saveObjectInfoBoxText(SkyObjItem *soitem, QString type, QString tex
 void WIView::saveImageURL(SkyObjItem *soitem, QString imageURL)
 {
     QFile file;
-    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                     "image_url.dat"); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("image_url.dat"));
     QString entry = soitem->getName() + ':' + "Show Wikipedia Image" + ':' + imageURL;
 
     if (file.open(QIODevice::ReadOnly))
@@ -935,7 +950,7 @@ void WIView::saveImageURL(SkyObjItem *soitem, QString imageURL)
 
     if (!file.open(QIODevice::ReadWrite | QIODevice::Append))
     {
-        qDebug() << "Image URL cannot be saved for later.  image_url.dat error";
+        qDebug() << Q_FUNC_INFO << "Image URL cannot be saved for later.  image_url.dat error";
         return;
     }
     else
@@ -949,8 +964,8 @@ void WIView::saveImageURL(SkyObjItem *soitem, QString imageURL)
 void WIView::saveInfoURL(SkyObjItem *soitem, QString infoURL)
 {
     QFile file;
-    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                     "info_url.dat"); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("info_url.dat"));
     QString entry = soitem->getName() + ':' + "Wikipedia Page" + ':' + infoURL;
 
     if (file.open(QIODevice::ReadOnly))
@@ -971,7 +986,7 @@ void WIView::saveInfoURL(SkyObjItem *soitem, QString infoURL)
 
     if (!file.open(QIODevice::ReadWrite | QIODevice::Append))
     {
-        qDebug() << "Info URL cannot be saved for later.  info_url.dat error";
+        qDebug() << Q_FUNC_INFO << "Info URL cannot be saved for later.  info_url.dat error";
         return;
     }
     else
@@ -986,18 +1001,17 @@ void WIView::downloadWikipediaImage(SkyObjItem *soitem, QString imageURL)
 {
     QString fname = "wikiImage-" + soitem->getName().toLower().remove(' ') + ".png";
 
-    QDir writableDir;
-    QString filePath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "descriptions";
-    writableDir.mkpath(filePath);
+    QDir filePath(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/descriptions");
+    filePath.mkpath(".");
 
-    QString fileN = filePath + '/' + fname;
+    QString fileN = filePath.filePath(fname);
 
     QNetworkReply *response = manager->get(QNetworkRequest(QUrl(imageURL)));
     QTimer::singleShot(60000, response, [response]   //Shut it down after 60 sec.
     {
         response->abort();
         response->deleteLater();
-        qDebug() << "Image Download Timed out.";
+        qDebug() << Q_FUNC_INFO << "Image Download Timed out.";
     });
     connect(response, &QNetworkReply::finished, this, [fileN, response, this]
     {
@@ -1012,6 +1026,6 @@ void WIView::downloadWikipediaImage(SkyObjItem *soitem, QString imageURL)
             refreshListView(); //This is to update the images displayed with the new image.
         }
         else
-            qDebug() << "image not downloaded";
+            qDebug() << Q_FUNC_INFO << "image not downloaded";
     });
 }

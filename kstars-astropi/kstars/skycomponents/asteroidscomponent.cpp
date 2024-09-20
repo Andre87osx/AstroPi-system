@@ -1,27 +1,18 @@
-/***************************************************************************
-                          asteroidscomponent.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2005/30/08
-    copyright            : (C) 2005 by Thomas Kabelmann
-    email                : thomas.kabelmann@gmx.de
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2005 Thomas Kabelmann <thomas.kabelmann@gmx.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "asteroidscomponent.h"
+#include "ksutils.h"
 
 #ifndef KSTARS_LITE
 #include "kstars.h"
 #endif
 #include "ksfilereader.h"
 #include "kstarsdata.h"
+#include "kstars_debug.h"
 #include "Options.h"
 #include "solarsystemcomposite.h"
 #include "skycomponent.h"
@@ -46,8 +37,8 @@
 
 #include <cmath>
 
-AsteroidsComponent::AsteroidsComponent(SolarSystemComposite *parent) : BinaryListComponent(this, "asteroids"),
-    SolarSystemListComponent(parent)
+AsteroidsComponent::AsteroidsComponent(SolarSystemComposite *parent)
+    : BinaryListComponent(this, "asteroids"), SolarSystemListComponent(parent)
 {
     loadData();
 }
@@ -97,97 +88,98 @@ void AsteroidsComponent::loadDataFromText()
     bool neo;
 
     emitProgressText(i18n("Loading asteroids"));
+    qCInfo(KSTARS) << "Loading asteroids";
 
-    QList<QPair<QString, KSParser::DataTypes>> sequence;
-    sequence.append(qMakePair(QString("full name"), KSParser::D_QSTRING));
-    sequence.append(qMakePair(QString("epoch_mjd"), KSParser::D_INT));
-    sequence.append(qMakePair(QString("q"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("a"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("e"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("i"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("w"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("om"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("ma"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("tp_calc"), KSParser::D_SKIP));
-    sequence.append(qMakePair(QString("orbit_id"), KSParser::D_QSTRING));
-    sequence.append(qMakePair(QString("H"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("G"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("neo"), KSParser::D_QSTRING));
-    sequence.append(qMakePair(QString("tp_calc"), KSParser::D_SKIP));
-    sequence.append(qMakePair(QString("M2"), KSParser::D_SKIP));
-    sequence.append(qMakePair(QString("diameter"), KSParser::D_FLOAT));
-    sequence.append(qMakePair(QString("extent"), KSParser::D_QSTRING));
-    sequence.append(qMakePair(QString("albedo"), KSParser::D_FLOAT));
-    sequence.append(qMakePair(QString("rot_period"), KSParser::D_FLOAT));
-    sequence.append(qMakePair(QString("per_y"), KSParser::D_FLOAT));
-    sequence.append(qMakePair(QString("moid"), KSParser::D_DOUBLE));
-    sequence.append(qMakePair(QString("class"), KSParser::D_QSTRING));
-
-    KSParser asteroid_parser(filepath_txt, '#', sequence);
-
-    QHash<QString, QVariant> row_content;
-    while (asteroid_parser.HasNextRow())
+    try
     {
-        row_content = asteroid_parser.ReadNextRow();
-        full_name   = row_content["full name"].toString();
-        full_name   = full_name.trimmed();
-        int catN    = full_name.section(' ', 0, 0).toInt();
+        KSUtils::JPLParser ast_parser(filepath_txt);
+        auto fieldMap = ast_parser.fieldMap();
+        bool isString = fieldMap.count("epoch_mjd") == 1;
 
-        name = full_name.section(' ', 1, -1);
+        ast_parser.for_each(
+            [&](const auto & get)
+        {
+            full_name = get("full_name").toString();
+            full_name = full_name.trimmed();
+            int catN  = full_name.section(' ', 0, 0).toInt();
+            name      = full_name.section(' ', 1, -1);
 
-        //JM temporary hack to avoid Europa,Io, and Asterope duplication
-        if (name == i18nc("Asteroid name (optional)", "Europa") || name == i18nc("Asteroid name (optional)", "Io") ||
-                name == i18nc("Asteroid name (optional)", "Asterope"))
-            name += i18n(" (Asteroid)");
+            //JM temporary hack to avoid Europa,Io, and Asterope duplication
+            if (name == i18nc("Asteroid name (optional)", "Europa") ||
+                    name == i18nc("Asteroid name (optional)", "Io") ||
+                    name == i18nc("Asteroid name (optional)", "Asterope"))
+                name += i18n(" (Asteroid)");
 
-        mJD         = row_content["epoch_mjd"].toInt();
-        q           = row_content["q"].toDouble();
-        a           = row_content["a"].toDouble();
-        e           = row_content["e"].toDouble();
-        dble_i      = row_content["i"].toDouble();
-        dble_w      = row_content["w"].toDouble();
-        dble_N      = row_content["om"].toDouble();
-        dble_M      = row_content["ma"].toDouble();
-        orbit_id    = row_content["orbit_id"].toString();
-        H           = row_content["H"].toDouble();
-        G           = row_content["G"].toDouble();
-        neo         = row_content["neo"].toString() == "Y";
-        diameter    = row_content["diameter"].toFloat();
-        dimensions  = row_content["extent"].toString();
-        albedo      = row_content["albedo"].toFloat();
-        rot_period  = row_content["rot_period"].toFloat();
-        period      = row_content["per_y"].toFloat();
-        earth_moid  = row_content["moid"].toDouble();
-        orbit_class = row_content["class"].toString();
+            // JM 2022.08.26: Try to check if the file is in the new format
+            // where epoch_mjd field is a string
+            if (isString)
+            {
+                mJD         = get("epoch_mjd").toString().toInt();
+                period      = get("per_y").toString().toDouble();
+            }
+            // If not fall back to old behavior
+            else
+            {
+                mJD         = get("epoch.mjd").toInt();
+                period      = get("per.y").toDouble();
+            }
 
-        JD = static_cast<double>(mJD) + 2400000.5;
+            q           = get("q").toString().toDouble();
+            a           = get("a").toString().toDouble();
+            e           = get("e").toString().toDouble();
+            dble_i      = get("i").toString().toDouble();
+            dble_w      = get("w").toString().toDouble();
+            dble_N      = get("om").toString().toDouble();
+            dble_M      = get("ma").toString().toDouble();
+            orbit_id    = get("orbit_id").toString();
+            H           = get("H").toString().toDouble();
+            G           = get("G").toString().toDouble();
+            neo         = get("neo").toString() == "Y";
+            diameter    = get("diameter").toString().toFloat();
+            dimensions  = get("extent").toString();
+            albedo      = get("albedo").toString().toFloat();
+            rot_period  = get("rot_per").toString().toFloat();
+            earth_moid  = get("moid").toString().toDouble();
+            orbit_class = get("class").toString();
 
-        KSAsteroid *new_asteroid = nullptr;
+            JD = static_cast<double>(mJD) + 2400000.5;
 
-        // Diameter is missing from JPL data
-        if (name == i18nc("Asteroid name (optional)", "Pluto"))
-            diameter = 2390;
+            KSAsteroid *new_asteroid = nullptr;
 
-        new_asteroid = new KSAsteroid(catN, name, QString(), JD, a, e, dms(dble_i), dms(dble_w), dms(dble_N), dms(dble_M), H, G);
+            // Diameter is missing from JPL data
+            if (name == i18nc("Asteroid name (optional)", "Pluto"))
+                diameter = 2390;
 
-        new_asteroid->setPerihelion(q);
-        new_asteroid->setOrbitID(orbit_id);
-        new_asteroid->setNEO(neo);
-        new_asteroid->setDiameter(diameter);
-        new_asteroid->setDimensions(dimensions);
-        new_asteroid->setAlbedo(albedo);
-        new_asteroid->setRotationPeriod(rot_period);
-        new_asteroid->setPeriod(period);
-        new_asteroid->setEarthMOID(earth_moid);
-        new_asteroid->setOrbitClass(orbit_class);
-        new_asteroid->setPhysicalSize(diameter);
-        //new_asteroid->setAngularSize(0.005);
+            new_asteroid =
+                new KSAsteroid(catN, name, QString(), JD, a, e, dms(dble_i),
+                               dms(dble_w), dms(dble_N), dms(dble_M), H, G);
 
-        appendListObject(new_asteroid);
+            new_asteroid->setPerihelion(q);
+            new_asteroid->setOrbitID(orbit_id);
+            new_asteroid->setNEO(neo);
+            new_asteroid->setDiameter(diameter);
+            new_asteroid->setDimensions(dimensions);
+            new_asteroid->setAlbedo(albedo);
+            new_asteroid->setRotationPeriod(rot_period);
+            new_asteroid->setPeriod(period);
+            new_asteroid->setEarthMOID(earth_moid);
+            new_asteroid->setOrbitClass(orbit_class);
+            new_asteroid->setPhysicalSize(diameter);
+            //new_asteroid->setAngularSize(0.005);
 
-        // Add name to the list of object names
-        objectNames(SkyObject::ASTEROID).append(name);
-        objectLists(SkyObject::ASTEROID).append(QPair<QString, const SkyObject *>(name, new_asteroid));
+            appendListObject(new_asteroid);
+
+            // Add name to the list of object names
+            objectNames(SkyObject::ASTEROID).append(name);
+            objectLists(SkyObject::ASTEROID)
+            .append(QPair<QString, const SkyObject *>(name, new_asteroid));
+        });
+    }
+    catch (const std::runtime_error &e)
+    {
+        qCInfo(KSTARS) << "Loading asteroid objects failed.";
+        qCInfo(KSTARS) << " -> was trying to read " + filepath_txt;
+        return;
     }
 }
 
@@ -257,26 +249,30 @@ SkyObject *AsteroidsComponent::objectNearest(SkyPoint *p, double &maxrad)
 
 void AsteroidsComponent::updateDataFile(bool isAutoUpdate)
 {
-    delete(downloadJob);
+    delete (downloadJob);
     downloadJob = new FileDownloader();
 
     if (isAutoUpdate == false)
-        downloadJob->setProgressDialogEnabled(true, i18n("Asteroid Update"), i18n("Downloading asteroids updates..."));
+        downloadJob->setProgressDialogEnabled(true, i18n("Asteroid Update"),
+                                              i18n("Downloading asteroids updates..."));
     downloadJob->registerDataVerification([&](const QByteArray & data)
     {
-        return data.startsWith("full_name");
+        return data.startsWith("{\"signature\"");
     });
 
     QObject::connect(downloadJob, SIGNAL(downloaded()), this, SLOT(downloadReady()));
     if (isAutoUpdate == false)
-        QObject::connect(downloadJob, SIGNAL(error(QString)), this, SLOT(downloadError(QString)));
+        QObject::connect(downloadJob, SIGNAL(error(QString)), this,
+                         SLOT(downloadError(QString)));
 
-    QUrl url = QUrl("https://ssd.jpl.nasa.gov/sbdb_query.cgi");
+    QUrl url = QUrl("https://ssd-api.jpl.nasa.gov/sbdb_query.api");
 
-    QByteArray mag       = QString::number(Options::magLimitAsteroidDownload()).toUtf8();
-    QByteArray post_data = KSUtils::getJPLQueryString("ast", "AcBdBiBhBgBjBlBkBmBqBbAiAjAgAkAlApAqArAsBsBtCh",
-    QVector<KSUtils::JPLFilter> { { "Ai", "<", mag } });
-
+    QByteArray mag = QString::number(Options::magLimitAsteroidDownload()).toUtf8();
+    QByteArray post_data =
+        KSUtils::getJPLQueryString("a",
+                                   "full_name,neo,H,G,diameter,extent,albedo,rot_per,"
+                                   "orbit_id,epoch_mjd,e,a,q,i,om,w,ma,per_y,moid,class",
+    QVector<KSUtils::JPLFilter> { { "H", "LT", mag } });
     downloadJob->post(url, post_data);
 }
 
@@ -284,13 +280,17 @@ void AsteroidsComponent::downloadReady()
 {
     // Comment the first line
     QByteArray data = downloadJob->downloadedData();
-    data.insert(0, '#');
 
     // Write data to asteroids.dat
-    QFile file(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "asteroids.dat");
-    file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text);
-    file.write(data);
-    file.close();
+    QFile file(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
+               .filePath("asteroids.dat"));
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+    {
+        file.write(data);
+        file.close();
+    }
+    else
+        qCWarning(KSTARS) << "Failed writing asteroid data to" << file.fileName();
 
     QString focusedAstroid;
 
@@ -316,10 +316,12 @@ void AsteroidsComponent::downloadReady()
 #ifdef KSTARS_LITE
     KStarsLite::Instance()->data()->setFullTimeUpdate();
     if (!focusedAstroid.isEmpty())
-        KStarsLite::Instance()->map()->setFocusObject(KStarsLite::Instance()->data()->objectNamed(focusedAstroid));
+        KStarsLite::Instance()->map()->setFocusObject(
+            KStarsLite::Instance()->data()->objectNamed(focusedAstroid));
 #else
     if (!focusedAstroid.isEmpty())
-        KStars::Instance()->map()->setFocusObject(KStars::Instance()->data()->objectNamed(focusedAstroid));
+        KStars::Instance()->map()->setFocusObject(
+            KStars::Instance()->data()->objectNamed(focusedAstroid));
     KStars::Instance()->data()->setFullTimeUpdate();
 #endif
     downloadJob->deleteLater();
@@ -328,6 +330,6 @@ void AsteroidsComponent::downloadReady()
 void AsteroidsComponent::downloadError(const QString &errorString)
 {
     KSNotification::error(i18n("Error downloading asteroids data: %1", errorString));
-    qDebug() << i18n("Error downloading asteroids data: %1", errorString);
+    qDebug() << Q_FUNC_INFO << i18n("Error downloading asteroids data: %1", errorString);
     downloadJob->deleteLater();
 }

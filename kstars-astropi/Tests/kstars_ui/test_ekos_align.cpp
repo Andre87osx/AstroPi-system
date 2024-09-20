@@ -1,29 +1,135 @@
 /*
     KStars UI tests for alignment
 
-    Copyright (C) 2021
-    Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
+    SPDX-FileCopyrightText: 2021 Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "test_ekos_align.h"
 
 #include "kstars_ui_tests.h"
 #include "test_ekos.h"
+#include "test_ekos_scheduler_helper.h"
+#include "mountmodel.h"
 #include "Options.h"
 #include "indi/guimanager.h"
-#include "indi/indidevice.h"
-#include "indi/indigroup.h"
-#include "indi/indiproperty.h"
-#include "indi/indielement.h"
+
+#include "skymapcomposite.h"
 
 TestEkosAlign::TestEkosAlign(QObject *parent) : QObject(parent)
 {
     m_test_ekos_helper = new TestEkosHelper();
+}
+
+
+void TestEkosAlign::testSlewAlign()
+{
+    // slew to Kocab as target
+    SkyObject *targetObject = findTargetByName("Kocab");
+    QVERIFY(slewToTarget(targetObject));
+
+    // execute an alignment and verify the result
+    QVERIFY(executeAlignment(targetObject));
+}
+
+void TestEkosAlign::testEmptySkyAlign()
+{
+    SkyObject *emptySky = new SkyObject(SkyObject::TYPE_UNKNOWN, 15.254722222222222, 72.031388888888889);
+    // update J2000 coordinates
+    updateJ2000Coordinates(emptySky);
+
+    QVERIFY(slewToTarget(emptySky));
+
+    // execute an alignment and verify the result
+    QVERIFY(executeAlignment(emptySky));
+}
+
+void TestEkosAlign::testSlewDriftAlign()
+{
+    // slew to Kocab as target
+    SkyObject *targetObject = findTargetByName("Kocab");
+    QVERIFY(slewToTarget(targetObject));
+    // execute an alignment and verify the result
+    QVERIFY(executeAlignment(targetObject));
+    // now send motion north and west to create a guiding deviation
+    Ekos::Mount *mount = Ekos::Manager::Instance()->mountModule();
+    mount->doPulse(RA_INC_DIR, 5000, DEC_INC_DIR, 5000);
+    // wait until the pulse ends
+    QTest::qWait(6000);
+    // execute an alignment and verify if the target is the same
+    QVERIFY(executeAlignment(targetObject));
+}
+
+void TestEkosAlign::testFitsAlign()
+{
+    // check the FITS file
+    QString const fits_file = "../Tests/kstars_ui/Kocab.fits";
+    QFileInfo target_fits(fits_file);
+    QVERIFY(target_fits.exists());
+
+    // define expected target (center of the FITS file, J2000)
+    SkyObject targetObject(SkyObject::STAR, 14.844809110652733, 74.1587773591246, 1.8f, "Kocab");
+    targetObject.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
+
+    // slew somewhere close to the target
+    QVERIFY(slewToTarget(findTargetByName("Pherkab")));
+    // wait until the slew has finished
+    QTRY_VERIFY_WITH_TIMEOUT(m_TelescopeStatus == ISD::Telescope::MOUNT_TRACKING, 60000);
+
+    // ensure that we wait until alignment completion
+    expectedAlignStates.append(Ekos::ALIGN_PROGRESS);
+    expectedAlignStates.append(Ekos::ALIGN_COMPLETE);
+
+    // execute the FITS alignment and verify the result
+    Ekos::Manager::Instance()->alignModule()->loadAndSlew(target_fits.filePath());
+
+    // wait until the alignment succeeds
+    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT(expectedAlignStates, 20000);
+
+    // check if the alignment target matches
+    verifyAlignmentTarget(&targetObject);
+}
+
+void TestEkosAlign::testAlignTargetScheduledJob()
+{
+    // test scheduler with target
+    alignWithScheduler(findTargetByName("Pherkab"));
+}
+
+void TestEkosAlign::testFitsAlignTargetScheduledJob()
+{
+    // check the FITS file
+    QString const fits_file = "../Tests/kstars_ui/Kocab.fits";
+    QFileInfo target_fits(fits_file);
+    QVERIFY(target_fits.exists());
+
+    // define expected target (center of the FITS file, J2000)
+    SkyObject targetObject(SkyObject::STAR, 14.844809110652733, 74.1587773591246, 1.8f, "Kocab");
+    targetObject.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
+
+    // test scheduler with target
+    alignWithScheduler(&targetObject, target_fits.absoluteFilePath());
+}
+
+void TestEkosAlign::testSyncOnlyAlign()
+{
+    Ekos::Manager *ekos = Ekos::Manager::Instance();
+    // ensure that no target is set from other test runs
+    ekos->alignModule()->clearTarget();
+    // select to Pherkab as target
+    SkyObject *pherkab = findTargetByName("Pherkab");
+
+    KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(ekos->mountModule(), 1000);
+    // ensure that the mount is tracking
+    KTRY_CLICK(ekos->mountModule(), trackOnB);
+    // sync to Pherkab (use JNow for sync)
+    ekos->mountModule()->sync(pherkab->ra().Hours(), pherkab->dec().Degrees());
+
+    // execute an alignment and verify the result
+    // Align::getTargetCoords() returns J2000 values
+    KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(ekos->alignModule(), 1000);
+    QVERIFY(executeAlignment(pherkab));
 }
 
 void TestEkosAlign::testAlignRecoverFromSlewing()
@@ -44,7 +150,7 @@ void TestEkosAlign::testAlignRecoverFromSlewing()
     mount->slew(14.86, 74.106);
     mount->slew(14.845, 74.106);
     // check if event sequence has been completed
-    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT(expectedAlignStates, 20000);
+    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT(expectedAlignStates, 30000);
     // check the number of images and plate solves
     KTRY_CHECK_ALIGNMENTS(1);
 }
@@ -84,8 +190,10 @@ void TestEkosAlign::initTestCase()
     KVERIFY_EKOS_IS_OPENED();
     // start the profile
     QVERIFY(m_test_ekos_helper->startEkosProfile());
-    m_test_ekos_helper->initTestCase();
+    m_test_ekos_helper->init();
     QStandardPaths::setTestModeEnabled(true);
+    // create temporary directory
+    testDir = new QTemporaryDir(QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/test-XXXXXX");
 
     prepareTestCase();
 }
@@ -105,7 +213,7 @@ void TestEkosAlign::cleanupTestCase()
     disconnect(Ekos::Manager::Instance()->mountModule(), &Ekos::Mount::newStatus, this,
                &TestEkosAlign::telescopeStatusChanged);
 
-    m_test_ekos_helper->cleanupTestCase();
+    m_test_ekos_helper->cleanup();
     QVERIFY(m_test_ekos_helper->shutdownEkosProfile());
     KTRY_CLOSE_EKOS();
     KVERIFY_EKOS_IS_HIDDEN();
@@ -158,7 +266,7 @@ void TestEkosAlign::prepareTestCase()
     // select StellarSolver
     Options::setSolverType(SSolver::SOLVER_LOCALASTROMETRY);
     // select fast solve profile option
-    Options::setSolveOptionsProfile(SSolver::Parameters::FAST_SOLVING);
+    Options::setSolveOptionsProfile(SSolver::Parameters::SINGLE_THREAD_SOLVING);
     // select the "Slew to Target" mode
     KTRY_SET_RADIOBUTTON(ekos->alignModule(), slewR, true);
     // reduce the accuracy to avoid testing problems
@@ -190,13 +298,24 @@ void TestEkosAlign::prepareTestCase()
             Qt::UniqueConnection);
 }
 
-void TestEkosAlign::init() {
+void TestEkosAlign::init()
+{
     // reset counters
     solver_count = 0;
     image_count  = 0;
 }
 
-void TestEkosAlign::cleanup() {}
+void TestEkosAlign::cleanup()
+{
+    Ekos::Manager *ekos = Ekos::Manager::Instance();
+    Ekos::Scheduler *scheduler = ekos->schedulerModule();
+    // press stop button if running
+    if (scheduler->status() == Ekos::SCHEDULER_STARTUP || scheduler->status() == Ekos::SCHEDULER_RUNNING)
+        KTRY_CLICK(scheduler, startB);
+    // in all cases, stop the scheduler and remove all jobs
+    scheduler->stop();
+    scheduler->removeAllJobs();
+}
 
 bool TestEkosAlign::prepareMountModel(int points)
 {
@@ -206,12 +325,14 @@ bool TestEkosAlign::prepareMountModel(int points)
 
     // wait until the mount model is instantiated
     QTest::qWait(1000);
-    Ui_mountModel * mountModel = Ekos::Manager::Instance()->alignModule()->getMountModelUI();
+    Ekos::MountModel * mountModel = Ekos::Manager::Instance()->alignModule()->mountModel();
     KVERIFY_SUB(mountModel != nullptr);
 
     // clear alignment points
-    if (mountModel->alignTable->rowCount() > 0) {
-        QTimer::singleShot(2000, [&]() {
+    if (mountModel->alignTable->rowCount() > 0)
+    {
+        QTimer::singleShot(2000, [&]()
+        {
             QDialog * const dialog = qobject_cast <QDialog*> (QApplication::activeModalWidget());
             if (dialog != nullptr)
                 QTest::mouseClick(dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Yes), Qt::LeftButton);
@@ -223,8 +344,8 @@ bool TestEkosAlign::prepareMountModel(int points)
     mountModel->alignPtNum->setValue(points);
     KVERIFY_SUB(mountModel->alignPtNum->value() == points);
     // use named stars for alignment (this hopefully improves plate soving speed)
-    mountModel->alignTypeBox->setCurrentIndex(Ekos::Align::OBJECT_NAMED_STAR);
-    KVERIFY_SUB(mountModel->alignTypeBox->currentIndex() == Ekos::Align::OBJECT_NAMED_STAR);
+    mountModel->alignTypeBox->setCurrentIndex(Ekos::MountModel::OBJECT_NAMED_STAR);
+    KVERIFY_SUB(mountModel->alignTypeBox->currentIndex() == Ekos::MountModel::OBJECT_NAMED_STAR);
     // create the alignment points
     KVERIFY_SUB(mountModel->wizardAlignB->isEnabled());
     mountModel->wizardAlignB->click();
@@ -235,7 +356,7 @@ bool TestEkosAlign::prepareMountModel(int points)
 
 bool TestEkosAlign::runMountModelTool(int points, bool moveMount)
 {
-    Ui_mountModel * mountModel = Ekos::Manager::Instance()->alignModule()->getMountModelUI();
+    Ekos::MountModel * mountModel = Ekos::Manager::Instance()->alignModule()->mountModel();
 
     // start model creation
     KVERIFY_SUB(mountModel->startAlignB->isEnabled());
@@ -288,6 +409,110 @@ bool TestEkosAlign::trackSingleAlignment(bool lastPoint, bool moveMount)
     // everything succeeded
     return true;
 }
+
+bool TestEkosAlign::slewToTarget(SkyPoint *target)
+{
+    expectedTelescopeStates.append(ISD::Telescope::MOUNT_TRACKING);
+    // slew to given target
+    KVERIFY_SUB(m_test_ekos_helper->slewTo(target->ra().Hours(), target->dec().Degrees(), true));
+    // ensure that slewing has started
+    QTest::qWait(2000);
+    // wait until the slew has completed
+    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT_SUB(expectedTelescopeStates, 20000);
+    // success
+    return true;
+}
+
+bool TestEkosAlign::executeAlignment(SkyObject *targetObject)
+{
+    // ensure that we wait until alignment completion
+    expectedAlignStates.append(Ekos::ALIGN_PROGRESS);
+    expectedAlignStates.append(Ekos::ALIGN_COMPLETE);
+    // start alignment
+    KVERIFY_SUB(m_test_ekos_helper->startAligning(10.0));
+    // wait until the alignment succeeds
+    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT_SUB(expectedAlignStates, 20000);
+    // check if the alignment target matches
+    KVERIFY_SUB(verifyAlignmentTarget(targetObject));
+    // success
+    return true;
+}
+
+bool TestEkosAlign::verifyAlignmentTarget(SkyObject *targetObject)
+{
+    QList<double> alignmentTarget = Ekos::Manager::Instance()->alignModule()->getTargetCoords();
+    KVERIFY2_SUB(std::abs(alignmentTarget[0] - targetObject->ra0().Hours()) <
+                 0.005, // difference small enough to capture JNow/J2000 errors
+                 QString("RA target J2000 deviation too big: %1 received, %2 expected.").arg(alignmentTarget[0]).arg(
+                     targetObject->ra0().Hours()).toLocal8Bit());
+    KVERIFY2_SUB(std::abs(alignmentTarget[1] - targetObject->dec0().Degrees()) < 0.005,
+                 QString("DEC target J2000 deviation too big: %1 received, %2 expected.").arg(alignmentTarget[1]).arg(
+                     targetObject->dec0().Degrees()).toLocal8Bit());
+    // success
+    return true;
+}
+
+bool TestEkosAlign::alignWithScheduler(SkyObject *targetObject, QString fitsTarget)
+{
+    Ekos::Manager *ekos = Ekos::Manager::Instance();
+    Ekos::Scheduler *scheduler = ekos->schedulerModule();
+    // start ASAP
+    TestEkosSchedulerHelper::StartupCondition startupCondition;
+    startupCondition.type = SchedulerJob::START_ASAP;
+    TestEkosSchedulerHelper::CompletionCondition completionCondition;
+    completionCondition.type = SchedulerJob::FINISH_SEQUENCE;
+
+    // create the capture sequence file
+    const QString sequenceFile = TestEkosSchedulerHelper::getDefaultEsqContent();
+    const QString esqFile = testDir->filePath(QString("test.esq"));
+    // create the scheduler file
+    const QString schedulerFile = TestEkosSchedulerHelper::getSchedulerFile(targetObject, startupCondition,
+                                  completionCondition, {true, false, true, false}, false, false, 30, fitsTarget);
+    const QString eslFile = testDir->filePath(QString("test.esl"));
+    // write both files to the test directory
+    KVERIFY_SUB(TestEkosSchedulerHelper::writeSimpleSequenceFiles(schedulerFile, eslFile, sequenceFile, esqFile));
+    // load the scheduler file
+    KWRAP_SUB(KTRY_SWITCH_TO_MODULE_WITH_TIMEOUT(scheduler, 1000));
+    scheduler->loadScheduler(eslFile);
+
+    // start
+    KTRY_CLICK_SUB(scheduler, startB);
+
+    // expect a slew
+    expectedTelescopeStates.append(ISD::Telescope::MOUNT_SLEWING);
+    expectedTelescopeStates.append(ISD::Telescope::MOUNT_TRACKING);
+    // ensure that we wait until alignment completion
+    expectedAlignStates.append(Ekos::ALIGN_PROGRESS);
+    expectedAlignStates.append(Ekos::ALIGN_COMPLETE);
+
+    // wait until the slew has finished
+    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT_SUB(expectedTelescopeStates, 60000);
+    // wait until the alignment succeeds
+    KVERIFY_EMPTY_QUEUE_WITH_TIMEOUT_SUB(expectedAlignStates, 20000);
+
+    // check if the alignment target matches
+    return verifyAlignmentTarget(targetObject);
+}
+
+SkyObject *TestEkosAlign::findTargetByName(QString name)
+{
+    SkyObject *targetObject = KStarsData::Instance()->skyComposite()->findByName(name);
+    // update J2000 coordinates
+    updateJ2000Coordinates(targetObject);
+
+    return targetObject;
+}
+
+void TestEkosAlign::updateJ2000Coordinates(SkyPoint *target)
+{
+    SkyPoint J2000Coord(target->ra(), target->dec());
+    J2000Coord.catalogueCoord(KStars::Instance()->data()->ut().djd());
+    target->setRA0(J2000Coord.ra());
+    target->setDec0(J2000Coord.dec());
+}
+
+
+
 /* *********************************************************************************
  *
  * Slots for catching state changes
@@ -318,7 +543,7 @@ void TestEkosAlign::captureStatusChanged(Ekos::CaptureState status)
         expectedCaptureStates.dequeue();
 }
 
-void TestEkosAlign::imageReceived(FITSView *view)
+void TestEkosAlign::imageReceived(const QSharedPointer<FITSView> &view)
 {
     Q_UNUSED(view);
     captureStatusChanged(Ekos::CAPTURE_COMPLETE);

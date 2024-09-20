@@ -1,13 +1,10 @@
 /* Ekos Live Message
 
-    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Message Channel
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "message.h"
@@ -19,6 +16,12 @@
 #include "kstarsdata.h"
 #include "ekos_debug.h"
 #include "fitsviewer/fitsview.h"
+#include "ksalmanac.h"
+#include "skymapcomposite.h"
+#include "catalogobject.h"
+#include "ekos/auxiliary/darklibrary.h"
+#include "skymap.h"
+#include "Options.h"
 
 #include <KActionCollection>
 #include <basedevice.h>
@@ -26,8 +29,7 @@
 
 namespace EkosLive
 {
-
-Message::Message(Ekos::Manager *manager): m_Manager(manager)
+Message::Message(Ekos::Manager *manager): m_Manager(manager), m_DSOManager(CatalogsDB::dso_db_path())
 {
     connect(&m_WebSocket, &QWebSocket::connected, this, &Message::onConnected);
     connect(&m_WebSocket, &QWebSocket::disconnected, this, &Message::onDisconnected);
@@ -75,7 +77,7 @@ void Message::onConnected()
     m_isConnected = true;
     m_ReconnectTries = 0;
 
-    connect(&m_WebSocket, &QWebSocket::textMessageReceived,  this, &Message::onTextReceived);
+    connect(&m_WebSocket, &QWebSocket::textMessageReceived,  this, &Message::onTextReceived, Qt::UniqueConnection);
 
     sendConnection();
     sendProfiles();
@@ -88,6 +90,7 @@ void Message::onDisconnected()
     qCInfo(KSTARS_EKOS) << "Disconnected from Message Websocket server.";
     m_isConnected = false;
     disconnect(&m_WebSocket, &QWebSocket::textMessageReceived,  this, &Message::onTextReceived);
+    m_PropertyCache.clear();
 
     emit disconnected();
 }
@@ -99,7 +102,7 @@ void Message::onError(QAbstractSocket::SocketError error)
             error == QAbstractSocket::ConnectionRefusedError)
     {
         if (m_ReconnectTries++ < RECONNECT_MAX_TRIES)
-            QTimer::singleShot(RECONNECT_INTERVAL, this, SLOT(connectServer()));
+            QTimer::singleShot(RECONNECT_INTERVAL, this, &Message::connectServer);
     }
 }
 
@@ -177,6 +180,14 @@ void Message::onTextReceived(const QString &message)
         processScopeCommands(command, payload);
     else if (command.startsWith("profile_"))
         processProfileCommands(command, payload);
+    else if (command.startsWith("astro_"))
+        processAstronomyCommands(command, payload);
+    else if (command == commands[DIALOG_GET_RESPONSE])
+        processDialogResponse(payload);
+    else if (command.startsWith("option_"))
+        processOptionsCommands(command, payload);
+    else if (command.startsWith("scheduler"))
+        processSchedulerCommands(command, payload);
 
     if (m_Manager->getEkosStartingStatus() != Ekos::Success)
         return;
@@ -202,8 +213,6 @@ void Message::onTextReceived(const QString &message)
         sendStellarSolverProfiles();
     else if (command == commands[GET_DEVICES])
         sendDevices();
-    else if (command == commands[DIALOG_GET_RESPONSE])
-        processDialogResponse(payload);
     else if (command.startsWith("capture_"))
         processCaptureCommands(command, payload);
     else if (command.startsWith("mount_"))
@@ -220,14 +229,15 @@ void Message::onTextReceived(const QString &message)
         processDomeCommands(command, payload);
     else if (command.startsWith("cap_"))
         processCapCommands(command, payload);
-    else if (command.startsWith("option_"))
-        processOptionsCommands(command, payload);
     else if (command.startsWith("dslr_"))
         processDSLRCommands(command, payload);
     else if (command.startsWith("fm_"))
         processFilterManagerCommands(command, payload);
+    else if (command.startsWith("dark_library_"))
+        processDarkLibraryCommands(command, payload);
     else if (command.startsWith("device_"))
         processDeviceCommands(command, payload);
+
 }
 
 void Message::sendCameras()
@@ -554,7 +564,7 @@ void Message::sendFilterWheels()
             break;
 
         QJsonArray filters;
-        for (const auto &it: *filterNames)
+        for (const auto &it : *filterNames)
             filters.append(it.getText());
 
         QJsonObject oneFilter =
@@ -637,7 +647,12 @@ void Message::processCaptureCommands(const QString &command, const QJsonObject &
     }
     else if (command == commands[CAPTURE_REMOVE_SEQUENCE])
     {
-        capture->removeJob(payload["index"].toInt());
+        if (capture->removeJob(payload["index"].toInt()) == false)
+            sendCaptureSequence(capture->getSequence());
+    }
+    else if (command == commands[CAPTURE_CLEAR_SEQUENCES])
+    {
+        capture->clearSequenceQueue();
     }
     else if (command == commands[CAPTURE_SET_LIMITS])
     {
@@ -647,6 +662,14 @@ void Message::processCaptureCommands(const QString &command, const QJsonObject &
     {
         sendResponse(commands[CAPTURE_GET_LIMITS], capture->getLimitSettings());
     }
+    else if (command == commands[CAPTURE_SAVE_SEQUENCE_FILE])
+    {
+        capture->saveSequenceQueue(payload["filepath"].toString());
+    }
+    else if (command == commands[CAPTURE_LOAD_SEQUENCE_FILE])
+    {
+        capture->loadSequenceQueue(payload["filepath"].toString());
+    }
     else if (command == commands[CAPTURE_GET_CALIBRATION_SETTINGS])
     {
         sendResponse(commands[CAPTURE_GET_CALIBRATION_SETTINGS], capture->getCalibrationSettings());
@@ -654,6 +677,10 @@ void Message::processCaptureCommands(const QString &command, const QJsonObject &
     else if (command == commands[CAPTURE_GET_FILE_SETTINGS])
     {
         sendResponse(commands[CAPTURE_GET_FILE_SETTINGS], capture->getFileSettings());
+    }
+    else if (command == commands[CAPTURE_GENERATE_DARK_FLATS])
+    {
+        capture->generateDarkFlats();
     }
 }
 
@@ -682,6 +709,11 @@ void Message::sendFocusSettings(const QJsonObject &settings)
     sendResponse(commands[FOCUS_SET_SETTINGS], settings);
 }
 
+void Message::sendSchedulerSettings(const QJsonObject &settings)
+{
+    sendResponse(commands[SCHEDULER_GET_SETTINGS], settings);
+}
+
 void Message::processGuideCommands(const QString &command, const QJsonObject &payload)
 {
     Ekos::Guide *guide = m_Manager->guideModule();
@@ -705,7 +737,10 @@ void Message::processGuideCommands(const QString &command, const QJsonObject &pa
     else if (command == commands[GUIDE_CLEAR])
         guide->clearCalibration();
     else if (command == commands[GUIDE_SET_SETTINGS])
+    {
         guide->setSettings(payload);
+        sendGuideSettings(m_Manager->guideModule()->getSettings());
+    }
 }
 
 void Message::processFocusCommands(const QString &command, const QJsonObject &payload)
@@ -737,6 +772,12 @@ void Message::processFocusCommands(const QString &command, const QJsonObject &pa
         focus->startFraming();
     else if (command == commands[FOCUS_SET_SETTINGS])
         focus->setSettings(payload);
+    else if (command == commands[FOCUS_SET_CROSSHAIR])
+    {
+        double x = payload["x"].toDouble();
+        double y = payload["y"].toDouble();
+        focus->selectFocusStarFraction(x, y);
+    }
     else if (command == commands[FOCUS_SET_PRIMARY_SETTINGS])
         focus->setPrimarySettings(payload);
     else if (command == commands[FOCUS_SET_PROCESS_SETTINGS])
@@ -840,7 +881,41 @@ void Message::processMountCommands(const QString &command, const QJsonObject &pa
             mount->setAutoParkStartup(QTime::fromString(payload["value"].toString()));
         mount->setAutoParkEnabled(enabled);
     }
+    else if (command == commands[MOUNT_GOTO_PIXEL])
+    {
+        const auto camera = payload["camera"].toString();
+        const auto xFactor = payload["x"].toDouble();
+        const auto yFactor = payload["y"].toDouble();
 
+        for(auto &oneDevice : m_Manager->findDevices(KSTARS_CCD))
+        {
+            auto oneCamera = dynamic_cast<ISD::CCD*>(oneDevice);
+            if (!oneCamera || oneCamera->getDeviceName() != camera)
+                continue;
+
+            auto primaryChip = oneCamera->getChip(ISD::CCDChip::PRIMARY_CCD);
+
+            if (!primaryChip)
+                break;
+
+            auto imageData = primaryChip->getImageData();
+            if (!imageData || imageData->hasWCS() == false)
+                break;
+
+            auto x = xFactor * imageData->width();
+            auto y = yFactor * imageData->height();
+
+            QPointF point(x, y);
+            SkyPoint coord;
+            if (imageData->pixelToWCS(point, coord))
+            {
+                // J2000 -> JNow
+                coord.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
+                mount->gotoTarget(coord);
+                break;
+            }
+        }
+    }
 }
 
 void Message::processDomeCommands(const QString &command, const QJsonObject &payload)
@@ -893,7 +968,7 @@ void Message::processAlignCommands(const QString &command, const QJsonObject &pa
 
     if (command == commands[ALIGN_SOLVE])
     {
-        align->syncTargetToMount();
+        align->updateTargetCoords();
         align->captureAndSolve();
     }
     else if (command == commands[ALIGN_SET_SETTINGS])
@@ -910,6 +985,10 @@ void Message::processAlignCommands(const QString &command, const QJsonObject &pa
         file.write(QByteArray::fromBase64(payload["data"].toString().toLatin1()));
         file.close();
         align->loadAndSlew(file.fileName());
+    }
+    else if (command == commands[ALIGN_MANUAL_ROTATOR_TOGGLE])
+    {
+        align->toggleManualRotator(payload["toggled"].toBool());
     }
 }
 
@@ -939,26 +1018,98 @@ void Message::setAlignSolution(const QVariantMap &solution)
     sendResponse(commands[NEW_ALIGN_STATE], alignState);
 }
 
+void Message::processSchedulerCommands(const QString &command, const QJsonObject &payload)
+{
+    Ekos::Scheduler *scheduler = m_Manager->schedulerModule();
+
+    if (command == commands[SCHEDULER_SET_PRIMARY_SETTINGS])
+    {
+        scheduler->setPrimarySettings(payload);
+    }
+    else if (command == commands[SCHEDULER_SET_JOB_STARTUP_CONDITIONS])
+    {
+        scheduler->setJobStartupConditions(payload);
+        sendSchedulerSettings(m_Manager->schedulerModule()->getSchedulerSettings());
+    }
+    else if (command == commands[SCHEDULER_SET_JOB_CONSTRAINTS])
+    {
+        scheduler->setJobConstraints(payload);
+        sendSchedulerSettings(m_Manager->schedulerModule()->getSchedulerSettings());
+    }
+    else if (command == commands[SCHEDULER_SET_JOB_COMPLETION_SETTINGS])
+    {
+        scheduler->setJobCompletionConditions(payload);
+        sendSchedulerSettings(m_Manager->schedulerModule()->getSchedulerSettings());
+    }
+    else if (command == commands[SCHEDULER_SET_OBSERVATORY_STARTUP_PROCEDURE])
+    {
+        scheduler->setObservatoryStartupProcedure(payload);
+        sendSchedulerSettings(m_Manager->schedulerModule()->getSchedulerSettings());
+    }
+    else if (command == commands[SCHEDULER_SET_ABORTED_JOB_MANAGEMENT])
+    {
+        scheduler->setAbortedJobManagementSettings(payload);
+        sendSchedulerSettings(m_Manager->schedulerModule()->getSchedulerSettings());
+    }
+    else if (command == commands[SCHEDULER_SET_OBSERVATORY_SHUTDOWN_PROCEDURE])
+    {
+        scheduler->setObservatoryShutdownProcedure(payload);
+        sendSchedulerSettings(m_Manager->schedulerModule()->getSchedulerSettings());
+    }
+    else if (command == commands[SCHEDULER_GET_JOBS])
+    {
+        sendSchedulerJobs();
+    }
+    else if (command == commands[SCHEDULER_ADD_JOBS])
+    {
+        scheduler->addJob();
+    }
+    else if(command == commands[SCHEDULER_REMOVE_JOBS])
+    {
+        int index = payload["index"].toInt();
+        scheduler->removeOneJob(index);
+    }
+    else if(command == commands[SCHEDULER_GET_SETTINGS])
+    {
+        sendResponse(commands[SCHEDULER_GET_SETTINGS], scheduler->getSchedulerSettings());
+    }
+    else if(command == commands[SCHEDULER_START_JOB])
+    {
+        scheduler->toggleScheduler();
+    }
+
+}
+
 void Message::processPolarCommands(const QString &command, const QJsonObject &payload)
 {
     Ekos::Align *align = m_Manager->alignModule();
+    Ekos::PolarAlignmentAssistant *paa = align->polarAlignmentAssistant();
+
+    if (!paa)
+        return;
 
     if (command == commands[PAH_START])
     {
-        align->startPAHProcess();
+        paa->startPAHProcess();
     }
     if (command == commands[PAH_STOP])
     {
-        align->stopPAHProcess();
+        paa->stopPAHProcess();
     }
     if (command == commands[PAH_SET_SETTINGS])
     {
-        align->setPAHSettings(payload);
+        paa->setPAHSettings(payload);
     }
     else if (command == commands[PAH_REFRESH])
     {
-        align->setPAHRefreshDuration(payload["value"].toDouble(1));
-        align->startPAHRefreshProcess();
+        paa->setPAHRefreshDuration(payload["value"].toDouble(1));
+        paa->startPAHRefreshProcess();
+    }
+    else if (command == commands[PAH_SET_ALGORITHM])
+    {
+        auto algorithmCombo = paa->findChild<QComboBox*>("PAHRefreshAlgorithmCombo");
+        if (algorithmCombo)
+            algorithmCombo->setCurrentIndex(static_cast<Ekos::PolarAlignmentAssistant::PAHRefreshAlgorithm>(payload["value"].toInt(1)));
     }
     else if (command == commands[PAH_RESET_VIEW])
     {
@@ -984,19 +1135,21 @@ void Message::processPolarCommands(const QString &command, const QJsonObject &pa
 
         }
 
-        align->setPAHCorrectionOffsetPercentage(x, y);
+        paa->setPAHCorrectionOffsetPercentage(x, y);
     }
     else if (command == commands[PAH_SELECT_STAR_DONE])
     {
-        align->setPAHCorrectionSelectionComplete();
+        // This button was removed from the desktop PAA scheme.
+        // Nothing to do.
+        // TODO: Make sure this works.
     }
     else if (command == commands[PAH_REFRESHING_DONE])
     {
-        align->setPAHRefreshComplete();
+        paa->stopPAHProcess();
     }
     else if (command == commands[PAH_SLEW_DONE])
     {
-        align->setPAHSlewDone();
+        paa->setPAHSlewDone();
     }
     else if (command == commands[PAH_PAH_SET_ZOOM])
     {
@@ -1006,7 +1159,7 @@ void Message::processPolarCommands(const QString &command, const QJsonObject &pa
 
 }
 
-void Message::setPAHStage(Ekos::Align::PAHStage stage)
+void Message::setPAHStage(Ekos::PolarAlignmentAssistant::PAHStage stage)
 {
     if (m_isConnected == false || m_Manager->getEkosStartingStatus() != Ekos::Success)
         return;
@@ -1014,14 +1167,19 @@ void Message::setPAHStage(Ekos::Align::PAHStage stage)
     Q_UNUSED(stage)
     Ekos::Align *align = m_Manager->alignModule();
 
+    Ekos::PolarAlignmentAssistant *paa = align->polarAlignmentAssistant();
+
+    if (!paa)
+        return;
+
     QJsonObject polarState =
     {
-        {"stage", align->getPAHStageString()}
+        {"stage", paa->getPAHStageString(false)}
     };
 
 
     // Increase size when select star
-    if (stage == Ekos::Align::PAH_STAR_SELECT)
+    if (stage == Ekos::PolarAlignmentAssistant::PAH_STAR_SELECT)
         align->zoomAlignView();
 
     sendResponse(commands[NEW_POLAR_STATE], polarState);
@@ -1069,6 +1227,21 @@ void Message::setPolarResults(QLineF correctionVector, double polarError, double
     sendResponse(commands[NEW_POLAR_STATE], polarState);
 }
 
+void Message::setUpdatedErrors(double total, double az, double alt)
+{
+    if (m_isConnected == false || m_Manager->getEkosStartingStatus() != Ekos::Success)
+        return;
+
+    QJsonObject error =
+    {
+        {"updatedError", total},
+        {"updatedAZError", az},
+        {"updatedALTError", alt}
+    };
+
+    sendResponse(commands[NEW_POLAR_STATE], error);
+}
+
 void Message::setPAHEnabled(bool enabled)
 {
     if (m_isConnected == false || m_Manager->getEkosStartingStatus() != Ekos::Success)
@@ -1090,6 +1263,8 @@ void Message::processProfileCommands(const QString &command, const QJsonObject &
             m_Manager->stop();
 
         m_Manager->setProfile(payload["name"].toString());
+        // Always Sync time before we start
+        KStarsData::Instance()->changeDateTime(KStarsDateTime::currentDateTimeUtc());
         m_Manager->start();
     }
     else if (command == commands[STOP_PROFILE])
@@ -1098,6 +1273,9 @@ void Message::processProfileCommands(const QString &command, const QJsonObject &
 
         // Close all FITS Viewers
         KStars::Instance()->clearAllViewers();
+
+        m_PropertySubscriptions.clear();
+        m_PropertyCache.clear();
     }
     else if (command == commands[ADD_PROFILE])
     {
@@ -1122,6 +1300,11 @@ void Message::processProfileCommands(const QString &command, const QJsonObject &
     {
         m_Manager->setProfileMapping(payload);
     }
+    else if (command == commands[SET_PROFILE_PORT_SELECTION])
+    {
+        requestPortSelection(false);
+        m_Manager->acceptPortSelection();
+    }
 }
 
 void Message::sendProfiles()
@@ -1139,6 +1322,24 @@ void Message::sendProfiles()
     sendResponse(commands[GET_PROFILES], profiles);
 }
 
+void Message::sendSchedulerJobs()
+{
+    QJsonObject jobs =
+    {
+        {"jobs", m_Manager->schedulerModule()->getJSONJobs()}
+    };
+    sendResponse(commands[SCHEDULER_GET_JOBS], jobs);
+}
+
+void Message::sendSchedulerJobList(QJsonArray jobsList)
+{
+    QJsonObject jobs =
+    {
+        {"jobs", jobsList}
+    };
+    sendResponse(commands[SCHEDULER_GET_JOBS], jobs);
+}
+
 void Message::setEkosStatingStatus(Ekos::CommunicationStatus status)
 {
     if (status == Ekos::Pending)
@@ -1154,6 +1355,29 @@ void Message::setEkosStatingStatus(Ekos::CommunicationStatus status)
 
 void Message::processOptionsCommands(const QString &command, const QJsonObject &payload)
 {
+    if (command == commands[OPTION_SET])
+    {
+        const QJsonArray options = payload["options"].toArray();
+        for (const auto &oneOption : options)
+            Options::self()->setProperty(oneOption["name"].toString().toLatin1(), oneOption["value"].toVariant());
+        return;
+    }
+    else if (command == commands[OPTION_GET])
+    {
+        const QJsonArray options = payload["options"].toArray();
+        QJsonArray result;
+        for (const auto &oneOption : options)
+        {
+            const auto name = oneOption["name"].toString();
+            QVariant value = Options::self()->property(name.toLatin1());
+            QVariantMap map;
+            map["name"] = name;
+            map["value"] = value;
+            result.append(QJsonObject::fromVariantMap(map));
+        }
+        sendResponse(commands[OPTION_GET], result);
+        return;
+    }
     if (command == commands[OPTION_SET_HIGH_BANDWIDTH])
         m_Options[OPTION_SET_HIGH_BANDWIDTH] = payload["value"].toBool(true);
     else if (command == commands[OPTION_SET_IMAGE_TRANSFER])
@@ -1216,6 +1440,70 @@ void Message::processFilterManagerCommands(const QString &command, const QJsonOb
     }
 }
 
+void Message::processDarkLibraryCommands(const QString &command, const QJsonObject &payload)
+{
+    if (command == commands[DARK_LIBRARY_START])
+    {
+        Ekos::DarkLibrary::Instance()->setDarkSettings(payload);
+        Ekos::DarkLibrary::Instance()->start();
+    }
+    else if(command == commands[DARK_LIBRARY_SET_SETTINGS])
+    {
+        Ekos::DarkLibrary::Instance()->setDarkSettings(payload);
+    }
+    else if(command == commands[DARK_LIBRARY_SET_CAMERA_PRESETS])
+    {
+        Ekos::DarkLibrary::Instance()->setCameraPresets(payload);
+    }
+    else if (command == commands[DARK_LIBRARY_STOP])
+    {
+        Ekos::DarkLibrary::Instance()->stop();
+    }
+    else if (command == commands[DARK_LIBRARY_GET_MASTERS_IMAGE])
+    {
+        const int row = payload["row"].toInt();
+        Ekos::DarkLibrary::Instance()->loadIndexInView(row);
+    }
+    else if (command == commands[DARK_LIBRARY_GET_DARK_SETTINGS])
+    {
+        sendResponse(commands[DARK_LIBRARY_GET_DARK_SETTINGS], Ekos::DarkLibrary::Instance()->getDarkSettings());
+    }
+    else if (command == commands[DARK_LIBRARY_GET_CAMERA_PRESETS])
+    {
+        sendResponse(commands[DARK_LIBRARY_GET_CAMERA_PRESETS], Ekos::DarkLibrary::Instance()->getCameraPresets());
+    }
+    else if (command == commands[DARK_LIBRARY_SET_DEFECT_PIXELS])
+    {
+        Ekos::DarkLibrary::Instance()->setDefectPixels(payload);
+    }
+    else if (command == commands[DARK_LIBRARY_SAVE_MAP])
+    {
+        Ekos::DarkLibrary::Instance()->saveMapB->click();
+    }
+    else if (command == commands[DARK_LIBRARY_SET_DEFECT_FRAME])
+    {
+        Ekos::DarkLibrary::Instance()->setDefectMapEnabled(false);
+    }
+    else if (command == commands[DARK_LIBRARY_SET_DEFECT_SETTINGS])
+    {
+        Ekos::DarkLibrary::Instance()->setDefectSettings(payload);
+    }
+    else if (command == commands[DARK_LIBRARY_GET_DEFECT_SETTINGS])
+    {
+        sendResponse(commands[DARK_LIBRARY_GET_DEFECT_SETTINGS], Ekos::DarkLibrary::Instance()->getDefectSettings());
+    }
+    else if (command == commands[DARK_LIBRARY_GET_VIEW_MASTERS])
+    {
+        sendResponse(commands[DARK_LIBRARY_GET_VIEW_MASTERS], Ekos::DarkLibrary::Instance()->getViewMasters());
+    }
+    else if (command == commands[DARK_LIBRARY_CLEAR_MASTERS_ROW])
+    {
+        const int rowIndex = payload["row"].toInt();
+        Ekos::DarkLibrary::Instance()->clearRow(rowIndex);
+    }
+}
+
+
 void Message::processDeviceCommands(const QString &command, const QJsonObject &payload)
 {
     QList<ISD::GDInterface *> devices = m_Manager->getAllDevices();
@@ -1225,6 +1513,7 @@ void Message::processDeviceCommands(const QString &command, const QJsonObject &p
     if (device.isEmpty() && command == commands[DEVICE_PROPERTY_UNSUBSCRIBE])
     {
         m_PropertySubscriptions.clear();
+        m_PropertyCache.clear();
         return;
     }
 
@@ -1346,9 +1635,516 @@ void Message::processDeviceCommands(const QString &command, const QJsonObject &p
     }
 }
 
+void Message::processAstronomyCommands(const QString &command, const QJsonObject &payload)
+{
+    if (command == commands[ASTRO_GET_ALMANC])
+    {
+        // Today's date
+        const KStarsDateTime localTime  = KStarsData::Instance()->lt();
+        // Local Midnight
+        const KStarsDateTime midnight  = KStarsDateTime(localTime.date(), QTime(0, 0), Qt::LocalTime);
+
+        KSAlmanac almanac(midnight, KStarsData::Instance()->geo());
+
+        QJsonObject response =
+        {
+            {"SunRise", almanac.getSunRise()},
+            {"SunSet", almanac.getSunSet()},
+            {"SunMaxAlt", almanac.getSunMaxAlt()},
+            {"SunMinAlt", almanac.getSunMinAlt()},
+            {"MoonRise", almanac.getMoonRise()},
+            {"MoonSet", almanac.getMoonSet()},
+            {"MoonPhase", almanac.getMoonPhase()},
+            {"MoonIllum", almanac.getMoonIllum()},
+            {"Dawn", almanac.getDawnAstronomicalTwilight()},
+            {"Dusk", almanac.getDuskAstronomicalTwilight()},
+
+        };
+
+        sendResponse(commands[ASTRO_GET_ALMANC], response);
+    }
+    // Get a list of object based on criteria
+    else if (command == commands[ASTRO_SEARCH_OBJECTS])
+    {
+        // Set time if required.
+        if (payload.contains("jd"))
+        {
+            KStarsDateTime jd = KStarsDateTime(payload["jd"].toDouble());
+            KStarsData::Instance()->clock()->setUTC(jd);
+        }
+
+        // Search Criteria
+        // Object Type
+        auto objectType = static_cast<SkyObject::TYPE>(payload["type"].toInt(SkyObject::GALAXY));
+        // Azimuth restriction
+        auto objectDirection = static_cast<Direction>(payload["direction"].toInt(All));
+        // Maximum Object Magnitude
+        auto objectMaxMagnitude = payload["maxMagnitude"].toDouble(10);
+        // Minimum Object Altitude
+        auto objectMinAlt = payload["minAlt"].toDouble(15);
+        // Minimum Duration that the object must be above the altitude (if any) seconds.
+        auto objectMinDuration = payload["minDuration"].toInt(3600);
+        // Minimum FOV in arcmins.
+        auto objectMinFOV = payload["minFOV"].toDouble(0);
+        // Data instance
+        auto *data = KStarsData::Instance();
+        // Geo Location
+        auto *geo = KStarsData::Instance()->geo();
+        // If we are before dawn, we check object altitude restrictions
+        // Otherwise, all objects are welcome
+        auto start = KStarsData::Instance()->lt();
+        auto end = getNextDawn();
+        if (start > end)
+            // Add 1 day
+            end = end.addDays(1);
+
+        QVector<QPair<QString, const SkyObject *>> allObjects;
+        CatalogsDB::CatalogObjectList dsoObjects;
+        bool isDSO = false;
+
+        switch (objectType)
+        {
+            // Stars
+            case SkyObject::STAR:
+            case SkyObject::CATALOG_STAR:
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::STAR));
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::CATALOG_STAR));
+                break;
+            // Planets & Moon
+            case SkyObject::PLANET:
+            case SkyObject::MOON:
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::PLANET));
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::MOON));
+                break;
+            // Comets & Asteroids
+            case SkyObject::COMET:
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::COMET));
+                break;
+            case SkyObject::ASTEROID:
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::ASTEROID));
+                break;
+            // Clusters
+            case SkyObject::OPEN_CLUSTER:
+                dsoObjects.splice(dsoObjects.end(), m_DSOManager.get_objects(SkyObject::OPEN_CLUSTER, objectMaxMagnitude));
+                isDSO = true;
+                break;
+            case SkyObject::GLOBULAR_CLUSTER:
+                dsoObjects.splice(dsoObjects.end(), m_DSOManager.get_objects(SkyObject::GLOBULAR_CLUSTER, objectMaxMagnitude));
+                isDSO = true;
+                break;
+            // Nebuale
+            case SkyObject::GASEOUS_NEBULA:
+                dsoObjects.splice(dsoObjects.end(), m_DSOManager.get_objects(SkyObject::GASEOUS_NEBULA, objectMaxMagnitude));
+                isDSO = true;
+                break;
+            case SkyObject::PLANETARY_NEBULA:
+                dsoObjects.splice(dsoObjects.end(), m_DSOManager.get_objects(SkyObject::PLANETARY_NEBULA, objectMaxMagnitude));
+                isDSO = true;
+                break;
+            case SkyObject::GALAXY:
+                dsoObjects.splice(dsoObjects.end(), m_DSOManager.get_objects(SkyObject::GALAXY, objectMaxMagnitude));
+                isDSO = true;
+                break;
+            case SkyObject::SUPERNOVA:
+            {
+                if (!Options::showSupernovae())
+                {
+                    Options::setShowSupernovae(true);
+                    data->setFullTimeUpdate();
+                    KStars::Instance()->map()->forceUpdate();
+                }
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::SUPERNOVA));
+            }
+            break;
+            case SkyObject::SATELLITE:
+            {
+                if (!Options::showSatellites())
+                {
+                    Options::setShowSatellites(true);
+                    data->setFullTimeUpdate();
+                    KStars::Instance()->map()->forceUpdate();
+                }
+                allObjects.append(data->skyComposite()->objectLists(SkyObject::SATELLITE));
+            }
+            break;
+            default:
+                break;
+        }
+
+        // Sort by magnitude
+        std::sort(allObjects.begin(), allObjects.end(), [](const auto & a, const auto & b)
+        {
+            return a.second->mag() < b.second->mag();
+        });
+
+        QMutableVectorIterator<QPair<QString, const SkyObject *>> objectIterator(allObjects);
+
+        // Filter direction, if specified.
+        if (objectDirection != All)
+        {
+            QPair<int, int> Quardent1(270, 360), Quardent2(0, 90), Quardent3(90, 180), Quardent4(180, 270);
+            QPair<int, int> minAZ, maxAZ;
+            switch (objectDirection)
+            {
+                case North:
+                    minAZ = Quardent1;
+                    maxAZ = Quardent2;
+                    break;
+                case East:
+                    minAZ = Quardent2;
+                    maxAZ = Quardent3;
+                    break;
+                case South:
+                    minAZ = Quardent3;
+                    maxAZ = Quardent4;
+                    break;
+                case West:
+                    minAZ = Quardent4;
+                    maxAZ = Quardent1;
+                    break;
+                default:
+                    break;
+            }
+
+            if (isDSO)
+            {
+                CatalogsDB::CatalogObjectList::iterator dsoIterator = dsoObjects.begin();
+                while (dsoIterator != dsoObjects.end())
+                {
+                    // If there a more efficient way to do this?
+                    const double az = (*dsoIterator).recomputeHorizontalCoords(start, geo).az().Degrees();
+                    if (! ((minAZ.first <= az && az <= minAZ.second) || (maxAZ.first <= az && az <= maxAZ.second)))
+                        dsoIterator = dsoObjects.erase(dsoIterator);
+                    else
+                        ++dsoIterator;
+                }
+            }
+            else
+            {
+                while (objectIterator.hasNext())
+                {
+                    const auto az = objectIterator.next().second->recomputeHorizontalCoords(start, geo).az().Degrees();
+                    if (! ((minAZ.first <= az && az <= minAZ.second) || (maxAZ.first <= az && az <= maxAZ.second)))
+                        objectIterator.remove();
+                }
+            }
+        }
+
+        // Maximum Magnitude
+        if (!isDSO)
+        {
+            objectIterator.toFront();
+            while (objectIterator.hasNext())
+            {
+                auto magnitude = objectIterator.next().second->mag();
+                // Only filter for objects that have valid magnitude, otherwise, they're automatically included.
+                if (magnitude != NaN::f && magnitude > objectMaxMagnitude)
+                    objectIterator.remove();
+            }
+        }
+
+        // Altitude
+        if (isDSO)
+        {
+            CatalogsDB::CatalogObjectList::iterator dsoIterator = dsoObjects.begin();
+            while (dsoIterator != dsoObjects.end())
+            {
+                double duration = 0;
+                for (KStarsDateTime t = start; t < end; t = t.addSecs(3600.0))
+                {
+                    dms LST = geo->GSTtoLST(t.gst());
+                    (*dsoIterator).EquatorialToHorizontal(&LST, geo->lat());
+                    if ((*dsoIterator).alt().Degrees() >= objectMinAlt)
+                        duration += 3600;
+                }
+
+                if (duration < objectMinDuration)
+                    dsoIterator = dsoObjects.erase(dsoIterator);
+                else
+                    ++dsoIterator;
+            }
+        }
+        else
+        {
+            objectIterator.toFront();
+            while (objectIterator.hasNext())
+            {
+                auto oneObject = objectIterator.next().second;
+                double duration = 0;
+
+                for (KStarsDateTime t = start; t < end; t = t.addSecs(3600.0))
+                {
+                    auto LST = geo->GSTtoLST(t.gst());
+                    const_cast<SkyObject *>(oneObject)->EquatorialToHorizontal(&LST, geo->lat());
+                    if (oneObject->alt().Degrees() >= objectMinAlt)
+                        duration += 3600;
+                }
+
+                if (duration < objectMinDuration)
+                    objectIterator.remove();
+            }
+        }
+
+        // For DSOs, check minimum required FOV, if any.
+        if (isDSO && objectMinFOV > 0)
+        {
+            CatalogsDB::CatalogObjectList::iterator dsoIterator = dsoObjects.begin();
+            while (dsoIterator != dsoObjects.end())
+            {
+                if ((*dsoIterator).a() < objectMinFOV)
+                    dsoIterator = dsoObjects.erase(dsoIterator);
+                else
+                    ++dsoIterator;
+            }
+        }
+
+        QStringList searchObjects;
+        for (auto &oneObject : allObjects)
+            searchObjects.append(oneObject.second->name());
+        for (auto &oneObject : dsoObjects)
+            searchObjects.append(oneObject.name());
+
+        searchObjects.removeDuplicates();
+        QJsonArray response = QJsonArray::fromStringList(searchObjects);
+
+        sendResponse(commands[ASTRO_SEARCH_OBJECTS], response);
+    }
+    else if(command == commands[ASTRO_GET_OBJECT_INFO])
+    {
+        const auto name = payload["object"].toString();
+        QJsonObject info;
+        SkyObject *oneObject = KStarsData::Instance()->skyComposite()->findByName(name, false);
+        if(oneObject)
+        {
+            info =
+            {
+                {"name", name},
+                {"designations", QJsonArray::fromStringList(oneObject->longname().split(", "))},
+                {"magnitude", oneObject->mag()},
+                {"ra0", oneObject->ra0().Hours()},
+                {"de0", oneObject->dec0().Degrees()},
+                {"ra", oneObject->ra().Hours()},
+                {"de", oneObject->dec().Degrees()},
+                {"object", true}
+            };
+            sendResponse(commands[ASTRO_GET_OBJECT_INFO], info);
+        }
+        else
+        {
+            info =
+            {
+                {"name", name},
+                {"object", false},
+            };
+            sendResponse(commands[ASTRO_GET_OBJECT_INFO], info );
+        }
+
+    }
+    // Get a list of object based on criteria
+    else if (command == commands[ASTRO_GET_OBJECTS_INFO])
+    {
+        // Set time if required.
+        if (payload.contains("jd"))
+        {
+            KStarsDateTime jd = KStarsDateTime(payload["jd"].toDouble());
+            KStarsData::Instance()->clock()->setUTC(jd);
+        }
+
+        // Object Names
+        QVariantList objectNames = payload["names"].toArray().toVariantList();
+        QJsonArray objectsArray;
+
+        for (auto &oneName : objectNames)
+        {
+            const QString name = oneName.toString();
+            SkyObject *oneObject = KStarsData::Instance()->skyComposite()->findByName(name, false);
+            if (oneObject)
+            {
+                QJsonObject info =
+                {
+                    {"name", name},
+                    {"designations", QJsonArray::fromStringList(oneObject->longname().split(", "))},
+                    {"magnitude", oneObject->mag()},
+                    {"ra0", oneObject->ra0().Hours()},
+                    {"de0", oneObject->dec0().Degrees()},
+                    {"ra", oneObject->ra().Hours()},
+                    {"de", oneObject->dec().Degrees()},
+                };
+
+                // If DSO, add angular size.
+                CatalogObject *dsoObject = dynamic_cast<CatalogObject*>(oneObject);
+                if (dsoObject)
+                {
+                    info["a"] = dsoObject->a();
+                    info["b"] = dsoObject->b();
+                    info["pa"] = dsoObject->pa();
+                }
+
+                objectsArray.append(info);
+            }
+        }
+
+        sendResponse(commands[ASTRO_GET_OBJECTS_INFO], objectsArray);
+    }
+    // Get a object observability alt/az/ha
+    else if (command == commands[ASTRO_GET_OBJECTS_OBSERVABILITY])
+    {
+        // Set time if required.
+        if (payload.contains("jd"))
+        {
+            KStarsDateTime jd = KStarsDateTime(payload["jd"].toDouble());
+            KStarsData::Instance()->clock()->setUTC(jd);
+        }
+
+        // Object Names
+        QVariantList objectNames = payload["names"].toArray().toVariantList();
+        QJsonArray objectsArray;
+
+        // Data instance
+        auto *data = KStarsData::Instance();
+        // Geo Location
+        auto *geo = KStarsData::Instance()->geo();
+        // UT
+        auto ut = data->ut();
+
+        for (auto &oneName : objectNames)
+        {
+            const QString name = oneName.toString();
+            SkyObject *oneObject = data->skyComposite()->findByName(name, false);
+            if (oneObject)
+            {
+                oneObject->EquatorialToHorizontal(data->lst(), geo->lat());
+                dms ha(data->lst()->Degrees() - oneObject->ra().Degrees());
+                QJsonObject info =
+                {
+                    {"name", name},
+                    {"az", oneObject->az().Degrees()},
+                    {"alt", oneObject->alt().Degrees()},
+                    {"ha",  ha.Hours()},
+                };
+
+                objectsArray.append(info);
+            }
+        }
+
+        sendResponse(commands[ASTRO_GET_OBJECTS_OBSERVABILITY], objectsArray);
+    }
+    else if (command == commands[ASTRO_GET_OBJECTS_RISESET])
+    {
+        // Set time if required.
+        if (payload.contains("jd"))
+        {
+            KStarsDateTime jd = KStarsDateTime(payload["jd"].toDouble());
+            KStarsData::Instance()->clock()->setUTC(jd);
+        }
+
+        // Object Names
+        QVariantList objectNames = payload["names"].toArray().toVariantList();
+        QJsonArray objectsArray;
+
+        // Data instance
+        auto *data = KStarsData::Instance();
+        // Geo Location
+        auto *geo = KStarsData::Instance()->geo();
+        // UT
+        QDateTime midnight = QDateTime(data->lt().date(), QTime());
+        KStarsDateTime ut  = geo->LTtoUT(KStarsDateTime(midnight));
+
+        int DayOffset = 0;
+        if (data->lt().time().hour() > 12)
+            DayOffset = 1;
+
+        for (auto &oneName : objectNames)
+        {
+            const QString name = oneName.toString();
+            SkyObject *oneObject = data->skyComposite()->findByName(name, false);
+            if (oneObject)
+            {
+                QJsonObject info;
+                //Prepare time/position variables
+                //true = use rise time
+                QTime riseTime = oneObject->riseSetTime(ut, geo, true);
+
+                //If transit time is before rise time, use transit time for tomorrow
+                QTime transitTime = oneObject->transitTime(ut, geo);
+                if (transitTime < riseTime)
+                    transitTime   = oneObject->transitTime(ut.addDays(1), geo);
+
+                //If set time is before rise time, use set time for tomorrow
+                //false = use set time
+                QTime setTime = oneObject->riseSetTime(ut, geo, false);
+                //false = use set time
+                if (setTime < riseTime)
+                    setTime  = oneObject->riseSetTime(ut.addDays(1), geo, false);
+
+                info["name"] = name;
+                if (riseTime.isValid())
+                {
+                    info["rise"] = QString::asprintf("%02d:%02d", riseTime.hour(), riseTime.minute());
+                    info["set"] = QString::asprintf("%02d:%02d", setTime.hour(), setTime.minute());
+                }
+                else
+                {
+                    if (oneObject->alt().Degrees() > 0.0)
+                    {
+                        info["rise"] = "Circumpolar";
+                        info["set"] = "Circumpolar";
+                    }
+                    else
+                    {
+                        info["rise"] = "Never rises";
+                        info["set"] = "Never rises";
+                    }
+                }
+
+                info["transit"] = QString::asprintf("%02d:%02d", transitTime.hour(), transitTime.minute());
+
+                QJsonArray altitudes;
+                for (double h = -12.0; h <= 12.0; h += 0.5)
+                {
+                    double hour = h + (24.0 * DayOffset);
+                    KStarsDateTime offset = ut.addSecs(hour * 3600.0);
+                    CachingDms LST = geo->GSTtoLST(offset.gst());
+                    oneObject->EquatorialToHorizontal(&LST, geo->lat());
+                    altitudes.append(oneObject->alt().Degrees());
+                }
+
+                info["altitudes"] = altitudes;
+
+                objectsArray.append(info);
+            }
+        }
+
+        sendResponse(commands[ASTRO_GET_OBJECTS_RISESET], objectsArray);
+    }
+}
+
+KStarsDateTime Message::getNextDawn()
+{
+    // Today's date
+    const KStarsDateTime localTime  = KStarsData::Instance()->lt();
+    // Local Midnight
+    const KStarsDateTime midnight  = KStarsDateTime(localTime.date(), QTime(0, 0), Qt::LocalTime);
+    // Almanac
+    KSAlmanac almanac(midnight, KStarsData::Instance()->geo());
+    // Next Dawn
+    KStarsDateTime nextDawn = midnight.addSecs(almanac.getDawnAstronomicalTwilight() * 24.0 * 3600.0);
+    // If dawn is earliar than now, add a day
+    if (nextDawn < localTime)
+        nextDawn.addDays(1);
+
+    return nextDawn;
+}
+
 void Message::requestDSLRInfo(const QString &cameraName)
 {
     m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DSLR_GET_INFO]}, {"payload", cameraName}}).toJson(
+        QJsonDocument::Compact));
+}
+
+void Message::requestPortSelection(bool show)
+{
+    m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[GET_PROFILE_PORT_SELECTION]}, {"payload", show}}).toJson(
         QJsonDocument::Compact));
 }
 
@@ -1444,18 +2240,19 @@ void Message::sendStates()
     if (m_isConnected == false)
         return;
 
-    QJsonObject captureState = {{ "status", m_Manager->captureStatus->text()}};
-    sendResponse(commands[NEW_CAPTURE_STATE], captureState);
-
     // Send capture sequence if one exists
     if (m_Manager->captureModule())
+    {
+        QJsonObject captureState = {{ "status", getCaptureStatusString(m_Manager->captureModule()->status(), false)}};
+        sendResponse(commands[NEW_CAPTURE_STATE], captureState);
         sendCaptureSequence(m_Manager->captureModule()->getSequence());
+    }
 
     if (m_Manager->mountModule())
     {
         QJsonObject mountState =
         {
-            {"status", m_Manager->mountStatus->text()},
+            {"status", m_Manager->mountModule()->statusString(false)},
             {"target", m_Manager->mountTarget->text()},
             {"slewRate", m_Manager->mountModule()->slewRate()},
             {"pierSide", m_Manager->mountModule()->pierSide()}
@@ -1464,37 +2261,48 @@ void Message::sendStates()
         sendResponse(commands[NEW_MOUNT_STATE], mountState);
     }
 
-    QJsonObject focusState = {{ "status", m_Manager->focusStatus->text()}};
-    sendResponse(commands[NEW_FOCUS_STATE], focusState);
+    if (m_Manager->focusModule())
+    {
+        QJsonObject focusState = {{ "status", getFocusStatusString(m_Manager->focusModule()->status(), false)}};
+        sendResponse(commands[NEW_FOCUS_STATE], focusState);
+    }
 
-    QJsonObject guideState = {{ "status", m_Manager->guideStatus->text()}};
-    sendResponse(commands[NEW_GUIDE_STATE], guideState);
+    if (m_Manager->guideModule())
+    {
+        QJsonObject guideState = {{ "status", getGuideStatusString(m_Manager->guideModule()->status(), false)}};
+        sendResponse(commands[NEW_GUIDE_STATE], guideState);
+    }
 
     if (m_Manager->alignModule())
     {
         // Align State
         QJsonObject alignState =
         {
-            {"status", Ekos::alignStates[m_Manager->alignModule()->status()]},
+            {"status", getAlignStatusString(m_Manager->alignModule()->status(), false)}
         };
         sendResponse(commands[NEW_ALIGN_STATE], alignState);
 
         // Align settings
         sendResponse(commands[ALIGN_SET_SETTINGS], m_Manager->alignModule()->getSettings());
 
-        // Polar State
-        QTextDocument doc;
-        doc.setHtml(m_Manager->alignModule()->getPAHMessage());
-        QJsonObject polarState =
+        Ekos::PolarAlignmentAssistant *paa = m_Manager->alignModule()->polarAlignmentAssistant();
+        if (paa)
         {
-            {"stage", m_Manager->alignModule()->getPAHStageString()},
-            {"enabled", m_Manager->alignModule()->isPAHEnabled()},
-            {"message", doc.toPlainText()},
-        };
-        sendResponse(commands[NEW_POLAR_STATE], polarState);
+            // Polar State
+            QTextDocument doc;
+            doc.setHtml(paa->getPAHMessage());
+            QJsonObject polarState =
+            {
+                {"stage", paa->getPAHStageString(false)},
+                {"enabled", paa->isEnabled()},
+                {"message", doc.toPlainText()},
+            };
+            sendResponse(commands[NEW_POLAR_STATE], polarState);
 
-        // Polar settings
-        sendResponse(commands[PAH_SET_SETTINGS], m_Manager->alignModule()->getPAHSettings());
+
+            // Polar settings
+            sendResponse(commands[PAH_SET_SETTINGS], paa->getPAHSettings());
+        }
     }
 }
 
@@ -1505,6 +2313,15 @@ void Message::sendEvent(const QString &message, KSNotification::EventType event)
 
     QJsonObject newEvent = {{ "severity", event}, {"message", message}, {"uuid", QUuid::createUuid().toString()}};
     sendResponse(commands[NEW_NOTIFICATION], newEvent);
+}
+
+void Message::sendManualRotatorStatus(double currentPA, double targetPA, double threshold)
+{
+    if (m_isConnected == false)
+        return;
+
+    QJsonObject request = {{ "currentPA", currentPA}, {"targetPA", targetPA}, {"threshold", threshold}};
+    sendResponse(commands[ALIGN_MANUAL_ROTATOR_STATUS], request);
 }
 
 void Message::setBoundingRect(QRect rect, QSize view, double currentZoom)
@@ -1552,10 +2369,18 @@ void Message::processNewNumber(INumberVectorProperty * nvp)
         QSet<QString> subProps = m_PropertySubscriptions[nvp->device];
         if (subProps.contains(nvp->name))
         {
-            QJsonObject propObject;
-            ISD::propertyToJson(nvp, propObject);
-            m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DEVICE_PROPERTY_GET]}, {"payload", propObject}}).toJson(
+            QJsonObject * propObject = new QJsonObject();
+            ISD::propertyToJson(nvp, *propObject);
+
+            if (m_PropertyCache.contains(nvp->name) && *m_PropertyCache[nvp->name] == *propObject)
+            {
+                delete (propObject);
+                return;
+            }
+
+            m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DEVICE_PROPERTY_GET]}, {"payload", *propObject}}).toJson(
                 QJsonDocument::Compact));
+            m_PropertyCache.insert(nvp->name, propObject);
         }
     }
 }
@@ -1567,10 +2392,18 @@ void Message::processNewText(ITextVectorProperty * tvp)
         QSet<QString> subProps = m_PropertySubscriptions[tvp->device];
         if (subProps.contains(tvp->name))
         {
-            QJsonObject propObject;
-            ISD::propertyToJson(tvp, propObject);
-            m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DEVICE_PROPERTY_GET]}, {"payload", propObject}}).toJson(
+            QJsonObject * propObject = new QJsonObject();
+            ISD::propertyToJson(tvp, *propObject);
+
+            if (m_PropertyCache.contains(tvp->name) && *m_PropertyCache[tvp->name] == *propObject)
+            {
+                delete (propObject);
+                return;
+            }
+
+            m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DEVICE_PROPERTY_GET]}, {"payload", *propObject}}).toJson(
                 QJsonDocument::Compact));
+            m_PropertyCache.insert(tvp->name, propObject);
         }
     }
 }
@@ -1582,10 +2415,18 @@ void Message::processNewSwitch(ISwitchVectorProperty * svp)
         QSet<QString> subProps = m_PropertySubscriptions[svp->device];
         if (subProps.contains(svp->name))
         {
-            QJsonObject propObject;
-            ISD::propertyToJson(svp, propObject);
-            m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DEVICE_PROPERTY_GET]}, {"payload", propObject}}).toJson(
+            QJsonObject * propObject = new QJsonObject();
+            ISD::propertyToJson(svp, *propObject);
+
+            if (m_PropertyCache.contains(svp->name) && *m_PropertyCache[svp->name] == *propObject)
+            {
+                delete (propObject);
+                return;
+            }
+
+            m_WebSocket.sendTextMessage(QJsonDocument({{"type", commands[DEVICE_PROPERTY_GET]}, {"payload", *propObject}}).toJson(
                 QJsonDocument::Compact));
+            m_PropertyCache.insert(svp->name, propObject);
         }
     }
 }
@@ -1612,7 +2453,7 @@ void Message::sendModuleState(const QString &name)
 
     if (name == "Capture")
     {
-        QJsonObject captureState = {{ "status", m_Manager->captureStatus->text()}};
+        QJsonObject captureState = {{ "status", getCaptureStatusString(m_Manager->captureModule()->status(), false)}};
         sendResponse(commands[NEW_CAPTURE_STATE], captureState);
         sendCaptureSequence(m_Manager->captureModule()->getSequence());
     }
@@ -1630,12 +2471,12 @@ void Message::sendModuleState(const QString &name)
     }
     else if (name == "Focus")
     {
-        QJsonObject focusState = {{ "status", m_Manager->focusStatus->text()}};
+        QJsonObject focusState = {{ "status", getFocusStatusString(m_Manager->focusModule()->status(), false)}};
         sendResponse(commands[NEW_FOCUS_STATE], focusState);
     }
     else if (name == "Guide")
     {
-        QJsonObject guideState = {{ "status", m_Manager->guideStatus->text()}};
+        QJsonObject guideState = {{ "status", getGuideStatusString(m_Manager->guideModule()->status(), false)}};
         sendResponse(commands[NEW_GUIDE_STATE], guideState);
     }
     else if (name == "Align")
@@ -1643,26 +2484,30 @@ void Message::sendModuleState(const QString &name)
         // Align State
         QJsonObject alignState =
         {
-            {"status", Ekos::alignStates[m_Manager->alignModule()->status()]},
+            {"status", getAlignStatusString(m_Manager->alignModule()->status(), false)}
         };
         sendResponse(commands[NEW_ALIGN_STATE], alignState);
 
         // Align settings
         sendResponse(commands[ALIGN_SET_SETTINGS], m_Manager->alignModule()->getSettings());
 
-        // Polar State
-        QTextDocument doc;
-        doc.setHtml(m_Manager->alignModule()->getPAHMessage());
-        QJsonObject polarState =
+        Ekos::PolarAlignmentAssistant *paa = m_Manager->alignModule()->polarAlignmentAssistant();
+        if (paa)
         {
-            {"stage", m_Manager->alignModule()->getPAHStageString()},
-            {"enabled", m_Manager->alignModule()->isPAHEnabled()},
-            {"message", doc.toPlainText()},
-        };
-        sendResponse(commands[NEW_POLAR_STATE], polarState);
+            // Polar State
+            QTextDocument doc;
+            doc.setHtml(paa->getPAHMessage());
+            QJsonObject polarState =
+            {
+                {"stage", paa->getPAHStageString(false)},
+                {"enabled", paa->isEnabled()},
+                {"message", doc.toPlainText()},
+            };
+            sendResponse(commands[NEW_POLAR_STATE], polarState);
 
-        // Polar settings
-        sendResponse(commands[PAH_SET_SETTINGS], m_Manager->alignModule()->getPAHSettings());
+            // Polar settings
+            sendResponse(commands[PAH_SET_SETTINGS], paa->getPAHSettings());
+        }
     }
 }
 

@@ -1,20 +1,8 @@
-/***************************************************************************
-                          ksalmanac.cpp  -  description
+/*
+    SPDX-FileCopyrightText: 2009 Prakash Mohan <prakash.mohan@kdemail.net>
 
-                             -------------------
-    begin                : Friday May 8, 2009
-    copyright            : (C) 2009 by Prakash Mohan
-    email                : prakash.mohan@kdemail.net
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "ksalmanac.h"
 
@@ -55,7 +43,7 @@ void KSAlmanac::update()
 {
     RiseSetTime(&m_Sun, &SunRise, &SunSet, &SunRiseT, &SunSetT);
     RiseSetTime(&m_Moon, &MoonRise, &MoonSet, &MoonRiseT, &MoonSetT);
-    //    qDebug() << "Sun rise: " << SunRiseT.toString() << " Sun set: " << SunSetT.toString() << " Moon rise: " << MoonRiseT.toString() << " Moon set: " << MoonSetT.toString();
+    //    qDebug() << Q_FUNC_INFO << "Sun rise: " << SunRiseT.toString() << " Sun set: " << SunSetT.toString() << " Moon rise: " << MoonRiseT.toString() << " Moon set: " << MoonSetT.toString();
     findDawnDusk();
     findMoonPhase();
 }

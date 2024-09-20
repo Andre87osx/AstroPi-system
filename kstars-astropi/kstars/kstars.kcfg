@@ -95,7 +95,7 @@
       <entry name="ShowJ2000RADecField" type="Bool">
          <label>Display J2000.0 RA/Dec coordinates in the statusbar?</label>
          <whatsthis>Toggle display of the Equatorial coordinates of the mouse cursor at the standard epoch in the status bar.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowSensorFOV" type="Bool">
          <label>Display CCD sensor angular size on the sky map?</label>
@@ -115,7 +115,7 @@
       </entry>
       <entry name="CurrentTheme" type="String">
          <label>Current application theme</label>
-         <default>Black Body</default>
+         <default>Default</default>
       </entry>
    </group>
 
@@ -360,7 +360,7 @@
       <entry name="UseAnimatedSlewing" type="Bool">
          <label>Use animated slewing effects when changing focus position?</label>
          <whatsthis>If true, focus changes will cause the sky to visibly spin to the new position. Otherwise, the display will "snap" instantly to the new position.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="LeftClickSelectsObject" type="Bool">
          <label>Select objects on left click?</label>
@@ -417,10 +417,10 @@
          <whatsthis>Toggle whether constellation lines are hidden while the display is in motion.</whatsthis>
          <default>false</default>
       </entry>
-      <entry name="SkyCulture" type="UInt">
+      <entry name="SkyCulture" type="String">
          <label>Sky culture</label>
          <whatsthis>Choose sky culture.</whatsthis>
-         <default>11</default>
+         <default>Western</default>
       </entry>
       <entry name="HideCNames" type="Bool">
          <label>Hide constellation names while moving?</label>
@@ -445,7 +445,7 @@
       <entry name="HidePlanets" type="Bool">
          <label>Hide solar system objects while moving?</label>
          <whatsthis>Toggle whether solar system objects are hidden while the display is in motion.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="HideStars" type="Bool">
          <label>Hide faint stars while moving?</label>
@@ -460,7 +460,7 @@
       <entry name="ShowAsteroids" type="Bool">
          <label>Draw asteroids in the sky map?</label>
          <whatsthis>Toggle whether asteroids are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowAsteroidNames" type="Bool">
          <label>Label asteroid names in the sky map?</label>
@@ -474,12 +474,12 @@
       <entry name="ShowComets" type="Bool">
          <label>Draw comets in the sky map?</label>
          <whatsthis>Toggle whether comets are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowCometComas" type="Bool">
          <label>Draw comet comas in the sky map?</label>
          <whatsthis>Toggle whether comet comas are drawn in the sky map.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowCometNames" type="Bool">
          <label>Label comet names in the sky map?</label>
@@ -524,7 +524,7 @@
       <entry name="ShowCLines" type="Bool">
          <label>Draw constellation lines in the sky map?</label>
          <whatsthis>Toggle whether constellation lines are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowConstellationArt" type="Bool">
          <label>Draw constellation art in the sky map?</label>
@@ -549,17 +549,17 @@
       <entry name="ShowEquator" type="Bool">
          <label>Draw equator line in the sky map?</label>
          <whatsthis>Toggle whether the equator line is drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="AutoSelectGrid" type="Bool">
          <label>Draw grids according to active coordinate system?</label>
          <whatsthis>Coordinate grids will automatically change according to active coordinate system.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowEquatorialGrid" type="Bool">
          <label>Draw equatorial coordinate grid in the sky map?</label>
          <whatsthis>Toggle whether the equatorial coordinate grid is drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowHorizontalGrid" type="Bool">
          <label>Draw horizontal coordinate grid in the sky map?</label>
@@ -569,7 +569,7 @@
       <entry name="ShowLocalMeridian" type="Bool">
          <label>Draw local meridian line in the sky map?</label>
          <whatsthis>Toggle whether the local meridian line is drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowGround" type="Bool">
          <label>Draw opaque ground in the sky map?</label>
@@ -691,6 +691,11 @@
          <whatsthis>Toggle whether deep-sky object name labels are shown in the sky map.</whatsthis>
          <default>true</default>
       </entry>
+      <entry name="ShowMosaicPanel" type="Bool">
+         <label>Draw Mosaic Panel in the sky map?</label>
+         <whatsthis>Toggle whether the Mosaic Panel are drawn in the sky map.</whatsthis>
+         <default>false</default>
+      </entry>
       <entry name="SlewTimeScale" type="Double">
          <label>Minimum timescale for forced-slewing mode</label>
          <whatsthis>The timescale above which slewing mode is forced on at all times.</whatsthis>
@@ -788,7 +793,7 @@
       <entry name="MagLimitDrawDeepSky" type="Double">
          <label>Faint limit for deep-sky objects</label>
          <whatsthis>The faint magnitude limit for drawing deep-sky objects, when fully zoomed in.</whatsthis>
-         <default>16.0</default>
+         <default>36.0</default>
       </entry>
       <entry name="MagLimitDrawDeepSkyZoomOut" type="Double">
          <label>Faint limit for deep-sky objects when zoomed out</label>
@@ -813,7 +818,7 @@
       <entry name="StarDensity" type="Int">
          <label>Density of stars in the field of view</label>
          <whatsthis>Sets the density of stars in the field of view</whatsthis>
-         <default>6</default>
+         <default>5</default>
       </entry>
 
       <!--                <entry name="MagLimitDrawStarZoomOut" type="Double">
@@ -842,10 +847,15 @@
          <whatsthis>If true, long names (common names) for deep-sky objects are shown in the labels.</whatsthis>
          <default>false</default>
       </entry>
+      <entry name="LabelFontScaling" type="Int">
+        <label>Label font size</label>
+        <whatsthis>Set this to adjust the font-size of labels placed on the sky map</whatsthis>
+        <default>0</default>
+      </entry>
       <entry name="MaxRadCometName" type="Double">
          <label>Maximum distance from Sun for labeling comets, in AU</label>
          <whatsthis>The maximum solar distance for drawing comets.</whatsthis>
-         <default>3.0</default>
+         <default>1.0</default>
       </entry>
       <entry name="UseGL" type="Bool">
          <label>Switch to OpenGL backend</label>
@@ -1089,12 +1099,12 @@
          <default>true</default>
       </entry>
       <entry name="XplanetTimeout" type="UInt">
-         <label>XPlanet Timeout</label>
+         <label>XPlanet timeout</label>
          <whatsthis>How long to wait for XPlanet before giving up in milliseconds</whatsthis>
          <default>1000</default>
       </entry>
       <entry name="XplanetAnimationDelay" type="UInt">
-         <label>XPlanet Animation Delay</label>
+         <label>XPlanet animation delay</label>
          <whatsthis>How long to pause between frames in the XPlanet Animation</whatsthis>
          <default>100</default>
       </entry>
@@ -1240,7 +1250,7 @@
          <default></default>
       </entry>
       <entry name="XplanetFOV" type="Bool">
-         <label>Use kstars's FOV</label>
+         <label>Use KStars's FOV</label>
          <whatsthis>If checked, use kstars's FOV.</whatsthis>
          <default>false</default>
       </entry>
@@ -1335,12 +1345,12 @@
       <entry name="RegularLogging" type="Bool">
          <label>Enable Regular Logging</label>
          <whatsthis>Checking this option causes KStars to generate regular debug information.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="DisableLogging" type="Bool">
          <label>Disable Verbose Logging</label>
          <whatsthis>Checking this option causes KStars to stop generating ANY debug information.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="LogToDefault" type="Bool">
          <label>Log debug message to default output</label>
@@ -1368,6 +1378,10 @@
          <whatsthis>Log Ekos Focus Module activity.</whatsthis>
          <default>false</default>
       </entry>
+      <entry name="SaveGuideImages" type="Bool">
+         <label>Save Internal Guider images on disk?</label>
+         <default>false</default>
+      </entry>
       <entry name="GuideLogging" type="Bool">
          <whatsthis>Log Ekos Guide Module activity.</whatsthis>
          <default>false</default>
@@ -1388,7 +1402,7 @@
    <group name="FITSViewer">
    <entry name="useFITSViewer" type="Bool">
       <label>Display every image captured in a FITS Viewer window.</label>
-      <default>false</default>
+      <default>true</default>
    </entry>
    <entry name="singlePreviewFITS" type="Bool">
       <label>Preview FITS in a single tab?</label>
@@ -1429,6 +1443,10 @@
       <label>Compute the HFRs of normal images quickly by looking at the center 25% only.</label>
       <default>true</default>
    </entry>
+   <entry name="StellarSolverPartition" type="Bool">
+      <label>Enable StellarSolver partition. Partitions the image in multiple threads to speed up detecting stars. This may significantly speed up source extraction but may result in unstable operation.</label>
+      <default>false</default>
+   </entry>
    <entry name="AutoWCS" type="Bool">
       <label>Automatically process World-Coordinate-System (WCS) data when loading a FITS file.</label>
       <default>!KSUtils::isHardwareLimited()</default>
@@ -1467,11 +1485,11 @@
    <group name="Ekos">
     <entry name="EkosWindowWidth" type="UInt">
              <label>Ekos window width</label>
-             <default>950</default>
+             <default>600</default>
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
-             <default>700</default>
+             <default>600</default>
     </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>
@@ -1487,7 +1505,7 @@
     </entry>
     <entry name="AutoStartEkosLive" type="Bool">
        <label>Start Ekos Live on KStars startup.</label>
-       <default>false</default>
+       <default>falsa</default>
     </entry>
     <entry name="EkosLiveOnline" type="Bool">
        <label>Whether EkosLive connection mode is online.</label>
@@ -1539,11 +1557,17 @@
       <label>List of cameras that prefer defect map noise removal method.</label>
    </entry>
    </group>
+   <group name="Manager">
+   <entry name="UseGraphicalCountsDisplay" type="Bool">
+      <label>Use the graphical version for capture/sequence/total counting using round progress bars.</label>
+      <default>true</default>
+   </entry>
+   </group>
    <group name="Mount">
       <entry name="MinimumAltLimit" type="Double">
          <label>Default minimum mount altitude limit</label>
          <whatsthis>Minimum telescope altitude limit. If the telescope is below this limit, it will be commanded to stop.</whatsthis>
-         <default>0</default>
+         <default>15.0</default>
       </entry>
       <entry name="MaximumAltLimit" type="Double">
          <label>Default maximum mount altitude limit.</label>
@@ -1552,7 +1576,11 @@
       </entry>
       <entry name="EnableAltitudeLimits" type="Bool">
          <label>Enable mount altitude limits.</label>
-         <default>false</default>
+         <default>true</default>
+      </entry>
+      <entry name="ConfirmBelowHorizon" type="Bool">
+         <label>Warn user before command mount to go to a target below horizon.</label>
+         <default>true</default>
       </entry>
       <entry name="MeridianFlipOffset" type="Double">
          <label>Default hour angle to perform meridian flip</label>
@@ -1573,7 +1601,7 @@
       </entry>
       <entry name="MeridianFlipUnitDegrees" type="Bool">
          <label>Sets the display unit for meridian flip to degrees.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="LeftRightReversed" type="Bool">
          <label>Reverse the direction of right and left buttons in mount control.</label>
@@ -1589,7 +1617,7 @@
       </entry>
       <entry name="ParkTime" type="String">
          <label>Park mount at this time in 12 hour format.</label>
-         <default>7:00 AM</default>
+         <default>3:00 AM</default>
       </entry>
    </group>
    <group name="Capture">
@@ -1629,6 +1657,10 @@
          <whatsthis>If the temperature change exceeds this limit, the autofocus routine will be automatically started.</whatsthis>
          <default>1</default>
       </entry>
+      <entry name="AutoDark" type="Bool">
+         <label>Automatically apply dark subtraction if a suitable dark frame is available.</label>
+         <default>false</default>
+      </entry>
       <entry name="EnforceGuideDeviation" type="Bool">
          <label>Enforce guiding deviation limit.</label>
          <default>false</default>
@@ -1650,9 +1682,13 @@
          <whatsthis>Sets the time interval before forced autofocus attempts during a capture sequence.</whatsthis>
          <default>60</default>
       </entry>
+      <entry name="RefocusAfterMeridianFlip" type="Bool">
+         <label>Refocus after meridian flip is done</label>
+         <default>false</default>
+      </entry>
       <entry name="ResetMountModelAfterMeridian" type="Bool">
          <label>Reset mount model after meridian flip.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="CalibrationADUValue" type="UInt">
          <label>Desired flat field ADU</label>
@@ -1698,7 +1734,7 @@
       </entry>
       <entry name="AlwaysResetSequenceWhenStarting" type="Bool">
          <label>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When starting to process a sequence list, reset all capture counts to zero. Scheduler overrides this option when Remember Job Progress is enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="FlatSyncFocus" type="Bool">
          <label>Capture flat frames at the same focus position of light frames.</label>
@@ -1730,7 +1766,7 @@
       </entry>
       <entry name="StretchPreviewSampling" type="UInt">
          <label>Set the coarseness of the preview shown when sliding the fitsviewer's stretch parameter sliders. 1 is full resolution, but can be slow, 4 would be coarse resolution and fast.</label>
-         <default>3</default>
+         <default>4</default>
       </entry>
       <entry name="AdaptiveSampling" type="Bool">
          <label>Automatically down sample images based on available resources.</label>
@@ -1738,19 +1774,15 @@
       </entry>
       <entry name="useSummaryPreview" type="Bool">
          <label>Display every image captured sequence image in the Ekos summary screen preview window.</label>
-         <default>true</default>
+         <default>!KSUtils::isHardwareLimited()</default>
       </entry>
       <entry name="useDSLRImageViewer" type="Bool">
          <label>Display every captured DSLR image in the Image Viewer window.</label>
-         <default>true</default>
+         <default>!KSUtils::isHardwareLimited()</default>
       </entry>
       <entry name="ForceDSLRPresets" type="Bool">
          <label>Force exposure times to align with DSLR exposure presets. This insures accurate exposure times for sub-second exposures.</label>
          <default>true</default>
-      </entry>
-      <entry name="CaptureFormatIndex" type="UInt">
-         <label>Index of desired capture format (FITS or Native).</label>
-         <default>0</default>
       </entry>
       <entry name="CaptureDirectory" type="String">
          <label>Path to capture directory to save images.</label>
@@ -1769,12 +1801,16 @@
       </entry>
       <entry name="fileSettingsUseDuration" type="Bool">
          <label>Add the capture duration to the capture file name.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="fileSettingsUseTimestamp" type="Bool">
          <label>Add the capture timestamp to the capture file name.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
+      <entry name="CapturePosition" type="Bool">
+         <label>Calculate position after captures.</label>
+         <default>false</default>
+      </entry>      
    </group>
    <group name="Focus">
       <entry name="DefaultFocusCCD" type="String">
@@ -1792,7 +1828,7 @@
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>50</default>
+         <default>500</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1818,7 +1854,7 @@
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
          <whatsthis>Set the maximum travel distance of an absolute focuser.</whatsthis>
-         <default>1000</default>
+         <default>10000</default>
       </entry>
       <entry name="InitialFocusOutSteps" type="Double">
          <label>Initial Focus Out Steps</label>
@@ -1828,7 +1864,7 @@
       <entry name="FocusGain" type="Double">
          <label>Default Focuser gain value</label>
          <whatsthis>Specifies gain value of CCD when performing focusing if supported by camera.</whatsthis>
-         <default>100</default>
+         <default>0</default>
       </entry>
       <entry name="FocusBoxSize" type="UInt">
          <label>Default Focuser star selection box size</label>
@@ -1838,12 +1874,12 @@
       <entry name="FocusXBin" type="UInt">
          <label>Default CCD X binning in focus mode</label>
          <whatsthis>Set horizontal binning of CCD camera while in focus mode.</whatsthis>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="FocusYBin" type="UInt">
          <label>Default CCD Y binning in focus mode</label>
          <whatsthis>Set vertical binning of CCD camera while in focus mode.</whatsthis>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="FocusSubFrame" type="Bool">
          <label>Subframe the focus star during the autofocus procedure.</label>
@@ -1865,7 +1901,7 @@
       </entry>
       <entry name="FocusAutoStarEnabled" type="Bool">
          <label>Automatically select a star to focus.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="SuspendGuiding" type="Bool">
          <label>Suspend guiding while autofocus in progress.</label>
@@ -1885,11 +1921,11 @@
       </entry>
       <entry name="FocusDetection" type="UInt">
          <label>Star detection algorithm</label>
-         <default>3</default>
+         <default>0</default>
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>
@@ -1914,6 +1950,18 @@
       <entry name="FocusMultiRowAverage" type="Int">
          <label>Number of rows to combine in the Bahtinov average calculation.</label>
          <default>3</default>
+      </entry>
+      <entry name="FocusCurveFit" type="UInt">
+         <label>Curve Type.</label>
+         <default>0</default>
+      </entry>
+      <entry name="FocusUseWeights" type="Bool">
+         <label>Use weights in the curve fitting process.</label>
+         <default>false</default>
+      </entry>
+      <entry name="FocusR2Limit" type="Double">
+         <label>Acceptable limit on R2 from curve fit.</label>
+         <default>0.0</default>
       </entry>
    </group>
    <group name="StellarSolver">
@@ -1992,9 +2040,14 @@
          <whatsthis>Set binning index of CCD camera while in alignment mode. Default values 0-3 corresponding to 1x1 to 4x4 binning. 4 is max binning.</whatsthis>
          <default>1</default>
       </entry>
+      <entry name="SolverCameraGain" type="Double">
+         <label>Default camera gain while in alignment mode</label>
+         <whatsthis>Set gain of camera while in alignment mode.</whatsthis>
+         <default>0</default>
+      </entry>
       <entry name="AstrometryUseRotator" type="Bool">
          <whatsthis>Use rotator when performing load and slew.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="AstrometryRotatorThreshold" type="Double">
          <whatsthis>Threshold between measured and FITS position angles in arcminutes to consider the load and slew operation successful.</whatsthis>
@@ -2109,50 +2162,25 @@
          <whatsthis>Path to astrometry.net solver location.</whatsthis>
          <default code="true">KSUtils::getDefaultPath("AstrometrySolverBinary")</default>
       </entry>
-      <entry name="AstrometrySolverIsInternal" type="Bool">
-         <label>Internal or External Astrometry Solver?</label>
-         <default>false</default>
-      </entry>
       <entry name="AstrometryWCSInfo" type="String">
          <label>astrometry.net wcsinfo binary</label>
          <whatsthis>Path to astrometry.net wcsinfo location.</whatsthis>
          <default code="true">KSUtils::getDefaultPath("AstrometryWCSInfo")</default>
-      </entry>
-      <entry name="AstrometryWCSIsInternal" type="Bool">
-         <label>Internal or External wcsinfo?</label>
-         <default>false</default>
       </entry>
       <entry name="AstrometryConfFile" type="String">
          <label>astrometry.net configuration file</label>
          <whatsthis>Path to astrometry.net file location.</whatsthis>
          <default code="true">KSUtils::getDefaultPath("AstrometryConfFile")</default>
       </entry>
-      <entry name="AstrometryConfFileIsInternal" type="Bool">
-         <label>Internal or External Astrometry.net Conf File?</label>
-         <default>true</default>
-      </entry>
-      <entry name="UseDefaultPython" type="Bool">
-         <label>Use the Default System Python Path</label>
-         <default>true</default>
-      </entry>
-      <entry name="PythonExecPath" type="String">
-         <label></label>
-         <whatsthis>Folder in which the desired python executable or link to be used for astrometry.net resides.</whatsthis>
-         <default>/usr/local/opt/python/libexec/bin</default>
-      </entry>
-
-      <entry name="UseSextractor" type="Bool">
-         <label>Use Sextractor to extract an xylist for plate solving with astrometry.net instead of python</label>
-         <default>false</default>
-      </entry>
-      <entry name="SextractorIsInternal" type="Bool">
-         <label>Internal or External sextractor?</label>
-         <default>false</default>
-      </entry>
       <entry name="SextractorBinary" type="String">
          <label></label>
          <whatsthis>Path to the Sextractor executable.</whatsthis>
          <default code="true">KSUtils::getDefaultPath("SextractorBinary")</default>
+      </entry>
+      <entry name="WatneyBinary" type="String">
+         <label></label>
+         <whatsthis>Path to the Watney Solver executable.</whatsthis>
+         <default code="true">KSUtils::getDefaultPath("WatneyBinary")</default>
       </entry>
 
       <entry name="AstrometryAPIKey" type="String">
@@ -2176,13 +2204,13 @@
          <label>Speed index to set mount in Polar Alignment Assistant Tool.</label>
          <default>-1</default>
       </entry>
-      <entry name="PAHRefreshUpdateError" type="Bool">
-         <label>Re-estimates the new polar-alignment error after refresh exposures. Will help you see what your new polar alignment error is, but takes compute resources and can slow down the exposure rate.</label>
-         <default>false</default>
+      <entry name="PAHRefreshAlgorithm" type="Int">
+         <label>The algorithm used for polar-align refresh.</label>
+         <default>2</default>
       </entry>
       <entry name="PAHAutoPark" type="Bool">
          <label>Automatically park the mount after Polar Alignment Assistant Tool is complete.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
    </group>
    <group name="Guide">
@@ -2222,27 +2250,31 @@
       </entry>
       <entry name="GuideScopeType" type="UInt">
          <label>Index of telescope type to be used when guiding. 0 for Primary, 1 for Guide</label>
-         <default>1</default>
+         <default>0</default>
       </entry>
       <entry name="CalibrationPulseDuration" type="UInt">
          <label>Pulse duration in milliseconds used for guiding pulses during calibration stage.</label>
          <default>1000</default>
       </entry>
+      <entry name="GuideBinSizeIndex" type="UInt">
+         <label>Guide binning size index (0 to 3) corresponding to binning (1x1 to 4x4).</label>
+         <default>0</default>
+      </entry>
+      <entry name="CalibrationMaxMove" type="UInt">
+         <label>Maximum number of pixels the calibration should move (approximate).</label>
+         <default>15</default>
+      </entry>
       <entry name="GuideSquareSizeIndex" type="UInt">
          <label>Guide square size index (0 to 4) corresponding to pixel sizes (8 to 128).</label>
          <default>2</default>
       </entry>
-      <entry name="ImageGuidingEnabled" type="Bool">
-         <label>Use Image Guiding algorithms instead of classical centroid guiding.</label>
-         <default>false</default>
-      </entry>
-      <entry name="GuideRegionAxis" type="UInt">
-         <label>Region Axis Index (0 to 4) corresponding to NxN partition size used Image Guiding (64 to 1024).</label>
-         <default>1</default>
+      <entry name="GuideFilterFITSIndex" type="UInt">
+         <label>Effect FITS filter index corresponding to the available image enhancing filters.</label>
+         <default>0</default>
       </entry>
       <entry name="GuideAutoStarEnabled" type="Bool">
          <label>Automatically select calibration star and perform calibration.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="GuideAutoSquareSizeEnabled" type="Bool">
          <label>Automatically select the square size based on the selected star width.</label>
@@ -2268,13 +2300,13 @@
          <label>Maximum HFR permitted for SEP MultiStar guide star.</label>
          <default>4.5</default>
       </entry>
+      <entry name="MinDetectionsSEPMultistar" type="UInt">
+         <label>Minimum number of stars detected for SEP MultiStar to initialize.</label>
+         <default>1</default>
+      </entry>
       <entry name="TwoAxisEnabled" type="Bool">
          <label>Use both axes to perform calibration.</label>
          <default>true</default>
-      </entry>
-      <entry name="RapidGuideEnabled" type="Bool">
-         <label>Use driver side Rapid Guide to perform guiding.</label>
-         <default>false</default>
       </entry>
       <entry name="SaveGuideLog" type="Bool">
          <label>Automatically save internal guider user logs.</label>
@@ -2320,6 +2352,10 @@
          <label>If dithering fails then abort autoguide.</label>
          <default>false</default>
       </entry>
+      <entry name="DitherWithOnePulse" type="Bool">
+         <label>Dithering amount is randomly generated, pulses are sent, but the resultant pixel dithering amount is not enforced, so only the one dither pulse is sent. This is quicker, and recommended as dither amount is random anyway. It is necessary when 2-D dither is required but guiding is only done in one axis.</label>
+         <default>false</default>
+      </entry>
       <entry name="DitherEnabled" type="Bool">
          <label>Use Auto Dithering when guiding.</label>
          <default>false</default>
@@ -2327,10 +2363,6 @@
       <entry name="DitherNoGuiding" type="Bool">
          <label>Perform dithering even when not guiding.</label>
          <default>false</default>
-      </entry>
-      <entry name="AOLimit" type="Double">
-         <label>The Adaptive Optics unit is utilized if the guiding deviation is less than this limit in arcseconds. Once exceeded, mechanical guiding is utilized.</label>
-         <default>2</default>
       </entry>
       <entry name="RAGuideEnabled" type="Bool">
          <label>Enable autoguiding in the RA axis.</label>
@@ -2368,23 +2400,17 @@
       <entry name="DECIntegralGain" type="Double">
          <default>0</default>
       </entry>
-      <entry name="RADerivativeGain" type="Double">
-         <default>0</default>
+      <entry name="RAMinimumPulseArcSec" type="Double">
+         <default>0.2</default>
       </entry>
-      <entry name="DECDerivativeGain" type="Double">
-         <default>0</default>
+      <entry name="DECMinimumPulseArcSec" type="Double">
+         <default>0.2</default>
       </entry>
-      <entry name="RAMaximumPulse" type="UInt">
-         <default>5000</default>
+      <entry name="RAMaximumPulseArcSec" type="UInt">
+         <default>25</default>
       </entry>
-      <entry name="DECMaximumPulse" type="UInt">
-         <default>5000</default>
-      </entry>
-      <entry name="RAMinimumPulse" type="UInt">
-         <default>100</default>
-      </entry>
-      <entry name="DECMinimumPulse" type="UInt">
-         <default>100</default>
+      <entry name="DECMaximumPulseArcSec" type="UInt">
+         <default>25</default>
       </entry>
       <entry name="GPGEnabled" type="Bool">
          <default>false</default>
@@ -2407,7 +2433,7 @@
       <entry name="GPGPKLengthScale" type="Double">
          <default>10.0</default>
       </entry>
-      <entry name="GPGPeriod" type="UInt">
+      <entry name="GPGPeriod" type="Double">
          <default>480</default>
       </entry>
       <entry name="GPGPKSignalVariance" type="Double">
@@ -2430,9 +2456,6 @@
       </entry>
       <entry name="GPGEstimatePeriod" type="Bool">
          <default>true</default>
-      </entry>
-      <entry name="GuidingRate" type="Double">
-         <default>0.4</default>
       </entry>
       <entry name="GuiderAccuracyThreshold" type="UInt">
          <label>Accuracy threshold for the Guide Graphs.</label>
@@ -2464,6 +2487,10 @@
       </entry>
    </group>
    <group name="Scheduler">
+    <entry name="SchedulerAlgorithm" type="UInt">
+      <label>Scheduler algorithm</label>
+      <default>0</default>
+    </entry>
     <entry name="SchedulerLogging" type="Bool">
       <whatsthis>Log Ekos Scheduler Module activity.</whatsthis>
       <default>false</default>
@@ -2486,7 +2513,7 @@
       </entry>
       <entry name="ResetMountModelOnAlignFail" type="Bool">
          <label>Reset mount model in case of alignment failure.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ResetMountModelBeforeJob" type="Bool">
          <label>Reset mount model before starting each job.</label>
@@ -2525,7 +2552,7 @@
       </entry>
       <entry name="RememberJobProgress" type="Bool">
          <label>When processing a scheduled job, resume the sequence starting from the last image present in storage.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="LeadTime" type="Double">
          <label>Minimum time between jobs in minutes.</label>
@@ -2541,11 +2568,11 @@
       </entry>
       <entry name="DawnOffset" type="Double">
          <label>Offset astronomical dawn by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>1.0</default>
+         <default>0</default>
       </entry>
       <entry name="DuskOffset" type="Double">
          <label>Offset astronomical dusk by this many hours to relax twilight restriction when using narrowband filters.</label>
-         <default>-1.0</default>
+         <default>0</default>
       </entry>
       <entry name="TelescopeFocalLength" type="Double">
          <label>Telescope focal length in millimeters.</label>
@@ -2573,14 +2600,94 @@
       </entry>
       <entry name="ErrorHandlingStrategy" type="UInt">
          <label>Strategy how to react, when a job aborts or steps into an error.</label>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
          <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
-         <default>600</default>
+         <default>0</default>
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>
+         <default>true</default>
+      </entry>
+      <entry name="AlignCheckFrequency" type="UInt">
+         <label>When calculating position after captures, compute it every Nth capture. Set to 0 to disable.</label>
+         <default>0</default>
+      </entry>
+      <entry name="AlignCheckThreshold" type="Double">
+         <label>If captured position exceeds target position by more this many arcminutes, abort capture and reschedule the pipeline.</label>
+         <default>30</default>
+      </entry>
+      <entry name="SchedulerParkDome" type="Bool">
+         <label>Default scheduler checkbox for parking dome on shutdown.</label>
+         <default>false</default>
+      </entry>
+      <entry name="SchedulerParkMount" type="Bool">
+         <label>Default scheduler checkbox for parking mount on shutdown.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerCloseDustCover" type="Bool">
+         <label>Default scheduler checkbox for closing dust cover on shutdown.</label>
+         <default>false</default>
+      </entry>
+      <entry name="SchedulerWarmCCD" type="Bool">
+         <label>Default scheduler checkbox for warming the CCD on shutdown.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerUnparkDome" type="Bool">
+         <label>Default scheduler checkbox for unparking dome on startup.</label>
+         <default>false</default>
+      </entry>
+      <entry name="SchedulerUnparkMount" type="Bool">
+         <label>Default scheduler checkbox for unparking mount on startup.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerOpenDustCover" type="Bool">
+         <label>Default scheduler checkbox for opening dust cover on startup.</label>
+         <default>false</default>
+      </entry>
+      <entry name="SchedulerTrackStep" type="Bool">
+         <label>Default scheduler checkbox for starting mount tracking on job startup.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerFocusStep" type="Bool">
+         <label>Default scheduler checkbox for running autofocus on job startup.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerGuideStep" type="Bool">
+         <label>Default scheduler checkbox for starting guiding on job startup.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerAlignStep" type="Bool">
+         <label>Default scheduler checkbox for aligning on job startup.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerAltitude" type="Bool">
+         <label>Default scheduler checkbox for job altitude constraints.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerAltitudeValue" type="Double">
+         <label>Default scheduler job altitude constraint.</label>
+         <default>15.0</default>
+      </entry>
+      <entry name="SchedulerHorizon" type="Bool">
+         <label>Default scheduler checkbox for job artificial horizon constraints.</label>
+         <default>true</default>
+      </entry>
+      <entry name="SchedulerMoonSeparation" type="Bool">
+         <label>Default scheduler checkbox for job moon separation constraints.</label>
+         <default>false</default>
+      </entry>
+      <entry name="SchedulerMoonSeparationValue" type="Double">
+         <label>Default scheduler job moon separation constraint.</label>
+         <default>0</default>
+      </entry>
+      <entry name="SchedulerWeather" type="Bool">
+         <label>Default scheduler checkbox for job weather constraints.</label>
+         <default>false</default>
+      </entry>
+      <entry name="SchedulerTwilight" type="Bool">
+         <label>Default scheduler checkbox for job twilight constraints.</label>
          <default>true</default>
       </entry>
    </group>
@@ -2603,7 +2710,7 @@
     </entry>
     <entry name="AnalyzeTemperature" type="Bool">
       <whatsthis>Display the ambient temperature on the Analyze Statistics Plot.</whatsthis>
-      <default>true</default>
+      <default>false</default>
     </entry>
     <entry name="AnalyzeNumStars" type="Bool">
       <whatsthis>Display NumStars on the Analyze Statistics Plot.</whatsthis>
@@ -2640,6 +2747,10 @@
     <entry name="AnalyzeRMS" type="Bool">
       <whatsthis>Display RMS Error on the Analyze Statistics Plot.</whatsthis>
       <default>true</default>
+    </entry>
+    <entry name="AnalyzeTargetDistance" type="Bool">
+      <whatsthis>Display the arc-seconds distance between the target position and the plate-solved captured image on the Analyze plot.</whatsthis>
+      <default>false</default>
     </entry>
     <entry name="AnalyzeRMSC" type="Bool">
       <whatsthis>Display RMS Error (during capture) on the Analyze Statistics Plot.</whatsthis>
@@ -2712,6 +2823,13 @@
        <label>Draw HiPS sources in the sky map?</label>
        <whatsthis>Toggle whether the HIPS sources are drawn in the sky map.</whatsthis>
        <default>false</default>
+    </entry>    
+    <entry name="HIPSUseOfflineSource" type="Bool">
+       <label>Use offline storage to load HiPS?</label>
+       <default>false</default>
+    </entry>
+    <entry name="HIPSOfflinePath" type="String">
+          <label>HIPS offline full path.</label>
     </entry>
    </group>
    <group name="Terrain">
@@ -2723,6 +2841,11 @@
     <entry name="TerrainSourceCorrectAz" type="Int">
           <label>Terrain Azimuth Correction.</label>
           <whatsthis>Terrain source azimuth correction.</whatsthis>
+          <default>0</default>
+    </entry>
+    <entry name="TerrainSourceCorrectAlt" type="Int">
+          <label>Terrain Altitude Correction.</label>
+          <whatsthis>Terrain source altitude correction.</whatsthis>
           <default>0</default>
     </entry>
     <entry name="TerrainDownsampling" type="Int">
@@ -2842,6 +2965,16 @@
    <entry name="ASTAPLargeSearchWindow" type="Bool">
       <label>Increase search window size.</label>
       <default>false</default>
+   </entry>
+   </group>
+   <group name="Mosaic">
+   <entry name="MosaicTransparencyAuto" type="Bool">
+     <whatsthis>Manage the mosaic panel transparency level automatically.</whatsthis>
+     <default>true</default>
+   </entry>
+   <entry name="MosaicTransparencyLevel" type="Double">
+     <whatsthis>Control mosaic panel transparency level.</whatsthis>
+     <default>50</default>
    </entry>
    </group>
 </kcfg>

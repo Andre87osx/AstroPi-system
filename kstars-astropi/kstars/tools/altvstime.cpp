@@ -1,19 +1,8 @@
-/***************************************************************************
-                          altvstime.cpp  -  description
-                             -------------------
-    begin                : wed nov 17 08:05:11 CET 2002
-    copyright            : (C) 2002-2003 by Pablo de Vicente
-    email                : vicente@oan.es
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002-2003 Pablo de Vicente <vicente@oan.es>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "altvstime.h"
 
@@ -55,7 +44,7 @@ AltVsTime::AltVsTime(QWidget *parent) : QDialog(parent)
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
 #endif
 
-    setWindowTitle(i18n("Altitude vs. Time"));
+    setWindowTitle(i18nc("@title:window", "Altitude vs. Time"));
 
     setModal(false);
 
@@ -152,8 +141,8 @@ AltVsTime::AltVsTime(QWidget *parent) : QDialog(parent)
     background->setLayer("background");
     background->setVisible(true);
 
-    avtUI->raBox->setDegType(false);
-    avtUI->decBox->setDegType(true);
+    avtUI->raBox->setUnits(dmsBox::HOURS);
+    avtUI->decBox->setUnits(dmsBox::DEGREES);
 
     //FIXME:
     //Doesn't make sense to manually adjust long/lat unless we can modify TZ also
@@ -190,8 +179,8 @@ AltVsTime::AltVsTime(QWidget *parent) : QDialog(parent)
 
     connect(avtUI->View->yAxis, SIGNAL(rangeChanged(QCPRange)), this, SLOT(onYRangeChanged(QCPRange)));
     connect(avtUI->View->xAxis2, SIGNAL(rangeChanged(QCPRange)), this, SLOT(onXRangeChanged(QCPRange)));
-    connect(avtUI->View, SIGNAL(plottableClick(QCPAbstractPlottable*,int,QMouseEvent*)), this,
-            SLOT(plotMousePress(QCPAbstractPlottable*,int,QMouseEvent*)));
+    connect(avtUI->View, SIGNAL(plottableClick(QCPAbstractPlottable*, int, QMouseEvent*)), this,
+            SLOT(plotMousePress(QCPAbstractPlottable*, int, QMouseEvent*)));
     connect(avtUI->View, SIGNAL(mouseMove(QMouseEvent*)), this, SLOT(mouseOverLine(QMouseEvent*)));
 
     connect(avtUI->browseButton, SIGNAL(clicked()), this, SLOT(slotBrowseObject()));
@@ -262,8 +251,13 @@ AltVsTime::~AltVsTime()
 }
 void AltVsTime::slotAddSource()
 {
-    SkyObject *obj = KStarsData::Instance()->objectNamed(avtUI->nameBox->text());
 
+    SkyObject *obj = KStarsData::Instance()->objectNamed(avtUI->nameBox->text());
+    if (!obj)
+    {
+        QString name = FindDialog::processSearchText(avtUI->nameBox->text());
+        obj = KStarsData::Instance()->objectNamed(name);
+    }
     if (obj)
     {
         //An object with the current name exists.  If the object is not already
@@ -290,8 +284,8 @@ void AltVsTime::slotAddSource()
         if (!avtUI->nameBox->text().isEmpty() && !avtUI->raBox->text().isEmpty() && !avtUI->decBox->text().isEmpty())
         {
             bool okRA, okDec;
-            dms newRA  = avtUI->raBox->createDms(false, &okRA);
-            dms newDec = avtUI->decBox->createDms(true, &okDec);
+            dms newRA  = avtUI->raBox->createDms(&okRA);
+            dms newDec = avtUI->decBox->createDms(&okDec);
             if (!okRA || !okDec)
                 return;
 
@@ -315,7 +309,7 @@ void AltVsTime::slotAddSource()
             {
                 //within an arcsecond?
                 if (fabs(newRA.Degrees() - p->ra().Degrees()) < 0.0003 &&
-                    fabs(newDec.Degrees() - p->dec().Degrees()) < 0.0003)
+                        fabs(newDec.Degrees() - p->dec().Degrees()) < 0.0003)
                 {
                     found = true;
                     break;
@@ -450,8 +444,8 @@ void AltVsTime::processObject(SkyObject *o, bool forceAdd)
 
         avtUI->PlotList->addItem(getObjectName(o));
         avtUI->PlotList->setCurrentRow(avtUI->PlotList->count() - 1);
-        avtUI->raBox->showInHours(o->ra());
-        avtUI->decBox->showInDegrees(o->dec());
+        avtUI->raBox->show(o->ra());
+        avtUI->decBox->show(o->dec());
         avtUI->nameBox->setText(getObjectName(o));
 
         //Set epochName to epoch shown in date tab
@@ -506,8 +500,8 @@ void AltVsTime::slotHighlight(int row)
     if (row >= 0 && row < pList.size())
     {
         SkyObject *p = pList.at(row);
-        avtUI->raBox->showInHours(p->ra());
-        avtUI->decBox->showInDegrees(p->dec());
+        avtUI->raBox->show(p->ra());
+        avtUI->decBox->show(p->dec());
         avtUI->nameBox->setText(avtUI->PlotList->currentItem()->text());
     }
 
@@ -583,26 +577,26 @@ void AltVsTime::plotMousePress(QCPAbstractPlottable *abstractPlottable, int data
                 QToolTip::hideText();
                 QToolTip::showText(event->globalPos(),
                                    i18n("<table>"
-                                      "<tr>"
-                                      "<th colspan=\"2\">%1</th>"
-                                      "</tr>"
-                                      "<tr>"
-                                      "<td>LST:   </td>"
-                                      "<td>%3</td>"
-                                      "</tr>"
-                                      "<tr>"
-                                      "<td>LT:   </td>"
-                                      "<td>%2</td>"
-                                      "</tr>"
-                                      "<tr>"
-                                      "<td>Altitude:   </td>"
-                                      "<td>%4</td>"
-                                      "</tr>"
-                                      "</table>",
-                                      graph->name().isEmpty() ? "???" : graph->name(),
-                                      localTime.toString(),
-                                      localSiderealTime.toString(),
-                                      QString::number(yValue, 'f', 2) + ' ' + QChar(176)),
+                                        "<tr>"
+                                        "<th colspan=\"2\">%1</th>"
+                                        "</tr>"
+                                        "<tr>"
+                                        "<td>LST:   </td>"
+                                        "<td>%3</td>"
+                                        "</tr>"
+                                        "<tr>"
+                                        "<td>LT:   </td>"
+                                        "<td>%2</td>"
+                                        "</tr>"
+                                        "<tr>"
+                                        "<td>Altitude:   </td>"
+                                        "<td>%4</td>"
+                                        "</tr>"
+                                        "</table>",
+                                        graph->name().isEmpty() ? "???" : graph->name(),
+                                        localTime.toString(),
+                                        localSiderealTime.toString(),
+                                        QString::number(yValue, 'f', 2) + ' ' + QChar(176)),
                                    avtUI->View, avtUI->View->rect());
             }
         }
@@ -676,7 +670,12 @@ void AltVsTime::slotComputeAltitudeByTime()
     SkyObject *selectedObject = pList.at(avtUI->PlotList->currentRow());
     if (selectedObject == nullptr)
     {
-        qCWarning(KSTARS) << "slotComputeAltitudeByTime: Unable to find" << avtUI->PlotList->currentItem()->text();
+        if (avtUI->PlotList->currentItem())
+            qCWarning(KSTARS) << "slotComputeAltitudeByTime: Unable to find" << avtUI->PlotList->currentItem()->text();
+        else
+        {
+            qCWarning(KSTARS) << "slotComputeAltitudeByTime: Unable to find item";
+        }
         return;
     }
 
@@ -746,7 +745,7 @@ void AltVsTime::slotMarkRiseTime()
 void AltVsTime::slotMarkSetTime()
 {
     const KStarsDateTime &ut  = KStarsData::Instance()->ut();
-     SkyObject *selectedObject = pList.at(avtUI->PlotList->currentRow());
+    SkyObject *selectedObject = pList.at(avtUI->PlotList->currentRow());
     if (selectedObject == nullptr)
     {
         qCWarning(KSTARS) << "Mark Set Time: Unable to find" << avtUI->PlotList->currentItem()->text();
@@ -936,25 +935,25 @@ void AltVsTime::mouseOverLine(QMouseEvent *event)
                 QToolTip::hideText();
                 QToolTip::showText(event->globalPos(),
                                    i18n("<table>"
-                                      "<tr>"
-                                      "<th colspan=\"2\">%1</th>"
-                                      "</tr>"
-                                      "<tr>"
-                                      "<td>LST:   </td>"
-                                      "<td>%3</td>"
-                                      "</tr>"
-                                      "<tr>"
-                                      "<td>LT:   </td>"
-                                      "<td>%2</td>"
-                                      "</tr>"
-                                      "<tr>"
-                                      "<td>Altitude:   </td>"
-                                      "<td>%4</td>"
-                                      "</tr>"
-                                      "</table>",
-                                      graph->name().isEmpty() ? "???" : graph->name(),
-                                      localTime.toString(), localSiderealTime.toString(),
-                                      QString::number(yValue, 'f', 2) + ' ' + QChar(176)),
+                                        "<tr>"
+                                        "<th colspan=\"2\">%1</th>"
+                                        "</tr>"
+                                        "<tr>"
+                                        "<td>LST:   </td>"
+                                        "<td>%3</td>"
+                                        "</tr>"
+                                        "<tr>"
+                                        "<td>LT:   </td>"
+                                        "<td>%2</td>"
+                                        "</tr>"
+                                        "<tr>"
+                                        "<td>Altitude:   </td>"
+                                        "<td>%4</td>"
+                                        "</tr>"
+                                        "</table>",
+                                        graph->name().isEmpty() ? "???" : graph->name(),
+                                        localTime.toString(), localSiderealTime.toString(),
+                                        QString::number(yValue, 'f', 2) + ' ' + QChar(176)),
                                    avtUI->View, avtUI->View->rect());
             }
             else
@@ -1110,8 +1109,8 @@ void AltVsTime::slotChooseCity()
         if (newGeo)
         {
             geo = newGeo;
-            avtUI->latBox->showInDegrees(geo->lat());
-            avtUI->longBox->showInDegrees(geo->lng());
+            avtUI->latBox->show(geo->lat());
+            avtUI->longBox->show(geo->lng());
         }
     }
     delete ld;
@@ -1391,7 +1390,7 @@ void AltVsTime::slotPrint()
     //QPointer<QPrintDialog> dialog( KdePrint::createPrintDialog( &printer, this ) );
     //QPointer<QPrintDialog> dialog( &printer, this );
     QPrintDialog dialog(&printer, this);
-    dialog.setWindowTitle(i18n("Print elevation vs time plot"));
+    dialog.setWindowTitle(i18nc("@title:window", "Print elevation vs time plot"));
     if (dialog.exec() == QDialog::Accepted)
     {
         // Change mouse cursor

@@ -1,11 +1,8 @@
-/*  INDI GUI Manager
-    Copyright (C) 2012 Jasem Mutlaq
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -71,7 +68,7 @@ class GUIManager : public QWidget
         QPushButton *clearB;
         QPushButton *closeB;
         GUIManager(QWidget *parent = nullptr);
-        ~GUIManager();
+        ~GUIManager() override;
 
         static GUIManager *_GUIManager;
         QList<ClientManager *> clients;

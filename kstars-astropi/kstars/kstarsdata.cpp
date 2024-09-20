@@ -1,19 +1,8 @@
-/***************************************************************************
-                          kstarsdata.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Jul 29 2001
-    copyright            : (C) 2001 by Heiko Evermann
-    email                : heiko@evermann.de
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Heiko Evermann <heiko@evermann.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "kstarsdata.h"
 
@@ -46,6 +35,9 @@
 
 #include "kstars_debug.h"
 
+// Qt version calming
+#include <qtskipemptyparts.h>
+
 namespace
 {
 // Report fatal error during data loading to user
@@ -66,27 +58,30 @@ void fatalErrorMessage(QString fname)
 
 // Report non-fatal error during data loading to user and ask
 // whether he wants to continue.
+//
+// No remaining calls so commented out to suppress unused warning
+//
 // Calls QApplication::exit if he don't
-bool nonFatalErrorMessage(QString fname)
-{
-    qCWarning(KSTARS) << i18n( "Non-Critical File Not Found: %1", fname );
-#ifdef KSTARS_LITE
-    Q_UNUSED(fname);
-    return true;
-#else
-    int res = KMessageBox::warningContinueCancel(nullptr,
-              i18n("The file %1 could not be found. "
-                   "KStars can still run without this file. "
-                   "KStars search for this file in following locations:\n\n\t"
-                   "%2\n\n"
-                   "It appears that you setup is broken. Press Continue to run KStars without this file ",
-                   fname, QStandardPaths::standardLocations( QStandardPaths::DataLocation ).join("\n\t") ),
-              i18n( "Non-Critical File Not Found: %1", fname ));  // FIXME: Must list locations depending on file type
-    if( res != KMessageBox::Continue )
-        qApp->exit(1);
-    return res == KMessageBox::Continue;
-#endif
-}
+//bool nonFatalErrorMessage(QString fname)
+//{
+//    qCWarning(KSTARS) << i18n( "Non-Critical File Not Found: %1", fname );
+//#ifdef KSTARS_LITE
+//    Q_UNUSED(fname);
+//    return true;
+//#else
+//    int res = KMessageBox::warningContinueCancel(nullptr,
+//              i18n("The file %1 could not be found. "
+//                   "KStars can still run without this file. "
+//                   "KStars search for this file in following locations:\n\n\t"
+//                   "%2\n\n"
+//                   "It appears that you setup is broken. Press Continue to run KStars without this file ",
+//                   fname, QStandardPaths::standardLocations( QStandardPaths::DataLocation ).join("\n\t") ),
+//              i18n( "Non-Critical File Not Found: %1", fname ));  // FIXME: Must list locations depending on file type
+//    if( res != KMessageBox::Continue )
+//        qApp->exit(1);
+//    return res == KMessageBox::Continue;
+//#endif
+//}
 }
 
 KStarsData *KStarsData::pinstance = nullptr;
@@ -146,8 +141,7 @@ bool KStarsData::initialize()
     emit progressText(
         i18n("Upgrade existing user city db to support geographic elevation."));
 
-    QString dbfile = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-                     QDir::separator() + "mycitydb.sqlite";
+    QString dbfile = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("mycitydb.sqlite");
 
     /// This code to add Height column to table city in mycitydb.sqlite is a transitional measure to support a meaningful
     /// geographic elevation.
@@ -436,13 +430,13 @@ SkyObject *KStarsData::objectNamed(const QString &name)
 {
     if ((name == "star") || (name == "nothing") || name.isEmpty())
         return nullptr;
-    return skyComposite()->findByName(name);
+    return skyComposite()->findByName(name, true); // objectNamed has to do an exact match
 }
 
 bool KStarsData::readCityData()
 {
     QSqlDatabase citydb = QSqlDatabase::addDatabase("QSQLITE", "citydb");
-    QString dbfile      = KSPaths::locate(QStandardPaths::GenericDataLocation, "citydb.sqlite");
+    QString dbfile      = KSPaths::locate(QStandardPaths::AppLocalDataLocation, "citydb.sqlite");
     citydb.setDatabaseName(dbfile);
     if (citydb.open() == false)
     {
@@ -480,7 +474,7 @@ bool KStarsData::readCityData()
 
     // Reading local database
     QSqlDatabase mycitydb = QSqlDatabase::addDatabase("QSQLITE", "mycitydb");
-    dbfile = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QDir::separator() + "mycitydb.sqlite";
+    dbfile = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("mycitydb.sqlite");
 
     if (QFile::exists(dbfile))
     {
@@ -491,7 +485,7 @@ bool KStarsData::readCityData()
 
             if (!get_query.exec("SELECT * FROM city"))
             {
-                qDebug() << get_query.lastError();
+                qDebug() << Q_FUNC_INFO << get_query.lastError();
                 return false;
             }
             while (get_query.next())
@@ -528,7 +522,7 @@ bool KStarsData::readTimeZoneRulebook()
             QString line = stream.readLine().trimmed();
             if (line.length() && !line.startsWith('#')) //ignore commented and blank lines
             {
-                QStringList fields = line.split(' ', QString::SkipEmptyParts);
+                QStringList fields = line.split(' ', Qt::SkipEmptyParts);
                 QString id         = fields[0];
                 QTime stime        = QTime(fields[3].leftRef(fields[3].indexOf(':')).toInt(),
                                            fields[3].midRef(fields[3].indexOf(':') + 1, fields[3].length()).toInt());
@@ -565,7 +559,7 @@ bool KStarsData::openUrlFile(const QString &urlfile, QFile &file)
     else
     {
         // Try to load locale file, if not successful, load regular urlfile and then copy it to locale.
-        file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + urlfile);
+        file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(urlfile));
         if (file.open(QIODevice::ReadOnly))
         {
             //local file found.  Now, if global file has newer timestamp, then merge the two files.
@@ -660,9 +654,9 @@ bool KStarsData::openUrlFile(const QString &urlfile, QFile &file)
             if (KSUtils::openDataFile(file, urlfile))
             {
                 if (QLocale().language() != QLocale::English)
-                    qDebug() << "No localized URL file; using default English file.";
+                    qDebug() << Q_FUNC_INFO << "No localized URL file; using default English file.";
                 // we found urlfile, we need to copy it to locale
-                localeFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + urlfile);
+                localeFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(urlfile));
                 if (localeFile.open(QIODevice::WriteOnly))
                 {
                     QTextStream readStream(&file);
@@ -679,7 +673,7 @@ bool KStarsData::openUrlFile(const QString &urlfile, QFile &file)
                 }
                 else
                 {
-                    qDebug() << "Failed to copy default URL file to locale folder, modifying default object links is "
+                    qDebug() << Q_FUNC_INFO << "Failed to copy default URL file to locale folder, modifying default object links is "
                              "not possible";
                 }
                 fileFound = true;
@@ -766,8 +760,7 @@ bool KStarsData::readURLData(const QString &urlfile, SkyObjectUserdata::Type typ
 bool KStarsData::readUserLog()
 {
     QFile file;
-    QString buffer;
-    QString sub, name, data;
+    QString fullContents;
 
     if (!KSUtils::openDataFile(file, "userlog.dat"))
         return false;
@@ -775,27 +768,74 @@ bool KStarsData::readUserLog()
     QTextStream stream(&file);
 
     if (!stream.atEnd())
+        fullContents = stream.readAll();
 
-        buffer = stream.readAll();
     QMutexLocker _{ &m_user_data_mutex };
 
+    QStringRef buffer(&fullContents);
+    const QLatin1String logStart("[KSLABEL:"), logEnd("[KSLogEnd]");
+    std::size_t currentEntryIndex = 0;
     while (!buffer.isEmpty())
     {
         int startIndex, endIndex;
+        QStringRef sub, name, data;
 
-        startIndex = buffer.indexOf(QLatin1String("[KSLABEL:"));
-        sub        = buffer.mid(
-            startIndex); // FIXME: This is inefficient because we are making a copy of a huge string!
-        endIndex = sub.indexOf(QLatin1String("[KSLogEnd]"));
+        startIndex = buffer.indexOf(logStart) + logStart.size();
+        if (startIndex < 0)
+            break;
+        currentEntryIndex += startIndex;
+        endIndex   = buffer.indexOf(logEnd, startIndex);
+
+        auto malformatError = [&]()
+        {
+            int res = KMessageBox::warningContinueCancel(
+                          nullptr,
+                          i18n("The user notes log file %1 is malformatted in the opening of the entry starting at %2. "
+                               "KStars can still run without fully reading this file. "
+                               "Press Continue to run KStars with whatever partial reading was successful. "
+                               "The file may get truncated if KStars writes to the file later. Press Cancel to instead abort now and manually fix the problem. ",
+                               file.fileName(), QString::number(currentEntryIndex)),
+                          i18n( "Malformed file %1", file.fileName() )
+                      );
+            if( res != KMessageBox::Continue )
+                qApp->exit(1); // FIXME: Why does this not work?
+        };
+
+        if (endIndex < 0)
+        {
+            malformatError();
+            break;
+        }
 
         // Read name after KSLABEL identifier
-        name = sub.mid(startIndex + 9, sub.indexOf(']') - (startIndex + 9));
-        // Read data and skip new line
-        data   = sub.mid(sub.indexOf(']') + 2, endIndex - (sub.indexOf(']') + 2));
-        buffer = buffer.mid(endIndex + 11);
+        // Because some object names have [] within them, we have to be careful
+        // [...] names are used by SIMBAD and NED to specify paper authors
+        // Unbalanced [,] are not allowed in the object name, but are allowed in the notes
+        int nameEndIndex = startIndex, openBracketCount = 1;
+        while (openBracketCount > 0 && nameEndIndex < endIndex)
+        {
+            if (buffer[nameEndIndex] == ']')
+                --openBracketCount;
+            else if (buffer[nameEndIndex] == '[')
+                ++openBracketCount;
+            ++nameEndIndex;
+        }
+        if (openBracketCount > 0)
+        {
+            malformatError();
+            break;
+        }
+        name = buffer.mid(startIndex, (nameEndIndex - 1) - startIndex);
 
-        auto &data_element   = m_user_data[name];
-        data_element.userLog = data;
+        // Read data and skip new line
+        if (buffer[nameEndIndex] == '\n')
+            ++nameEndIndex;
+        data   = buffer.mid(nameEndIndex, endIndex - nameEndIndex);
+        buffer = buffer.mid(endIndex + logEnd.size() + 1);
+        currentEntryIndex += (endIndex + logEnd.size() + 1 - startIndex);
+
+        auto &data_element   = m_user_data[name.toString()];
+        data_element.userLog = data.toString();
 
     } // end while
     file.close();
@@ -877,7 +917,7 @@ bool KStarsData::executeScript(const QString &scriptname, SkyMap *map)
     QFile f(scriptname);
     if (!f.open(QIODevice::ReadOnly))
     {
-        qDebug() << "Could not open file " << f.fileName();
+        qDebug() << Q_FUNC_INFO << "Could not open file " << f.fileName();
         return false;
     }
 
@@ -919,7 +959,7 @@ bool KStarsData::executeScript(const QString &scriptname, SkyMap *map)
             QStringList fn = line.mid(i).split(' ');
 
             //DEBUG
-            //qDebug() << fn;
+            //qDebug() << Q_FUNC_INFO << fn;
 
             if (fn[0] == "lookTowards" && fn.size() >= 2)
             {
@@ -1038,7 +1078,7 @@ bool KStarsData::executeScript(const QString &scriptname, SkyMap *map)
                     }
 
                     if (!ok)
-                        qDebug() << QString("Unable to load color scheme named %1. Also tried %2.")
+                        qDebug() << Q_FUNC_INFO << QString("Unable to load color scheme named %1. Also tried %2.")
                                  .arg(csName, filename);
                 }
             }
@@ -1454,13 +1494,18 @@ void KStarsData::syncFOV()
             visibleFOVs.append(fov);
     }
     // Remove unavailable FOVs
+    #if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     QSet<QString> names = QSet<QString>::fromList(Options::fOVNames());
+    #else
+    const QStringList m_fOVNames = Options::fOVNames();
+    QSet<QString> names (m_fOVNames.begin(), m_fOVNames.end());
+    #endif
     QSet<QString> all;
     foreach (FOV *fov, visibleFOVs)
     {
         all.insert(fov->name());
     }
-    Options::setFOVNames(all.intersect(names).toList());
+    Options::setFOVNames(all.intersect(names).values());
 }
 
 // FIXME: Why does KStarsData store the Execute instance??? -- asimha
@@ -1496,7 +1541,7 @@ KStarsData::addToUserData(const QString &name, const SkyObjectUserdata::LinkData
     //Also, update the user's custom image links database
     //check for user's image-links database.  If it doesn't exist, create it.
     file.setFileName(
-        KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+        KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
         (isImage ?
              "image_url.dat" :
              "info_url.dat")); //determine filename in local user KDE directory tree.
@@ -1542,7 +1587,7 @@ std::pair<bool, QString> updateLocalDatabase(SkyObjectUserdata::Type type,
         case SkyObjectUserdata::Type::website:
             // Get name for our local info_url file
             URLFile.setFileName(
-                KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
                 "info_url.dat");
             break;
 
@@ -1550,7 +1595,7 @@ std::pair<bool, QString> updateLocalDatabase(SkyObjectUserdata::Type type,
         case SkyObjectUserdata::Type::image:
             // Get name for our local info_url file
             URLFile.setFileName(
-                KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation) +
                 "image_url.dat");
             break;
     }
@@ -1662,8 +1707,8 @@ std::pair<bool, QString> KStarsData::updateUserLog(const QString &name,
     QString KSLabel = "[KSLABEL:" + name + ']';
 
     file.setFileName(
-        KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
-        "userlog.dat"); //determine filename in local user KDE directory tree.
+        QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(
+            "userlog.dat")); //determine filename in local user KDE directory tree.
 
     if (file.open(QIODevice::ReadOnly))
     {

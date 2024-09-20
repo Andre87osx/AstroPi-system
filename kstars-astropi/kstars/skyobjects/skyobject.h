@@ -1,19 +1,8 @@
-/***************************************************************************
-                          skyobject.h  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Feb 11 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -29,6 +18,16 @@
 class QPoint;
 class GeoLocation;
 class KSPopupMenu;
+
+namespace {
+    constexpr const char *emptyString = "";
+    constexpr const char *unnamedString       = I18N_NOOP("unnamed");
+    constexpr const char *unnamedObjectString = I18N_NOOP("unnamed object");
+    constexpr const char *starString          = I18N_NOOP("star");
+}
+
+// Set the faintest sane magnitude to 36.0 (faintest visual magnitude visible with E-ELT, acc. to Wikipedia on Apparent Magnitude.)
+constexpr const float FAINTEST_MAGNITUDE = 36.0;
 
 /**
  * @class SkyObject
@@ -404,10 +403,10 @@ class SkyObject : public SkyPoint
     inline void setMag(float m)
     {
         sortMagnitude =
-            m < 36.0 ?
+            m < FAINTEST_MAGNITUDE ?
                 m :
                 NaN::
-                    f; // Updating faintest sane magnitude to 36.0 (faintest visual magnitude visible with E-ELT, acc. to Wikipedia on Apparent Magnitude.)
+                    f;
     }
     // FIXME: We claim sortMagnitude should not be NaN, but we are setting it to NaN above!! ^
 
@@ -424,12 +423,6 @@ class SkyObject : public SkyPoint
     inline void setName2(const QString &name2 = QString()) { Name2 = name2; }
 
     QString Name, Name2, LongName;
-
-    // store often used name strings in static variables
-    static QString emptyString;
-    static QString unnamedString;
-    static QString unnamedObjectString;
-    static QString starString;
 
     // Whether the coordinates of the object have been updated.
     // The default value is chose for compatibility reasons.

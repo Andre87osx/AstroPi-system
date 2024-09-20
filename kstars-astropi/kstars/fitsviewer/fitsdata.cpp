@@ -1,21 +1,11 @@
-/***************************************************************************
-                          FITSImage.cpp  -  FITS Image
-                             -------------------
-    begin                : Thu Jan 22 2004
-    copyright            : (C) 2004 by Jasem Mutlaq
-    email                : mutlaqja@ikarustech.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
- *   See http://members.aol.com/pkirchg for more details.                  *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
+    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
+*/
 
 #include "fitsdata.h"
 #include "fitsbahtinovdetector.h"
@@ -59,7 +49,12 @@
 #define ZOOM_LOW_INCR  10
 #define ZOOM_HIGH_INCR 50
 
-const QString FITSData::m_TemporaryPath = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+QString getTemporaryPath()
+{
+    return QDir(KSPaths::writableLocation(QStandardPaths::TempLocation) + "/" +
+                qAppName()).path();
+}
+
 const QStringList RAWFormats = { "cr2", "cr3", "crw", "nef", "raf", "dng", "arw", "orf" };
 
 FITSData::FITSData(FITSMode fitsMode): m_Mode(fitsMode)
@@ -106,21 +101,27 @@ FITSData::~FITSData()
 
 #ifdef HAVE_WCSLIB
     if (m_WCSHandle != nullptr)
+    {
         wcsvfree(&m_nwcs, &m_WCSHandle);
+        m_WCSHandle = nullptr;
+        m_nwcs = 0;
+    }
 #endif
 
     if (starCenters.count() > 0)
         qDeleteAll(starCenters);
-
-    delete[] m_WCSCoordinates;
+    starCenters.clear();
 
     if (m_SkyObjects.count() > 0)
         qDeleteAll(m_SkyObjects);
+    m_SkyObjects.clear();
 
     if (fptr != nullptr)
     {
         fits_flush_file(fptr, &status);
         fits_close_file(fptr, &status);
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
         fptr = nullptr;
     }
 }
@@ -135,98 +136,129 @@ void FITSData::loadCommon(const QString &inFilename)
     {
         fits_flush_file(fptr, &status);
         fits_close_file(fptr, &status);
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
         fptr = nullptr;
     }
 
     m_Filename = inFilename;
 }
 
-bool FITSData::loadFromBuffer(const QByteArray &buffer, const QString &extension, const QString &inFilename, bool silent)
+bool FITSData::loadFromBuffer(const QByteArray &buffer, const QString &extension, const QString &inFilename)
 {
     loadCommon(inFilename);
     qCDebug(KSTARS_FITS) << "Reading file buffer (" << KFormat().formatByteSize(buffer.size()) << ")";
-    return privateLoad(buffer, extension, silent);
+    return privateLoad(buffer, extension);
 }
 
-QFuture<bool> FITSData::loadFromFile(const QString &inFilename, bool silent)
+QFuture<bool> FITSData::loadFromFile(const QString &inFilename)
 {
     loadCommon(inFilename);
     QFileInfo info(m_Filename);
     QString extension = info.completeSuffix().toLower();
-    qCInfo(KSTARS_FITS) << "Loading file " << m_Filename;
-    return QtConcurrent::run(this, &FITSData::privateLoad, QByteArray(), extension, silent);
+    qCDebug(KSTARS_FITS) << "Loading file " << m_Filename;
+    return QtConcurrent::run(this, &FITSData::privateLoad, QByteArray(), extension);
 }
 
 namespace
 {
 // Common code for reporting fits read errors. Always returns false.
-bool fitsOpenError(int status, const QString &message, bool silent)
+QString fitsErrorToString(int status)
 {
-    char error_status[512];
+    char error_status[512] = {0};
     fits_report_error(stderr, status);
     fits_get_errstatus(status, error_status);
-    QString errMessage = message;
-    errMessage.append(i18n(" Error: %1", QString::fromUtf8(error_status)));
-    if (!silent)
-        KSNotification::error(errMessage, i18n("FITS Open"));
-    qCCritical(KSTARS_FITS) << errMessage;
-    return false;
+    QString message = error_status;
+    return message;
 }
 }
 
-bool FITSData::privateLoad(const QByteArray &buffer, const QString &extension, bool silent)
+bool FITSData::privateLoad(const QByteArray &buffer, const QString &extension)
 {
-    m_isTemporary = m_Filename.startsWith(m_TemporaryPath);
+    m_isTemporary = m_Filename.startsWith(KSPaths::writableLocation(QStandardPaths::TempLocation));
+    cacheHFR = -1;
+    cacheEccentricity = -1;
 
     if (extension.contains("fit"))
-        return loadFITSImage(buffer, extension, silent);
+        return loadFITSImage(buffer, extension);
     if (QImageReader::supportedImageFormats().contains(extension.toLatin1()))
-        return loadCanonicalImage(buffer, extension, silent);
+        return loadCanonicalImage(buffer, extension);
     else if (RAWFormats.contains(extension))
-        return loadRAWImage(buffer, extension, silent);
+        return loadRAWImage(buffer, extension);
 
     return false;
 }
 
-bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension, bool silent)
+bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension)
 {
     int status = 0, anynull = 0;
     long naxes[3];
-    QString errMessage;
 
     m_HistogramConstructed = false;
 
-    if (buffer.isEmpty() && extension.contains(".fz"))
+    if (extension.contains(".fz"))
     {
-        // Store so we don't lose.
-        m_compressedFilename = m_Filename;
-
-        QString uncompressedFile = QDir::tempPath() + QString("/%1").arg(QUuid::createUuid().toString().remove(
-                                       QRegularExpression("[-{}]")));
         fpstate fpvar;
         fp_init (&fpvar);
-        if (fp_unpack(m_Filename.toLocal8Bit().data(), uncompressedFile.toLocal8Bit().data(), fpvar) < 0)
+        bool rc = false;
+
+        if (buffer.isEmpty())
         {
-            errMessage = i18n("Failed to unpack compressed fits");
-            if (!silent)
-                KSNotification::error(errMessage, i18n("FITS Open"));
-            qCCritical(KSTARS_FITS) << errMessage;
+            // Store so we don't lose.
+            m_compressedFilename = m_Filename;
+
+            QString uncompressedFile = QDir::tempPath() + QString("/%1").arg(QUuid::createUuid().toString().remove(
+                                           QRegularExpression("[-{}]")));
+
+            rc = fp_unpack_file_to_fits(m_Filename.toLocal8Bit().data(), &fptr, fpvar) < 0;
+            if (rc)
+            {
+                m_Filename = uncompressedFile;
+            }
+        }
+        else
+        {
+            size_t m_PackBufferSize = 100000;
+            free(m_PackBuffer);
+            m_PackBuffer = (uint8_t *)malloc(m_PackBufferSize);
+            rc = fp_unpack_data_to_data(buffer.data(), buffer.size(), &m_PackBuffer, &m_PackBufferSize, fpvar) == 0;
+
+            if (rc)
+            {
+                void *data = reinterpret_cast<void *>(m_PackBuffer);
+                if (fits_open_memfile(&fptr, m_Filename.toLocal8Bit().data(), READONLY, &data, &m_PackBufferSize, 0,
+                                      nullptr, &status))
+                {
+                    m_LastError = i18n("Error reading fits buffer: %1.", fitsErrorToString(status));
+                    return false;
+                }
+
+                m_Statistics.size = m_PackBufferSize;
+            }
+            //rc = fp_unpack_data_to_fits(buffer.data(), buffer.size(), &fptr, fpvar) == 0;
+        }
+
+        if (rc == false)
+        {
+            free(m_PackBuffer);
+            m_PackBuffer = nullptr;
+            m_LastError = i18n("Failed to unpack compressed fits");
+            qCCritical(KSTARS_FITS) << m_LastError;
             return false;
         }
 
-        m_Filename = uncompressedFile;
         m_isTemporary = true;
         m_isCompressed = true;
-    }
+        m_Statistics.size = fptr->Fptr->logfilesize;
 
-    if (buffer.isEmpty())
+    }
+    else if (buffer.isEmpty())
     {
         // Use open diskfile as it does not use extended file names which has problems opening
         // files with [ ] or ( ) in their names.
         if (fits_open_diskfile(&fptr, m_Filename.toLocal8Bit(), READONLY, &status))
         {
-            recordLastError(status);
-            return fitsOpenError(status, i18n("Error opening fits file %1", m_Filename), silent);
+            m_LastError = i18n("Error opening fits file %1 : %2", m_Filename, fitsErrorToString(status));
         }
 
         m_Statistics.size = QFile(m_Filename).size();
@@ -239,8 +271,9 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
         if (fits_open_memfile(&fptr, m_Filename.toLocal8Bit().data(), READONLY,
                               &temp_buffer, &temp_size, 0, nullptr, &status))
         {
-            recordLastError(status);
-            return fitsOpenError(status, i18n("Error reading fits buffer."), silent);
+            m_LastError = i18n("Error reading fits buffer: %1", fitsErrorToString(status));
+            return false;
+
         }
 
         m_Statistics.size = temp_size;
@@ -248,22 +281,26 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
 
     if (fits_movabs_hdu(fptr, 1, IMAGE_HDU, &status))
     {
-        recordLastError(status);
-        return fitsOpenError(status, i18n("Could not locate image HDU."), silent);
+
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
+        m_LastError = i18n("Could not locate image HDU: %1", fitsErrorToString(status));
     }
 
     if (fits_get_img_param(fptr, 3, &m_FITSBITPIX, &(m_Statistics.ndim), naxes, &status))
     {
-        recordLastError(status);
-        return fitsOpenError(status, i18n("FITS file open error (fits_get_img_param)."), silent);
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
+        m_LastError = i18n("FITS file open error (fits_get_img_param): %1", fitsErrorToString(status));
+        return false;
     }
 
     if (m_Statistics.ndim < 2)
     {
         m_LastError = i18n("1D FITS images are not supported in KStars.");
-        if (!silent)
-            KSNotification::error(m_LastError, i18n("FITS Open"));
         qCCritical(KSTARS_FITS) << m_LastError;
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
         return false;
     }
 
@@ -307,8 +344,6 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
             break;
         default:
             m_LastError = i18n("Bit depth %1 is not supported.", m_FITSBITPIX);
-            if (!silent)
-                KSNotification::error(m_LastError, i18n("FITS Open"));
             qCCritical(KSTARS_FITS) << m_LastError;
             return false;
     }
@@ -319,15 +354,21 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
     if (naxes[0] == 0 || naxes[1] == 0)
     {
         m_LastError = i18n("Image has invalid dimensions %1x%2", naxes[0], naxes[1]);
-        if (!silent)
-            KSNotification::error(m_LastError, i18n("FITS Open"));
         qCCritical(KSTARS_FITS) << m_LastError;
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
         return false;
     }
 
     m_Statistics.width               = naxes[0];
     m_Statistics.height              = naxes[1];
     m_Statistics.samples_per_channel = m_Statistics.width * m_Statistics.height;
+    roiCenter.setX(m_Statistics.width / 2);
+    roiCenter.setY(m_Statistics.height / 2);
+    if(m_Statistics.width % 2)
+        roiCenter.setX(roiCenter.x() + 1);
+    if(m_Statistics.height % 2)
+        roiCenter.setY(roiCenter.y() + 1);
 
     clearImageBuffers();
 
@@ -335,7 +376,7 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
 
     // Channels always set to #1 if we are not required to process 3D Cubes
     // Or if mode is not FITS_NORMAL (guide, focus..etc)
-    if (m_Mode != FITS_NORMAL || !Options::auto3DCube())
+    if ( (m_Mode != FITS_NORMAL && m_Mode != FITS_CALIBRATE) || !Options::auto3DCube())
         m_Statistics.channels = 1;
 
     m_ImageBufferSize = m_Statistics.samples_per_channel * m_Statistics.channels * m_Statistics.bytesPerPixel;
@@ -345,6 +386,8 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
         qCWarning(KSTARS_FITS) << "FITSData: Not enough memory for image_buffer channel. Requested: "
                                << m_ImageBufferSize << " bytes.";
         clearImageBuffers();
+        free(m_PackBuffer);
+        m_PackBuffer = nullptr;
         return false;
     }
 
@@ -355,8 +398,8 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
 
     if (fits_read_img(fptr, m_Statistics.dataType, 1, nelements, nullptr, m_ImageBuffer, &anynull, &status))
     {
-        recordLastError(status);
-        return fitsOpenError(status, i18n("Error reading image."), silent);
+        m_LastError = i18n("Error reading image: %1", fitsErrorToString(status));
+        return false;
     }
 
     parseHeader();
@@ -382,10 +425,10 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
         }
 
         if (debayer())
-            calculateStats();
+            calculateStats(false, false);
     }
     else
-        calculateStats();
+        calculateStats(false, false);
 
     if (m_Mode == FITS_NORMAL || m_Mode == FITS_ALIGN)
         checkForWCS();
@@ -395,11 +438,8 @@ bool FITSData::loadFITSImage(const QByteArray &buffer, const QString &extension,
     return true;
 }
 
-bool FITSData::loadCanonicalImage(const QByteArray &buffer, const QString &extension, bool silent)
+bool FITSData::loadCanonicalImage(const QByteArray &buffer, const QString &extension)
 {
-    // TODO need to add error popups as well later on
-    Q_UNUSED(silent);
-    QString errMessage;
     QImage imageFromFile;
     if (!buffer.isEmpty())
     {
@@ -466,15 +506,14 @@ bool FITSData::loadCanonicalImage(const QByteArray &buffer, const QString &exten
             m_Statistics.bytesPerPixel = sizeof(double);
             break;
         default:
-            errMessage = QString("Bit depth %1 is not supported.").arg(m_FITSBITPIX);
-            QMessageBox::critical(nullptr, "Message", errMessage);
-            qCCritical(KSTARS_FITS) << errMessage;
+            m_LastError = QString("Bit depth %1 is not supported.").arg(m_FITSBITPIX);
+            qCCritical(KSTARS_FITS) << m_LastError;
             return false;
     }
 
     m_Statistics.width = static_cast<uint16_t>(imageFromFile.width());
     m_Statistics.height = static_cast<uint16_t>(imageFromFile.height());
-    m_Statistics.channels = imageFromFile.isGrayscale() ? 1 : 3;
+    m_Statistics.channels = imageFromFile.format() == QImage::Format_Grayscale8 ? 1 : 3;
     m_Statistics.samples_per_channel = m_Statistics.width * m_Statistics.height;
     clearImageBuffers();
     m_ImageBufferSize = m_Statistics.samples_per_channel * m_Statistics.channels * static_cast<uint16_t>
@@ -482,8 +521,8 @@ bool FITSData::loadCanonicalImage(const QByteArray &buffer, const QString &exten
     m_ImageBuffer = new uint8_t[m_ImageBufferSize];
     if (m_ImageBuffer == nullptr)
     {
-        qCCritical(KSTARS_FITS) << QString("FITSData: Not enough memory for image_buffer channel. Requested: %1 bytes ").arg(
-                                    m_ImageBufferSize);
+        m_LastError = i18n("FITSData: Not enough memory for image_buffer channel. Requested: %1 bytes ", m_ImageBufferSize);
+        qCCritical(KSTARS_FITS) << m_LastError;
         clearImageBuffers();
         return false;
     }
@@ -512,14 +551,13 @@ bool FITSData::loadCanonicalImage(const QByteArray &buffer, const QString &exten
         }
     }
 
-    calculateStats();
+    calculateStats(false, false);
     return true;
 }
 
-bool FITSData::loadRAWImage(const QByteArray &buffer, const QString &extension, bool silent)
+bool FITSData::loadRAWImage(const QByteArray &buffer, const QString &extension)
 {
     // TODO need to add error popups as well later on
-    Q_UNUSED(silent);
     Q_UNUSED(extension);
 
 #if !defined(KSTARS_LITE) && !defined(HAVE_LIBRAW)
@@ -598,8 +636,8 @@ bool FITSData::loadRAWImage(const QByteArray &buffer, const QString &extension, 
     m_ImageBuffer = new uint8_t[m_ImageBufferSize];
     if (m_ImageBuffer == nullptr)
     {
-        qCCritical(KSTARS_FITS) << QString("FITSData: Not enough memory for image_buffer channel. Requested: %1 bytes ").arg(
-                                    m_ImageBufferSize);
+        m_LastError = i18n("FITSData: Not enough memory for image_buffer channel. Requested: %1 bytes ", m_ImageBufferSize);
+        qCCritical(KSTARS_FITS) << m_LastError;
         libraw_dcraw_clear_mem(image);
         clearImageBuffers();
         return false;
@@ -630,7 +668,7 @@ bool FITSData::loadRAWImage(const QByteArray &buffer, const QString &extension, 
     }
     libraw_dcraw_clear_mem(image);
 
-    calculateStats();
+    calculateStats(false, false);
     return true;
 #endif
 }
@@ -719,7 +757,7 @@ bool FITSData::saveImage(const QString &newFilename)
 
     if (m_isCompressed)
     {
-        KSNotification::error(i18n("Saving compressed files is not supported."));
+        m_LastError = i18n("Saving compressed files is not supported.");
         return false;
     }
 
@@ -727,40 +765,40 @@ bool FITSData::saveImage(const QString &newFilename)
     long nelements;
     fitsfile * new_fptr;
 
-    if (HasDebayer && m_Filename.isEmpty() == false)
-    {
-        fits_flush_file(fptr, &status);
-        /* close current file */
-        if (fits_close_file(fptr, &status))
-        {
-            recordLastError(status);
-            return status;
-        }
+    //    if (HasDebayer && m_Filename.isEmpty() == false)
+    //    {
+    //        fits_flush_file(fptr, &status);
+    //        /* close current file */
+    //        if (fits_close_file(fptr, &status))
+    //        {
+    //            recordLastError(status);
+    //            return status;
+    //        }
 
-        // Skip "!" in the beginning of the new file name
-        QString finalFileName(newFilename);
+    //        // Skip "!" in the beginning of the new file name
+    //        QString finalFileName(newFilename);
 
-        finalFileName.remove('!');
+    //        finalFileName.remove('!');
 
-        // Remove first otherwise copy will fail below if file exists
-        QFile::remove(finalFileName);
+    //        // Remove first otherwise copy will fail below if file exists
+    //        QFile::remove(finalFileName);
 
-        if (!QFile::copy(m_Filename, finalFileName))
-        {
-            qCCritical(KSTARS_FITS()) << "FITS: Failed to copy " << m_Filename << " to " << finalFileName;
-            fptr = nullptr;
-            return false;
-        }
+    //        if (!QFile::copy(m_Filename, finalFileName))
+    //        {
+    //            qCCritical(KSTARS_FITS()) << "FITS: Failed to copy " << m_Filename << " to " << finalFileName;
+    //            fptr = nullptr;
+    //            return false;
+    //        }
 
-        m_Filename = finalFileName;
+    //        m_Filename = finalFileName;
 
-        // Use open diskfile as it does not use extended file names which has problems opening
-        // files with [ ] or ( ) in their names.
-        fits_open_diskfile(&fptr, m_Filename.toLocal8Bit(), READONLY, &status);
-        fits_movabs_hdu(fptr, 1, IMAGE_HDU, &status);
+    //        // Use open diskfile as it does not use extended file names which has problems opening
+    //        // files with [ ] or ( ) in their names.
+    //        fits_open_diskfile(&fptr, m_Filename.toLocal8Bit(), READONLY, &status);
+    //        fits_movabs_hdu(fptr, 1, IMAGE_HDU, &status);
 
-        return true;
-    }
+    //        return true;
+    //    }
 
     // Read the image back into buffer in case we debyayed
     nelements = m_Statistics.samples_per_channel * m_Statistics.channels;
@@ -768,14 +806,14 @@ bool FITSData::saveImage(const QString &newFilename)
     /* close current file */
     if (fptr && fits_close_file(fptr, &status))
     {
-        recordLastError(status);
+        m_LastError = i18n("Failed to close file: %1", fitsErrorToString(status));
         return false;
     }
 
     /* Create a new File, overwriting existing*/
     if (fits_create_file(&new_fptr, QString("!%1").arg(newFilename).toLocal8Bit(), &status))
     {
-        recordLastError(status);
+        m_LastError = i18n("Failed to create file: %1", fitsErrorToString(status));
         return status;
     }
 
@@ -786,17 +824,11 @@ bool FITSData::saveImage(const QString &newFilename)
     // Create image
     long naxis = m_Statistics.channels == 1 ? 2 : 3;
     long naxes[3] = {m_Statistics.width, m_Statistics.height, naxis};
+
     // JM 2020-12-28: Here we to use bitpix values
     if (fits_create_img(fptr, m_FITSBITPIX, naxis, naxes, &status))
     {
-        recordLastError(status);
-        return false;
-    }
-
-    // Here we need to use the actual data type
-    if (fits_write_img(fptr, m_Statistics.dataType, 1, nelements, m_ImageBuffer, &status))
-    {
-        recordLastError(status);
+        m_LastError = i18n("Failed to create image: %1", fitsErrorToString(status));
         return false;
     }
 
@@ -805,14 +837,14 @@ bool FITSData::saveImage(const QString &newFilename)
     // Minimum
     if (fits_update_key(fptr, TDOUBLE, "DATAMIN", &(m_Statistics.min), "Minimum value", &status))
     {
-        recordLastError(status);
+        m_LastError = i18n("Failed to update key: %1", fitsErrorToString(status));
         return false;
     }
 
     // Maximum
     if (fits_update_key(fptr, TDOUBLE, "DATAMAX", &(m_Statistics.max), "Maximum value", &status))
     {
-        recordLastError(status);
+        m_LastError = i18n("Failed to update key: %1", fitsErrorToString(status));
         return false;
     }
 
@@ -901,7 +933,7 @@ bool FITSData::saveImage(const QString &newFilename)
     // ISO Date
     if (fits_write_date(fptr, &status))
     {
-        recordLastError(status);
+        m_LastError = i18n("Failed to update date: %1", fitsErrorToString(status));
         return false;
     }
 
@@ -910,7 +942,7 @@ bool FITSData::saveImage(const QString &newFilename)
     // History
     if (fits_write_history(fptr, history.toLatin1(), &status))
     {
-        recordLastError(status);
+        m_LastError = i18n("Failed to update history: %1", fitsErrorToString(status));
         return false;
     }
 
@@ -929,6 +961,13 @@ bool FITSData::saveImage(const QString &newFilename)
 
     rotCounter = flipHCounter = flipVCounter = 0;
 
+    // Here we need to use the actual data type
+    if (fits_write_img(fptr, m_Statistics.dataType, 1, nelements, m_ImageBuffer, &status))
+    {
+        m_LastError = i18n("Failed to write image: %1", fitsErrorToString(status));
+        return false;
+    }
+
     m_Filename = newFilename;
 
     fits_flush_file(fptr, &status);
@@ -942,238 +981,425 @@ void FITSData::clearImageBuffers()
 {
     delete[] m_ImageBuffer;
     m_ImageBuffer = nullptr;
+    if(m_ImageRoiBuffer != nullptr )
+    {
+        delete[] m_ImageRoiBuffer;
+        m_ImageRoiBuffer = nullptr;
+
+    }
     //m_BayerBuffer = nullptr;
 }
 
-void FITSData::calculateStats(bool refresh)
+void FITSData::makeRoiBuffer(QRect roi)
+{
+    uint32_t channelSize = roi.height() * roi.width();
+    if(channelSize  > m_Statistics.samples_per_channel || channelSize == 1)
+    {
+        return;
+    }
+    if(m_ImageRoiBuffer != nullptr )
+    {
+        delete[] m_ImageRoiBuffer;
+        m_ImageRoiBuffer = nullptr;
+    }
+    int xoffset = roi.topLeft().x() - 1;
+    int yoffset = roi.topLeft().y() - 1;
+    uint32_t bpp = m_Statistics.bytesPerPixel;
+    m_ImageRoiBuffer = new uint8_t[roi.height()*roi.width()*m_Statistics.channels * m_Statistics.bytesPerPixel]();
+    for(int n = 0 ; n < m_Statistics.channels ; n++)
+    {
+        for(int i = 0; i < roi.height(); i++)
+        {
+            size_t i1 = n * channelSize * bpp +  i * roi.width() * bpp;
+            size_t i2 = n * m_Statistics.samples_per_channel * bpp + (yoffset + i) * width() * bpp + xoffset * bpp;
+            memcpy(&m_ImageRoiBuffer[i1],
+                   &m_ImageBuffer[i2],
+                   roi.width() * bpp);
+        }
+
+    }
+    memcpy(&m_ROIStatistics, &m_Statistics, sizeof(FITSImage::Statistic));
+    m_ROIStatistics.samples_per_channel = roi.height() * roi.width();
+    m_ROIStatistics.width = roi.width();
+    m_ROIStatistics.height = roi.height();
+    calculateStats(false, true);
+}
+void FITSData::calculateStats(bool refresh, bool roi)
 {
     // Calculate min max
-    calculateMinMax(refresh);
-    calculateMedian(refresh);
-
-    // Try to read mean/median/stddev if in file
-    if (refresh == false && fptr)
+    if(roi == false)
     {
-        int status = 0;
-        int nfound = 0;
-        if (fits_read_key_dbl(fptr, "MEAN1", &m_Statistics.mean[0], nullptr, &status) == 0)
-            nfound++;
-        // NB. These could fail if missing, which is OK.
-        fits_read_key_dbl(fptr, "MEAN2", & m_Statistics.mean[1], nullptr, &status);
-        fits_read_key_dbl(fptr, "MEAN3", &m_Statistics.mean[2], nullptr, &status);
+        calculateMinMax(refresh);
+        calculateMedian(refresh);
 
-        status = 0;
-        if (fits_read_key_dbl(fptr, "STDDEV1", &m_Statistics.stddev[0], nullptr, &status) == 0)
-            nfound++;
-        // NB. These could fail if missing, which is OK.
-        fits_read_key_dbl(fptr, "STDDEV2", &m_Statistics.stddev[1], nullptr, &status);
-        fits_read_key_dbl(fptr, "STDDEV3", &m_Statistics.stddev[2], nullptr, &status);
+        // Try to read mean/median/stddev if in file
+        if (refresh == false && fptr)
+        {
+            int status = 0;
+            int nfound = 0;
+            if (fits_read_key_dbl(fptr, "MEAN1", &m_Statistics.mean[0], nullptr, &status) == 0)
+                nfound++;
+            // NB. These could fail if missing, which is OK.
+            fits_read_key_dbl(fptr, "MEAN2", & m_Statistics.mean[1], nullptr, &status);
+            fits_read_key_dbl(fptr, "MEAN3", &m_Statistics.mean[2], nullptr, &status);
 
-        // If all is OK, we're done
-        if (nfound == 2)
-            return;
+            status = 0;
+            if (fits_read_key_dbl(fptr, "STDDEV1", &m_Statistics.stddev[0], nullptr, &status) == 0)
+                nfound++;
+            // NB. These could fail if missing, which is OK.
+            fits_read_key_dbl(fptr, "STDDEV2", &m_Statistics.stddev[1], nullptr, &status);
+            fits_read_key_dbl(fptr, "STDDEV3", &m_Statistics.stddev[2], nullptr, &status);
+
+            // If all is OK, we're done
+            if (nfound == 2)
+                return;
+        }
+
+        // Get standard deviation and mean in one run
+        switch (m_Statistics.dataType)
+        {
+            case TBYTE:
+                runningAverageStdDev<uint8_t>();
+                break;
+
+            case TSHORT:
+                runningAverageStdDev<int16_t>();
+                break;
+
+            case TUSHORT:
+                runningAverageStdDev<uint16_t>();
+                break;
+
+            case TLONG:
+                runningAverageStdDev<int32_t>();
+                break;
+
+            case TULONG:
+                runningAverageStdDev<uint32_t>();
+                break;
+
+            case TFLOAT:
+                runningAverageStdDev<float>();
+                break;
+
+            case TLONGLONG:
+                runningAverageStdDev<int64_t>();
+                break;
+
+            case TDOUBLE:
+                runningAverageStdDev<double>();
+                break;
+
+            default:
+                return;
+        }
+
+        // FIXME That's not really SNR, must implement a proper solution for this value
+        m_Statistics.SNR = m_Statistics.mean[0] / m_Statistics.stddev[0];
     }
-
-    // Get standard deviation and mean in one run
-    switch (m_Statistics.dataType)
+    else
     {
-        case TBYTE:
-            runningAverageStdDev<uint8_t>();
-            break;
+        calculateMinMax(refresh, roi);
+        calculateMedian(refresh, roi);
 
-        case TSHORT:
-            runningAverageStdDev<int16_t>();
-            break;
+        switch (m_ROIStatistics.dataType)
+        {
+            case TBYTE:
+                runningAverageStdDev<uint8_t>(roi);
+                break;
 
-        case TUSHORT:
-            runningAverageStdDev<uint16_t>();
-            break;
+            case TSHORT:
+                runningAverageStdDev<int16_t>(roi);
+                break;
 
-        case TLONG:
-            runningAverageStdDev<int32_t>();
-            break;
+            case TUSHORT:
+                runningAverageStdDev<uint16_t>(roi);
+                break;
 
-        case TULONG:
-            runningAverageStdDev<uint32_t>();
-            break;
+            case TLONG:
+                runningAverageStdDev<int32_t>(roi);
+                break;
 
-        case TFLOAT:
-            runningAverageStdDev<float>();
-            break;
+            case TULONG:
+                runningAverageStdDev<uint32_t>(roi);
+                break;
 
-        case TLONGLONG:
-            runningAverageStdDev<int64_t>();
-            break;
+            case TFLOAT:
+                runningAverageStdDev<float>(roi);
+                break;
 
-        case TDOUBLE:
-            runningAverageStdDev<double>();
-            break;
+            case TLONGLONG:
+                runningAverageStdDev<int64_t>(roi);
+                break;
 
-        default:
-            return;
-    }
+            case TDOUBLE:
+                runningAverageStdDev<double>(roi);
+                break;
 
-    // FIXME That's not really SNR, must implement a proper solution for this value
-    m_Statistics.SNR = m_Statistics.mean[0] / m_Statistics.stddev[0];
-}
-
-void FITSData::calculateMinMax(bool refresh)
-{
-    int status, nfound = 0;
-
-    status = 0;
-
-    // Only fetch from header if we have a single channel
-    // Otherwise, calculate manually.
-    if (fptr != nullptr && !refresh)
-    {
-
-        status = 0;
-
-        if (fits_read_key_dbl(fptr, "DATAMIN", &(m_Statistics.min[0]), nullptr, &status) == 0)
-            nfound++;
-        else if (fits_read_key_dbl(fptr, "MIN1", &(m_Statistics.min[0]), nullptr, &status) == 0)
-            nfound++;
-
-        // NB. These could fail if missing, which is OK.
-        fits_read_key_dbl(fptr, "MIN2", &m_Statistics.min[1], nullptr, &status);
-        fits_read_key_dbl(fptr, "MIN3", &m_Statistics.min[2], nullptr, &status);
-
-        status = 0;
-
-        if (fits_read_key_dbl(fptr, "DATAMAX", &(m_Statistics.max[0]), nullptr, &status) == 0)
-            nfound++;
-        else if (fits_read_key_dbl(fptr, "MAX1", &(m_Statistics.max[0]), nullptr, &status) == 0)
-            nfound++;
-
-        // NB. These could fail if missing, which is OK.
-        fits_read_key_dbl(fptr, "MAX2", &m_Statistics.max[1], nullptr, &status);
-        fits_read_key_dbl(fptr, "MAX3", &m_Statistics.max[2], nullptr, &status);
-
-        // If we found both keywords, no need to calculate them, unless they are both zeros
-        if (nfound == 2 && !(m_Statistics.min[0] == 0 && m_Statistics.max[0] == 0))
-            return;
-    }
-
-    m_Statistics.min[0] = 1.0E30;
-    m_Statistics.max[0] = -1.0E30;
-
-    m_Statistics.min[1] = 1.0E30;
-    m_Statistics.max[1] = -1.0E30;
-
-    m_Statistics.min[2] = 1.0E30;
-    m_Statistics.max[2] = -1.0E30;
-
-    switch (m_Statistics.dataType)
-    {
-        case TBYTE:
-            calculateMinMax<uint8_t>();
-            break;
-
-        case TSHORT:
-            calculateMinMax<int16_t>();
-            break;
-
-        case TUSHORT:
-            calculateMinMax<uint16_t>();
-            break;
-
-        case TLONG:
-            calculateMinMax<int32_t>();
-            break;
-
-        case TULONG:
-            calculateMinMax<uint32_t>();
-            break;
-
-        case TFLOAT:
-            calculateMinMax<float>();
-            break;
-
-        case TLONGLONG:
-            calculateMinMax<int64_t>();
-            break;
-
-        case TDOUBLE:
-            calculateMinMax<double>();
-            break;
-
-        default:
-            break;
+            default:
+                return;
+        }
     }
 }
 
-void FITSData::calculateMedian(bool refresh)
+void FITSData::calculateMinMax(bool refresh, bool roi)
 {
-    int status, nfound = 0;
-
-    status = 0;
-
-    // Only fetch from header if we have a single channel
-    // Otherwise, calculate manually.
-    if (fptr != nullptr && !refresh)
+    if(roi == false)
     {
+        int status, nfound = 0;
+
         status = 0;
-        if (fits_read_key_dbl(fptr, "MEDIAN1", &m_Statistics.median[0], nullptr, &status) == 0)
-            nfound++;
 
-        // NB. These could fail if missing, which is OK.
-        fits_read_key_dbl(fptr, "MEDIAN2", &m_Statistics.median[1], nullptr, &status);
-        fits_read_key_dbl(fptr, "MEDIAN3", &m_Statistics.median[2], nullptr, &status);
+        // Only fetch from header if we have a single channel
+        // Otherwise, calculate manually.
+        if (fptr != nullptr && !refresh)
+        {
 
-        if (nfound == 1)
-            return;
+            status = 0;
+
+            if (fits_read_key_dbl(fptr, "DATAMIN", &(m_Statistics.min[0]), nullptr, &status) == 0)
+                nfound++;
+            else if (fits_read_key_dbl(fptr, "MIN1", &(m_Statistics.min[0]), nullptr, &status) == 0)
+                nfound++;
+
+            // NB. These could fail if missing, which is OK.
+            fits_read_key_dbl(fptr, "MIN2", &m_Statistics.min[1], nullptr, &status);
+            fits_read_key_dbl(fptr, "MIN3", &m_Statistics.min[2], nullptr, &status);
+
+            status = 0;
+
+            if (fits_read_key_dbl(fptr, "DATAMAX", &(m_Statistics.max[0]), nullptr, &status) == 0)
+                nfound++;
+            else if (fits_read_key_dbl(fptr, "MAX1", &(m_Statistics.max[0]), nullptr, &status) == 0)
+                nfound++;
+
+            // NB. These could fail if missing, which is OK.
+            fits_read_key_dbl(fptr, "MAX2", &m_Statistics.max[1], nullptr, &status);
+            fits_read_key_dbl(fptr, "MAX3", &m_Statistics.max[2], nullptr, &status);
+
+            // If we found both keywords, no need to calculate them, unless they are both zeros
+            if (nfound == 2 && !(m_Statistics.min[0] == 0 && m_Statistics.max[0] == 0))
+                return;
+        }
+
+        m_Statistics.min[0] = 1.0E30;
+        m_Statistics.max[0] = -1.0E30;
+
+        m_Statistics.min[1] = 1.0E30;
+        m_Statistics.max[1] = -1.0E30;
+
+        m_Statistics.min[2] = 1.0E30;
+        m_Statistics.max[2] = -1.0E30;
+
+        switch (m_Statistics.dataType)
+        {
+            case TBYTE:
+                calculateMinMax<uint8_t>();
+                break;
+
+            case TSHORT:
+                calculateMinMax<int16_t>();
+                break;
+
+            case TUSHORT:
+                calculateMinMax<uint16_t>();
+                break;
+
+            case TLONG:
+                calculateMinMax<int32_t>();
+                break;
+
+            case TULONG:
+                calculateMinMax<uint32_t>();
+                break;
+
+            case TFLOAT:
+                calculateMinMax<float>();
+                break;
+
+            case TLONGLONG:
+                calculateMinMax<int64_t>();
+                break;
+
+            case TDOUBLE:
+                calculateMinMax<double>();
+                break;
+
+            default:
+                break;
+        }
     }
-
-    m_Statistics.median[RED_CHANNEL] = 0;
-    m_Statistics.median[GREEN_CHANNEL] = 0;
-    m_Statistics.median[BLUE_CHANNEL] = 0;
-
-    switch (m_Statistics.dataType)
+    else
     {
-        case TBYTE:
-            calculateMedian<uint8_t>();
-            break;
+        m_ROIStatistics.min[0] = 1.0E30;
+        m_ROIStatistics.max[0] = -1.0E30;
 
-        case TSHORT:
-            calculateMedian<int16_t>();
-            break;
+        m_ROIStatistics.min[1] = 1.0E30;
+        m_ROIStatistics.max[1] = -1.0E30;
 
-        case TUSHORT:
-            calculateMedian<uint16_t>();
-            break;
+        m_ROIStatistics.min[2] = 1.0E30;
+        m_ROIStatistics.max[2] = -1.0E30;
 
-        case TLONG:
-            calculateMedian<int32_t>();
-            break;
+        switch (m_Statistics.dataType)
+        {
+            case TBYTE:
+                calculateMinMax<uint8_t>(roi);
+                break;
 
-        case TULONG:
-            calculateMedian<uint32_t>();
-            break;
+            case TSHORT:
+                calculateMinMax<int16_t>(roi);
+                break;
 
-        case TFLOAT:
-            calculateMedian<float>();
-            break;
+            case TUSHORT:
+                calculateMinMax<uint16_t>(roi);
+                break;
 
-        case TLONGLONG:
-            calculateMedian<int64_t>();
-            break;
+            case TLONG:
+                calculateMinMax<int32_t>(roi);
+                break;
 
-        case TDOUBLE:
-            calculateMedian<double>();
-            break;
+            case TULONG:
+                calculateMinMax<uint32_t>(roi);
+                break;
 
-        default:
-            break;
+            case TFLOAT:
+                calculateMinMax<float>(roi);
+                break;
+
+            case TLONGLONG:
+                calculateMinMax<int64_t>(roi);
+                break;
+
+            case TDOUBLE:
+                calculateMinMax<double>(roi);
+                break;
+
+            default:
+                break;
+        }
+
+    }
+}
+
+void FITSData::calculateMedian(bool refresh, bool roi)
+{
+    if(!roi)
+    {
+        int status, nfound = 0;
+
+        status = 0;
+
+        // Only fetch from header if we have a single channel
+        // Otherwise, calculate manually.
+        if (fptr != nullptr && !refresh)
+        {
+            status = 0;
+            if (fits_read_key_dbl(fptr, "MEDIAN1", &m_Statistics.median[0], nullptr, &status) == 0)
+                nfound++;
+
+            // NB. These could fail if missing, which is OK.
+            fits_read_key_dbl(fptr, "MEDIAN2", &m_Statistics.median[1], nullptr, &status);
+            fits_read_key_dbl(fptr, "MEDIAN3", &m_Statistics.median[2], nullptr, &status);
+
+            if (nfound == 1)
+                return;
+        }
+
+        m_Statistics.median[RED_CHANNEL] = 0;
+        m_Statistics.median[GREEN_CHANNEL] = 0;
+        m_Statistics.median[BLUE_CHANNEL] = 0;
+
+        switch (m_Statistics.dataType)
+        {
+            case TBYTE:
+                calculateMedian<uint8_t>();
+                break;
+
+            case TSHORT:
+                calculateMedian<int16_t>();
+                break;
+
+            case TUSHORT:
+                calculateMedian<uint16_t>();
+                break;
+
+            case TLONG:
+                calculateMedian<int32_t>();
+                break;
+
+            case TULONG:
+                calculateMedian<uint32_t>();
+                break;
+
+            case TFLOAT:
+                calculateMedian<float>();
+                break;
+
+            case TLONGLONG:
+                calculateMedian<int64_t>();
+                break;
+
+            case TDOUBLE:
+                calculateMedian<double>();
+                break;
+
+            default:
+                break;
+        }
+    }
+    else
+    {
+        m_ROIStatistics.median[RED_CHANNEL] = 0;
+        m_ROIStatistics.median[GREEN_CHANNEL] = 0;
+        m_ROIStatistics.median[BLUE_CHANNEL] = 0;
+
+        switch (m_ROIStatistics.dataType)
+        {
+            case TBYTE:
+                calculateMedian<uint8_t>(roi);
+                break;
+
+            case TSHORT:
+                calculateMedian<int16_t>(roi);
+                break;
+
+            case TUSHORT:
+                calculateMedian<uint16_t>(roi);
+                break;
+
+            case TLONG:
+                calculateMedian<int32_t>(roi);
+                break;
+
+            case TULONG:
+                calculateMedian<uint32_t>(roi);
+                break;
+
+            case TFLOAT:
+                calculateMedian<float>(roi);
+                break;
+
+            case TLONGLONG:
+                calculateMedian<int64_t>(roi);
+                break;
+
+            case TDOUBLE:
+                calculateMedian<double>(roi);
+                break;
+
+            default:
+                break;
+        }
+
     }
 }
 
 template <typename T>
-void FITSData::calculateMedian()
+void FITSData::calculateMedian(bool roi)
 {
-    auto * buffer = reinterpret_cast<T *>(m_ImageBuffer);
+    auto * buffer = reinterpret_cast<T *>(roi ? m_ImageRoiBuffer : m_ImageBuffer);
     const uint32_t maxMedianSize = 500000;
-    uint32_t medianSize = m_Statistics.samples_per_channel;
+    uint32_t medianSize = roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel;
     uint8_t downsample = 1;
     if (medianSize > maxMedianSize)
     {
@@ -1185,19 +1411,20 @@ void FITSData::calculateMedian()
 
     for (uint8_t n = 0; n < m_Statistics.channels; n++)
     {
-        auto *oneChannel = buffer + n * m_Statistics.samples_per_channel;
-        for (uint32_t upto = 0; upto < m_Statistics.samples_per_channel; upto += downsample)
+        auto *oneChannel = buffer + n * (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel);
+        for (uint32_t upto = 0; upto < (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel);
+                upto += downsample)
             samples.push_back(oneChannel[upto]);
         const uint32_t middle = samples.size() / 2;
         std::nth_element(samples.begin(), samples.begin() + middle, samples.end());
-        m_Statistics.median[n] = samples[middle];
+        roi ? m_ROIStatistics.median[n] = samples[middle] : m_Statistics.median[n] = samples[middle];
     }
 }
 
 template <typename T>
-QPair<T, T> FITSData::getParitionMinMax(uint32_t start, uint32_t stride)
+QPair<T, T> FITSData::getParitionMinMax(uint32_t start, uint32_t stride, bool roi)
 {
-    auto * buffer = reinterpret_cast<T *>(m_ImageBuffer);
+    auto * buffer = reinterpret_cast<T *>(roi ? m_ImageRoiBuffer : m_ImageBuffer);
     T min = std::numeric_limits<T>::max();
     T max = std::numeric_limits<T>::min();
 
@@ -1217,7 +1444,7 @@ QPair<T, T> FITSData::getParitionMinMax(uint32_t start, uint32_t stride)
 }
 
 template <typename T>
-void FITSData::calculateMinMax()
+void FITSData::calculateMinMax(bool roi)
 {
     T min = std::numeric_limits<T>::max();
     T max = std::numeric_limits<T>::min();
@@ -1228,13 +1455,14 @@ void FITSData::calculateMinMax()
 
     for (int n = 0; n < m_Statistics.channels; n++)
     {
-        uint32_t cStart = n * m_Statistics.samples_per_channel;
+        uint32_t cStart = n * (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel);
 
         // Calculate how many elements we process per thread
-        uint32_t tStride = m_Statistics.samples_per_channel / nThreads;
+        uint32_t tStride = (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel) / nThreads;
 
         // Calculate the final stride since we can have some left over due to division above
-        uint32_t fStride = tStride + (m_Statistics.samples_per_channel - (tStride * nThreads));
+        uint32_t fStride = tStride + ((roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel) -
+                                      (tStride * nThreads));
 
         // Start location for inspecting elements
         uint32_t tStart = cStart;
@@ -1245,7 +1473,8 @@ void FITSData::calculateMinMax()
         for (int i = 0; i < nThreads; i++)
         {
             // Run threads
-            futures.append(QtConcurrent::run(this, &FITSData::getParitionMinMax<T>, tStart, (i == (nThreads - 1)) ? fStride : tStride));
+            futures.append(QtConcurrent::run(this, &FITSData::getParitionMinMax<T>, tStart, (i == (nThreads - 1)) ? fStride : tStride,
+                                             roi));
             tStart += tStride;
         }
 
@@ -1257,18 +1486,27 @@ void FITSData::calculateMinMax()
             max = qMax(result.second, max);
         }
 
-        m_Statistics.min[n] = min;
-        m_Statistics.max[n] = max;
+        if(!roi)
+        {
+            m_Statistics.min[n] = min;
+            m_Statistics.max[n] = max;
+        }
+        else
+        {
+            m_ROIStatistics.min[n] = min;
+            m_ROIStatistics.max[n] = max;
+        }
     }
+
 }
 
 template <typename T>
-QPair<double, double> FITSData::getSquaredSumAndMean(uint32_t start, uint32_t stride)
+QPair<double, double> FITSData::getSquaredSumAndMean(uint32_t start, uint32_t stride, bool roi)
 {
     uint32_t m_n       = 2;
     double m_oldM = 0, m_newM = 0, m_oldS = 0, m_newS = 0;
 
-    auto * buffer = reinterpret_cast<T *>(m_ImageBuffer);
+    auto * buffer = reinterpret_cast<T *>(roi ? m_ImageRoiBuffer : m_ImageBuffer);
     uint32_t end = start + stride;
 
     for (uint32_t i = start; i < end; i++)
@@ -1285,20 +1523,21 @@ QPair<double, double> FITSData::getSquaredSumAndMean(uint32_t start, uint32_t st
 }
 
 template <typename T>
-void FITSData::runningAverageStdDev()
+void FITSData::runningAverageStdDev(bool roi )
 {
     // Create N threads
     const uint8_t nThreads = 16;
 
     for (int n = 0; n < m_Statistics.channels; n++)
     {
-        uint32_t cStart = n * m_Statistics.samples_per_channel;
+        uint32_t cStart = n * (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel);
 
         // Calculate how many elements we process per thread
-        uint32_t tStride = m_Statistics.samples_per_channel / nThreads;
+        uint32_t tStride = (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel) / nThreads;
 
         // Calculate the final stride since we can have some left over due to division above
-        uint32_t fStride = tStride + (m_Statistics.samples_per_channel - (tStride * nThreads));
+        uint32_t fStride = tStride + ((roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel) -
+                                      (tStride * nThreads));
 
         // Start location for inspecting elements
         uint32_t tStart = cStart;
@@ -1310,7 +1549,7 @@ void FITSData::runningAverageStdDev()
         {
             // Run threads
             futures.append(QtConcurrent::run(this, &FITSData::getSquaredSumAndMean<T>, tStart,
-                                             (i == (nThreads - 1)) ? fStride : tStride));
+                                             (i == (nThreads - 1)) ? fStride : tStride, roi));
             tStart += tStride;
         }
 
@@ -1324,10 +1563,17 @@ void FITSData::runningAverageStdDev()
             squared_sum += result.second;
         }
 
-        double variance = squared_sum / m_Statistics.samples_per_channel;
-
-        m_Statistics.mean[n]   = mean / nThreads;
-        m_Statistics.stddev[n] = sqrt(variance);
+        double variance = squared_sum / (roi ? m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel);
+        if(!roi)
+        {
+            m_Statistics.mean[n]   = mean / nThreads;
+            m_Statistics.stddev[n] = sqrt(variance);
+        }
+        else
+        {
+            m_ROIStatistics.mean[n] = mean / nThreads;
+            m_ROIStatistics.stddev[n] = sqrt(variance);
+        }
     }
 }
 
@@ -1619,8 +1865,8 @@ QFuture<bool> FITSData::findStars(StarAlgorithm algorithm, const QRect &tracking
     {
         case ALGORITHM_SEP:
         {
-            QPointer<FITSSEPDetector> detector = new FITSSEPDetector(this);
-            detector->setSettings(m_SourceExtractorSettings);
+            m_StarDetector.reset(new FITSSEPDetector(this));
+            m_StarDetector->setSettings(m_SourceExtractorSettings);
             if (m_Mode == FITS_NORMAL && trackingBox.isNull())
             {
                 if (Options::quickHFR())
@@ -1629,56 +1875,57 @@ QFuture<bool> FITSData::findStars(StarAlgorithm algorithm, const QRect &tracking
                     const int w = getStatistics().width;
                     const int h = getStatistics().height;
                     QRect middle(static_cast<int>(w * 0.25), static_cast<int>(h * 0.25), w / 2, h / 2);
-                    return detector->findSources(middle);
+                    return m_StarDetector->findSources(middle);
                 }
             }
-            m_StarFindFuture = detector->findSources(trackingBox);
+            m_StarFindFuture = m_StarDetector->findSources(trackingBox);
             return m_StarFindFuture;
         }
 
         case ALGORITHM_GRADIENT:
         default:
         {
-            QPointer<FITSGradientDetector> detector = new FITSGradientDetector(this);
-            detector->setSettings(m_SourceExtractorSettings);
-            m_StarFindFuture = detector->findSources(trackingBox);
+            m_StarDetector.reset(new FITSGradientDetector(this));
+            m_StarDetector->setSettings(m_SourceExtractorSettings);
+            m_StarFindFuture = m_StarDetector->findSources(trackingBox);
             return m_StarFindFuture;
         }
 
         case ALGORITHM_CENTROID:
         {
 #ifndef KSTARS_LITE
-            QPointer<FITSCentroidDetector> detector = new FITSCentroidDetector(this);
-            detector->setSettings(m_SourceExtractorSettings);
+            m_StarDetector.reset(new FITSCentroidDetector(this));
+            m_StarDetector->setSettings(m_SourceExtractorSettings);
             // We need JMIndex calculated from histogram
             if (!isHistogramConstructed())
                 constructHistogram();
-            detector->configure("JMINDEX", m_JMIndex);
-            m_StarFindFuture = detector->findSources(trackingBox);
+            m_StarDetector->configure("JMINDEX", m_JMIndex);
+            m_StarFindFuture = m_StarDetector->findSources(trackingBox);
             return m_StarFindFuture;
         }
 #else
             {
-                QPointer<FITSCentroidDetector> detector = new FITSCentroidDetector(this);
-                return detector->findSources(starCenters, trackingBox);
+                m_StarDetector.reset(new FITSCentroidDetector(this));
+                m_StarFindFuture = starDetector->findSources(trackingBox);
+                return m_StarFindFuture;
             }
 #endif
 
         case ALGORITHM_THRESHOLD:
         {
-            QPointer<FITSThresholdDetector> detector = new FITSThresholdDetector(this);
-            detector->setSettings(m_SourceExtractorSettings);
-            detector->configure("THRESHOLD_PERCENTAGE", Options::focusThreshold());
-            m_StarFindFuture =  detector->findSources(trackingBox);
+            m_StarDetector.reset(new FITSThresholdDetector(this));
+            m_StarDetector->setSettings(m_SourceExtractorSettings);
+            m_StarDetector->configure("THRESHOLD_PERCENTAGE", Options::focusThreshold());
+            m_StarFindFuture =  m_StarDetector->findSources(trackingBox);
             return m_StarFindFuture;
         }
 
         case ALGORITHM_BAHTINOV:
         {
-            QPointer<FITSBahtinovDetector> detector = new FITSBahtinovDetector(this);
-            detector->setSettings(m_SourceExtractorSettings);
-            detector->configure("NUMBER_OF_AVERAGE_ROWS", Options::focusMultiRowAverage());
-            m_StarFindFuture = detector->findSources(trackingBox);
+            m_StarDetector.reset(new FITSBahtinovDetector(this));
+            m_StarDetector->setSettings(m_SourceExtractorSettings);
+            m_StarDetector->configure("NUMBER_OF_AVERAGE_ROWS", Options::focusMultiRowAverage());
+            m_StarFindFuture = m_StarDetector->findSources(trackingBox);
             return m_StarFindFuture;
         }
     }
@@ -1704,15 +1951,13 @@ int FITSData::filterStars(const float innerRadius, const float outerRadius)
 
 double FITSData::getHFR(HFRType type)
 {
-    // This method is less susceptible to noise
-    // Get HFR for the brightest star only, instead of averaging all stars
-    // It is more consistent.
-    // TODO: Try to test this under using a real CCD.
-
     if (starCenters.empty())
         return -1;
 
-    m_SelectedHFRStar = nullptr;
+    if (cacheHFR >= 0 && cacheHFRType == type)
+        return cacheHFR;
+
+    m_SelectedHFRStar.invalidate();
 
     if (type == HFR_MAX)
     {
@@ -1728,8 +1973,10 @@ double FITSData::getHFR(HFRType type)
             }
         }
 
-        m_SelectedHFRStar = starCenters[maxIndex];
-        return starCenters[maxIndex]->HFR;
+        m_SelectedHFRStar = *starCenters[maxIndex];
+        cacheHFR = starCenters[maxIndex]->HFR;
+        cacheHFRType = type;
+        return cacheHFR;
     }
     else if (type == HFR_HIGH)
     {
@@ -1746,14 +1993,19 @@ double FITSData::getHFR(HFRType type)
         if (starCenters.empty())
             return -1;
 
-        m_SelectedHFRStar = starCenters[static_cast<int>(starCenters.size() * 0.05)];
-        return m_SelectedHFRStar->HFR;
+        m_SelectedHFRStar = *starCenters[static_cast<int>(starCenters.size() * 0.05)];
+        cacheHFR = m_SelectedHFRStar.HFR;
+        cacheHFRType = type;
+        return cacheHFR;
     }
     else if (type == HFR_MEDIAN)
     {
         std::nth_element(starCenters.begin(), starCenters.begin() + starCenters.size() / 2, starCenters.end());
-        m_SelectedHFRStar = starCenters[starCenters.size() / 2];
-        return m_SelectedHFRStar->HFR;
+        m_SelectedHFRStar = *starCenters[starCenters.size() / 2];
+
+        cacheHFR = m_SelectedHFRStar.HFR;
+        cacheHFRType = type;
+        return cacheHFR;
     }
 
     // We may remove saturated stars from the HFR calculation, if we have enough stars.
@@ -1805,7 +2057,9 @@ double FITSData::getHFR(HFRType type)
         if (num_remaining > 0) m = sum / num_remaining;
     }
 
-    return m;
+    cacheHFR = m;
+    cacheHFRType = HFR_AVERAGE;
+    return cacheHFR;
 }
 
 double FITSData::getHFR(int x, int y)
@@ -1818,7 +2072,7 @@ double FITSData::getHFR(int x, int y)
         if (std::fabs(starCenters[i]->x - x) <= starCenters[i]->width / 2 &&
                 std::fabs(starCenters[i]->y - y) <= starCenters[i]->width / 2)
         {
-            m_SelectedHFRStar = starCenters[i];
+            m_SelectedHFRStar = *starCenters[i];
             return starCenters[i]->HFR;
         }
     }
@@ -1830,6 +2084,8 @@ double FITSData::getEccentricity()
 {
     if (starCenters.empty())
         return -1;
+    if (cacheEccentricity >= 0)
+        return cacheEccentricity;
     std::vector<float> eccs;
     for (const auto &s : starCenters)
         eccs.push_back(s->ellipticity);
@@ -1842,6 +2098,7 @@ double FITSData::getEccentricity()
     // e = sqrt(ellipticity * (2 - ellipticity))
     // https://en.wikipedia.org/wiki/Eccentricity_(mathematics)#Ellipses
     const float eccentricity = sqrt(medianEllipticity * (2 - medianEllipticity));
+    cacheEccentricity = eccentricity;
     return eccentricity;
 }
 
@@ -2161,7 +2418,7 @@ void FITSData::applyFilter(FITSScale type, uint8_t * targetImage, QVector<double
 #endif
         }
         if (calcStats)
-            calculateStats(true);
+            calculateStats(true, false);
         break;
 
         // Based on http://www.librow.com/articles/article-1
@@ -2234,7 +2491,7 @@ void FITSData::applyFilter(FITSScale type, uint8_t * targetImage, QVector<double
         case FITS_GAUSSIAN:
             gaussianBlur<T>(Options::focusGaussianKernelSize(), Options::focusGaussianSigma());
             if (calcStats)
-                calculateStats(true);
+                calculateStats(true, false);
             break;
 
         case FITS_ROTATE_CW:
@@ -2283,14 +2540,15 @@ bool FITSData::checkForWCS()
 #ifdef HAVE_WCSLIB
 
     int status = 0;
-    char * header;
-    int nkeyrec, nreject;
+    char * header = nullptr;
+    int nkeyrec = 0, nreject = 0;
 
     // Free wcs before re-use
     if (m_WCSHandle != nullptr)
     {
         wcsvfree(&m_nwcs, &m_WCSHandle);
         m_WCSHandle = nullptr;
+        m_nwcs = 0;
     }
 
     if (fits_hdr2str(fptr, 1, nullptr, 0, &header, &nkeyrec, &status))
@@ -2301,15 +2559,19 @@ bool FITSData::checkForWCS()
         return false;
     }
 
-    if ((status = wcspih(header, nkeyrec, WCSHDR_all, -3, &nreject, &m_nwcs, &m_WCSHandle)) != 0)
+    if ((status = wcspih(header, nkeyrec, WCSHDR_all, 0, &nreject, &m_nwcs, &m_WCSHandle)) != 0)
     {
-        free(header);
+        fits_free_memory(header, &status);
+        header = nullptr;
         wcsvfree(&m_nwcs, &m_WCSHandle);
+        m_WCSHandle = nullptr;
+        m_nwcs = 0;
         m_LastError = QString("wcspih ERROR %1: %2.").arg(status).arg(wcshdr_errmsg[status]);
         return false;
     }
 
-    free(header);
+    fits_free_memory(header, &status);
+    header = nullptr;
 
     if (m_WCSHandle == nullptr)
     {
@@ -2322,6 +2584,7 @@ bool FITSData::checkForWCS()
     {
         wcsvfree(&m_nwcs, &m_WCSHandle);
         m_WCSHandle = nullptr;
+        m_nwcs = 0;
         m_LastError = i18n("No world coordinate systems found.");
         return false;
     }
@@ -2331,6 +2594,7 @@ bool FITSData::checkForWCS()
     {
         wcsvfree(&m_nwcs, &m_WCSHandle);
         m_WCSHandle = nullptr;
+        m_nwcs = 0;
         m_LastError = QString("wcsset error %1: %2.").arg(status).arg(wcs_errmsg[status]);
         return false;
     }
@@ -2354,16 +2618,15 @@ bool FITSData::loadWCS(bool extras)
     if (m_WCSHandle != nullptr)
     {
         wcsvfree(&m_nwcs, &m_WCSHandle);
+        m_nwcs = 0;
         m_WCSHandle = nullptr;
     }
 
     qCDebug(KSTARS_FITS) << "Started WCS Data Processing...";
 
     int status = 0;
-    char * header;
-    int nkeyrec, nreject, nwcs;
-    int w  = width();
-    int h = height();
+    char * header = nullptr;
+    int nkeyrec = 0, nreject = 0;
 
     if (fits_hdr2str(fptr, 1, nullptr, 0, &header, &nkeyrec, &status))
     {
@@ -2374,17 +2637,19 @@ bool FITSData::loadWCS(bool extras)
         return false;
     }
 
-    if ((status = wcspih(header, nkeyrec, WCSHDR_all, -3, &nreject, &nwcs, &m_WCSHandle)) != 0)
+    if ((status = wcspih(header, nkeyrec, WCSHDR_all, 0, &nreject, &m_nwcs, &m_WCSHandle)) != 0)
     {
-        free(header);
+        fits_free_memory(header, &status);
         wcsvfree(&m_nwcs, &m_WCSHandle);
         m_WCSHandle = nullptr;
+        m_nwcs = 0;
         m_LastError = QString("wcspih ERROR %1: %2.").arg(status).arg(wcshdr_errmsg[status]);
         m_WCSState = Failure;
         return false;
     }
 
-    free(header);
+    fits_free_memory(header, &status);
+    header = nullptr;
 
     if (m_WCSHandle == nullptr)
     {
@@ -2398,6 +2663,7 @@ bool FITSData::loadWCS(bool extras)
     {
         wcsvfree(&m_nwcs, &m_WCSHandle);
         m_WCSHandle = nullptr;
+        m_nwcs = 0;
         m_LastError = i18n("No world coordinate systems found.");
         m_WCSState = Failure;
         return false;
@@ -2408,68 +2674,13 @@ bool FITSData::loadWCS(bool extras)
     {
         wcsvfree(&m_nwcs, &m_WCSHandle);
         m_WCSHandle = nullptr;
+        m_nwcs = 0;
         m_LastError = QString("wcsset error %1: %2.").arg(status).arg(wcs_errmsg[status]);
         m_WCSState = Failure;
         return false;
     }
 
-    delete[] m_WCSCoordinates;
-
-    m_WCSCoordinates = new FITSImage::wcs_point[w * h];
-
-    if (m_WCSCoordinates == nullptr)
-    {
-        wcsvfree(&m_nwcs, &m_WCSHandle);
-        m_WCSHandle = nullptr;
-        m_LastError = "Not enough memory for WCS data!";
-        m_WCSState = Failure;
-        return false;
-    }
-
-    m_WCSState = Busy;
-
-    if (extras)
-    {
-        const int nThreads = QThread::idealThreadCount();
-        QList<QFuture<void>> futures;
-        // Calculate how many elements we process per thread
-        uint32_t tStride = m_Statistics.samples_per_channel / nThreads;
-        // Calculate the final stride since we can have some left over due to division above
-        uint32_t fStride = tStride + (m_Statistics.samples_per_channel - (tStride * nThreads));
-
-        for (int i = 0; i < nThreads; i++)
-        {
-            uint32_t cStart = i * tStride;
-            uint32_t cEnd = cStart + ((i == (nThreads - 1)) ? fStride : tStride);
-            // Run threads
-            futures.append(QtConcurrent::run([ = ]()
-            {
-                double phi = 0, theta = 0, world[2], pixcrd[2], imgcrd[2];
-                int stat[2];
-                FITSImage::wcs_point *wcsPointer = m_WCSCoordinates + cStart;
-                for (uint32_t i = cStart; i < cEnd; i++)
-                {
-                    uint32_t x = i % w;
-                    uint32_t y = i / w;
-                    pixcrd[0] = x;
-                    pixcrd[1] = y;
-                    if (wcsp2s(m_WCSHandle, 1, 2, &pixcrd[0], &imgcrd[0], &phi, &theta, &world[0], &stat[0]) == 0)
-                    {
-                        wcsPointer->ra  = world[0];
-                        wcsPointer->dec = world[1];
-                    }
-                    wcsPointer++;
-                }
-            }));
-        }
-
-        for (auto &oneFuture : futures)
-            oneFuture.waitForFinished();
-
-        SkyPoint startPoint(m_WCSCoordinates->ra / 15.0, m_WCSCoordinates->dec);
-        SkyPoint endPoint( (m_WCSCoordinates + w * h - 1)->ra / 15.0, (m_WCSCoordinates + w * h - 1)->dec);
-        findObjectsInImage(startPoint, endPoint);
-    }
+    m_ObjectsSearched = false;
     m_WCSState = Success;
     FullWCS = extras;
     HasWCS = true;
@@ -2553,10 +2764,92 @@ bool FITSData::pixelToWCS(const QPointF &wcsPixelPoint, SkyPoint &wcsCoord)
 }
 
 #if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
-void FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
+bool FITSData::searchObjects()
+{
+    if (m_ObjectsSearched)
+        return true;
+
+    m_ObjectsSearched = true;
+
+    SkyPoint startPoint;
+    SkyPoint endPoint;
+
+    pixelToWCS(QPointF(0, 0), startPoint);
+    pixelToWCS(QPointF(width() - 1, height() - 1), endPoint);
+
+    return findObjectsInImage(startPoint, endPoint);
+}
+
+bool FITSData::findWCSBounds(double &minRA, double &maxRA, double &minDec, double &maxDec)
+{
+    if (m_WCSHandle == nullptr)
+    {
+        m_LastError = i18n("No world coordinate systems found.");
+        return false;
+    }
+
+    maxRA  = -1000;
+    minRA  = 1000;
+    maxDec = -1000;
+    minDec = 1000;
+
+    auto updateMinMax = [&](int x, int y)
+    {
+        int stat[2];
+        double imgcrd[2], phi, pixcrd[2], theta, world[2];
+
+        pixcrd[0] = x;
+        pixcrd[1] = y;
+
+        if (wcsp2s(m_WCSHandle, 1, 2, &pixcrd[0], &imgcrd[0], &phi, &theta, &world[0], &stat[0]))
+            return;
+
+        minRA = std::min(minRA, world[0]);
+        maxRA = std::max(maxRA, world[0]);
+        minDec = std::min(minDec, world[1]);
+        maxDec = std::max(maxDec, world[1]);
+    };
+
+    // Find min and max values from edges
+    for (int y = 0; y < height(); y++)
+    {
+        updateMinMax(0, y);
+        updateMinMax(width() - 1, y);
+    }
+
+    for (int x = 1; x < width() - 1; x++)
+    {
+        updateMinMax(x, 0);
+        updateMinMax(x, height() - 1);
+    }
+
+    // Check if either pole is in the image
+    SkyPoint NCP(0, 90);
+    SkyPoint SCP(0, -90);
+    QPointF pixelPoint, imagePoint, pPoint;
+    if (wcsToPixel(NCP, pPoint, imagePoint))
+    {
+        if (pPoint.x() > 0 && pPoint.x() < width() && pPoint.y() > 0 && pPoint.y() < height())
+        {
+            maxDec = 90;
+        }
+    }
+    if (wcsToPixel(SCP, pPoint, imagePoint))
+    {
+        if (pPoint.x() > 0 && pPoint.x() < width() && pPoint.y() > 0 && pPoint.y() < height())
+        {
+            minDec = -90;
+        }
+    }
+    return true;
+}
+#endif
+
+#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
+bool FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
 {
     if (KStarsData::Instance() == nullptr)
-        return;
+        return false;
 
     int w = width();
     int h = height();
@@ -2612,6 +2905,7 @@ void FITSData::findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint)
     }
 
     delete (num);
+    return true;
 }
 #endif
 
@@ -3212,7 +3506,7 @@ bool FITSData::checkDebayer()
 
     if (m_Statistics.dataType != TUSHORT && m_Statistics.dataType != TBYTE)
     {
-        KSNotification::error(i18n("Only 8 and 16 bits bayered images supported."), i18n("Debayer error"));
+        m_LastError = i18n("Only 8 and 16 bits bayered images supported.");
         return false;
     }
     QString pattern(bayerPattern);
@@ -3245,7 +3539,7 @@ bool FITSData::checkDebayer()
     // We return unless we find a valid pattern
     else
     {
-        KSNotification::error(i18n("Unsupported bayer pattern %1.", pattern), i18n("Debayer error"));
+        m_LastError = i18n("Unsupported bayer pattern %1.", pattern);
         return false;
     }
 
@@ -3276,8 +3570,7 @@ bool FITSData::checkDebayer()
     }
     if (debayerParams.offsetX != 0 || debayerParams.offsetY > 1 || debayerParams.offsetY < 0)
     {
-        KSNotification::error(i18n("Unsupported bayer offsets %1 %2.",
-                                   debayerParams.offsetX, debayerParams.offsetY), i18n("Debayer error"));
+        m_LastError = i18n("Unsupported bayer offsets %1 %2.", debayerParams.offsetX, debayerParams.offsetY);
         return false;
     }
 
@@ -3344,7 +3637,8 @@ bool FITSData::debayer_8bit()
     }
     catch (const std::bad_alloc &e)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        m_LastError = i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what());
         return false;
     }
 
@@ -3353,7 +3647,8 @@ bool FITSData::debayer_8bit()
 
     if (bayer_destination_buffer == nullptr)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer."), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        m_LastError = i18n("Unable to allocate memory for temporary bayer buffer.");
         return false;
     }
 
@@ -3373,7 +3668,7 @@ bool FITSData::debayer_8bit()
 
     if (error_code != DC1394_SUCCESS)
     {
-        KSNotification::error(i18n("Debayer failed (%1)", error_code), i18n("Debayer error"));
+        m_LastError = i18n("Debayer failed (%1)", error_code);
         m_Statistics.channels = 1;
         delete[] destinationBuffer;
         return false;
@@ -3389,7 +3684,8 @@ bool FITSData::debayer_8bit()
         catch (const std::bad_alloc &e)
         {
             delete[] destinationBuffer;
-            KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+            logOOMError(rgb_size);
+            m_LastError = i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what());
             return false;
         }
 
@@ -3412,7 +3708,10 @@ bool FITSData::debayer_8bit()
         *bBuff++ = bayer_destination_buffer[i + 2];
     }
 
-    m_Statistics.channels = (m_Mode == FITS_NORMAL) ? 3 : 1;
+    // TODO Maybe all should be treated the same
+    // Doing single channel saves lots of memory though for non-essential
+    // frames
+    m_Statistics.channels = (m_Mode == FITS_NORMAL || m_Mode == FITS_CALIBRATE) ? 3 : 1;
     m_Statistics.dataType = TBYTE;
     delete[] destinationBuffer;
     return true;
@@ -3430,7 +3729,8 @@ bool FITSData::debayer_16bit()
     }
     catch (const std::bad_alloc &e)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        m_LastError = i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what());
         return false;
     }
 
@@ -3439,7 +3739,8 @@ bool FITSData::debayer_16bit()
 
     if (bayer_destination_buffer == nullptr)
     {
-        KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer."), i18n("Debayer error"));
+        logOOMError(rgb_size);
+        m_LastError = i18n("Unable to allocate memory for temporary bayer buffer.");
         return false;
     }
 
@@ -3459,7 +3760,7 @@ bool FITSData::debayer_16bit()
 
     if (error_code != DC1394_SUCCESS)
     {
-        KSNotification::error(i18n("Debayer failed (%1)", error_code), i18n("Debayer error"));
+        m_LastError = i18n("Debayer failed (%1)");
         m_Statistics.channels = 1;
         delete[] destinationBuffer;
         return false;
@@ -3474,8 +3775,9 @@ bool FITSData::debayer_16bit()
         }
         catch (const std::bad_alloc &e)
         {
+            logOOMError(rgb_size);
             delete[] destinationBuffer;
-            KSNotification::error(i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what()), i18n("Debayer error"));
+            m_LastError = i18n("Unable to allocate memory for temporary bayer buffer: %1", e.what());
             return false;
         }
 
@@ -3498,10 +3800,16 @@ bool FITSData::debayer_16bit()
         *bBuff++ = bayer_destination_buffer[i + 2];
     }
 
-    m_Statistics.channels = (m_Mode == FITS_NORMAL) ? 3 : 1;
+    m_Statistics.channels = (m_Mode == FITS_NORMAL || m_Mode == FITS_CALIBRATE) ? 3 : 1;
     m_Statistics.dataType = TUSHORT;
     delete[] destinationBuffer;
     return true;
+}
+
+void FITSData::logOOMError(uint32_t requiredMemory)
+{
+    qCCritical(KSTARS_FITS) << "Debayed memory allocation failure. Required Memory:" << KFormat().formatByteSize(requiredMemory)
+                            << "Available system memory:" << KSUtils::getAvailableRAM();
 }
 
 double FITSData::getADU() const
@@ -3667,7 +3975,7 @@ bool FITSData::ImageToFITS(const QString &filename, const QString &format, QStri
         return false;
     }
 
-    output = QString(KSPaths::writableLocation(QStandardPaths::TempLocation) + QFileInfo(filename).fileName() + ".fits");
+    output = QDir(getTemporaryPath()).filePath(filename + ".fits");
 
     //This section sets up the FITS File
     fitsfile *fptr = nullptr;
@@ -3770,7 +4078,7 @@ bool FITSData::ImageToFITS(const QString &filename, const QString &format, QStri
     return true;
 }
 
-bool FITSData::injectWCS(double orientation, double ra, double dec, double pixscale, bool eastToTheRight)
+void FITSData::injectWCS(double orientation, double ra, double dec, double pixscale, bool eastToTheRight)
 {
     int status = 0;
 
@@ -3820,10 +4128,6 @@ bool FITSData::injectWCS(double orientation, double ra, double dec, double pixsc
     fits_update_key(fptr, TDOUBLE, "CROTA2", &rotation, "CROTA2", &status);
 
     m_WCSState = Idle;
-
-    qCDebug(KSTARS_FITS) << "Finished update WCS info.";
-
-    return true;
 }
 
 bool FITSData::contains(const QPointF &point) const
@@ -3899,7 +4203,7 @@ template <typename T> void FITSData::constructHistogramInternal()
         m_HistogramIntensity[n].fill(0, m_HistogramBinCount + 1);
         m_HistogramFrequency[n].fill(0, m_HistogramBinCount + 1);
         m_CumulativeFrequency[n].fill(0, m_HistogramBinCount + 1);
-        m_HistogramBinWidth[n] = (m_Statistics.max[n] - m_Statistics.min[n]) / (m_HistogramBinCount - 1);
+        m_HistogramBinWidth[n] = qMax(1.0, (m_Statistics.max[n] - m_Statistics.min[n]) / (m_HistogramBinCount - 1));
     }
 
     QVector<QFuture<void>> futures;
@@ -4038,26 +4342,29 @@ void FITSData::recordLastError(int errorCode)
     m_LastError = fitsErrorMessage;
 }
 
-double FITSData::getAverageMean() const
+double FITSData::getAverageMean(bool roi) const
 {
-    if (m_Statistics.channels == 1)
-        return m_Statistics.mean[0];
+    const FITSImage::Statistic* ptr = (roi ? &m_ROIStatistics : &m_Statistics);
+    if (ptr->channels == 1)
+        return ptr->mean[0];
     else
-        return (m_Statistics.mean[0] + m_Statistics.mean[1] + m_Statistics.mean[2]) / 3.0;
+        return (ptr->mean[0] + ptr->mean[1] + ptr->mean[2]) / 3.0;
 }
 
-double FITSData::getAverageMedian() const
+double FITSData::getAverageMedian(bool roi) const
 {
-    if (m_Statistics.channels == 1)
-        return m_Statistics.median[0];
+    const FITSImage::Statistic* ptr = (roi ? &m_ROIStatistics : &m_Statistics);
+    if (ptr->channels == 1)
+        return ptr->median[0];
     else
-        return (m_Statistics.median[0] + m_Statistics.median[1] + m_Statistics.median[2]) / 3.0;
+        return (ptr->median[0] + ptr->median[1] + ptr->median[2]) / 3.0;
 }
 
-double FITSData::getAverageStdDev() const
+double FITSData::getAverageStdDev(bool roi) const
 {
-    if (m_Statistics.channels == 1)
-        return m_Statistics.stddev[0];
+    const FITSImage::Statistic* ptr = (roi ? &m_ROIStatistics : &m_Statistics);
+    if (ptr->channels == 1)
+        return ptr->stddev[0];
     else
-        return (m_Statistics.stddev[0] + m_Statistics.stddev[1] + m_Statistics.stddev[2]) / 3.0;
+        return (ptr->stddev[0] + ptr->stddev[1] + ptr->stddev[2]) / 3.0;
 }

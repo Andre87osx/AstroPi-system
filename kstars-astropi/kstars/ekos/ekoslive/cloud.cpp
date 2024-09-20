@@ -1,13 +1,9 @@
-/*  Ekos Live Cloud
-
-    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Cloud Channel
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #include "cloud.h"
@@ -196,17 +192,7 @@ void Cloud::asyncUpload()
     if (m_ImageData->isCompressed() == false)
     {
         compressedFile = QDir::tempPath() + QString("/ekoslivecloud%1").arg(m_UUID);
-
-        int isLossLess = 0;
-        fpstate	fpvar;
-        fp_init (&fpvar);
-        if (fp_pack(filepath.toLatin1().data(), compressedFile.toLatin1().data(), fpvar, &isLossLess) < 0)
-        {
-            if (filepath.startsWith(QDir::tempPath()))
-                QFile::remove(filepath);
-            qCCritical(KSTARS_EKOS) << "Cloud upload failed. Failed to compress" << filepath;
-            return;
-        }
+        m_ImageData->saveImage(compressedFile + QStringLiteral("[compress R]"));
     }
 
     // Upload the compressed image

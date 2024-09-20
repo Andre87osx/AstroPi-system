@@ -1,19 +1,8 @@
-/***************************************************************************
-                          ksplanet.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Jul 22 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "ksplanet.h"
 
@@ -25,6 +14,9 @@
 #include <typeinfo>
 
 #include "kstars_debug.h"
+
+// Qt version calming
+#include <qtskipemptyparts.h>
 
 KSPlanet::OrbitDataManager KSPlanet::odm;
 
@@ -43,7 +35,7 @@ bool KSPlanet::OrbitDataManager::readOrbitData(const QString &fname, QVector<Orb
         QStringList fields;
         while (fileReader.hasMoreLines())
         {
-            fields = fileReader.readLine().split(' ', QString::SkipEmptyParts);
+            fields = fileReader.readLine().split(' ', Qt::SkipEmptyParts);
 
             if (fields.size() == 3)
             {
@@ -150,7 +142,7 @@ KSPlanet::KSPlanet(int n) : KSPlanetBase()
             KSPlanetBase::init(i18n("Neptune"), "neptune", KSPlanetBase::planetColor[KSPlanetBase::NEPTUNE], 49572.);
             break;
         default:
-            qDebug() << "Error: Illegal identifier in KSPlanet constructor: " << n;
+            qDebug() << Q_FUNC_INFO << "Error: Illegal identifier in KSPlanet constructor: " << n;
             break;
     }
 }
@@ -226,13 +218,13 @@ void KSPlanet::calcEcliptic(double Tau, EclipticPosition &epret) const
         {
             sum[i] += odc.Lon[i][j].A * cos(odc.Lon[i][j].B + odc.Lon[i][j].C * Tau);
             /*
-            qDebug() << "sum[" << i <<"] =" << sum[i] <<
+            qDebug() << Q_FUNC_INFO << "sum[" << i <<"] =" << sum[i] <<
                 " A = " << odc.Lon[i][j].A << " B = " << odc.Lon[i][j].B <<
                 " C = " << odc.Lon[i][j].C;
                 */
         }
         sum[i] *= Tpow[i];
-        //qDebug() << name() << " : sum[" << i << "] = " << sum[i];
+        //qDebug() << Q_FUNC_INFO << name() << " : sum[" << i << "] = " << sum[i];
     }
 
     epret.longitude.setRadians(sum[0] + sum[1] + sum[2] + sum[3] + sum[4] + sum[5]);
@@ -265,7 +257,7 @@ void KSPlanet::calcEcliptic(double Tau, EclipticPosition &epret) const
     epret.radius = sum[0] + sum[1] + sum[2] + sum[3] + sum[4] + sum[5];
 
     /*
-    qDebug() << name() << " pre: Lat = " << epret.latitude.toDMSString() << " Long = " <<
+    qDebug() << Q_FUNC_INFO << name() << " pre: Lat = " << epret.latitude.toDMSString() << " Long = " <<
         epret.longitude.toDMSString() << " Dist = " << epret.radius;
     */
 }

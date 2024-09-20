@@ -1,19 +1,8 @@
-/***************************************************************************
-                          modcalcaltaz.cpp  -  description
-                             -------------------
-    begin                : s� oct 26 2002
-    copyright            : (C) 2002 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "modcalcaltaz.h"
 
@@ -37,7 +26,7 @@ modCalcAltAz::modCalcAltAz(QWidget *parentSplit) : QFrame(parentSplit)
     setupUi(this);
 
     KStarsData *data = KStarsData::Instance();
-    RA->setDegType(false);
+    RA->setUnits(dmsBox::HOURS);
 
     //Initialize Date/Time and Location data
     geoPlace = data->geo();
@@ -86,8 +75,8 @@ void modCalcAltAz::slotObject()
     if (FindDialog::Instance()->exec() == QDialog::Accepted)
     {
         SkyObject *o = FindDialog::Instance()->targetObject();
-        RA->showInHours(o->ra());
-        Dec->showInDegrees(o->dec());
+        RA->show(o->ra());
+        Dec->show(o->dec());
         slotCompute();
     }
 }
@@ -108,17 +97,17 @@ void modCalcAltAz::slotCompute()
         //Validate Az and Alt coordinates
         bool ok(false);
         dms alt;
-        dms az = Az->createDms(true, &ok);
+        dms az = Az->createDms(&ok);
         if (ok)
-            alt = Alt->createDms(true, &ok);
+            alt = Alt->createDms(&ok);
         if (ok)
         {
             SkyPoint sp;
             sp.setAz(az);
             sp.setAlt(alt);
             sp.HorizontalToEquatorial(&LST, geoPlace->lat());
-            RA->showInHours(sp.ra());
-            Dec->showInDegrees(sp.dec());
+            RA->show(sp.ra());
+            Dec->show(sp.dec());
         }
     }
     else
@@ -126,15 +115,15 @@ void modCalcAltAz::slotCompute()
         //Validate RA and Dec coordinates
         bool ok(false);
         dms ra;
-        dms dec = Dec->createDms(true, &ok);
+        dms dec = Dec->createDms(&ok);
         if (ok)
-            ra = RA->createDms(false, &ok);
+            ra = RA->createDms(&ok);
         if (ok)
         {
             SkyPoint sp(ra, dec);
             sp.EquatorialToHorizontal(&LST, geoPlace->lat());
-            Az->showInDegrees(sp.az());
-            Alt->showInDegrees(sp.alt());
+            Az->show(sp.az());
+            Alt->show(sp.alt());
         }
     }
 }

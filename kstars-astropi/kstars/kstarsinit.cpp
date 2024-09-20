@@ -1,19 +1,8 @@
-/***************************************************************************
-                          kstarsinit.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon Feb 25 2002
-    copyright            : (C) 2002 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "kstars.h"
 
@@ -29,6 +18,7 @@
 #include "skyobjects/ksplanetbase.h"
 #include "widgets/timespinbox.h"
 #include "widgets/timestepbox.h"
+#include "widgets/timeunitbox.h"
 #include "hips/hipsmanager.h"
 #include "auxiliary/thememanager.h"
 
@@ -178,7 +168,7 @@ void KStars::initActions()
             << QKeySequence(Qt::CTRL + Qt::Key_R);
 #endif
     actionCollection()->addAction("printing_wizard", this, SLOT(slotPrintingWizard()))
-            << i18nc("start Printing Wizard", "Printing &Wizard");
+            << i18nc("start Printing Wizard", "Printing &Wizard...");
     ka = actionCollection()->addAction(KStandardAction::Print, "print", this, SLOT(slotPrint()));
     ka->setIcon(QIcon::fromTheme("document-print"));
     //actionCollection()->addAction( KStandardAction::Quit,  "quit",  this, SLOT(close) );
@@ -224,11 +214,11 @@ void KStars::initActions()
     //UpdateTime() if clock is stopped (so hidden objects get drawn)
     QObject::connect(data()->clock(), SIGNAL(clockToggled(bool)), this, SLOT(updateTime()));
     actionCollection()->addAction("time_step_forward", this, SLOT(slotStepForward()))
-            << i18n("Advance one step forward in time")
+            << i18n("Advance One Step Forward in Time")
             << QIcon::fromTheme("media-skip-forward")
             << QKeySequence(Qt::Key_Greater);
     actionCollection()->addAction("time_step_backward", this, SLOT(slotStepBackward()))
-            << i18n("Advance one step backward in time")
+            << i18n("Advance One Step Backward in Time")
             << QIcon::fromTheme("media-skip-backward")
             << QKeySequence(Qt::Key_Less);
 
@@ -270,13 +260,13 @@ void KStars::initActions()
     action->setIcon(QIcon::fromTheme("view-fullscreen"));
 
     actionCollection()->addAction("coordsys", this, SLOT(slotCoordSys()))
-            << (Options::useAltAz() ? i18n("Switch to star globe view (Equatorial &Coordinates)") :
-                i18n("Switch to horizonal view (Horizontal &Coordinates)"))
+            << (Options::useAltAz() ? i18n("Switch to Star Globe View (Equatorial &Coordinates)") :
+                i18n("Switch to Horizonal View (Horizontal &Coordinates)"))
             << QKeySequence("Space");
 
     actionCollection()->addAction("toggle_terrain", this, SLOT(slotTerrain()))
-            << (Options::showTerrain() ? i18n("Hide terrain") :
-                i18n("Show terrain"))
+            << (Options::showTerrain() ? i18n("Hide Terrain") :
+                i18n("Show Terrain"))
             << QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_T);
 
     actionCollection()->addAction("project_lambert", this, SLOT(slotMapProjection()))
@@ -351,8 +341,8 @@ void KStars::initActions()
     addColorMenuItem(i18n("&Moonless Night"), "cs_moonless-night");
 
     //Add any user-defined color schemes:
-    QFile file(KSPaths::locate(QStandardPaths::GenericDataLocation,
-                               "colors.dat")); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    QFile file(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "colors.dat"));
     if (file.exists() && file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);
@@ -409,13 +399,13 @@ void KStars::initActions()
 
     // Updates actions
     actionCollection()->addAction("update_comets", this, SLOT(slotUpdateComets()))
-            << i18n("Update comets orbital elements");
+            << i18n("Update Comets Orbital Elements");
     actionCollection()->addAction("update_asteroids", this, SLOT(slotUpdateAsteroids()))
-            << i18n("Update asteroids orbital elements");
+            << i18n("Update Asteroids Orbital Elements");
     actionCollection()->addAction("update_supernovae", this, SLOT(slotUpdateSupernovae()))
-            << i18n("Update Recent Supernovae data");
+            << i18n("Update Recent Supernovae Data");
     actionCollection()->addAction("update_satellites", this, SLOT(slotUpdateSatellites()))
-            << i18n("Update satellites orbital elements");
+            << i18n("Update Satellites Orbital Elements");
 
     //Tools Menu:
     actionCollection()->addAction("astrocalculator", this, SLOT(slotCalculator()))
@@ -488,7 +478,7 @@ void KStars::initActions()
 
     // ==== observation menu - execute ================
     actionCollection()->addAction("execute", this, SLOT(slotExecute()))
-            << i18n("Execute the session Plan...") << QKeySequence(Qt::CTRL + Qt::Key_2);
+            << i18n("Execute the Session Plan...") << QKeySequence(Qt::CTRL + Qt::Key_2);
 
     // ==== observation menu - polaris hour angle ================
     actionCollection()->addAction("polaris_hour_angle", this, SLOT(slotPolarisHourAngle()))
@@ -538,7 +528,14 @@ void KStars::initActions()
     m_TimeStepBox->tsbox()->setToolTip(TSBToolTip);
     QWidgetAction *wa = new QWidgetAction(this);
     wa->setDefaultWidget(m_TimeStepBox);
+
+    // Add actions for the timestep widget's functions
     actionCollection()->addAction("timestep_control", wa) << i18n("Time step control");
+    const auto unitbox = m_TimeStepBox->unitbox();
+    ka = actionCollection()->addAction("timestep_increase_units", unitbox->increaseUnitsAction());
+    ka->setShortcut(QKeySequence(Qt::Key_Plus));
+    ka = actionCollection()->addAction("timestep_decrease_units", unitbox->decreaseUnitsAction());
+    ka->setShortcut(QKeySequence(Qt::Key_Underscore));
 
     // ==== viewToolBar actions ================
     actionCollection()->add<KToggleAction>("show_stars", this, SLOT(slotViewToolBar()))
@@ -625,6 +622,13 @@ void KStars::initActions()
          << ToolTip(i18n("Toggle Sensor FOV"));
     ka->setEnabled(false);
     ka->setChecked(Options::showSensorFOV());
+
+    ka = actionCollection()->add<KToggleAction>("show_mosaic_panel", this, SLOT(slotINDIToolBar()))
+         << i18nc("Toggle the Mosaic Panel", "Mosaic Panel")
+         << QIcon::fromTheme("zoom-draw")
+         << ToolTip(i18n("Toggle Mosaic Panel"));
+    ka->setEnabled(true);
+    ka->setChecked(Options::showMosaicPanel());
 
     ka = actionCollection()->add<KToggleAction>("show_mount_box", this, SLOT(slotINDIToolBar()))
          << i18nc("Toggle the Mount Control Panel", "Mount Control")
@@ -737,11 +741,11 @@ void KStars::repopulateHIPS()
     {
         QString title = source.value("obs_title");
 
-        QAction *ka = actionCollection()->addAction(title, this, SLOT(slotHIPSSource()))
-                      << title << AddToGroup(hipsGroup)
-                      << Checked(Options::hIPSSource() == title);
+        QAction *newAction = actionCollection()->addAction(title, this, SLOT(slotHIPSSource()))
+                             << title << AddToGroup(hipsGroup)
+                             << Checked(Options::hIPSSource() == title);
 
-        hipsActionMenu->addAction(ka);
+        hipsActionMenu->addAction(newAction);
     }
 
     // Hips settings
@@ -756,23 +760,18 @@ void KStars::initStatusBar()
     statusBar()->showMessage(i18n(" Welcome to KStars "));
 
     QString s = "000d 00m 00s,   +00d 00\' 00\""; //only need this to set the width
-    if (Options::showAltAzField())
-    {
-        AltAzField.setText(s);
-        statusBar()->insertPermanentWidget(0, &AltAzField);
-    }
 
-    if (Options::showRADecField())
-    {
-        RADecField.setText(s);
-        statusBar()->insertPermanentWidget(1, &RADecField);
-    }
+    AltAzField.setHidden(!Options::showAltAzField());
+    AltAzField.setText(s);
+    statusBar()->insertPermanentWidget(0, &AltAzField);
 
-    if (Options::showJ2000RADecField())
-    {
-        J2000RADecField.setText(s);
-        statusBar()->insertPermanentWidget(1, &J2000RADecField);
-    }
+    RADecField.setHidden(!Options::showRADecField());
+    RADecField.setText(s);
+    statusBar()->insertPermanentWidget(1, &RADecField);
+
+    J2000RADecField.setHidden(!Options::showJ2000RADecField());
+    J2000RADecField.setText(s);
+    statusBar()->insertPermanentWidget(2, &J2000RADecField);
 
     if (!Options::showStatusBar())
         statusBar()->hide();
@@ -781,21 +780,23 @@ void KStars::initStatusBar()
 void KStars::datainitFinished()
 {
     //Time-related connections
-    connect(data()->clock(), SIGNAL(timeAdvanced()), this, SLOT(updateTime()));
-    connect(data()->clock(), SIGNAL(timeChanged()), this, SLOT(updateTime()));
+    connect(data()->clock(), &SimClock::timeAdvanced, this, [this]()
+    {
+        updateTime();
+    });
+    connect(data()->clock(), &SimClock::timeChanged, this, [this]()
+    {
+        updateTime();
+    });
 
     //Add GUI elements to main window
     buildGUI();
 
-    connect(data()->clock(), SIGNAL(scaleChanged(float)), map(), SLOT(slotClockSlewing()));
+    connect(data()->clock(), &SimClock::scaleChanged, map(), &SkyMap::slotClockSlewing);
 
-    connect(data(), SIGNAL(skyUpdate(bool)), map(), SLOT(forceUpdateNow()));
-    connect(m_TimeStepBox, SIGNAL(scaleChanged(float)), data(), SLOT(setTimeDirection(float)));
-    connect(m_TimeStepBox, SIGNAL(scaleChanged(float)), data()->clock(), SLOT(setClockScale(float)));
-    connect(m_TimeStepBox, SIGNAL(scaleChanged(float)), map(), SLOT(setFocus()));
-
-    //m_equipmentWriter = new EquipmentWriter();
-    //m_observerAdd = new ObserverAdd;
+    connect(data(), &KStarsData::skyUpdate, map(), &SkyMap::forceUpdateNow);
+    connect(m_TimeStepBox, &TimeStepBox::scaleChanged, data(), &KStarsData::setTimeDirection);
+    connect(m_TimeStepBox, &TimeStepBox::scaleChanged, data()->clock(), &SimClock::setClockScale);
 
     //Do not start the clock if "--paused" specified on the cmd line
     if (StartClockRunning)

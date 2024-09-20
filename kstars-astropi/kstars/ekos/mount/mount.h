@@ -1,11 +1,8 @@
-/*  Ekos Mount Module
-    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #ifndef MOUNT_H
 #define MOUNT_H
@@ -17,6 +14,7 @@
 #include "indi/indistd.h"
 #include "indi/indifocuser.h"
 #include "indi/inditelescope.h"
+#include "ekos/align/polaralignmentassistant.h"
 
 class QQuickView;
 class QQuickItem;
@@ -27,7 +25,7 @@ namespace Ekos
  *@class Mount
  *@short Supports controlling INDI telescope devices including setting/retrieving mount properties, slewing, motion and speed controls, in addition to enforcing altitude limits and parking/unparking.
  *@author Jasem Mutlaq
- *@version 1.4
+ *@version 1.5
  */
 
 class Mount : public QWidget, public Ui::Mount
@@ -53,7 +51,7 @@ class Mount : public QWidget, public Ui::Mount
 
     public:
         Mount();
-        ~Mount();
+        ~Mount() override;
 
         //typedef enum { PARKING_IDLE, PARKING_OK, UNPARKING_OK, PARKING_BUSY, UNPARKING_BUSY, PARKING_ERROR } ParkingStatus;
 
@@ -61,17 +59,20 @@ class Mount : public QWidget, public Ui::Mount
         typedef enum
         {
             FLIP_NONE,      // this is the default state, comparing the hour angle with the next flip position
-            // it moves to FLIP_PLANNED when a flip is needed.
-            FLIP_PLANNED,   // this signals to the Capture class that a flip is required, the Capture class will
-            // move to FLIP_ACCEPTED when it has completed everything that needs to be done.
-            FLIP_WAITING,   // Capture seems to set this state to signal that the flip will have to wait
-            FLIP_ACCEPTED,  // Capture signals to the mount that a flip slew can be started
-            FLIP_RUNNING,   // this signals that a flip slew is in progress, when the slew stops the state
-            // is set to FLIP_COMPLETED
+            // it moves to FLIP_PLANNED when a flip is needed
+            FLIP_PLANNED,   // a meridian flip is ready to be started due to the target position and the
+            // configured offsets and signals to the Capture class that a flip is required
+            FLIP_WAITING,   // step after FLUP_PLANNED waiting until Capture completes a running exposure
+            FLIP_ACCEPTED,  // Capture is idle or has completed the exposure and will wait until the flip
+            // is completed.
+            FLIP_RUNNING,   // this signals that a flip slew is in progress, when the slew is completed
+            // the state is set to FLIP_COMPLETED
             FLIP_COMPLETED, // this checks that the flip was completed successfully or not and after tidying up
             // moves to FLIP_NONE to wait for the next flip requirement.
             // Capture sees this and resumes.
-            FLIP_ERROR      // errors in the flip process should end up here
+            FLIP_ERROR,     // errors in the flip process should end up here
+            FLIP_INACTIVE   // do not execute a meridian flip since it will disturb other activities like
+            // a running polar alignment
         } MeridianFlipStatus;
 
         /**
@@ -99,6 +100,13 @@ class Mount : public QWidget, public Ui::Mount
         ISD::Telescope::Status status() const
         {
             return m_Status;
+        }
+        QString statusString(bool translated) const
+        {
+            if (currentTelescope)
+                return currentTelescope->statusString(m_Status, translated);
+            else
+                return "NA";
         }
         ISD::Telescope::PierSide pierSide() const
         {
@@ -356,9 +364,9 @@ class Mount : public QWidget, public Ui::Mount
         // Get list of scopes
         //QJsonArray getScopes() const;
 
-        /*
+        /**
          * @brief Check if a meridian flip if necessary.
-         * @param lst current local sideral time
+         * @param lst local sideral time
          * @return true if a meridian flip is necessary
          */
         bool checkMeridianFlip(dms lst);
@@ -416,10 +424,14 @@ class Mount : public QWidget, public Ui::Mount
         void updateLog(int messageID);
 
         /**
-             * @brief updateTelescopeCoords runs every UPDATE_DELAY milliseconds to update the displayed coordinates of the mount and to ensure mount is
-             * within altitude limits if the altitude limits are enabled.
+             * @brief updateTelescopeCoords is triggered by the ISD::Telescope::newCoord() event and updates the displayed
+             * coordinates of the mount and to ensure mount is within altitude limits if the altitude limits are enabled.
+             * The frequency of this update depends on the REFRESH parameter of the INDI mount device.
+             * @param position latest coordinates the mount reports it is pointing to
+             * @param pierSide pierSide
+             * @param ha hour angle of the latest coordinates
              */
-        void updateTelescopeCoords();
+        void updateTelescopeCoords(const SkyPoint &position, ISD::Telescope::PierSide pierSide, const dms &ha);
 
         /**
              * @brief move Issues motion command to the mount to move in a particular direction based the request NS and WE values
@@ -486,7 +498,7 @@ class Mount : public QWidget, public Ui::Mount
 
         void meridianFlipStatusChanged(MeridianFlipStatus status);
 
-        /*
+        /**
          * @brief set meridian flip activation and hours
          * @param activate true iff the meridian flip should be executed
          * @param hours angle past the meridian when the flip should be delayed
@@ -494,11 +506,38 @@ class Mount : public QWidget, public Ui::Mount
         void setMeridianFlipValues(bool activate, double hours);
 
         /**
+         * @brief React upon status changes of the polar alignment - mainly to
+         *        avoid meridian flips happening during polar alignment.
+         */
+        void paaStageChanged(int stage);
+
+        /**
          * @brief registerNewModule Register an Ekos module as it arrives via DBus
          * and create the appropriate DBus interface to communicate with it.
          * @param name of module
          */
         void registerNewModule(const QString &name);
+
+        /**
+         * @brief gotoTarget Slew to target coordinates.
+         * @param target Target
+         * @return True if slew successful, false otherwise.
+         */
+        bool gotoTarget(const SkyPoint &target);
+
+        /**
+         * @brief syncAxisReversed Update Mount Control GUI on the reverse motion toggled state.
+         * @param axis RA (left/right) or DE (up/down)
+         * @param reversed True if reversed, false otherwise.
+         */
+        void syncAxisReversed(INDI_EQ_AXIS axis, bool reversed);
+
+        /**
+         * @brief stopTimers Need to stop update timers when profile is disconnected
+         * but due to timing and race conditions, the timers can trigger an invalid access
+         * to INDI device.
+         */
+        void stopTimers();
 
     private slots:
         void startParkTimer();
@@ -509,9 +548,29 @@ class Mount : public QWidget, public Ui::Mount
 
     signals:
         void newLog(const QString &text);
-        void newCoords(const QString &ra, const QString &dec, const QString &az,
-                       const QString &alt, int pierSide, const QString &ha);
-        void newTarget(const QString &name);
+        /**
+         * @brief Update event with the current telescope position
+         * @param position mount position. Independent from the mount type,
+         * the EQ coordinates(both JNow and J2000) as well as the alt/az values are filled.
+         * @param pierside for GEMs report the pier side the scope is currently (PierSide::PIER_WEST means
+         * the mount is on the western side of the pier pointing east of the meridian).
+         * @param ha current hour angle
+         */
+        void newCoords(const SkyPoint &position, ISD::Telescope::PierSide pierSide, const dms &ha);
+        /**
+         * @brief The mount has finished the slew to a new target.
+         * @param currentCoords exact position where the mount is positioned
+         */
+        void newTarget(SkyPoint &currentCoord);
+
+        /**
+         * @brief The mount has finished the slew to a new target.
+         * @param Name Name of object, if any, the mount is positioned at.
+         */
+        void newTargetName(const QString &name);
+        /**
+         * @brief Change in the mount status.
+         */
         void newStatus(ISD::Telescope::Status status);
         void newParkStatus(ISD::ParkStatus status);
         void pierSideChanged(ISD::Telescope::PierSide side);
@@ -522,6 +581,7 @@ class Mount : public QWidget, public Ui::Mount
 
     private:
         void syncGPS();
+        void setScopeStatus(ISD::Telescope::Status status);
         MeridianFlipStatus m_MFStatus = FLIP_NONE;
         void setMeridianFlipStatus(MeridianFlipStatus status);
         void meridianFlipStatusChangedInternal(MeridianFlipStatus status);
@@ -545,7 +605,6 @@ class Mount : public QWidget, public Ui::Mount
         QString lastNotificationMessage;
 
         // Auto Park
-        QTimer updateTimer;
         QTimer autoParkTimer;
 
         // Limits

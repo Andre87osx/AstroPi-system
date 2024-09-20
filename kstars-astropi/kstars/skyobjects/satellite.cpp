@@ -1,19 +1,8 @@
-/***************************************************************************
-                          satellite.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Tue 02 Mar 2011
-    copyright            : (C) 2009 by Jerome SONRIER
-    email                : jsid@emor3j.fr.eu.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2009 Jerome SONRIER <jsid@emor3j.fr.eu.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "satellite.h"
 
@@ -887,7 +876,7 @@ int Satellite::sgp4(double tsince)
 
     if (nm <= 0.0)
     {
-        qDebug() << "Mean motion less than 0.0";
+        qDebug() << Q_FUNC_INFO << "Mean motion less than 0.0";
         return (2);
     }
 
@@ -897,7 +886,7 @@ int Satellite::sgp4(double tsince)
 
     if ((em >= 1.0) || (em < -0.001))
     {
-        qDebug() << "Eccentricity >= 1.0 or < -0.001";
+        qDebug() << Q_FUNC_INFO << "Eccentricity >= 1.0 or < -0.001";
         return (1);
     }
 
@@ -1027,7 +1016,7 @@ int Satellite::sgp4(double tsince)
 
         if ((ep < 0.0) || (ep > 1.0))
         {
-            qDebug() << "Eccentricity < 0.0  or > 1.0";
+            qDebug() << Q_FUNC_INFO << "Eccentricity < 0.0  or > 1.0";
             return (3);
         }
     }
@@ -1073,7 +1062,7 @@ int Satellite::sgp4(double tsince)
 
     if (pl < 0.0)
     {
-        qDebug() << "Semi-latus rectum < 0.0";
+        qDebug() << Q_FUNC_INFO << "Semi-latus rectum < 0.0";
         return (4);
     }
 
@@ -1142,7 +1131,7 @@ int Satellite::sgp4(double tsince)
 
     if (mrt < 1.0)
     {
-        qDebug() << "Satellite has decayed";
+        qDebug() << Q_FUNC_INFO << "Satellite has decayed";
         return (6);
     }
 

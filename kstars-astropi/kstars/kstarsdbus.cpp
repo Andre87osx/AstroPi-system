@@ -1,19 +1,8 @@
-/***************************************************************************
-                          kstarsdbus.cpp  -  description
-                             -------------------
-    begin                : Son Apr 7 2002
-    copyright            : (C) 2002 by Thomas Kabelmann
-    email                : tk78@gmx.de
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002 Thomas Kabelmann <tk78@gmx.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 //KStars DBUS functions
 
@@ -34,6 +23,8 @@
 #include "skyobjects/ksplanetbase.h"
 #include "skyobjects/starobject.h"
 #include "tools/whatsinteresting/wiview.h"
+#include "dialogs/finddialog.h"
+#include "tools/nameresolver.h"
 
 #ifdef HAVE_CFITSIO
 #include "fitsviewer/fitsviewer.h"
@@ -239,7 +230,7 @@ void KStars::waitForKey(const QString &k)
     }
     else
     {
-        qDebug() << "Error [D-Bus waitForKey()]: Invalid key requested.";
+        qDebug() << Q_FUNC_INFO << "Error [D-Bus waitForKey()]: Invalid key requested.";
     }
 }
 
@@ -324,7 +315,7 @@ bool KStars::setGeoLocation(const QString &city, const QString &province, const 
             qDebug()
                     << QString("Error [D-Bus setGeoLocation]: city %1, %2 not found in database.").arg(city, country);
         else
-            qDebug() << QString("Error [D-Bus setGeoLocation]: city %1, %2, %3 not found in database.")
+            qDebug() << Q_FUNC_INFO << QString("Error [D-Bus setGeoLocation]: city %1, %2, %3 not found in database.")
                      .arg(city, province, country);
     }
 
@@ -631,7 +622,7 @@ void KStars::loadColorScheme(const QString &name)
             //It might be a good idea to use stylesheets in the future instead of palettes but this will work for now for OS X.
             //This is also in KStars.cpp.  If you change it, change it in BOTH places.
 #ifdef Q_OS_OSX
-            qDebug() << "setting dark stylesheet";
+            qDebug() << Q_FUNC_INFO << "setting dark stylesheet";
             qApp->setStyleSheet(
                 "QWidget { background-color: black; color:red; "
                 "selection-background-color:rgb(30,30,30);selection-color:white}"
@@ -661,7 +652,7 @@ void KStars::loadColorScheme(const QString &name)
                 "QHeaderView::Section { background-color:rgb(30,30,30) }"
                 "QTableCornerButton::section{ background-color:rgb(30,30,30) }"
                 "");
-            qDebug() << "stylesheet set";
+            qDebug() << Q_FUNC_INFO << "stylesheet set";
 #endif
         }
         else
@@ -670,9 +661,9 @@ void KStars::loadColorScheme(const QString &name)
                 KStars::Instance()->wiView()->setNightVisionOn(false);
             QApplication::setPalette(OriginalPalette);
 #ifdef Q_OS_OSX
-            qDebug() << "setting light stylesheet";
+            qDebug() << Q_FUNC_INFO << "setting light stylesheet";
             qApp->setStyleSheet("");
-            qDebug() << "stylesheet set";
+            qDebug() << Q_FUNC_INFO << "stylesheet set";
 #endif
         }
     }
@@ -720,9 +711,28 @@ QString KStars::getDSSURL(double RA_J2000, double Dec_J2000, float width, float 
     return KSDssDownloader::getDSSURL(ra, dec, width, height);
 }
 
-QString KStars::getObjectDataXML(const QString &objectName)
+QString KStars::getObjectDataXML(const QString &objectName, bool fallbackToInternet, bool storeInternetResolved)
 {
-    SkyObject *target = data()->objectNamed(objectName);
+    bool deleteTargetAfterUse = false;
+    const SkyObject *target = data()->objectNamed(objectName);
+    if (!target && fallbackToInternet)
+    {
+        if (!storeInternetResolved)
+        {
+            const auto &cedata = NameResolver::resolveName(objectName);
+            if (cedata.first)
+            {
+                target = cedata.second.clone(); // We have to free this since we own the pointer
+                deleteTargetAfterUse = true; // so note that down
+            }
+        }
+        else
+        {
+            CatalogsDB::DBManager db_manager { CatalogsDB::dso_db_path() };
+            target = FindDialog::resolveAndAdd(db_manager, objectName);
+        }
+
+    }
     if (!target)
     {
         return QString("<xml></xml>");
@@ -749,8 +759,8 @@ QString KStars::getObjectDataXML(const QString &objectName)
     stream.writeTextElement("Type", target->typeName());
     stream.writeTextElement("Magnitude", QString::number(target->mag(), 'g', 2));
     stream.writeTextElement("Position_Angle", QString::number(target->pa(), 'g', 3));
-    StarObject *star   = dynamic_cast<StarObject *>(target);
-    auto *dso = dynamic_cast<CatalogObject *>(target);
+    auto *star = dynamic_cast<const StarObject *>(target);
+    auto *dso = dynamic_cast<const CatalogObject *>(target);
     if (star)
     {
         stream.writeTextElement("Spectral_Type", star->sptype());
@@ -772,6 +782,13 @@ QString KStars::getObjectDataXML(const QString &objectName)
     }
     stream.writeEndElement(); // object
     stream.writeEndDocument();
+
+    if (deleteTargetAfterUse)
+    {
+        Q_ASSERT(!!target);
+        delete target;
+    }
+
     return output;
 }
 
@@ -905,7 +922,7 @@ void KStars::renderEyepieceView(const QString &objectName, const QString &destPa
                 loop.quit();
             };
             new KSDssDownloader(target, tempFile.fileName(), slot, this);
-            qDebug() << "DSS download requested. Waiting for download to complete...";
+            qDebug() << Q_FUNC_INFO << "DSS download requested. Waiting for download to complete...";
             loop.exec(); // wait for download to complete
             imagePath = tempFile.fileName();
         }
@@ -974,7 +991,7 @@ void KStars::printImage(bool usePrintDialog, bool useChartColors)
         //        ok = printer.setup( this, i18n("Print Sky") );
         //QPrintDialog *dialog = KdePrint::createPrintDialog(&printer, this);
         QPrintDialog *dialog = new QPrintDialog(&printer, this);
-        dialog->setWindowTitle(i18n("Print Sky"));
+        dialog->setWindowTitle(i18nc("@title:window", "Print Sky"));
         if (dialog->exec() == QDialog::Accepted)
             ok = true;
         delete dialog;

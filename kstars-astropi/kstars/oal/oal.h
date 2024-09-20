@@ -1,23 +1,10 @@
-/***************************************************************************
-                          oal.h  -  description
+/*
+    SPDX-FileCopyrightText: 2009 Prakash Mohan <prakash.mohan@kdemail.net>
 
-                             -------------------
-    begin                : Friday June 19, 2009
-    copyright            : (C) 2009 by Prakash Mohan
-    email                : prakash.mohan@kdemail.net
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-
-#ifndef OAL_H_
-#define OAL_H_
+#pragma once
 
 #include <QString>
 #include <QLocale>
@@ -60,4 +47,3 @@ inline int warningOverwrite(QString message)
 #endif
 }
 }
-#endif

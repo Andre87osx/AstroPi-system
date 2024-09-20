@@ -1,19 +1,8 @@
-/***************************************************************************
-                          kstars.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon Feb  5 01:11:45 PST 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "kstars.h"
 
@@ -37,6 +26,7 @@
 #include "ekos/manager.h"
 #include "indi/drivermanager.h"
 #include "indi/guimanager.h"
+#include "indi/indilistener.h"
 #endif
 
 #ifdef HAVE_CFITSIO
@@ -68,7 +58,7 @@ KStars::KStars(bool doSplash, bool clockrun, const QString &startdate)
     if (i18n("Sky") == "السماء")
         qApp->setLayoutDirection(Qt::RightToLeft);
 
-    setWindowTitle(i18n("KStars"));
+    setWindowTitle(i18nc("@title:window", "KStars"));
 
     // Set thread stack size to 32MB
 #if QT_VERSION >= QT_VERSION_CHECK(5,10,0)
@@ -203,10 +193,7 @@ KStars::KStars(bool doSplash, bool clockrun, const QString &startdate)
         data()->changeDateTime( KStarsDateTime::currentDateTimeUtc() );
     */
 
-    // Initialize clock. If --paused is not in the command line, look in options
-    if (clockrun)
-        StartClockRunning = Options::runClock();
-    // If we are starting paused, we need to change datetime in data
+    // If we are starting paused (--paused is not in the command line) change datetime in data
     if (StartClockRunning == false)
     {
         qCInfo(KSTARS) << "KStars is started in paused state.";
@@ -247,12 +234,6 @@ KStars::KStars(bool doSplash, bool clockrun, const QString &startdate)
         return;
     delete splash;
     datainitFinished();
-
-#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1 && !defined(__UCLIBC__))
-    qDebug() << "glibc >= 2.1 detected.  Using GNU extension sincos()";
-#else
-    qDebug() << "Did not find glibc >= 2.1.  Will use ANSI-compliant sin()/cos() functions.";
-#endif
 }
 
 KStars *KStars::createInstance(bool doSplash, bool clockrun, const QString &startdate)
@@ -270,19 +251,19 @@ KStars::~KStars()
     Q_ASSERT(pinstance);
     pinstance = nullptr;
 #ifdef PROFILE_COORDINATE_CONVERSION
-    qDebug() << "Spent " << SkyPoint::cpuTime_EqToHz << " seconds in " << SkyPoint::eqToHzCalls
+    qDebug() << Q_FUNC_INFO << "Spent " << SkyPoint::cpuTime_EqToHz << " seconds in " << SkyPoint::eqToHzCalls
              << " calls to SkyPoint::EquatorialToHorizontal, for an average of "
              << 1000. * (SkyPoint::cpuTime_EqToHz / SkyPoint::eqToHzCalls) << " ms per call";
 #endif
 
 #ifdef COUNT_DMS_SINCOS_CALLS
-    qDebug() << "Constructed " << dms::dms_constructor_calls << " dms objects, of which " << dms::dms_with_sincos_called
+    qDebug() << Q_FUNC_INFO << "Constructed " << dms::dms_constructor_calls << " dms objects, of which " << dms::dms_with_sincos_called
              << " had trigonometric functions called on them = "
              << (float(dms::dms_with_sincos_called) / float(dms::dms_constructor_calls)) * 100. << "%";
-    qDebug() << "Of the " << dms::trig_function_calls << " calls to sin/cos/sincos on dms objects, "
+    qDebug() << Q_FUNC_INFO << "Of the " << dms::trig_function_calls << " calls to sin/cos/sincos on dms objects, "
              << dms::redundant_trig_function_calls << " were redundant = "
              << ((float(dms::redundant_trig_function_calls) / float(dms::trig_function_calls)) * 100.) << "%";
-    qDebug() << "We had " << CachingDms::cachingdms_bad_uses << " bad uses of CachingDms in all, compared to "
+    qDebug() << Q_FUNC_INFO << "We had " << CachingDms::cachingdms_bad_uses << " bad uses of CachingDms in all, compared to "
              << CachingDms::cachingdms_constructor_calls << " constructed CachingDms objects = "
              << (float(CachingDms::cachingdms_bad_uses) / float(CachingDms::cachingdms_constructor_calls)) * 100.
              << "% bad uses";
@@ -351,8 +332,8 @@ void KStars::applyConfig(bool doApplyFocus)
 
     actionCollection()
     ->action("coordsys")
-    ->setText(Options::useAltAz() ? i18n("Switch to star globe view (Equatorial &Coordinates)") :
-              i18n("Switch to horizonal view (Horizontal &Coordinates)"));
+    ->setText(Options::useAltAz() ? i18n("Switch to Star Globe View (Equatorial &Coordinates)") :
+              i18n("Switch to Horizonal View (Horizontal &Coordinates)"));
 
     actionCollection()->action("show_time_box")->setChecked(Options::showTimeBox());
     actionCollection()->action("show_location_box")->setChecked(Options::showGeoBox());
@@ -672,4 +653,5 @@ void KStars::closeEvent(QCloseEvent *event)
 {
     KStars::Closing = true;
     QWidget::closeEvent(event);
+    slotAboutToQuit();
 }

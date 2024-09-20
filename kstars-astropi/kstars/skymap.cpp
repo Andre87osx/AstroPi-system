@@ -1,19 +1,8 @@
-/**************************************************************************
-                          skymap.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sat Feb 10 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "skyobjectuserdata.h"
 #ifdef _WIN32
@@ -214,8 +203,8 @@ SkyMap::SkyMap()
     m_objBox = new InfoBoxWidget(Options::shadeFocusBox(), Options::positionFocusBox(), Options::stickyFocusBox(),
                                  QStringList(), this);
     m_objBox->setVisible(Options::showFocusBox());
-    connect(this, SIGNAL(objectChanged(SkyObject*)), m_objBox, SLOT(slotObjectChanged(SkyObject*)));
-    connect(this, SIGNAL(positionChanged(SkyPoint*)), m_objBox, SLOT(slotPointChanged(SkyPoint*)));
+    connect(this, &SkyMap::objectChanged, m_objBox, &InfoBoxWidget::slotObjectChanged);
+    connect(this, &SkyMap::positionChanged, m_objBox, &InfoBoxWidget::slotPointChanged);
 
     m_SkyMapDraw = new SkyMapQDraw(this);
     m_SkyMapDraw->setMouseTracking(true);
@@ -308,6 +297,14 @@ void SkyMap::showFocusCoords()
         emit positionChanged(focus());
 }
 
+void SkyMap::updateInfoBoxes()
+{
+    if (focusObject() && Options::isTracking())
+        m_objBox->slotObjectChanged(focusObject());
+    else
+        m_objBox->slotPointChanged(focus());
+}
+
 void SkyMap::slotTransientLabel()
 {
     //This function is only called if the HoverTimer manages to timeout.
@@ -321,9 +318,10 @@ void SkyMap::slotTransientLabel()
 
         if (so && !isObjectLabeled(so))
         {
-            QToolTip::showText(QCursor::pos(),
-                               i18n("%1: %2<sup>m</sup>", so->translatedLongName(), QString::number(so->mag(), 'f', 1)),
-                               this);
+            QString name = so->translatedLongName();
+            if (!std::isnan(so->mag()))
+                name += QString(": %1<sup>m</sup>").arg(QString::number(so->mag(), 'f', 1));
+            QToolTip::showText(QCursor::pos(), name, this);
         }
     }
 }
@@ -711,7 +709,7 @@ void SkyMap::slotEndRulerMode()
                                     ((f->sizeX() >= f->sizeY() && f->sizeY() != 0) ? f->sizeY() : f->sizeX()));
             }
             fov = nameToFovMap[QInputDialog::getItem(this, i18n("Star Hopper: Choose a field-of-view"),
-                                                           i18n("FOV to use for star hopping:"), nameToFovMap.uniqueKeys(), 0,
+                                                           i18n("FOV to use for star hopping:"), nameToFovMap.keys(), 0,
                                                            false, &ok)];
         }
         else
@@ -1082,7 +1080,7 @@ void SkyMap::slewFocus()
             while (r > step)
             {
                 //DEBUG
-                //qDebug() << step << ": " << r << ": " << r0;
+                //qDebug() << Q_FUNC_INFO << step << ": " << r << ": " << r0;
                 double fX = dX / r;
                 double fY = dY / r;
 
@@ -1257,6 +1255,7 @@ void SkyMap::setupProjector()
 void SkyMap::setZoomMouseCursor()
 {
     mouseMoveCursor = false; // no mousemove cursor
+    mouseDragCursor = false;
     QBitmap cursor  = zoomCursorBitmap(2);
     QBitmap mask    = zoomCursorBitmap(4);
     setCursor(QCursor(cursor, mask));
@@ -1266,6 +1265,7 @@ void SkyMap::setMouseCursorShape(Cursor type)
 {
     // no mousemove cursor
     mouseMoveCursor = false;
+    mouseDragCursor = false;
 
     switch (type)
     {
@@ -1297,6 +1297,15 @@ void SkyMap::setMouseMoveCursor()
     {
         setCursor(Qt::SizeAllCursor); // cursor shape defined in qt
         mouseMoveCursor = true;
+    }
+}
+
+void SkyMap::setMouseDragCursor()
+{
+    if (mouseButtonDown)
+    {
+        setCursor(Qt::OpenHandCursor); // cursor shape defined in qt
+        mouseDragCursor = true;
     }
 }
 

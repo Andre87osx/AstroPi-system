@@ -1,19 +1,8 @@
-/***************************************************************************
-                          skyobjitem.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2012/21/06
-    copyright            : (C) 2012 by Samikshan Bairagya
-    email                : samikshan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Samikshan Bairagya <samikshan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "skyobjitem.h"
 
@@ -133,7 +122,7 @@ void SkyObjItem::setPosition(SkyObject *so)
 QString findImage(const QString &prefix, const SkyObject &obj, const QString &suffix)
 {
     static const auto base =
-        KSPaths::writableLocation(QStandardPaths::GenericDataLocation);
+        KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
     QDirIterator search(
         base,
         QStringList() << prefix + obj.name().toLower().remove(' ').remove('/') + suffix,
@@ -147,13 +136,13 @@ QString SkyObjItem::getImageURL(bool preferThumb) const
 
     const auto &fullSizeURL = findImage("image-", *m_So, ".png");
     const auto &wikiImageURL =
-        QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation,
+        QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::AppLocalDataLocation,
                                             "descriptions/wikiImage-" +
                                                 m_So->name().toLower().remove(' ') +
                                                 ".png"))
             .url();
     QString XPlanetURL =
-        QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::GenericDataLocation,
+        QUrl::fromLocalFile(KSPaths::locate(QStandardPaths::AppLocalDataLocation,
                                             "xplanet/" + m_So->name() + ".png"))
             .url();
 
@@ -239,8 +228,8 @@ inline QString SkyObjItem::loadObjectDescription() const
 {
     QFile file;
     QString fname = "description-" + getName().toLower().remove(' ') + ".html";
-    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "descriptions/" +
-                     fname); //determine filename in local user KDE directory tree.
+    //determine filename in local user KDE directory tree.
+    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("descriptions/" + fname));
 
     if (file.exists())
     {

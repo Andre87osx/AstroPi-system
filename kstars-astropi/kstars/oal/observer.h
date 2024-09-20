@@ -1,22 +1,9 @@
-/***************************************************************************
-                          observer.h  -  description
+/*
+    SPDX-FileCopyrightText: 2009 Prakash Mohan <prakash.mohan@kdemail.net>
 
-                             -------------------
-    begin                : Wednesday July 8, 2009
-    copyright            : (C) 2009 by Prakash Mohan
-    email                : prakash.mohan@kdemail.net
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
-#ifndef OBSERVER_H_
-#define OBSERVER_H_
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
+#pragma once
 
 #include "oal/oal.h"
 
@@ -31,18 +18,29 @@
  */
 class OAL::Observer
 {
-  public:
-    QString id() const { return m_Id; }
-    QString name() const { return m_Name; }
-    QString surname() const { return m_Surname; }
-    QString contact() const { return m_Contact; }
-    Observer(QString _id, QString _name = "", QString _surname = "", QString _contact = "")
-    {
-        setObserver(_id, _name, _surname, _contact);
-    }
-    void setObserver(QString _id, QString _name = "", QString _surname = "", QString _contact = "");
+    public:
+        QString id() const
+        {
+            return m_Id;
+        }
+        QString name() const
+        {
+            return m_Name;
+        }
+        QString surname() const
+        {
+            return m_Surname;
+        }
+        QString contact() const
+        {
+            return m_Contact;
+        }
+        Observer(QString _id, QString _name = "", QString _surname = "", QString _contact = "")
+        {
+            setObserver(_id, _name, _surname, _contact);
+        }
+        void setObserver(QString _id, QString _name = "", QString _surname = "", QString _contact = "");
 
-  private:
-    QString m_Name, m_Surname, m_Contact, m_Id;
+    private:
+        QString m_Name, m_Surname, m_Contact, m_Id;
 };
-#endif

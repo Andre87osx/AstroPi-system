@@ -1,83 +1,75 @@
-/*  Ekos Alignment Module
-    Copyright (C) 2013 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2013 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2013-2021 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    SPDX-FileCopyrightText: 2018-2020 Robert Lancaster <rlancaste@gmail.com>
+    SPDX-FileCopyrightText: 2019-2021 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
+
 #include "align.h"
-
 #include "alignadaptor.h"
 #include "alignview.h"
-#include "flagcomponent.h"
-#include "fov.h"
-#include "kstars.h"
-#include "kstarsdata.h"
+#include <ekos_align_debug.h>
+
+// Options
+#include "Options.h"
 #include "opsalign.h"
 #include "opsprograms.h"
 #include "opsastrometry.h"
 #include "opsastrometryindexfiles.h"
-#include "Options.h"
+
+// Components
+#include "mountmodel.h"
+#include "polaralignmentassistant.h"
 #include "remoteastrometryparser.h"
-#include "skymap.h"
-#include "skymapcomposite.h"
-#include "starobject.h"
-#include "auxiliary/QProgressIndicator.h"
-#include "auxiliary/ksmessagebox.h"
-#include "dialogs/finddialog.h"
-#include "ekos/manager.h"
-#include "ekos/auxiliary/darklibrary.h"
-#include "ekos/auxiliary/stellarsolverprofileeditor.h"
+#include "polaralign.h"
+#include "manualrotator.h"
+
+// FITS
 #include "fitsviewer/fitsdata.h"
 #include "fitsviewer/fitstab.h"
+
+// Auxiliary
+#include "auxiliary/QProgressIndicator.h"
+#include "auxiliary/ksmessagebox.h"
+#include "ekos/auxiliary/stellarsolverprofileeditor.h"
+#include "dialogs/finddialog.h"
+#include "ksnotification.h"
+#include "kspaths.h"
+#include "fov.h"
+#include "kstars.h"
+#include "kstarsdata.h"
+#include "skymapcomposite.h"
+
+// INDI
+#include "ekos/manager.h"
 #include "indi/clientmanager.h"
 #include "indi/driverinfo.h"
 #include "indi/indifilter.h"
-#include "polaralign.h"
 #include "profileinfo.h"
-#include "ksnotification.h"
-#include "kspaths.h"
 
-
+// System Includes
 #include <KActionCollection>
-
 #include <basedevice.h>
 #include <indicom.h>
-
 #include <memory>
 
-#include <ekos_align_debug.h>
+// Qt version calming
+#include <qtendl.h>
 
-#define PAA_VERSION "v2.3"
-
-#define PAH_CUTOFF_FOV            10 // Minimum FOV width in arcminutes for PAH to work
 #define MAXIMUM_SOLVER_ITERATIONS 10
 #define CAPTURE_RETRY_DELAY       10000
-
-#define AL_FORMAT_VERSION 1.0
+#define PAH_CUTOFF_FOV            10 // Minimum FOV width in arcminutes for PAH to work
+#define CHECK_PAH(x) \
+    m_PolarAlignmentAssistant && m_PolarAlignmentAssistant->x
+#define RUN_PAH(x) \
+    if (m_PolarAlignmentAssistant) m_PolarAlignmentAssistant->x
 
 namespace Ekos
 {
-// 30 arcminutes RA movement
-const double Align::RAMotion = 0.5;
-// Sidereal rate, degrees/s
-const double Align::SIDRATE = 0.004178;
 
-const QMap<Align::PAHStage, QString> Align::PAHStages =
-{
-    {PAH_IDLE, I18N_NOOP("Idle")},
-    {PAH_FIRST_CAPTURE, I18N_NOOP("First Capture"}),
-    {PAH_FIND_CP, I18N_NOOP("Finding CP"}),
-    {PAH_FIRST_ROTATE, I18N_NOOP("First Rotation"}),
-    {PAH_SECOND_CAPTURE, I18N_NOOP("Second Capture"}),
-    {PAH_SECOND_ROTATE, I18N_NOOP("Second Rotation"}),
-    {PAH_THIRD_CAPTURE, I18N_NOOP("Third Capture"}),
-    {PAH_STAR_SELECT, I18N_NOOP("Select Star"}),
-    {PAH_PRE_REFRESH, I18N_NOOP("Select Refresh"}),
-    {PAH_REFRESH, I18N_NOOP("Refreshing"}),
-    {PAH_ERROR, I18N_NOOP("Error")},
-};
+using PAA = PolarAlignmentAssistant;
 
 Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
 {
@@ -123,41 +115,47 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     toggleFullScreenB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     connect(toggleFullScreenB, &QPushButton::clicked, this, &Ekos::Align::toggleAlignWidgetFullScreen);
 
-    alignView = new AlignView(alignWidget, FITS_ALIGN);
-    alignView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    alignView->setBaseSize(alignWidget->size());
-    alignView->createFloatingToolBar();
+    m_AlignView.reset(new AlignView(alignWidget, FITS_ALIGN));
+    m_AlignView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    m_AlignView->setBaseSize(alignWidget->size());
+    m_AlignView->createFloatingToolBar();
     QVBoxLayout *vlayout = new QVBoxLayout();
 
-    vlayout->addWidget(alignView);
+    vlayout->addWidget(m_AlignView.get());
     alignWidget->setLayout(vlayout);
 
     connect(solveB, &QPushButton::clicked, [this]()
     {
-        syncTargetToMount();
+        updateTargetCoords();
         captureAndSolve();
     });
     connect(stopB, &QPushButton::clicked, this, &Ekos::Align::abort);
-    connect(measureAltB, &QPushButton::clicked, this, &Ekos::Align::measureAltError);
-    connect(measureAzB, &QPushButton::clicked, this, &Ekos::Align::measureAzError);
 
     // Effective FOV Edit
     connect(FOVOut, &QLineEdit::editingFinished, this, &Align::syncFOV);
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     connect(CCDCaptureCombo, static_cast<void (QComboBox::*)(const QString &)>(&QComboBox::activated), this,
             &Ekos::Align::setDefaultCCD);
+#else
+    connect(CCDCaptureCombo, static_cast<void (QComboBox::*)(const QString &)>(&QComboBox::textActivated), this,
+            &Ekos::Align::setDefaultCCD);
+#endif
     connect(CCDCaptureCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, &Ekos::Align::checkCCD);
 
-    connect(correctAltB, &QPushButton::clicked, this, &Ekos::Align::correctAltError);
-    connect(correctAzB, &QPushButton::clicked, this, &Ekos::Align::correctAzError);
-    connect(loadSlewB, &QPushButton::clicked, [&]()
+    connect(loadSlewB, &QPushButton::clicked, this, [this]()
     {
         loadAndSlew();
     });
 
     FilterDevicesCombo->addItem("--");
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
     connect(FilterDevicesCombo, static_cast<void(QComboBox::*)(const QString &)>(&QComboBox::activated),
             [ = ](const QString & text)
+#else
+    connect(FilterDevicesCombo, static_cast<void(QComboBox::*)(const QString &)>(&QComboBox::textActivated),
+            [ = ](const QString & text)
+#endif
     {
         syncSettings();
         Options::setDefaultAlignFilterWheel(text);
@@ -173,27 +171,19 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     }
            );
 
-    connect(PAHSlewRateCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), [&](int index)
-    {
-        Options::setPAHMountSpeedIndex(index);
-    });
-
-    PAHUpdatedErrorLine->setVisible(Options::pAHRefreshUpdateError());
-    PAHRefreshUpdateError->setChecked(Options::pAHRefreshUpdateError());
-    connect(PAHRefreshUpdateError, &QCheckBox::toggled, [this](bool toggled)
-    {
-        Options::setPAHRefreshUpdateError(toggled);
-        PAHUpdatedErrorLine->setVisible(toggled);
-    });
-
     gotoModeButtonGroup->setId(syncR, GOTO_SYNC);
     gotoModeButtonGroup->setId(slewR, GOTO_SLEW);
     gotoModeButtonGroup->setId(nothingR, GOTO_NOTHING);
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     connect(gotoModeButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked), this,
             [ = ](int id)
+#else
+    connect(gotoModeButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::idClicked), this,
+            [ = ](int id)
+#endif
     {
-        this->currentGotoMode = static_cast<GotoMode>(id);
+        this->m_CurrentGotoMode = static_cast<GotoMode>(id);
     });
 
     m_CaptureTimer.setSingleShot(true);
@@ -227,8 +217,8 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     m_AlignTimer.setInterval(Options::astrometryTimeout() * 1000);
     connect(&m_AlignTimer, &QTimer::timeout, this, &Ekos::Align::checkAlignmentTimeout);
 
-    currentGotoMode = static_cast<GotoMode>(Options::solverGotoOption());
-    gotoModeButtonGroup->button(currentGotoMode)->setChecked(true);
+    m_CurrentGotoMode = static_cast<GotoMode>(Options::solverGotoOption());
+    gotoModeButtonGroup->button(m_CurrentGotoMode)->setChecked(true);
 
     KConfigDialog *dialog = new KConfigDialog(this, "alignsettings", Options::self());
 
@@ -240,6 +230,7 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     connect(opsAlign, &OpsAlign::settingsUpdated, this, &Ekos::Align::refreshAlignOptions);
     KPageWidgetItem *page = dialog->addPage(opsAlign, i18n("StellarSolver Options"));
     page->setIcon(QIcon(":/icons/StellarSolverIcon.png"));
+    connect(rotatorB, &QPushButton::clicked, dialog, &KConfigDialog::show);
 
     opsPrograms = new OpsPrograms(this);
     page = dialog->addPage(opsPrograms, i18n("External & Online Programs"));
@@ -268,8 +259,8 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     });
 
     opsAstrometryIndexFiles = new OpsAstrometryIndexFiles(this);
-    indexFilesPage = dialog->addPage(opsAstrometryIndexFiles, i18n("Index Files"));
-    indexFilesPage->setIcon(QIcon::fromTheme("map-flat"));
+    m_IndexFilesPage = dialog->addPage(opsAstrometryIndexFiles, i18n("Index Files"));
+    m_IndexFilesPage->setIcon(QIcon::fromTheme("map-flat"));
 
     appendLogText(i18n("Idle."));
 
@@ -283,20 +274,22 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
         syncSettings();
     });
 
-    altStage = ALT_INIT;
-    azStage  = AZ_INIT;
-
     rememberSolverWCS = Options::astrometrySolverWCS();
     rememberAutoWCS   = Options::autoWCS();
-    //rememberMeridianFlip = Options::executeMeridianFlip();
 
     solverModeButtonGroup->setId(localSolverR, SOLVER_LOCAL);
     solverModeButtonGroup->setId(remoteSolverR, SOLVER_REMOTE);
 
     localSolverR->setChecked(Options::solverMode() == SOLVER_LOCAL);
     remoteSolverR->setChecked(Options::solverMode() == SOLVER_REMOTE);
+
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     connect(solverModeButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::buttonClicked), this,
             &Align::setSolverMode);
+#else
+    connect(solverModeButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::idClicked), this,
+            &Align::setSolverMode);
+#endif
     setSolverMode(solverModeButtonGroup->checkedId());
 
     // Which telescope info to use for FOV calculations
@@ -322,28 +315,6 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
 
     connect(binningCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
             &Ekos::Align::setBinningIndex);
-
-    // PAH Connections
-    PAHWidgets->setCurrentWidget(PAHIntroPage);
-    connect(this, &Align::PAHEnabled, [&](bool enabled)
-    {
-        PAHStartB->setEnabled(enabled);
-        directionLabel->setEnabled(enabled);
-        PAHDirectionCombo->setEnabled(enabled);
-        PAHRotationSpin->setEnabled(enabled);
-        PAHSlewRateCombo->setEnabled(enabled);
-        PAHManual->setEnabled(enabled);
-    });
-    connect(PAHStartB, &QPushButton::clicked, this, &Ekos::Align::startPAHProcess);
-    // PAH StopB is just a shortcut for the regular stop
-    connect(PAHStopB, &QPushButton::clicked, this, &Align::stopPAHProcess);
-    connect(PAHCorrectionsNextB, &QPushButton::clicked, this, &Ekos::Align::setPAHCorrectionSelectionComplete);
-    connect(PAHRefreshB, &QPushButton::clicked, this, &Ekos::Align::startPAHRefreshProcess);
-    connect(PAHDoneB, &QPushButton::clicked, this, &Ekos::Align::setPAHRefreshComplete);
-    // done button for manual slewing during polar alignment:
-    connect(PAHManualDone, &QPushButton::clicked, this, &Ekos::Align::setPAHSlewDone);
-
-    hemisphere = KStarsData::Instance()->geo()->lat()->Degrees() > 0 ? NORTH_HEMISPHERE : SOUTH_HEMISPHERE;
 
     double accuracyRadius = accuracySpin->value();
 
@@ -416,69 +387,6 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     autoScaleGraphB->setIcon(QIcon::fromTheme("zoom-fit-best"));
     autoScaleGraphB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
 
-    manualRotator.setupUi(&manualRotatorDialog);
-    manualRotatorDialog.setWindowTitle("Manual Rotator");
-    manualRotatorDialog.setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
-
-    mountModel.setupUi(&mountModelDialog);
-    mountModelDialog.setWindowTitle("Mount Model Tool");
-    mountModelDialog.setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
-    mountModel.alignTable->setColumnWidth(0, 70);
-    mountModel.alignTable->setColumnWidth(1, 75);
-    mountModel.alignTable->setColumnWidth(2, 130);
-    mountModel.alignTable->setColumnWidth(3, 30);
-
-    mountModel.wizardAlignB->setIcon(
-        QIcon::fromTheme("tools-wizard"));
-    mountModel.wizardAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.clearAllAlignB->setIcon(
-        QIcon::fromTheme("application-exit"));
-    mountModel.clearAllAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.removeAlignB->setIcon(QIcon::fromTheme("list-remove"));
-    mountModel.removeAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.addAlignB->setIcon(QIcon::fromTheme("list-add"));
-    mountModel.addAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.findAlignB->setIcon(QIcon::fromTheme("edit-find"));
-    mountModel.findAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.alignTable->verticalHeader()->setDragDropOverwriteMode(false);
-    mountModel.alignTable->verticalHeader()->setSectionsMovable(true);
-    mountModel.alignTable->verticalHeader()->setDragEnabled(true);
-    mountModel.alignTable->verticalHeader()->setDragDropMode(QAbstractItemView::InternalMove);
-    connect(mountModel.alignTable->verticalHeader(), SIGNAL(sectionMoved(int, int, int)), this,
-            SLOT(moveAlignPoint(int, int, int)));
-
-    mountModel.loadAlignB->setIcon(
-        QIcon::fromTheme("document-open"));
-    mountModel.loadAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.saveAsAlignB->setIcon(
-        QIcon::fromTheme("document-save-as"));
-    mountModel.saveAsAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.saveAlignB->setIcon(
-        QIcon::fromTheme("document-save"));
-    mountModel.saveAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.previewB->setIcon(QIcon::fromTheme("kstars_grid"));
-    mountModel.previewB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-    mountModel.previewB->setCheckable(true);
-
-    mountModel.sortAlignB->setIcon(QIcon::fromTheme("svn-update"));
-    mountModel.sortAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.stopAlignB->setIcon(
-        QIcon::fromTheme("media-playback-stop"));
-    mountModel.stopAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
-    mountModel.startAlignB->setIcon(
-        QIcon::fromTheme("media-playback-start"));
-    mountModel.startAlignB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-
     connect(clearAllSolutionsB, &QPushButton::clicked, this, &Ekos::Align::slotClearAllSolutionPoints);
     connect(removeSolutionB, &QPushButton::clicked, this, &Ekos::Align::slotRemoveSolutionPoint);
     connect(exportSolutionsCSV, &QPushButton::clicked, this, &Ekos::Align::exportSolutionPoints);
@@ -486,46 +394,32 @@ Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
     connect(mountModelB, &QPushButton::clicked, this, &Ekos::Align::slotMountModel);
     connect(solutionTable, &QTableWidget::cellClicked, this, &Ekos::Align::selectSolutionTableRow);
 
-    connect(mountModel.wizardAlignB, &QPushButton::clicked, this, &Ekos::Align::slotWizardAlignmentPoints);
-    connect(mountModel.alignTypeBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), this,
-            &Ekos::Align::alignTypeChanged);
-
-    connect(mountModel.starListBox, static_cast<void (QComboBox::*)(const QString &)>(&QComboBox::currentIndexChanged), this,
-            &Ekos::Align::slotStarSelected);
-    connect(mountModel.greekStarListBox, static_cast<void (QComboBox::*)(const QString &)>(&QComboBox::currentIndexChanged),
-            this,
-            &Ekos::Align::slotStarSelected);
-
-    connect(mountModel.loadAlignB, &QPushButton::clicked, this, &Ekos::Align::slotLoadAlignmentPoints);
-    connect(mountModel.saveAsAlignB, &QPushButton::clicked, this, &Ekos::Align::slotSaveAsAlignmentPoints);
-    connect(mountModel.saveAlignB, &QPushButton::clicked, this, &Ekos::Align::slotSaveAlignmentPoints);
-    connect(mountModel.clearAllAlignB, &QPushButton::clicked, this, &Ekos::Align::slotClearAllAlignPoints);
-    connect(mountModel.removeAlignB, &QPushButton::clicked, this, &Ekos::Align::slotRemoveAlignPoint);
-    connect(mountModel.addAlignB, &QPushButton::clicked, this, &Ekos::Align::slotAddAlignPoint);
-    connect(mountModel.findAlignB, &QPushButton::clicked, this, &Ekos::Align::slotFindAlignObject);
-    connect(mountModel.sortAlignB, &QPushButton::clicked, this, &Ekos::Align::slotSortAlignmentPoints);
-
-    connect(mountModel.previewB, &QPushButton::clicked, this, &Ekos::Align::togglePreviewAlignPoints);
-    connect(mountModel.stopAlignB, &QPushButton::clicked, this, &Ekos::Align::resetAlignmentProcedure);
-    connect(mountModel.startAlignB, &QPushButton::clicked, this, &Ekos::Align::startStopAlignmentProcedure);
-    connect(manualRotator.takeImageB, &QPushButton::clicked, this, &Ekos::Align::executeGOTO);
-    connect(manualRotator.cancelB, &QPushButton::clicked, this, &Ekos::Align::solverFailed);
-
     //Note:  This is to prevent a button from being called the default button
     //and then executing when the user hits the enter key such as when on a Text Box
     QList<QPushButton *> qButtons = findChildren<QPushButton *>();
     for (auto &button : qButtons)
         button->setAutoDefault(false);
 
-    savedOptionsProfiles = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QString("SavedAlignProfiles.ini");
+    savedOptionsProfiles = QDir(KSPaths::writableLocation(
+                                    QStandardPaths::AppLocalDataLocation)).filePath("SavedAlignProfiles.ini");
     if(QFile(savedOptionsProfiles).exists())
         m_StellarSolverProfiles = StellarSolver::loadSavedOptionsProfiles(savedOptionsProfiles);
     else
         m_StellarSolverProfiles = getDefaultAlignOptionsProfiles();
+
+    m_StellarSolver.reset(new StellarSolver());
+    connect(m_StellarSolver.get(), &StellarSolver::logOutput, this, &Align::appendLogText);
+
+    initPolarAlignmentAssistant();
+    initManualRotator();
+    initDarkProcessor();
 }
 
 Align::~Align()
 {
+    if (m_StellarSolver.get() != nullptr)
+        disconnect(m_StellarSolver.get(), &StellarSolver::logOutput, this, &Align::appendLogText);
+
     if (alignWidget->parent() == nullptr)
         toggleAlignWidgetFullScreen();
 
@@ -717,803 +611,6 @@ void Align::slotAutoScaleGraph()
     alignPlot->replot();
 }
 
-void Align::slotWizardAlignmentPoints()
-{
-    int points = mountModel.alignPtNum->value();
-    if (points <
-            2)      //The minimum is 2 because the wizard calculations require the calculation of an angle between points.
-        return; //It should not be less than 2 because the minimum in the spin box is 2.
-
-    int minAlt       = mountModel.minAltBox->value();
-    KStarsData *data = KStarsData::Instance();
-    GeoLocation *geo = data->geo();
-    double lat       = geo->lat()->Degrees();
-
-    if (mountModel.alignTypeBox->currentIndex() == OBJECT_FIXED_DEC)
-    {
-        double decAngle = mountModel.alignDec->value();
-        //Dec that never rises.
-        if (lat > 0)
-        {
-            if (decAngle < lat - 90 + minAlt) //Min altitude possible at minAlt deg above horizon
-            {
-                KSNotification::sorry(i18n("DEC is below the altitude limit"));
-                return;
-            }
-        }
-        else
-        {
-            if (decAngle > lat + 90 - minAlt) //Max altitude possible at minAlt deg above horizon
-            {
-                KSNotification::sorry(i18n("DEC is below the altitude limit"));
-                return;
-            }
-        }
-    }
-
-    //If there are less than 6 points, keep them all in the same DEC,
-    //any more, set the num per row to be the sqrt of the points to evenly distribute in RA and DEC
-    int numRAperDEC = 5;
-    if (points > 5)
-        numRAperDEC = qSqrt(points);
-
-    //These calculations rely on modulus and int division counting beginning at 0, but the #s start at 1.
-    int decPoints       = (points - 1) / numRAperDEC + 1;
-    int lastSetRAPoints = (points - 1) % numRAperDEC + 1;
-
-    double decIncrement = -1;
-    double initDEC      = -1;
-    SkyPoint spTest;
-
-    if (mountModel.alignTypeBox->currentIndex() == OBJECT_FIXED_DEC)
-    {
-        decPoints    = 1;
-        initDEC      = mountModel.alignDec->value();
-        decIncrement = 0;
-    }
-    else if (decPoints == 1)
-    {
-        decIncrement = 0;
-        spTest.setAlt(
-            minAlt); //The goal here is to get the point exactly West at the minAlt so that we can use that DEC
-        spTest.setAz(270);
-        spTest.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-        initDEC = spTest.dec().Degrees();
-    }
-    else
-    {
-        spTest.setAlt(
-            minAlt +
-            10); //We don't want to be right at the minAlt because there would be only 1 point on the dec circle above the alt.
-        spTest.setAz(180);
-        spTest.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-        initDEC = spTest.dec().Degrees();
-        if (lat > 0)
-            decIncrement = (80 - initDEC) / (decPoints); //Don't quite want to reach NCP
-        else
-            decIncrement = (initDEC - 80) / (decPoints); //Don't quite want to reach SCP
-    }
-
-    for (int d = 0; d < decPoints; d++)
-    {
-        double initRA      = -1;
-        double raPoints    = -1;
-        double raIncrement = -1;
-        double dec;
-
-        if (lat > 0)
-            dec = initDEC + d * decIncrement;
-        else
-            dec = initDEC - d * decIncrement;
-
-        if (mountModel.alignTypeBox->currentIndex() == OBJECT_FIXED_DEC)
-        {
-            raPoints = points;
-        }
-        else if (d == decPoints - 1)
-        {
-            raPoints = lastSetRAPoints;
-        }
-        else
-        {
-            raPoints = numRAperDEC;
-        }
-
-        //This computes both the initRA and the raIncrement.
-        calculateAngleForRALine(raIncrement, initRA, dec, lat, raPoints, minAlt);
-
-        if (raIncrement == -1 || decIncrement == -1)
-        {
-            KSNotification::sorry(i18n("Point calculation error."));
-            return;
-        }
-
-        for (int i = 0; i < raPoints; i++)
-        {
-            double ra = initRA + i * raIncrement;
-
-            const SkyObject *original = getWizardAlignObject(ra, dec);
-
-            QString ra_report, dec_report, name;
-
-            if (original)
-            {
-                SkyObject *o = original->clone();
-                o->updateCoords(data->updateNum(), true, data->geo()->lat(), data->lst(), false);
-                getFormattedCoords(o->ra0().Hours(), o->dec0().Degrees(), ra_report, dec_report);
-                name = o->longname();
-            }
-            else
-            {
-                getFormattedCoords(dms(ra).Hours(), dec, ra_report, dec_report);
-                name = i18n("Sky Point");
-            }
-
-            int currentRow = mountModel.alignTable->rowCount();
-            mountModel.alignTable->insertRow(currentRow);
-
-            QTableWidgetItem *RAReport = new QTableWidgetItem();
-            RAReport->setText(ra_report);
-            RAReport->setTextAlignment(Qt::AlignHCenter);
-            mountModel.alignTable->setItem(currentRow, 0, RAReport);
-
-            QTableWidgetItem *DECReport = new QTableWidgetItem();
-            DECReport->setText(dec_report);
-            DECReport->setTextAlignment(Qt::AlignHCenter);
-            mountModel.alignTable->setItem(currentRow, 1, DECReport);
-
-            QTableWidgetItem *ObjNameReport = new QTableWidgetItem();
-            ObjNameReport->setText(name);
-            ObjNameReport->setTextAlignment(Qt::AlignHCenter);
-            mountModel.alignTable->setItem(currentRow, 2, ObjNameReport);
-
-            QTableWidgetItem *disabledBox = new QTableWidgetItem();
-            disabledBox->setFlags(Qt::ItemIsSelectable);
-            mountModel.alignTable->setItem(currentRow, 3, disabledBox);
-        }
-    }
-    if (previewShowing)
-        updatePreviewAlignPoints();
-}
-
-void Align::calculateAngleForRALine(double &raIncrement, double &initRA, double initDEC, double lat, double raPoints,
-                                    double minAlt)
-{
-    SkyPoint spEast;
-    SkyPoint spWest;
-
-    //Circumpolar dec
-    if (fabs(initDEC) > (90 - fabs(lat) + minAlt))
-    {
-        if (raPoints > 1)
-            raIncrement = 360 / (raPoints - 1);
-        else
-            raIncrement = 0;
-        initRA = 0;
-    }
-    else
-    {
-        dms AZEast, AZWest;
-        calculateAZPointsForDEC(dms(initDEC), dms(minAlt), AZEast, AZWest);
-
-        spEast.setAlt(minAlt);
-        spEast.setAz(AZEast.Degrees());
-        spEast.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-
-        spWest.setAlt(minAlt);
-        spWest.setAz(AZWest.Degrees());
-        spWest.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-
-        dms angleSep = spEast.ra().deltaAngle(spWest.ra());
-
-        initRA = spWest.ra().Degrees();
-        if (raPoints > 1)
-            raIncrement = fabs(angleSep.Degrees() / (raPoints - 1));
-        else
-            raIncrement = 0;
-    }
-}
-
-void Align::calculateAZPointsForDEC(dms dec, dms alt, dms &AZEast, dms &AZWest)
-{
-    KStarsData *data = KStarsData::Instance();
-    GeoLocation *geo = data->geo();
-    double AZRad;
-
-    double sindec, cosdec, sinlat, coslat;
-    double sinAlt, cosAlt;
-
-    geo->lat()->SinCos(sinlat, coslat);
-    dec.SinCos(sindec, cosdec);
-    alt.SinCos(sinAlt, cosAlt);
-
-    double arg = (sindec - sinlat * sinAlt) / (coslat * cosAlt);
-    AZRad      = acos(arg);
-    AZEast.setRadians(AZRad);
-    AZWest.setRadians(2.0 * dms::PI - AZRad);
-}
-
-const SkyObject *Align::getWizardAlignObject(double ra, double dec)
-{
-    double maxSearch = 5.0;
-    switch (mountModel.alignTypeBox->currentIndex())
-    {
-        case OBJECT_ANY_OBJECT:
-            return KStarsData::Instance()->skyComposite()->objectNearest(new SkyPoint(dms(ra), dms(dec)), maxSearch);
-        case OBJECT_FIXED_DEC:
-        case OBJECT_FIXED_GRID:
-            return nullptr;
-
-        case OBJECT_ANY_STAR:
-            return KStarsData::Instance()->skyComposite()->starNearest(new SkyPoint(dms(ra), dms(dec)), maxSearch);
-    }
-
-    //If they want named stars, then try to search for and return the closest Align Star to the requested location
-
-    dms bestDiff = dms(360);
-    double index = -1;
-    for (int i = 0; i < alignStars.size(); i++)
-    {
-        const StarObject *star = alignStars.value(i);
-        if (star)
-        {
-            if (star->hasName())
-            {
-                SkyPoint thisPt(ra / 15.0, dec);
-                dms thisDiff = thisPt.angularDistanceTo(star);
-                if (thisDiff.Degrees() < bestDiff.Degrees())
-                {
-                    index    = i;
-                    bestDiff = thisDiff;
-                }
-            }
-        }
-    }
-    if (index == -1)
-        return KStarsData::Instance()->skyComposite()->starNearest(new SkyPoint(dms(ra), dms(dec)), maxSearch);
-    return alignStars.value(index);
-}
-
-void Align::alignTypeChanged(int alignType)
-{
-    if (alignType == OBJECT_FIXED_DEC)
-        mountModel.alignDec->setEnabled(true);
-    else
-        mountModel.alignDec->setEnabled(false);
-}
-
-void Align::slotStarSelected(const QString selectedStar)
-{
-    for (int i = 0; i < alignStars.size(); i++)
-    {
-        const StarObject *star = alignStars.value(i);
-        if (star)
-        {
-            if (star->name() == selectedStar || star->gname().simplified() == selectedStar)
-            {
-                int currentRow = mountModel.alignTable->rowCount();
-                mountModel.alignTable->insertRow(currentRow);
-
-                QString ra_report, dec_report;
-                getFormattedCoords(star->ra0().Hours(), star->dec0().Degrees(), ra_report, dec_report);
-
-                QTableWidgetItem *RAReport = new QTableWidgetItem();
-                RAReport->setText(ra_report);
-                RAReport->setTextAlignment(Qt::AlignHCenter);
-                mountModel.alignTable->setItem(currentRow, 0, RAReport);
-
-                QTableWidgetItem *DECReport = new QTableWidgetItem();
-                DECReport->setText(dec_report);
-                DECReport->setTextAlignment(Qt::AlignHCenter);
-                mountModel.alignTable->setItem(currentRow, 1, DECReport);
-
-                QTableWidgetItem *ObjNameReport = new QTableWidgetItem();
-                ObjNameReport->setText(star->longname());
-                ObjNameReport->setTextAlignment(Qt::AlignHCenter);
-                mountModel.alignTable->setItem(currentRow, 2, ObjNameReport);
-
-                QTableWidgetItem *disabledBox = new QTableWidgetItem();
-                disabledBox->setFlags(Qt::ItemIsSelectable);
-                mountModel.alignTable->setItem(currentRow, 3, disabledBox);
-
-                mountModel.starListBox->setCurrentIndex(0);
-                mountModel.greekStarListBox->setCurrentIndex(0);
-                return;
-            }
-        }
-    }
-    if (previewShowing)
-        updatePreviewAlignPoints();
-}
-
-void Align::generateAlignStarList()
-{
-    alignStars.clear();
-    mountModel.starListBox->clear();
-    mountModel.greekStarListBox->clear();
-
-    KStarsData *data = KStarsData::Instance();
-    QVector<QPair<QString, const SkyObject *>> listStars;
-    listStars.append(data->skyComposite()->objectLists(SkyObject::STAR));
-    for (int i = 0; i < listStars.size(); i++)
-    {
-        QPair<QString, const SkyObject *> pair = listStars.value(i);
-        const StarObject *star                 = dynamic_cast<const StarObject *>(pair.second);
-        if (star)
-        {
-            StarObject *alignStar = star->clone();
-            alignStar->updateCoords(data->updateNum(), true, data->geo()->lat(), data->lst(), false);
-            alignStars.append(alignStar);
-        }
-    }
-
-    QStringList boxNames;
-    QStringList greekBoxNames;
-
-    for (int i = 0; i < alignStars.size(); i++)
-    {
-        const StarObject *star = alignStars.value(i);
-        if (star)
-        {
-            if (!isVisible(star))
-            {
-                alignStars.remove(i);
-                i--;
-            }
-            else
-            {
-                if (star->hasLatinName())
-                    boxNames << star->name();
-                else
-                {
-                    if (!star->gname().isEmpty())
-                        greekBoxNames << star->gname().simplified();
-                }
-            }
-        }
-    }
-
-    boxNames.sort(Qt::CaseInsensitive);
-    boxNames.removeDuplicates();
-    greekBoxNames.removeDuplicates();
-    std::sort(greekBoxNames.begin(), greekBoxNames.end(), [](const QString & a, const QString & b)
-    {
-        QStringList aParts = a.split(' ');
-        QStringList bParts = b.split(' ');
-        if (aParts.length() < 2 || bParts.length() < 2)
-            return a < b; //This should not happen, they should all have 2 words in the string.
-        if (aParts[1] == bParts[1])
-        {
-            return aParts[0] < bParts[0]; //This compares the greek letter when the constellation is the same
-        }
-        else
-            return aParts[1] < bParts[1]; //This compares the constellation names
-    });
-
-    mountModel.starListBox->addItem("Select one:");
-    mountModel.greekStarListBox->addItem("Select one:");
-    for (int i = 0; i < boxNames.size(); i++)
-        mountModel.starListBox->addItem(boxNames.at(i));
-    for (int i = 0; i < greekBoxNames.size(); i++)
-        mountModel.greekStarListBox->addItem(greekBoxNames.at(i));
-}
-
-bool Align::isVisible(const SkyObject *so)
-{
-    return (getAltitude(so) > 30);
-}
-
-double Align::getAltitude(const SkyObject *so)
-{
-    KStarsData *data  = KStarsData::Instance();
-    SkyPoint sp       = so->recomputeCoords(data->ut(), data->geo());
-
-    //check altitude of object at this time.
-    sp.EquatorialToHorizontal(data->lst(), data->geo()->lat());
-
-    return sp.alt().Degrees();
-}
-
-void Align::togglePreviewAlignPoints()
-{
-    previewShowing = !previewShowing;
-    mountModel.previewB->setChecked(previewShowing);
-    updatePreviewAlignPoints();
-}
-
-void Align::updatePreviewAlignPoints()
-{
-    FlagComponent *flags = KStarsData::Instance()->skyComposite()->flags();
-    for (int i = 0; i < flags->size(); i++)
-    {
-        if (flags->label(i).startsWith(QLatin1String("Align")))
-        {
-            flags->remove(i);
-            i--;
-        }
-    }
-    if (previewShowing)
-    {
-        for (int i = 0; i < mountModel.alignTable->rowCount(); i++)
-        {
-            QTableWidgetItem *raCell      = mountModel.alignTable->item(i, 0);
-            QTableWidgetItem *deCell      = mountModel.alignTable->item(i, 1);
-            QTableWidgetItem *objNameCell = mountModel.alignTable->item(i, 2);
-
-            if (raCell && deCell && objNameCell)
-            {
-                QString raString = raCell->text();
-                QString deString = deCell->text();
-                dms raDMS        = dms::fromString(raString, false);
-                dms decDMS       = dms::fromString(deString, true);
-
-                QString objString = objNameCell->text();
-
-                SkyPoint flagPoint(raDMS, decDMS);
-                flags->add(flagPoint, "J2000", "Default", "Align " + QString::number(i + 1) + ' ' + objString, "white");
-            }
-        }
-    }
-    KStars::Instance()->map()->forceUpdate(true);
-}
-
-void Align::slotLoadAlignmentPoints()
-{
-    QUrl fileURL = QFileDialog::getOpenFileUrl(&mountModelDialog, i18n("Open Ekos Alignment List"), alignURLPath,
-                   "Ekos AlignmentList (*.eal)");
-    if (fileURL.isEmpty())
-        return;
-
-    if (fileURL.isValid() == false)
-    {
-        QString message = i18n("Invalid URL: %1", fileURL.toLocalFile());
-        KSNotification::sorry(message, i18n("Invalid URL"));
-        return;
-    }
-
-    alignURLPath = QUrl(fileURL.url(QUrl::RemoveFilename));
-
-    loadAlignmentPoints(fileURL.toLocalFile());
-    if (previewShowing)
-        updatePreviewAlignPoints();
-}
-
-bool Align::loadAlignmentPoints(const QString &fileURL)
-{
-    QFile sFile;
-    sFile.setFileName(fileURL);
-
-    if (!sFile.open(QIODevice::ReadOnly))
-    {
-        QString message = i18n("Unable to open file %1", fileURL);
-        KSNotification::sorry(message, i18n("Could Not Open File"));
-        return false;
-    }
-
-    mountModel.alignTable->setRowCount(0);
-
-    LilXML *xmlParser = newLilXML();
-
-    char errmsg[MAXRBUF];
-    XMLEle *root = nullptr;
-    char c;
-
-    while (sFile.getChar(&c))
-    {
-        root = readXMLEle(xmlParser, c, errmsg);
-
-        if (root)
-        {
-            double sqVersion = atof(findXMLAttValu(root, "version"));
-            if (sqVersion < AL_FORMAT_VERSION)
-            {
-                appendLogText(i18n("Deprecated sequence file format version %1. Please construct a new sequence file.",
-                                   sqVersion));
-                return false;
-            }
-
-            XMLEle *ep    = nullptr;
-            XMLEle *subEP = nullptr;
-
-            int currentRow = 0;
-
-            for (ep = nextXMLEle(root, 1); ep != nullptr; ep = nextXMLEle(root, 0))
-            {
-                if (!strcmp(tagXMLEle(ep), "AlignmentPoint"))
-                {
-                    mountModel.alignTable->insertRow(currentRow);
-
-                    subEP = findXMLEle(ep, "RA");
-                    if (subEP)
-                    {
-                        QTableWidgetItem *RAReport = new QTableWidgetItem();
-                        RAReport->setText(pcdataXMLEle(subEP));
-                        RAReport->setTextAlignment(Qt::AlignHCenter);
-                        mountModel.alignTable->setItem(currentRow, 0, RAReport);
-                    }
-                    else
-                        return false;
-                    subEP = findXMLEle(ep, "DE");
-                    if (subEP)
-                    {
-                        QTableWidgetItem *DEReport = new QTableWidgetItem();
-                        DEReport->setText(pcdataXMLEle(subEP));
-                        DEReport->setTextAlignment(Qt::AlignHCenter);
-                        mountModel.alignTable->setItem(currentRow, 1, DEReport);
-                    }
-                    else
-                        return false;
-                    subEP = findXMLEle(ep, "NAME");
-                    if (subEP)
-                    {
-                        QTableWidgetItem *ObjReport = new QTableWidgetItem();
-                        ObjReport->setText(pcdataXMLEle(subEP));
-                        ObjReport->setTextAlignment(Qt::AlignHCenter);
-                        mountModel.alignTable->setItem(currentRow, 2, ObjReport);
-                    }
-                    else
-                        return false;
-                }
-                currentRow++;
-            }
-            return true;
-        }
-    }
-    return false;
-}
-
-void Align::slotSaveAsAlignmentPoints()
-{
-    alignURL.clear();
-    slotSaveAlignmentPoints();
-}
-void Align::slotSaveAlignmentPoints()
-{
-    QUrl backupCurrent = alignURL;
-
-    if (alignURL.toLocalFile().startsWith(QLatin1String("/tmp/")) || alignURL.toLocalFile().contains("/Temp"))
-        alignURL.clear();
-
-    if (alignURL.isEmpty())
-    {
-        alignURL = QFileDialog::getSaveFileUrl(&mountModelDialog, i18n("Save Ekos Alignment List"), alignURLPath,
-                                               "Ekos Alignment List (*.eal)");
-        // if user presses cancel
-        if (alignURL.isEmpty())
-        {
-            alignURL = backupCurrent;
-            return;
-        }
-
-        alignURLPath = QUrl(alignURL.url(QUrl::RemoveFilename));
-
-        if (alignURL.toLocalFile().endsWith(QLatin1String(".eal")) == false)
-            alignURL.setPath(alignURL.toLocalFile() + ".eal");
-
-        if (QFile::exists(alignURL.toLocalFile()))
-        {
-            int r = KMessageBox::warningContinueCancel(nullptr,
-                    i18n("A file named \"%1\" already exists. "
-                         "Overwrite it?",
-                         alignURL.fileName()),
-                    i18n("Overwrite File?"), KStandardGuiItem::overwrite());
-            if (r == KMessageBox::Cancel)
-                return;
-        }
-    }
-
-    if (alignURL.isValid())
-    {
-        if ((saveAlignmentPoints(alignURL.toLocalFile())) == false)
-        {
-            KSNotification::error(i18n("Failed to save alignment list"), i18n("Save"));
-            return;
-        }
-    }
-    else
-    {
-        QString message = i18n("Invalid URL: %1", alignURL.url());
-        KSNotification::sorry(message, i18n("Invalid URL"));
-    }
-}
-
-bool Align::saveAlignmentPoints(const QString &path)
-{
-    QFile file;
-    file.setFileName(path);
-    if (!file.open(QIODevice::WriteOnly))
-    {
-        QString message = i18n("Unable to write to file %1", path);
-        KSNotification::sorry(message, i18n("Could Not Open File"));
-        return false;
-    }
-
-    QTextStream outstream(&file);
-
-    outstream << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << endl;
-    outstream << "<AlignmentList version='" << AL_FORMAT_VERSION << "'>" << endl;
-
-    for (int i = 0; i < mountModel.alignTable->rowCount(); i++)
-    {
-        QTableWidgetItem *raCell      = mountModel.alignTable->item(i, 0);
-        QTableWidgetItem *deCell      = mountModel.alignTable->item(i, 1);
-        QTableWidgetItem *objNameCell = mountModel.alignTable->item(i, 2);
-
-        if (!raCell || !deCell || !objNameCell)
-            return false;
-        QString raString  = raCell->text();
-        QString deString  = deCell->text();
-        QString objString = objNameCell->text();
-
-        outstream << "<AlignmentPoint>" << endl;
-        outstream << "<RA>" << raString << "</RA>" << endl;
-        outstream << "<DE>" << deString << "</DE>" << endl;
-        outstream << "<NAME>" << objString << "</NAME>" << endl;
-        outstream << "</AlignmentPoint>" << endl;
-    }
-    outstream << "</AlignmentList>" << endl;
-    appendLogText(i18n("Alignment List saved to %1", path));
-    file.close();
-    return true;
-}
-
-void Align::slotSortAlignmentPoints()
-{
-    int firstAlignmentPt = findClosestAlignmentPointToTelescope();
-    if (firstAlignmentPt != -1)
-    {
-        swapAlignPoints(firstAlignmentPt, 0);
-    }
-
-    for (int i = 0; i < mountModel.alignTable->rowCount() - 1; i++)
-    {
-        int nextAlignmentPoint = findNextAlignmentPointAfter(i);
-        if (nextAlignmentPoint != -1)
-        {
-            swapAlignPoints(nextAlignmentPoint, i + 1);
-        }
-    }
-    if (previewShowing)
-        updatePreviewAlignPoints();
-}
-
-int Align::findClosestAlignmentPointToTelescope()
-{
-    dms bestDiff = dms(360);
-    double index = -1;
-
-    for (int i = 0; i < mountModel.alignTable->rowCount(); i++)
-    {
-        QTableWidgetItem *raCell = mountModel.alignTable->item(i, 0);
-        QTableWidgetItem *deCell = mountModel.alignTable->item(i, 1);
-
-        if (raCell && deCell)
-        {
-            dms raDMS = dms::fromString(raCell->text(), false);
-            dms deDMS = dms::fromString(deCell->text(), true);
-
-            SkyPoint sk(raDMS, deDMS);
-            dms thisDiff = telescopeCoord.angularDistanceTo(&sk);
-            if (thisDiff.Degrees() < bestDiff.Degrees())
-            {
-                index    = i;
-                bestDiff = thisDiff;
-            }
-        }
-    }
-    return index;
-}
-
-int Align::findNextAlignmentPointAfter(int currentSpot)
-{
-    QTableWidgetItem *currentRACell = mountModel.alignTable->item(currentSpot, 0);
-    QTableWidgetItem *currentDECell = mountModel.alignTable->item(currentSpot, 1);
-
-    if (currentRACell && currentDECell)
-    {
-        dms thisRADMS = dms::fromString(currentRACell->text(), false);
-        dms thisDEDMS = dms::fromString(currentDECell->text(), true);
-
-        SkyPoint thisPt(thisRADMS, thisDEDMS);
-
-        dms bestDiff = dms(360);
-        double index = -1;
-
-        for (int i = currentSpot + 1; i < mountModel.alignTable->rowCount(); i++)
-        {
-            QTableWidgetItem *raCell = mountModel.alignTable->item(i, 0);
-            QTableWidgetItem *deCell = mountModel.alignTable->item(i, 1);
-
-            if (raCell && deCell)
-            {
-                dms raDMS = dms::fromString(raCell->text(), false);
-                dms deDMS = dms::fromString(deCell->text(), true);
-                SkyPoint point(raDMS, deDMS);
-                dms thisDiff = thisPt.angularDistanceTo(&point);
-
-                if (thisDiff.Degrees() < bestDiff.Degrees())
-                {
-                    index    = i;
-                    bestDiff = thisDiff;
-                }
-            }
-        }
-        return index;
-    }
-    else
-        return -1;
-}
-
-void Align::exportSolutionPoints()
-{
-    if (solutionTable->rowCount() == 0)
-        return;
-
-    QUrl exportFile = QFileDialog::getSaveFileUrl(Ekos::Manager::Instance(), i18n("Export Solution Points"), alignURLPath,
-                      "CSV File (*.csv)");
-    if (exportFile.isEmpty()) // if user presses cancel
-        return;
-    if (exportFile.toLocalFile().endsWith(QLatin1String(".csv")) == false)
-        exportFile.setPath(exportFile.toLocalFile() + ".csv");
-
-    QString path = exportFile.toLocalFile();
-
-    if (QFile::exists(path))
-    {
-        int r = KMessageBox::warningContinueCancel(nullptr,
-                i18n("A file named \"%1\" already exists. "
-                     "Overwrite it?",
-                     exportFile.fileName()),
-                i18n("Overwrite File?"), KStandardGuiItem::overwrite());
-        if (r == KMessageBox::Cancel)
-            return;
-    }
-
-    if (!exportFile.isValid())
-    {
-        QString message = i18n("Invalid URL: %1", exportFile.url());
-        KSNotification::sorry(message, i18n("Invalid URL"));
-        return;
-    }
-
-    QFile file;
-    file.setFileName(path);
-    if (!file.open(QIODevice::WriteOnly))
-    {
-        QString message = i18n("Unable to write to file %1", path);
-        KSNotification::sorry(message, i18n("Could Not Open File"));
-        return;
-    }
-
-    QTextStream outstream(&file);
-
-    QString epoch = QString::number(KStarsDateTime::currentDateTime().epoch());
-
-    outstream << "RA (J" << epoch << "),DE (J" << epoch
-              << "),RA (degrees),DE (degrees),Name,RA Error (arcsec),DE Error (arcsec)" << endl;
-
-    for (int i = 0; i < solutionTable->rowCount(); i++)
-    {
-        QTableWidgetItem *raCell      = solutionTable->item(i, 0);
-        QTableWidgetItem *deCell      = solutionTable->item(i, 1);
-        QTableWidgetItem *objNameCell = solutionTable->item(i, 2);
-        QTableWidgetItem *raErrorCell = solutionTable->item(i, 4);
-        QTableWidgetItem *deErrorCell = solutionTable->item(i, 5);
-
-        if (!raCell || !deCell || !objNameCell || !raErrorCell || !deErrorCell)
-        {
-            KSNotification::sorry(i18n("Error in table structure."));
-            return;
-        }
-        dms raDMS = dms::fromString(raCell->text(), false);
-        dms deDMS = dms::fromString(deCell->text(), true);
-        outstream << raDMS.toHMSString() << ',' << deDMS.toDMSString() << ',' << raDMS.Degrees() << ','
-                  << deDMS.Degrees() << ',' << objNameCell->text() << ',' << raErrorCell->text().remove('\"') << ','
-                  << deErrorCell->text().remove('\"') << endl;
-    }
-    appendLogText(i18n("Solution Points Saved as: %1", path));
-    file.close();
-}
 
 void Align::slotClearAllSolutionPoints()
 {
@@ -1536,19 +633,6 @@ void Align::slotClearAllSolutionPoints()
 
     KSMessageBox::Instance()->questionYesNo(i18n("Are you sure you want to clear all of the solution points?"),
                                             i18n("Clear Solution Points"), 60);
-}
-
-void Align::slotClearAllAlignPoints()
-{
-    if (mountModel.alignTable->rowCount() == 0)
-        return;
-
-    if (KMessageBox::questionYesNo(&mountModelDialog, i18n("Are you sure you want to clear all the alignment points?"),
-                                   i18n("Clear Align Points")) == KMessageBox::Yes)
-        mountModel.alignTable->setRowCount(0);
-
-    if (previewShowing)
-        updatePreviewAlignPoints();
 }
 
 void Align::slotRemoveSolutionPoint()
@@ -1578,257 +662,24 @@ void Align::slotRemoveSolutionPoint()
     alignPlot->replot();
 }
 
-void Align::slotRemoveAlignPoint()
-{
-    mountModel.alignTable->removeRow(mountModel.alignTable->currentRow());
-    if (previewShowing)
-        updatePreviewAlignPoints();
-}
-
-void Align::moveAlignPoint(int logicalIndex, int oldVisualIndex, int newVisualIndex)
-{
-    Q_UNUSED(logicalIndex)
-
-    for (int i = 0; i < mountModel.alignTable->columnCount(); i++)
-    {
-        QTableWidgetItem *oldItem = mountModel.alignTable->takeItem(oldVisualIndex, i);
-        QTableWidgetItem *newItem = mountModel.alignTable->takeItem(newVisualIndex, i);
-
-        mountModel.alignTable->setItem(newVisualIndex, i, oldItem);
-        mountModel.alignTable->setItem(oldVisualIndex, i, newItem);
-    }
-    mountModel.alignTable->verticalHeader()->blockSignals(true);
-    mountModel.alignTable->verticalHeader()->moveSection(newVisualIndex, oldVisualIndex);
-    mountModel.alignTable->verticalHeader()->blockSignals(false);
-
-    if (previewShowing)
-        updatePreviewAlignPoints();
-}
-
-void Align::swapAlignPoints(int firstPt, int secondPt)
-{
-    for (int i = 0; i < mountModel.alignTable->columnCount(); i++)
-    {
-        QTableWidgetItem *firstPtItem  = mountModel.alignTable->takeItem(firstPt, i);
-        QTableWidgetItem *secondPtItem = mountModel.alignTable->takeItem(secondPt, i);
-
-        mountModel.alignTable->setItem(firstPt, i, secondPtItem);
-        mountModel.alignTable->setItem(secondPt, i, firstPtItem);
-    }
-}
-
 void Align::slotMountModel()
 {
-    generateAlignStarList();
-
-    SkyPoint spWest;
-    spWest.setAlt(30);
-    spWest.setAz(270);
-    spWest.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-
-    mountModel.alignDec->setValue(static_cast<int>(spWest.dec().Degrees()));
-
-    mountModelDialog.show();
-}
-
-void Align::slotAddAlignPoint()
-{
-    int currentRow = mountModel.alignTable->rowCount();
-    mountModel.alignTable->insertRow(currentRow);
-
-    QTableWidgetItem *disabledBox = new QTableWidgetItem();
-    disabledBox->setFlags(Qt::ItemIsSelectable);
-    mountModel.alignTable->setItem(currentRow, 3, disabledBox);
-}
-
-void Align::slotFindAlignObject()
-{
-    if (FindDialog::Instance()->execWithParent(&mountModelDialog) == QDialog::Accepted)
+    if (!m_MountModel)
     {
-        SkyObject *object = FindDialog::Instance()->targetObject();
-        if (object != nullptr)
+        m_MountModel = new MountModel(this);
+        connect(m_MountModel, &Ekos::MountModel::newLog, this, &Ekos::Align::appendLogText, Qt::UniqueConnection);
+        connect(m_MountModel, &Ekos::MountModel::aborted, this, [this]()
         {
-            KStarsData * const data = KStarsData::Instance();
-
-            SkyObject *o = object->clone();
-            o->updateCoords(data->updateNum(), true, data->geo()->lat(), data->lst(), false);
-            int currentRow = mountModel.alignTable->rowCount();
-            mountModel.alignTable->insertRow(currentRow);
-
-            QString ra_report, dec_report;
-            getFormattedCoords(o->ra0().Hours(), o->dec0().Degrees(), ra_report, dec_report);
-
-            QTableWidgetItem *RAReport = new QTableWidgetItem();
-            RAReport->setText(ra_report);
-            RAReport->setTextAlignment(Qt::AlignHCenter);
-            mountModel.alignTable->setItem(currentRow, 0, RAReport);
-
-            QTableWidgetItem *DECReport = new QTableWidgetItem();
-            DECReport->setText(dec_report);
-            DECReport->setTextAlignment(Qt::AlignHCenter);
-            mountModel.alignTable->setItem(currentRow, 1, DECReport);
-
-            QTableWidgetItem *ObjNameReport = new QTableWidgetItem();
-            ObjNameReport->setText(o->longname());
-            ObjNameReport->setTextAlignment(Qt::AlignHCenter);
-            mountModel.alignTable->setItem(currentRow, 2, ObjNameReport);
-
-            QTableWidgetItem *disabledBox = new QTableWidgetItem();
-            disabledBox->setFlags(Qt::ItemIsSelectable);
-            mountModel.alignTable->setItem(currentRow, 3, disabledBox);
-        }
+            if (currentTelescope && currentTelescope->isSlewing())
+                currentTelescope->Abort();
+            abort();
+        });
+        connect(this, &Ekos::Align::newStatus, m_MountModel, &Ekos::MountModel::setAlignStatus, Qt::UniqueConnection);
     }
-    if (previewShowing)
-        updatePreviewAlignPoints();
+
+    m_MountModel->show();
 }
 
-void Align::resetAlignmentProcedure()
-{
-    mountModel.alignTable->setCellWidget(currentAlignmentPoint, 3, new QWidget());
-    QTableWidgetItem *statusReport = new QTableWidgetItem();
-    statusReport->setFlags(Qt::ItemIsSelectable);
-    statusReport->setIcon(QIcon(":/icons/AlignWarning.svg"));
-    mountModel.alignTable->setItem(currentAlignmentPoint, 3, statusReport);
-
-    appendLogText(i18n("The Mount Model Tool is Reset."));
-    mountModel.startAlignB->setIcon(
-        QIcon::fromTheme("media-playback-start"));
-    mountModelRunning     = false;
-    currentAlignmentPoint = 0;
-    abort();
-}
-
-bool Align::alignmentPointsAreBad()
-{
-    for (int i = 0; i < mountModel.alignTable->rowCount(); i++)
-    {
-        QTableWidgetItem *raCell = mountModel.alignTable->item(i, 0);
-        if (!raCell)
-            return true;
-        QString raString = raCell->text();
-        if (dms().setFromString(raString, false) == false)
-            return true;
-
-        QTableWidgetItem *decCell = mountModel.alignTable->item(i, 1);
-        if (!decCell)
-            return true;
-        QString decString = decCell->text();
-        if (dms().setFromString(decString, true) == false)
-            return true;
-    }
-    return false;
-}
-
-void Align::startStopAlignmentProcedure()
-{
-    if (!mountModelRunning)
-    {
-        if (mountModel.alignTable->rowCount() > 0)
-        {
-            if (alignmentPointsAreBad())
-            {
-                KSNotification::error(i18n("Please Check the Alignment Points."));
-                return;
-            }
-            if (currentGotoMode == GOTO_NOTHING)
-            {
-                int r = KMessageBox::warningContinueCancel(
-                            nullptr,
-                            i18n("In the Align Module, \"Nothing\" is Selected for the Solver Action.  This means that the "
-                                 "mount model tool will not sync/align your mount but will only report the pointing model "
-                                 "errors.  Do you wish to continue?"),
-                            i18n("Pointing Model Report Only?"), KStandardGuiItem::cont(), KStandardGuiItem::cancel(),
-                            "nothing_selected_warning");
-                if (r == KMessageBox::Cancel)
-                    return;
-            }
-            if (currentAlignmentPoint == 0)
-            {
-                for (int row = 0; row < mountModel.alignTable->rowCount(); row++)
-                {
-                    QTableWidgetItem *statusReport = new QTableWidgetItem();
-                    statusReport->setIcon(QIcon());
-                    mountModel.alignTable->setItem(row, 3, statusReport);
-                }
-            }
-            mountModel.startAlignB->setIcon(
-                QIcon::fromTheme("media-playback-pause"));
-            mountModelRunning = true;
-            appendLogText(i18n("The Mount Model Tool is Starting."));
-            startAlignmentPoint();
-        }
-    }
-    else
-    {
-        mountModel.startAlignB->setIcon(
-            QIcon::fromTheme("media-playback-start"));
-        mountModel.alignTable->setCellWidget(currentAlignmentPoint, 3, new QWidget());
-        appendLogText(i18n("The Mount Model Tool is Paused."));
-        abort();
-        mountModelRunning = false;
-
-        QTableWidgetItem *statusReport = new QTableWidgetItem();
-        statusReport->setFlags(Qt::ItemIsSelectable);
-        statusReport->setIcon(QIcon(":/icons/AlignWarning.svg"));
-        mountModel.alignTable->setItem(currentAlignmentPoint, 3, statusReport);
-    }
-}
-
-void Align::startAlignmentPoint()
-{
-    if (mountModelRunning && currentAlignmentPoint >= 0 && currentAlignmentPoint < mountModel.alignTable->rowCount())
-    {
-        QTableWidgetItem *raCell = mountModel.alignTable->item(currentAlignmentPoint, 0);
-        QString raString         = raCell->text();
-        dms raDMS                = dms::fromString(raString, false);
-        double ra                = raDMS.Hours();
-
-        QTableWidgetItem *decCell = mountModel.alignTable->item(currentAlignmentPoint, 1);
-        QString decString         = decCell->text();
-        dms decDMS                = dms::fromString(decString, true);
-        double dec                = decDMS.Degrees();
-
-        QProgressIndicator *alignIndicator = new QProgressIndicator(this);
-        mountModel.alignTable->setCellWidget(currentAlignmentPoint, 3, alignIndicator);
-        alignIndicator->startAnimation();
-
-        targetCoord.setRA0(ra);
-        targetCoord.setDec0(dec);
-        targetCoord.updateCoordsNow(KStarsData::Instance()->updateNum());
-
-        Slew();
-    }
-}
-
-void Align::finishAlignmentPoint(bool solverSucceeded)
-{
-    if (mountModelRunning && currentAlignmentPoint >= 0 && currentAlignmentPoint < mountModel.alignTable->rowCount())
-    {
-        mountModel.alignTable->setCellWidget(currentAlignmentPoint, 3, new QWidget());
-        QTableWidgetItem *statusReport = new QTableWidgetItem();
-        statusReport->setFlags(Qt::ItemIsSelectable);
-        if (solverSucceeded)
-            statusReport->setIcon(QIcon(":/icons/AlignSuccess.svg"));
-        else
-            statusReport->setIcon(QIcon(":/icons/AlignFailure.svg"));
-        mountModel.alignTable->setItem(currentAlignmentPoint, 3, statusReport);
-
-        currentAlignmentPoint++;
-
-        if (currentAlignmentPoint < mountModel.alignTable->rowCount())
-        {
-            startAlignmentPoint();
-        }
-        else
-        {
-            mountModelRunning = false;
-            mountModel.startAlignB->setIcon(
-                QIcon::fromTheme("media-playback-start"));
-            appendLogText(i18n("The Mount Model Tool is Finished."));
-            currentAlignmentPoint = 0;
-        }
-    }
-}
 
 bool Align::isParserOK()
 {
@@ -1848,9 +699,9 @@ bool Align::isParserOK()
 
 void Align::checkAlignmentTimeout()
 {
-    if (solveFromFile || ++solverIterations == MAXIMUM_SOLVER_ITERATIONS)
+    if (m_SolveFromFile || ++solverIterations == MAXIMUM_SOLVER_ITERATIONS)
         abort();
-    else if (!solveFromFile)
+    else if (!m_SolveFromFile)
     {
         appendLogText(i18n("Solver timed out."));
         parser->stopSolver();
@@ -1926,6 +777,26 @@ void Align::setDefaultCCD(QString ccd)
 
 void Align::checkCCD(int ccdNum)
 {
+    // Do NOT perform checks if align is in progress as this may result
+    // in signals/slots getting disconnected.
+    switch (state)
+    {
+        // Idle, camera change is OK.
+        case ALIGN_IDLE:
+        case ALIGN_COMPLETE:
+        case ALIGN_FAILED:
+        case ALIGN_ABORTED:
+            break;
+
+        // Busy, camera change is not OK.
+        case ALIGN_PROGRESS:
+        case ALIGN_SYNCING:
+        case ALIGN_SLEWING:
+        case ALIGN_SUSPENDED:
+            return;
+    }
+
+
     if (ccdNum == -1 || ccdNum >= CCDs.count())
     {
         ccdNum = CCDCaptureCombo->currentIndex();
@@ -1936,61 +807,15 @@ void Align::checkCCD(int ccdNum)
 
     currentCCD = CCDs.at(ccdNum);
 
-    ISD::CCDChip *targetChip = currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
-    if (targetChip && targetChip->isCapturing())
+    auto targetChip = currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
+    if (targetChip == nullptr || (targetChip && targetChip->isCapturing()))
         return;
 
     if (solverModeButtonGroup->checkedId() == SOLVER_REMOTE && remoteParser.get() != nullptr)
         (dynamic_cast<RemoteAstrometryParser *>(remoteParser.get()))->setCCD(currentCCD->getDeviceName());
 
     syncCCDInfo();
-
-    QStringList isoList = targetChip->getISOList();
-    ISOCombo->clear();
-
-    if (isoList.isEmpty())
-    {
-        ISOCombo->setEnabled(false);
-    }
-    else
-    {
-        ISOCombo->setEnabled(true);
-        ISOCombo->addItems(isoList);
-        ISOCombo->setCurrentIndex(targetChip->getISOIndex());
-    }
-
-    // Gain Check
-    if (currentCCD->hasGain())
-    {
-        double min, max, step, value;
-        currentCCD->getGainMinMaxStep(&min, &max, &step);
-
-        // Allow the possibility of no gain value at all.
-        GainSpinSpecialValue = min - step;
-        GainSpin->setRange(GainSpinSpecialValue, max);
-        GainSpin->setSpecialValueText(i18n("--"));
-        GainSpin->setEnabled(true);
-        GainSpin->setSingleStep(step);
-        currentCCD->getGain(&value);
-
-        // Set the custom gain if we have one
-        // otherwise it will not have an effect.
-        if (TargetCustomGainValue > 0)
-            GainSpin->setValue(TargetCustomGainValue);
-        else
-            GainSpin->setValue(GainSpinSpecialValue);
-
-        GainSpin->setReadOnly(currentCCD->getGainPermission() == IP_RO);
-
-        connect(GainSpin, &QDoubleSpinBox::editingFinished, [this]()
-        {
-            if (GainSpin->value() > GainSpinSpecialValue)
-                TargetCustomGainValue = GainSpin->value();
-        });
-    }
-    else
-        GainSpin->setEnabled(false);
-
+    syncCCDControls();
     syncTelescopeInfo();
 }
 
@@ -2016,6 +841,8 @@ void Align::setTelescope(ISD::GDInterface *newTelescope)
     currentTelescope = static_cast<ISD::Telescope *>(newTelescope);
     currentTelescope->disconnect(this);
 
+    RUN_PAH(setCurrentTelescope(currentTelescope));
+
     connect(currentTelescope, &ISD::GDInterface::numberUpdated, this, &Ekos::Align::processNumber, Qt::UniqueConnection);
     connect(currentTelescope, &ISD::GDInterface::switchUpdated, this, &Ekos::Align::processSwitch, Qt::UniqueConnection);
     connect(currentTelescope, &ISD::GDInterface::Disconnected, this, [this]()
@@ -2026,23 +853,7 @@ void Align::setTelescope(ISD::GDInterface *newTelescope)
 
     if (m_isRateSynced == false)
     {
-        PAHSlewRateCombo->blockSignals(true);
-        PAHSlewRateCombo->clear();
-        PAHSlewRateCombo->addItems(currentTelescope->slewRates());
-        const uint16_t configMountSpeed = Options::pAHMountSpeedIndex();
-        if (configMountSpeed < PAHSlewRateCombo->count())
-            PAHSlewRateCombo->setCurrentIndex(configMountSpeed);
-        else
-        {
-            int currentSlewRateIndex = currentTelescope->getSlewRate();
-            if (currentSlewRateIndex >= 0)
-            {
-                PAHSlewRateCombo->setCurrentIndex(currentSlewRateIndex);
-                Options::setPAHMountSpeedIndex(currentSlewRateIndex);
-            }
-        }
-        PAHSlewRateCombo->blockSignals(false);
-
+        RUN_PAH(syncMountSpeed());
         m_isRateSynced = !currentTelescope->slewRates().empty();
     }
 
@@ -2057,64 +868,72 @@ void Align::setDome(ISD::GDInterface *newDome)
 
 void Align::removeDevice(ISD::GDInterface *device)
 {
+    auto name = device->getDeviceName();
     device->disconnect(this);
-    if (currentTelescope && currentTelescope->getDeviceName() == device->getDeviceName())
+    if (currentTelescope && currentTelescope->getDeviceName() == name)
     {
         currentTelescope = nullptr;
         m_isRateSynced = false;
     }
-    else if (currentDome && currentDome->getDeviceName() == device->getDeviceName())
+    else if (currentDome && currentDome->getDeviceName() == name)
     {
         currentDome = nullptr;
     }
-    else if (currentRotator && currentRotator->getDeviceName() == device->getDeviceName())
+    else if (currentRotator && currentRotator->getDeviceName() == name)
     {
         currentRotator = nullptr;
     }
 
-    if (CCDs.contains(static_cast<ISD::CCD *>(device)))
+    for (auto &oneCCD : CCDs)
     {
-        CCDs.removeAll(static_cast<ISD::CCD *>(device));
-        CCDCaptureCombo->removeItem(CCDCaptureCombo->findText(device->getDeviceName()));
-        CCDCaptureCombo->removeItem(CCDCaptureCombo->findText(device->getDeviceName() + QString(" Guider")));
-        if (CCDs.empty())
+        if (oneCCD->getDeviceName() == name)
         {
-            currentCCD = nullptr;
-            CCDCaptureCombo->setCurrentIndex(-1);
-        }
-        else
-        {
-            currentCCD = CCDs[0];
-            CCDCaptureCombo->setCurrentIndex(0);
-        }
+            CCDs.removeAll(oneCCD);
+            CCDCaptureCombo->removeItem(CCDCaptureCombo->findText(name));
+            CCDCaptureCombo->removeItem(CCDCaptureCombo->findText(name + " Guider"));
+            if (CCDs.empty())
+            {
+                currentCCD = nullptr;
+                CCDCaptureCombo->setCurrentIndex(-1);
+            }
+            else
+            {
+                currentCCD = CCDs[0];
+                CCDCaptureCombo->setCurrentIndex(0);
+            }
 
-        QTimer::singleShot(1000, this, [this]()
-        {
-            checkCCD();
-        });
-        //checkCCD();
+            QTimer::singleShot(1000, this, [this]()
+            {
+                checkCCD();
+            });
+
+            break;
+        }
     }
 
-    if (Filters.contains(static_cast<ISD::Filter *>(device)))
+    for (auto &oneFilter : Filters)
     {
-        Filters.removeAll(static_cast<ISD::Filter *>(device));
-        filterManager->removeDevice(device);
-        FilterDevicesCombo->removeItem(FilterDevicesCombo->findText(device->getDeviceName()));
-        if (Filters.empty())
+        if (oneFilter->getDeviceName() == name)
         {
-            currentFilter = nullptr;
-            FilterDevicesCombo->setCurrentIndex(-1);
+            Filters.removeAll(oneFilter);
+            filterManager->removeDevice(device);
+            FilterDevicesCombo->removeItem(FilterDevicesCombo->findText(name));
+            if (Filters.empty())
+            {
+                currentFilter = nullptr;
+                FilterDevicesCombo->setCurrentIndex(-1);
+            }
+            else
+                FilterDevicesCombo->setCurrentIndex(0);
+
+            //checkFilter();
+            QTimer::singleShot(1000, this, [this]()
+            {
+                checkFilter();
+            });
+            break;
         }
-        else
-            FilterDevicesCombo->setCurrentIndex(0);
-
-        //checkFilter();
-        QTimer::singleShot(1000, this, [this]()
-        {
-            checkFilter();
-        });
     }
-
 }
 
 bool Align::syncTelescopeInfo()
@@ -2145,11 +964,11 @@ bool Align::syncTelescopeInfo()
         if (np && np->getValue() > 0)
             guideAperture = np->getValue();
 
-        aperture = primaryAperture;
+        m_TelescopeAperture = primaryAperture;
 
         //if (currentCCD && currentCCD->getTelescopeType() == ISD::CCD::TELESCOPE_GUIDE)
         if (FOVScopeCombo->currentIndex() == ISD::CCD::TELESCOPE_GUIDE)
-            aperture = guideAperture;
+            m_TelescopeAperture = guideAperture;
 
         np = nvp->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
         if (np && np->getValue() > 0)
@@ -2159,29 +978,29 @@ bool Align::syncTelescopeInfo()
         if (np && np->getValue() > 0)
             guideFL = np->getValue();
 
-        focal_length = primaryFL;
+        m_TelescopeFocalLength = primaryFL;
 
         //if (currentCCD && currentCCD->getTelescopeType() == ISD::CCD::TELESCOPE_GUIDE)
         if (FOVScopeCombo->currentIndex() == ISD::CCD::TELESCOPE_GUIDE)
-            focal_length = guideFL;
+            m_TelescopeFocalLength = guideFL;
     }
 
-    if (focal_length == -1 || aperture == -1)
+    if (m_TelescopeFocalLength == -1 || m_TelescopeAperture == -1)
         return false;
 
-    if (ccd_hor_pixel != -1 && ccd_ver_pixel != -1 && focal_length != -1 && aperture != -1)
+    if (m_CameraPixelWidth != -1 && m_CameraPixelHeight != -1 && m_TelescopeFocalLength != -1 && m_TelescopeAperture != -1)
     {
         FOVScopeCombo->setItemData(
             ISD::CCD::TELESCOPE_PRIMARY,
-            i18nc("F-Number, Focal Length, Aperture",
-                  "<nobr>F<b>%1</b> Focal Length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
+            i18nc("F-Number, Focal length, Aperture",
+                  "<nobr>F<b>%1</b> Focal length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
                   QString::number(primaryFL / primaryAperture, 'f', 1), QString::number(primaryFL, 'f', 2),
                   QString::number(primaryAperture, 'f', 2)),
             Qt::ToolTipRole);
         FOVScopeCombo->setItemData(
             ISD::CCD::TELESCOPE_GUIDE,
-            i18nc("F-Number, Focal Length, Aperture",
-                  "<nobr>F<b>%1</b> Focal Length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
+            i18nc("F-Number, Focal length, Aperture",
+                  "<nobr>F<b>%1</b> Focal length: <b>%2</b> mm Aperture: <b>%3</b> mm<sup>2</sup></nobr>",
                   QString::number(guideFL / guideAperture, 'f', 1), QString::number(guideFL, 'f', 2),
                   QString::number(guideAperture, 'f', 2)),
             Qt::ToolTipRole);
@@ -2209,15 +1028,15 @@ void Align::setTelescopeInfo(double primaryFocalLength, double primaryAperture, 
     if (guideAperture > 0)
         this->guideAperture = guideAperture;
 
-    focal_length = primaryFL;
+    m_TelescopeFocalLength = primaryFL;
 
     if (currentCCD && currentCCD->getTelescopeType() == ISD::CCD::TELESCOPE_GUIDE)
-        focal_length = guideFL;
+        m_TelescopeFocalLength = guideFL;
 
-    aperture = primaryAperture;
+    m_TelescopeAperture = primaryAperture;
 
     if (currentCCD && currentCCD->getTelescopeType() == ISD::CCD::TELESCOPE_GUIDE)
-        aperture = guideAperture;
+        m_TelescopeAperture = guideAperture;
 
     syncTelescopeInfo();
 }
@@ -2227,80 +1046,122 @@ void Align::syncCCDInfo()
     if (!currentCCD)
         return;
 
-    auto nvp = currentCCD->getBaseDevice()->getNumber(useGuideHead ? "GUIDER_INFO" : "CCD_INFO");
+    auto targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+    Q_ASSERT(targetChip);
 
-    if (nvp)
-    {
-        auto np = nvp->findWidgetByName("CCD_PIXEL_SIZE_X");
-        if (np && np->getValue() > 0)
-            ccd_hor_pixel = ccd_ver_pixel = np->getValue();
+    // Get Maximum resolution and pixel size
+    uint8_t bit_depth = 8;
+    targetChip->getImageInfo(m_CameraWidth, m_CameraHeight, m_CameraPixelWidth, m_CameraPixelHeight, bit_depth);
 
-        np = nvp->findWidgetByName("CCD_PIXEL_SIZE_Y");
-        if (np && np->getValue() > 0)
-            ccd_ver_pixel = np->getValue();
+    setWCSEnabled(Options::astrometrySolverWCS());
 
-        np = nvp->findWidgetByName("CCD_PIXEL_SIZE_Y");
-        if (np && np->getValue() > 0)
-            ccd_ver_pixel = np->getValue();
-    }
-
-    ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
-
-    auto svp = currentCCD->getBaseDevice()->getSwitch("WCS_CONTROL");
-    if (svp)
-        setWCSEnabled(Options::astrometrySolverWCS());
-
-    targetChip->setImageView(alignView, FITS_ALIGN);
-
-    targetChip->getFrameMinMax(nullptr, nullptr, nullptr, nullptr, nullptr, &ccd_width, nullptr, &ccd_height);
+    int binx = 1, biny = 1;
     binningCombo->setEnabled(targetChip->canBin());
     if (targetChip->canBin())
     {
         binningCombo->blockSignals(true);
 
-        int binx = 1, biny = 1;
         targetChip->getMaxBin(&binx, &biny);
         binningCombo->clear();
 
         for (int i = 0; i < binx; i++)
             binningCombo->addItem(QString("%1x%2").arg(i + 1).arg(i + 1));
 
-        // By default, set to maximum binning since the solver behaves better this way
-        // solverBinningIndex is set by default to 4, but as soon as the user changes the binning, it changes
-        // to whatever value the user selected.
-        if (Options::solverBinningIndex() == 4 && binningCombo->count() <= 4)
-        {
-            binningCombo->setCurrentIndex(binningCombo->count() - 1);
-            Options::setSolverBinningIndex(binningCombo->count() - 1);
-        }
-        else
-            binningCombo->setCurrentIndex(Options::solverBinningIndex());
-
+        binningCombo->setCurrentIndex(Options::solverBinningIndex());
         binningCombo->blockSignals(false);
     }
 
-    if (ccd_hor_pixel == -1 || ccd_ver_pixel == -1)
-        return;
+    // In case ROI is different (smaller) than maximum resolution, let's use that.
+    // N.B. 2022.08.14 JM: We must account for binning since this value is used for FOV calculations.
+    int roiW = 0, roiH = 0;
+    targetChip->getFrameMinMax(nullptr, nullptr, nullptr, nullptr, nullptr, &roiW, nullptr, &roiH);
+    roiW *= binx;
+    roiH *= biny;
+    if ( (roiW > 0 && roiW < m_CameraWidth) || (roiH > 0 && roiH < m_CameraHeight))
+    {
+        m_CameraWidth = roiW;
+        m_CameraHeight = roiH;
+    }
 
-    if (ccd_hor_pixel != -1 && ccd_ver_pixel != -1 && focal_length != -1 && aperture != -1)
+    if (m_CameraPixelWidth > 0 && m_CameraPixelHeight > 0 && m_TelescopeFocalLength > 0 && m_TelescopeAperture > 0)
     {
         calculateFOV();
-        //generateArgs();
     }
+}
+
+void Align::syncCCDControls()
+{
+    if (currentCCD == nullptr)
+        return;
+
+    auto targetChip = currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
+    if (targetChip == nullptr || (targetChip && targetChip->isCapturing()))
+        return;
+
+    auto isoList = targetChip->getISOList();
+    ISOCombo->clear();
+
+    if (isoList.isEmpty())
+    {
+        ISOCombo->setEnabled(false);
+    }
+    else
+    {
+        ISOCombo->setEnabled(true);
+        ISOCombo->addItems(isoList);
+        ISOCombo->setCurrentIndex(targetChip->getISOIndex());
+    }
+
+    // Gain Check
+    if (currentCCD->hasGain())
+    {
+        double min, max, step, value;
+        currentCCD->getGainMinMaxStep(&min, &max, &step);
+
+        // Allow the possibility of no gain value at all.
+        GainSpinSpecialValue = min - step;
+        GainSpin->setRange(GainSpinSpecialValue, max);
+        GainSpin->setSpecialValueText(i18n("--"));
+        GainSpin->setEnabled(true);
+        GainSpin->setSingleStep(step);
+        currentCCD->getGain(&value);
+
+        // Set the custom gain if we have one
+        // otherwise it will not have an effect.
+        TargetCustomGainValue = Options::solverCameraGain();
+        if (TargetCustomGainValue > 0)
+            GainSpin->setValue(TargetCustomGainValue);
+        else
+            GainSpin->setValue(GainSpinSpecialValue);
+
+        GainSpin->setReadOnly(currentCCD->getGainPermission() == IP_RO);
+
+        connect(GainSpin, &QDoubleSpinBox::editingFinished, this, [this]()
+        {
+            if (GainSpin->value() > GainSpinSpecialValue)
+            {
+                TargetCustomGainValue = GainSpin->value();
+                // Save custom gain
+                Options::setSolverCameraGain(TargetCustomGainValue);
+            }
+        });
+    }
+    else
+        GainSpin->setEnabled(false);
 }
 
 void Align::getFOVScale(double &fov_w, double &fov_h, double &fov_scale)
 {
-    fov_w     = fov_x;
-    fov_h     = fov_y;
-    fov_scale = fov_pixscale;
+    fov_w     = m_FOVWidth;
+    fov_h     = m_FOVHeight;
+    fov_scale = m_FOVPixelScale;
 }
 
 QList<double> Align::fov()
 {
     QList<double> result;
 
-    result << fov_x << fov_y << fov_pixscale;
+    result << m_FOVWidth << m_FOVHeight << m_FOVPixelScale;
 
     return result;
 }
@@ -2309,7 +1170,7 @@ QList<double> Align::cameraInfo()
 {
     QList<double> result;
 
-    result << ccd_width << ccd_height << ccd_hor_pixel << ccd_ver_pixel;
+    result << m_CameraWidth << m_CameraHeight << m_CameraPixelWidth << m_CameraPixelHeight;
 
     return result;
 }
@@ -2318,7 +1179,7 @@ QList<double> Align::telescopeInfo()
 {
     QList<double> result;
 
-    result << focal_length << aperture;
+    result << m_TelescopeFocalLength << m_TelescopeAperture;
 
     return result;
 }
@@ -2326,11 +1187,11 @@ QList<double> Align::telescopeInfo()
 void Align::getCalculatedFOVScale(double &fov_w, double &fov_h, double &fov_scale)
 {
     // FOV in arcsecs
-    fov_w = 206264.8062470963552 * ccd_width * ccd_hor_pixel / 1000.0 / focal_length;
-    fov_h = 206264.8062470963552 * ccd_height * ccd_ver_pixel / 1000.0 / focal_length;
+    fov_w = 206264.8062470963552 * m_CameraWidth * m_CameraPixelWidth / 1000.0 / m_TelescopeFocalLength;
+    fov_h = 206264.8062470963552 * m_CameraHeight * m_CameraPixelHeight / 1000.0 / m_TelescopeFocalLength;
 
     // Pix Scale
-    fov_scale = (fov_w * (Options::solverBinningIndex() + 1)) / ccd_width;
+    fov_scale = (fov_w * (Options::solverBinningIndex() + 1)) / m_CameraWidth;
 
     // FOV in arcmins
     fov_w /= 60.0;
@@ -2339,11 +1200,11 @@ void Align::getCalculatedFOVScale(double &fov_w, double &fov_h, double &fov_scal
 
 void Align::calculateEffectiveFocalLength(double newFOVW)
 {
-    if (newFOVW < 0 || newFOVW == fov_x)
+    if (newFOVW < 0 || newFOVW == m_FOVWidth)
         return;
 
-    double new_focal_length = ((ccd_width * ccd_hor_pixel / 1000.0) * 206264.8062470963552) / (newFOVW * 60.0);
-    double focal_diff = std::fabs(new_focal_length - focal_length);
+    double new_focal_length = ((m_CameraWidth * m_CameraPixelWidth / 1000.0) * 206264.8062470963552) / (newFOVW * 60.0);
+    double focal_diff = std::fabs(new_focal_length - m_TelescopeFocalLength);
 
     if (focal_diff > 1)
     {
@@ -2351,7 +1212,7 @@ void Align::calculateEffectiveFocalLength(double newFOVW)
             primaryEffectiveFL = new_focal_length;
         else
             guideEffectiveFL = new_focal_length;
-        appendLogText(i18n("Effective telescope focal length is updated to %1 mm.", focal_length));
+        appendLogText(i18n("Effective telescope focal length is updated to %1 mm.", new_focal_length));
     }
 }
 
@@ -2360,40 +1221,42 @@ void Align::calculateFOV()
     // Calculate FOV
 
     // FOV in arcsecs
-    fov_x = 206264.8062470963552 * ccd_width * ccd_hor_pixel / 1000.0 / focal_length;
-    fov_y = 206264.8062470963552 * ccd_height * ccd_ver_pixel / 1000.0 / focal_length;
+    m_FOVWidth = 206264.8062470963552 * m_CameraWidth * m_CameraPixelWidth / 1000.0 / m_TelescopeFocalLength;
+    m_FOVHeight = 206264.8062470963552 * m_CameraHeight * m_CameraPixelHeight / 1000.0 / m_TelescopeFocalLength;
 
     // Pix Scale
-    fov_pixscale = (fov_x * (Options::solverBinningIndex() + 1)) / ccd_width;
+    m_FOVPixelScale = (m_FOVWidth * (Options::solverBinningIndex() + 1)) / m_CameraWidth;
 
     // FOV in arcmins
-    fov_x /= 60.0;
-    fov_y /= 60.0;
+    m_FOVWidth /= 60.0;
+    m_FOVHeight /= 60.0;
+
+    double calculated_fov_x = m_FOVWidth;
+    double calculated_fov_y = m_FOVHeight;
+
+    QString calculatedFOV = (QString("%1' x %2'").arg(m_FOVWidth, 0, 'f', 1).arg(m_FOVHeight, 0, 'f', 1));
 
     // Put FOV upper limit as 180 degrees
-    if (fov_x < 1 || fov_x > 60 * 180 || fov_y < 1 || fov_y > 60 * 180)
+    if (m_FOVWidth < 1 || m_FOVWidth > 60 * 180 || m_FOVHeight < 1 || m_FOVHeight > 60 * 180)
     {
         appendLogText(
-            i18n("Warning! The calculated field of view is out of bounds. Ensure the telescope focal length and camera pixel size are correct."));
+            i18n("Warning! The calculated field of view (%1) is out of bounds. Ensure the telescope focal length and camera pixel size are correct.",
+                 calculatedFOV));
         return;
     }
-
-    double calculated_fov_x = fov_x;
-    double calculated_fov_y = fov_y;
-
-    QString calculatedFOV = (QString("%1' x %2'").arg(fov_x, 0, 'f', 1).arg(fov_y, 0, 'f', 1));
 
     double effectiveFocalLength = FOVScopeCombo->currentIndex() == ISD::CCD::TELESCOPE_PRIMARY ? primaryEffectiveFL :
                                   guideEffectiveFL;
 
-    FocalLengthOut->setText(QString("%1 (%2)").arg(focal_length, 0, 'f', 1).
-                            arg(effectiveFocalLength > 0 ? effectiveFocalLength : focal_length, 0, 'f', 1));
-    FocalRatioOut->setText(QString("%1 (%2)").arg(focal_length / aperture, 0, 'f', 1).
-                           arg(effectiveFocalLength > 0 ? effectiveFocalLength / aperture : focal_length / aperture, 0, 'f', 1));
+    FocalLengthOut->setText(QString("%1 (%2)").arg(m_TelescopeFocalLength, 0, 'f', 1).
+                            arg(effectiveFocalLength > 0 ? effectiveFocalLength : m_TelescopeFocalLength, 0, 'f', 1));
+    FocalRatioOut->setText(QString("%1 (%2)").arg(m_TelescopeFocalLength / m_TelescopeAperture, 0, 'f', 1).
+                           arg(effectiveFocalLength > 0 ? effectiveFocalLength / m_TelescopeAperture : m_TelescopeFocalLength / m_TelescopeAperture, 0,
+                               'f', 1));
 
     if (effectiveFocalLength > 0)
     {
-        double focal_diff = std::fabs(effectiveFocalLength  - focal_length);
+        double focal_diff = std::fabs(effectiveFocalLength  - m_TelescopeFocalLength);
         if (focal_diff < 5)
             FocalLengthOut->setStyleSheet("color:green");
         else if (focal_diff < 15)
@@ -2407,14 +1270,14 @@ void Align::calculateFOV()
     // per profile/pixel_size/focal_length combinations. It defaults to 0' x 0' and gets updated after the first successful solver is complete.
     getEffectiveFOV();
 
-    if (fov_x == 0)
+    if (m_FOVWidth == 0)
     {
         //FOVOut->setReadOnly(false);
         FOVOut->setToolTip(
             i18n("<p>Effective field of view size in arcminutes.</p><p>Please capture and solve once to measure the effective FOV or enter the values manually.</p><p>Calculated FOV: %1</p>",
                  calculatedFOV));
-        fov_x = calculated_fov_x;
-        fov_y = calculated_fov_y;
+        m_FOVWidth = calculated_fov_x;
+        m_FOVHeight = calculated_fov_y;
         m_EffectiveFOVPending = true;
     }
     else
@@ -2423,34 +1286,17 @@ void Align::calculateFOV()
         FOVOut->setToolTip(i18n("<p>Effective field of view size in arcminutes.</p>"));
     }
 
-    solverFOV->setSize(fov_x, fov_y);
-    sensorFOV->setSize(fov_x, fov_y);
+    solverFOV->setSize(m_FOVWidth, m_FOVHeight);
+    sensorFOV->setSize(m_FOVWidth, m_FOVHeight);
     if (currentCCD)
         sensorFOV->setName(currentCCD->getDeviceName());
 
-    FOVOut->setText(QString("%1' x %2'").arg(fov_x, 0, 'f', 1).arg(fov_y, 0, 'f', 1));
+    FOVOut->setText(QString("%1' x %2'").arg(m_FOVWidth, 0, 'f', 1).arg(m_FOVHeight, 0, 'f', 1));
 
-    if (((fov_x + fov_y) / 2.0) > PAH_CUTOFF_FOV)
-    {
-        if (isPAHReady == false)
-        {
-            PAHWidgets->setEnabled(true);
-            isPAHReady = true;
-            emit PAHEnabled(true);
-            PAHWidgets->setToolTip(QString());
-            FOVDisabledLabel->hide();
-        }
-    }
-    else if (PAHWidgets->isEnabled())
-    {
-        PAHWidgets->setEnabled(false);
-        isPAHReady = false;
-        emit PAHEnabled(false);
-        PAHWidgets->setToolTip(i18n(
-                                   "<p>Polar Alignment Helper tool requires the following:</p><p>1. German Equatorial Mount</p><p>2. FOV &gt;"
-                                   " 0.5 degrees</p><p>For small FOVs, use the Legacy Polar Alignment Tool.</p>"));
-        FOVDisabledLabel->show();
-    }
+    // Enable or Disable PAA depending on current FOV
+    const bool fovOK = ((m_FOVWidth + m_FOVHeight) / 2.0) > PAH_CUTOFF_FOV;
+    if (m_PolarAlignmentAssistant != nullptr)
+        m_PolarAlignmentAssistant->setEnabled(fovOK);
 
     if (opsAstrometry->kcfg_AstrometryUseImageScale->isChecked())
     {
@@ -2459,8 +1305,8 @@ void Align::calculateFOV()
         // Degrees
         if (unitType == 0)
         {
-            double fov_low  = qMin(fov_x / 60, fov_y / 60);
-            double fov_high = qMax(fov_x / 60, fov_y / 60);
+            double fov_low  = qMin(m_FOVWidth / 60, m_FOVHeight / 60);
+            double fov_high = qMax(m_FOVWidth / 60, m_FOVHeight / 60);
             opsAstrometry->kcfg_AstrometryImageScaleLow->setValue(fov_low);
             opsAstrometry->kcfg_AstrometryImageScaleHigh->setValue(fov_high);
 
@@ -2470,8 +1316,8 @@ void Align::calculateFOV()
         // Arcmins
         else if (unitType == 1)
         {
-            double fov_low  = qMin(fov_x, fov_y);
-            double fov_high = qMax(fov_x, fov_y);
+            double fov_low  = qMin(m_FOVWidth, m_FOVHeight);
+            double fov_high = qMax(m_FOVWidth, m_FOVHeight);
             opsAstrometry->kcfg_AstrometryImageScaleLow->setValue(fov_low);
             opsAstrometry->kcfg_AstrometryImageScaleHigh->setValue(fov_high);
 
@@ -2481,12 +1327,12 @@ void Align::calculateFOV()
         // Arcsec per pixel
         else
         {
-            opsAstrometry->kcfg_AstrometryImageScaleLow->setValue(fov_pixscale * 0.9);
-            opsAstrometry->kcfg_AstrometryImageScaleHigh->setValue(fov_pixscale * 1.1);
+            opsAstrometry->kcfg_AstrometryImageScaleLow->setValue(m_FOVPixelScale * 0.9);
+            opsAstrometry->kcfg_AstrometryImageScaleHigh->setValue(m_FOVPixelScale * 1.1);
 
             // 10% boundary
-            Options::setAstrometryImageScaleLow(fov_pixscale * 0.9);
-            Options::setAstrometryImageScaleHigh(fov_pixscale * 1.1);
+            Options::setAstrometryImageScaleLow(m_FOVPixelScale * 0.9);
+            Options::setAstrometryImageScaleHigh(m_FOVPixelScale * 1.1);
         }
     }
 }
@@ -2609,10 +1455,10 @@ QStringList Align::generateRemoteArgs(const QSharedPointer<FITSData> &data)
     {
         if (Options::astrometryUseDownsample())
         {
-            if (Options::astrometryAutoDownsample() && ccd_width && ccd_height)
+            if (Options::astrometryAutoDownsample() && m_CameraWidth && m_CameraHeight)
             {
                 uint8_t bin = qMax(Options::solverBinningIndex() + 1, 1u);
-                uint16_t w = ccd_width / bin;
+                uint16_t w = m_CameraWidth / bin;
                 optionsMap["downsample"] = getSolverDownsample(w);
             }
             else
@@ -2621,10 +1467,10 @@ QStringList Align::generateRemoteArgs(const QSharedPointer<FITSData> &data)
 
         //Options needed for Sextractor
         int bin = Options::solverBinningIndex() + 1;
-        optionsMap["image_width"] = ccd_width / bin;
-        optionsMap["image_height"] = ccd_height / bin;
+        optionsMap["image_width"] = m_CameraWidth / bin;
+        optionsMap["image_height"] = m_CameraHeight / bin;
 
-        if (Options::astrometryUseImageScale() && fov_x > 0 && fov_y > 0)
+        if (Options::astrometryUseImageScale() && m_FOVWidth > 0 && m_FOVHeight > 0)
         {
             QString units = "dw";
             if (Options::astrometryImageScaleUnits() == 1)
@@ -2634,8 +1480,8 @@ QStringList Align::generateRemoteArgs(const QSharedPointer<FITSData> &data)
             if (Options::astrometryAutoUpdateImageScale())
             {
                 QString fov_low, fov_high;
-                double fov_w = fov_x;
-                double fov_h = fov_y;
+                double fov_w = m_FOVWidth;
+                double fov_h = m_FOVHeight;
 
                 if (Options::astrometryImageScaleUnits() == SSolver::DEG_WIDTH)
                 {
@@ -2644,8 +1490,8 @@ QStringList Align::generateRemoteArgs(const QSharedPointer<FITSData> &data)
                 }
                 else if (Options::astrometryImageScaleUnits() == SSolver::ARCSEC_PER_PIX)
                 {
-                    fov_w = fov_pixscale;
-                    fov_h = fov_pixscale;
+                    fov_w = m_FOVPixelScale;
+                    fov_h = m_FOVPixelScale;
                 }
 
                 // If effective FOV is pending, let's set a wider tolerance range
@@ -2718,26 +1564,6 @@ bool Align::captureAndSolve()
     m_AlignTimer.stop();
     m_CaptureTimer.stop();
 
-#ifdef Q_OS_OSX
-    if(Options::solverType() == SSolver::SOLVER_LOCALASTROMETRY
-            && Options::solveSextractorType() == SSolver::EXTRACTOR_BUILTIN)
-    {
-        if( !opsPrograms->astropyInstalled() || !opsPrograms->pythonInstalled() )
-        {
-            KSNotification::error(
-                i18n("Astrometry.net uses python3 and the astropy package for plate solving images offline when using the built in Sextractor. These were not detected on your system.  Please install Python and the Astropy package or select a different Sextractor for solving."));
-            return false;
-        }
-    }
-#endif
-
-    if (m_PAHStage == PAH_FIRST_CAPTURE)
-        PAHWidgets->setCurrentWidget(PAHFirstCapturePage);
-    else if (m_PAHStage == PAH_SECOND_CAPTURE)
-        PAHWidgets->setCurrentWidget(PAHSecondCapturePage);
-    else if (m_PAHStage == PAH_THIRD_CAPTURE)
-        PAHWidgets->setCurrentWidget(PAHThirdCapturePage);
-
     if (currentCCD == nullptr)
     {
         appendLogText(i18n("Error: No camera detected."));
@@ -2767,14 +1593,14 @@ bool Align::captureAndSolve()
     //if (parser->init() == false)
     //    return false;
 
-    if (focal_length == -1 || aperture == -1)
+    if (m_TelescopeFocalLength == -1 || m_TelescopeAperture == -1)
     {
         KSNotification::error(
             i18n("Telescope aperture and focal length are missing. Please check your driver settings and try again."));
         return false;
     }
 
-    if (ccd_hor_pixel == -1 || ccd_ver_pixel == -1)
+    if (m_CameraPixelWidth == -1 || m_CameraPixelHeight == -1)
     {
         KSNotification::error(i18n("CCD pixel size is missing. Please check your driver settings and try again."));
         return false;
@@ -2838,7 +1664,9 @@ bool Align::captureAndSolve()
         return false;
     }
 
-    alignView->setBaseSize(alignWidget->size());
+    m_AlignView->setBaseSize(alignWidget->size());
+    m_AlignView->setProperty("suspended", (solverModeButtonGroup->checkedId() == SOLVER_LOCAL
+                                           && alignDarkFrameCheck->isChecked()));
 
     connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
     connect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
@@ -2883,8 +1711,8 @@ bool Align::captureAndSolve()
     prepareCapture(targetChip);
 
     // In case we're in refresh phase of the polar alignment helper then we use capture value from there
-    if (m_PAHStage == PAH_REFRESH)
-        targetChip->capture(PAHExposure->value());
+    if (matchPAHStage(PAA::PAH_REFRESH))
+        targetChip->capture(m_PolarAlignmentAssistant->getPAHExposureDuration());
     else
         targetChip->capture(seqExpose);
 
@@ -2901,7 +1729,7 @@ bool Align::captureAndSolve()
     solverFOV->setProperty("visible", true);
 
     // If we're just refreshing, then we're done
-    if (m_PAHStage == PAH_REFRESH)
+    if (matchPAHStage(PAA::PAH_REFRESH))
         return true;
 
     appendLogText(i18n("Capturing image..."));
@@ -2910,7 +1738,7 @@ bool Align::captureAndSolve()
     //It also starts the progress indicator.
     double ra, dec;
     currentTelescope->getEqCoords(&ra, &dec);
-    if (!solveFromFile)
+    if (!m_SolveFromFile)
     {
         int currentRow = solutionTable->rowCount();
         solutionTable->insertRow(currentRow);
@@ -2974,20 +1802,23 @@ void Align::processData(const QSharedPointer<FITSData> &data)
     disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
 
     if (data)
+    {
+        m_AlignView->loadData(data);
         m_ImageData = data;
+    }
     else
         m_ImageData.reset();
-    //    blobType     = *(static_cast<ISD::CCD::BlobType *>(bp->aux1));
-    //    blobFileName = QString(static_cast<char *>(bp->aux2));
 
-    appendLogText(i18n("Image received."));
+    RUN_PAH(setImageData(m_ImageData));
 
     // If it's Refresh, we're done
-    if (m_PAHStage == PAH_REFRESH)
+    if (matchPAHStage(PAA::PAH_REFRESH))
     {
         setCaptureComplete();
         return;
     }
+    else
+        appendLogText(i18n("Image received."));
 
     // If Local solver, then set capture complete or perform calibration first.
     if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
@@ -3003,21 +1834,7 @@ void Align::processData(const QSharedPointer<FITSData> &data)
             uint16_t offsetX = x / binx;
             uint16_t offsetY = y / biny;
 
-            connect(DarkLibrary::Instance(), &DarkLibrary::darkFrameCompleted, this, [&](bool completed)
-            {
-                DarkLibrary::Instance()->disconnect(this);
-                alignDarkFrameCheck->setChecked(completed);
-                if (completed)
-                {
-                    alignView->rescale(ZOOM_KEEP_LEVEL);
-                    alignView->updateFrame();
-                }
-
-                setCaptureComplete();
-            });
-            connect(DarkLibrary::Instance(), &DarkLibrary::newLog, this, &Ekos::Align::appendLogText);
-            DarkLibrary::Instance()->denoise(targetChip, m_ImageData, exposureIN->value(), targetChip->getCaptureFilter(),
-                                             offsetX, offsetY);
+            m_DarkProcessor->denoise(targetChip, m_ImageData, exposureIN->value(), offsetX, offsetY);
             return;
         }
 
@@ -3033,11 +1850,13 @@ void Align::prepareCapture(ISD::CCDChip *targetChip)
         currentCCD->setUploadMode(ISD::CCD::UPLOAD_CLIENT);
     }
 
-    rememberCCDExposureLooping = currentCCD->isLooping();
-    if (rememberCCDExposureLooping)
-        currentCCD->setExposureLoopingEnabled(false);
+    if (currentCCD->isFastExposureEnabled())
+    {
+        m_RememberCameraFastExposure = true;
+        currentCCD->setFastExposureEnabled(false);
+    }
 
-    currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
+    currentCCD->setEncodingFormat("FITS");
     targetChip->resetFrame();
     targetChip->setBatchMode(false);
     targetChip->setCaptureMode(FITS_ALIGN);
@@ -3047,240 +1866,26 @@ void Align::prepareCapture(ISD::CCDChip *targetChip)
     targetChip->setBinning(bin, bin);
 
     // Set gain if applicable
-    if (currentCCD->hasGain() && GainSpin->value() > GainSpinSpecialValue)
+    if (currentCCD->hasGain() && GainSpin->isEnabled() && GainSpin->value() > GainSpinSpecialValue)
         currentCCD->setGain(GainSpin->value());
     // Set ISO if applicable
     if (ISOCombo->currentIndex() >= 0)
         targetChip->setISOIndex(ISOCombo->currentIndex());
 }
 
-bool Align::detectStarsPAHRefresh(QList<Edge> *stars, int num, int x, int y, int *starIndex)
-{
-    const QSharedPointer<FITSData> imageData = alignView->imageData();
-    stars->clear();
-    *starIndex = -1;
-
-    if (imageData == nullptr)
-        return 0;
-
-    // Use the solver settings from the align tab for for "polar-align refresh" star detection.
-    QVariantMap settings;
-    settings["optionsProfileIndex"] = Options::solveOptionsProfile();
-    settings["optionsProfileGroup"] = static_cast<int>(Ekos::AlignProfiles);
-    imageData->setSourceExtractorSettings(settings);
-
-    QTime timer;
-    timer.restart();
-    imageData->findStars(ALGORITHM_SEP).waitForFinished();
-
-    QString debugString = QString("PAA Refresh: Detected %1 stars (%2s)")
-                          .arg(imageData->getStarCenters().size()).arg(timer.elapsed() / 1000.0, 5, 'f', 3);
-    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-
-    QList<Edge *> detectedStars = imageData->getStarCenters();
-    // Let's sort detectedStars by flux, starting with widest
-    std::sort(detectedStars.begin(), detectedStars.end(), [](const Edge * edge1, const Edge * edge2) -> bool { return edge1->sum > edge2->sum;});
-
-    // Find the closest star to the x,y position, which is where the user clicked on the alignView.
-    double bestDist = 1e9;
-    int bestIndex = -1;
-    for (int i = 0; i < detectedStars.size(); i++)
-    {
-        double dx = detectedStars[i]->x - x;
-        double dy = detectedStars[i]->y - y;
-        double dist = dx * dx + dy * dy;
-        if (dist < bestDist)
-        {
-            bestDist = dist;
-            bestIndex = i;
-        }
-    }
-
-    int starCount = qMin(num, detectedStars.count());
-    for (int i = 0; i < starCount; i++)
-        stars->append(*(detectedStars[i]));
-    if (bestIndex >= starCount)
-    {
-        // If we found the star, but requested 'num' stars, and the user's star
-        // is lower down in the list, add it and return num+1 stars.
-        stars->append(*(detectedStars[bestIndex]));
-        *starIndex = starCount;
-    }
-    else
-    {
-        *starIndex = bestIndex;
-    }
-    debugString = QString("PAA Refresh: User's star(%1,%2) is index %3").arg(x).arg(y).arg(*starIndex);
-    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-
-    detectedStars.clear();
-
-    return stars->count();
-}
-
-void Align::processPAHRefresh()
-{
-    alignView->setStarCircle();
-    PAHUpdatedErrorTotal->clear();
-    PAHUpdatedErrorAlt->clear();
-    PAHUpdatedErrorAz->clear();
-    QString debugString;
-    // Always run on the initial iteration to setup the user's star,
-    // so that if it is enabled later the star could be tracked.
-    // Flaw here is that if enough stars are not detected, iteration is not incremented,
-    // so it may repeat.
-    if (Options::pAHRefreshUpdateError() || (refreshIteration == 0))
-    {
-        constexpr int MIN_PAH_REFRESH_STARS = 10;
-
-        QList<Edge> stars;
-        // Index of user's star in the detected stars list. In the first iteration
-        // the stars haven't moved and we can just use the location of the click.
-        // Later we'll need to find the star with starCorrespondence.
-        int clickedStarIndex;
-        detectStarsPAHRefresh(&stars, 100, correctionFrom.x(), correctionFrom.y(), &clickedStarIndex);
-        if (clickedStarIndex < 0)
-        {
-            debugString = QString("PAA Refresh(%1): Didn't find the clicked star near %2,%3")
-                          .arg(refreshIteration).arg(correctionFrom.x()).arg(correctionFrom.y());
-            qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-
-            setAlignTableResult(ALIGN_RESULT_FAILED);
-            captureAndSolve();
-            return;
-        }
-
-        debugString = QString("PAA Refresh(%1): Refresh star(%2,%3) is index %4 with offset %5 %6")
-                      .arg(refreshIteration + 1).arg(correctionFrom.x(), 4, 'f', 0)
-                      .arg(correctionFrom.y(), 4, 'f', 0).arg(clickedStarIndex)
-                      .arg(stars[clickedStarIndex].x - correctionFrom.x(), 4, 'f', 0)
-                      .arg(stars[clickedStarIndex].y - correctionFrom.y(), 4, 'f', 0);
-        qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-
-        if (stars.size() > MIN_PAH_REFRESH_STARS)
-        {
-            int dx = 0;
-            int dy = 0;
-            int starIndex = -1;
-
-            if (refreshIteration++ == 0)
-            {
-                // First iteration. Setup starCorrespondence so we can find the user's star.
-                // clickedStarIndex should be the index of a detected star near where the user clicked.
-                starCorrespondencePAH.initialize(stars, clickedStarIndex);
-                if (clickedStarIndex >= 0)
-                {
-                    setupCorrectionGraphics(QPointF(stars[clickedStarIndex].x, stars[clickedStarIndex].y));
-                    emit newCorrectionVector(QLineF(correctionFrom, correctionTo));
-                    emit newFrame(alignView);
-                }
-            }
-            else
-            {
-                // Or, in other iterations find the movement of the "user's star".
-                // The 0.40 means it's OK if star correspondence only finds 40% of the
-                // reference stars (as we'd have more issues near the image edge otherwise).
-                QVector<int> starMap;
-                starCorrespondencePAH.find(stars, 200.0, &starMap, false, 0.40);
-
-                // Go through the starMap, and find the user's star, and compare its position
-                // to its initial position.
-                for (int i = 0; i < starMap.size(); ++i)
-                {
-                    if (starMap[i] == starCorrespondencePAH.guideStar())
-                    {
-                        dx = stars[i].x - correctionFrom.x();
-                        dy = stars[i].y - correctionFrom.y();
-                        starIndex = i;
-                        break;
-                    }
-                }
-                if (starIndex == -1)
-                {
-                    bool allOnes = true;
-                    for (int i = 0; i < starMap.size(); ++i)
-                    {
-                        if (starMap[i] != -1)
-                            allOnes = false;
-                    }
-                    debugString = QString("PAA Refresh(%1): starMap %2").arg(refreshIteration).arg(allOnes ? "ALL -1's" : "not all -1's");
-                    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-                }
-            }
-
-            if (starIndex >= 0)
-            {
-                // Annotate the user's star on the alignview.
-                alignView->setStarCircle(QPointF(stars[starIndex].x, stars[starIndex].y));
-                debugString = QString("PAA Refresh(%1): User's star is now at %2,%3, with movement = %4,%5").arg(refreshIteration)
-                              .arg(stars[starIndex].x, 4, 'f', 0).arg(stars[starIndex].y, 4, 'f', 0).arg(dx).arg(dy);
-                qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-
-                double azE, altE;
-                if (polarAlign.pixelError(alignView->keptImage(), QPointF(stars[starIndex].x, stars[starIndex].y),
-                                          correctionTo, &azE, &altE))
-                {
-                    const double errDegrees = hypot(azE, altE);
-                    dms totalError(errDegrees), azError(azE), altError(altE);
-                    PAHUpdatedErrorTotal->setText(totalError.toDMSString());
-                    PAHUpdatedErrorAlt->setText(altError.toDMSString());
-                    PAHUpdatedErrorAz->setText(azError.toDMSString());
-                    constexpr double oneArcMin = 1.0 / 60.0;
-                    PAHUpdatedErrorTotal->setStyleSheet(
-                        errDegrees < oneArcMin ? "color:green" : (errDegrees < 2 * oneArcMin ? "color:yellow" : "color:red"));
-                    PAHUpdatedErrorAlt->setStyleSheet(
-                        fabs(altE) < oneArcMin ? "color:green" : (fabs(altE) < 2 * oneArcMin ? "color:yellow" : "color:red"));
-                    PAHUpdatedErrorAz->setStyleSheet(
-                        fabs(azE) < oneArcMin ? "color:green" : (fabs(azE) < 2 * oneArcMin ? "color:yellow" : "color:red"));
-
-                    debugString = QString("PAA Refresh(%1): %2,%3 --> %4,%5 @ %6,%7. Corrected az: %8 (%9) alt: %10 (%11) total: %12 (%13)")
-                                  .arg(refreshIteration).arg(correctionFrom.x(), 4, 'f', 0).arg(correctionFrom.y(), 4, 'f', 0)
-                                  .arg(correctionTo.x(), 4, 'f', 0).arg(correctionTo.y(), 4, 'f', 0)
-                                  .arg(stars[starIndex].x, 4, 'f', 0).arg(stars[starIndex].y, 4, 'f', 0)
-                                  .arg(azError.toDMSString()).arg(azE, 5, 'f', 3)
-                                  .arg(altError.toDMSString()).arg(altE, 6, 'f', 3)
-                                  .arg(totalError.toDMSString()).arg(hypot(azE, altE), 6, 'f', 3);
-                    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-                }
-                else
-                {
-                    debugString = QString("PAA Refresh(%1): pixelError failed to estimate the remaining correction").arg(refreshIteration);
-                    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-                }
-            }
-            else
-            {
-                if (refreshIteration > 1)
-                {
-                    debugString = QString("PAA Refresh(%1): Didn't find the user's star").arg(refreshIteration);
-                    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-                }
-            }
-        }
-        else
-        {
-            debugString = QString("PAA Refresh(%1): Too few stars detected (%2)").arg(refreshIteration).arg(stars.size());
-            qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-        }
-    }
-    // Finally start the next capture
-    captureAndSolve();
-}
 
 void Align::setCaptureComplete()
 {
-    DarkLibrary::Instance()->disconnect(this);
-
-    if (m_PAHStage == PAH_REFRESH)
+    if (matchPAHStage(PAA::PAH_REFRESH))
     {
-        emit newFrame(alignView);
-        processPAHRefresh();
+        emit newFrame(m_AlignView);
+        m_PolarAlignmentAssistant->processPAHRefresh();
         return;
     }
 
-    emit newImage(alignView);
+    emit newImage(m_AlignView);
 
-    solverFOV->setImage(alignView->getDisplayImage());
+    solverFOV->setImage(m_AlignView->getDisplayImage());
 
     startSolving();
 }
@@ -3288,27 +1893,22 @@ void Align::setCaptureComplete()
 void Align::setSolverAction(int mode)
 {
     gotoModeButtonGroup->button(mode)->setChecked(true);
-    currentGotoMode = static_cast<GotoMode>(mode);
+    m_CurrentGotoMode = static_cast<GotoMode>(mode);
 }
 
 void Align::startSolving()
 {
-    if (m_PAHStage == PAH_FIRST_CAPTURE)
-        PAHWidgets->setCurrentWidget(PAHFirstSolverPage);
-    else if (m_PAHStage == PAH_SECOND_CAPTURE)
-        PAHWidgets->setCurrentWidget(PAHSecondSolverPage);
-    else if (m_PAHStage == PAH_THIRD_CAPTURE)
-        PAHWidgets->setCurrentWidget(PAHThirdSolverPage);
+    //RUN_PAH(syncStage());
 
     // This is needed because they might have directories stored in the config file.
     // So we can't just use the options folder list.
     QStringList astrometryDataDirs = KSUtils::getAstrometryDataDirs();
-    const QSharedPointer<FITSData> &data = alignView->imageData();
-    disconnect(alignView, &FITSView::loaded, this, &Align::startSolving);
+    disconnect(m_AlignView.get(), &FITSView::loaded, this, &Align::startSolving);
 
     if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
     {
-        if(Options::solverType() != SSolver::SOLVER_ASTAP) //You don't need astrometry index files to use ASTAP
+        if(Options::solverType() != SSolver::SOLVER_ASTAP
+                && Options::solverType() != SSolver::SOLVER_WATNEYASTROMETRY) //You don't need astrometry index files to use ASTAP or Watney
         {
             bool foundAnIndex = false;
             for(QString dataDir : astrometryDataDirs)
@@ -3327,59 +1927,42 @@ void Align::startSolving()
                 appendLogText(
                     i18n("No index files were found on your system in the specified index file directories.  Please download some index files or add the correct directory to the list."));
                 KConfigDialog * alignSettings = KConfigDialog::exists("alignsettings");
-                if(alignSettings && indexFilesPage)
+                if(alignSettings && m_IndexFilesPage)
                 {
-                    alignSettings->setCurrentPage(indexFilesPage);
+                    alignSettings->setCurrentPage(m_IndexFilesPage);
                     alignSettings->show();
                 }
             }
         }
-        if (m_StellarSolver)
-        {
-            auto *solver = m_StellarSolver.release();
-            solver->disconnect(this);
-            if (solver->isRunning())
-            {
-                connect(solver, &StellarSolver::finished, solver, &StellarSolver::deleteLater);
-                solver->abort();
-            }
-            else
-                solver->deleteLater();
-        }
-        m_StellarSolver.reset(new StellarSolver(SSolver::SOLVE, data->getStatistics(), data->getImageBuffer()));
+        if (m_StellarSolver->isRunning())
+            m_StellarSolver->abort();
+        if (!m_ImageData)
+            m_ImageData = m_AlignView->imageData();
+        m_StellarSolver->loadNewImageBuffer(m_ImageData->getStatistics(), m_ImageData->getImageBuffer());
+        m_StellarSolver->setProperty("ProcessType", SSolver::SOLVE);
         m_StellarSolver->setProperty("ExtractorType", Options::solveSextractorType());
         m_StellarSolver->setProperty("SolverType", Options::solverType());
         connect(m_StellarSolver.get(), &StellarSolver::ready, this, &Align::solverComplete);
-        connect(m_StellarSolver.get(), &StellarSolver::logOutput, this, &Align::appendLogText);
         m_StellarSolver->setIndexFolderPaths(Options::astrometryIndexFolderList());
-        m_StellarSolver->setParameters(m_StellarSolverProfiles.at(Options::solveOptionsProfile()));
+
+        auto params = m_StellarSolverProfiles.at(Options::solveOptionsProfile());
+        params.partition = Options::stellarSolverPartition();
+        m_StellarSolver->setParameters(params);
 
         const SSolver::SolverType type = static_cast<SSolver::SolverType>(m_StellarSolver->property("SolverType").toInt());
-        if(type == SSolver::SOLVER_LOCALASTROMETRY || type == SSolver::SOLVER_ASTAP)
+        if(type == SSolver::SOLVER_LOCALASTROMETRY || type == SSolver::SOLVER_ASTAP || type == SSolver::SOLVER_WATNEYASTROMETRY)
         {
             QString filename = QDir::tempPath() + QString("/solver%1.fits").arg(QUuid::createUuid().toString().remove(
                                    QRegularExpression("[-{}]")));
-            alignView->saveImage(filename);
+            m_AlignView->saveImage(filename);
             m_StellarSolver->setProperty("FileToProcess", filename);
-
-            if(Options::sextractorIsInternal())
-                m_StellarSolver->setProperty("SextractorBinaryPath", QString("%1/%2").arg(QCoreApplication::applicationDirPath())
-                                             .arg("astrometry/bin/sex"));
-            else
-                m_StellarSolver->setProperty("SextractorBinaryPath", Options::sextractorBinary());
-
-            if (Options::astrometrySolverIsInternal())
-                m_StellarSolver->setProperty("SolverPath", QString("%1/%2").arg(QCoreApplication::applicationDirPath())
-                                             .arg("astrometry/bin/solve-field"));
-            else
-                m_StellarSolver->setProperty("SolverPath", Options::astrometrySolverBinary());
-
-            m_StellarSolver->setProperty("ASTAPBinaryPath", Options::aSTAPExecutable());
-            if (Options::astrometryWCSIsInternal())
-                m_StellarSolver->setProperty("WCSPath", QString("%1/%2").arg(QCoreApplication::applicationDirPath())
-                                             .arg("astrometry/bin/wcsinfo"));
-            else
-                m_StellarSolver->setProperty("WCSPath", Options::astrometryWCSInfo());
+            ExternalProgramPaths externalPaths;
+            externalPaths.sextractorBinaryPath = Options::sextractorBinary();
+            externalPaths.solverPath = Options::astrometrySolverBinary();
+            externalPaths.astapBinaryPath = Options::aSTAPExecutable();
+            externalPaths.watneyBinaryPath = Options::watneyBinary();
+            externalPaths.wcsPath = Options::astrometryWCSInfo();
+            m_StellarSolver->setExternalFilePaths(externalPaths);
 
             //No need for a conf file this way.
             m_StellarSolver->setProperty("AutoGenerateAstroConfig", true);
@@ -3389,34 +1972,50 @@ void Align::startSolving()
         {
             QString filename = QDir::tempPath() + QString("/solver%1.jpg").arg(QUuid::createUuid().toString().remove(
                                    QRegularExpression("[-{}]")));
-            alignView->saveImage(filename);
+            m_AlignView->saveImage(filename);
 
             m_StellarSolver->setProperty("FileToProcess", filename);
             m_StellarSolver->setProperty("AstrometryAPIKey", Options::astrometryAPIKey());
             m_StellarSolver->setProperty("AstrometryAPIURL", Options::astrometryAPIURL());
         }
 
-        if (solveFromFile)
+        bool useImageScale = Options::astrometryUseImageScale();
+        if (useBlindScale == BLIND_ENGAGNED)
+        {
+            useImageScale = false;
+            useBlindScale = BLIND_USED;
+            appendLogText(i18n("Solving with blind image scale..."));
+        }
+
+        bool useImagePosition = Options::astrometryUsePosition();
+        if (useBlindPosition == BLIND_ENGAGNED)
+        {
+            useImagePosition = false;
+            useBlindPosition = BLIND_USED;
+            appendLogText(i18n("Solving with blind image position..."));
+        }
+
+        if (m_SolveFromFile)
         {
             FITSImage::Solution solution;
-            data->parseSolution(solution);
+            m_ImageData->parseSolution(solution);
 
-            if (solution.pixscale > 0)
+            if (useImageScale && solution.pixscale > 0)
                 m_StellarSolver->setSearchScale(solution.pixscale * 0.8,
                                                 solution.pixscale * 1.2,
                                                 SSolver::ARCSEC_PER_PIX);
             else
                 m_StellarSolver->setProperty("UseScale", false);
 
-            if (solution.ra > 0)
+            if (useImagePosition && solution.ra > 0)
                 m_StellarSolver->setSearchPositionInDegrees(solution.ra, solution.dec);
             else
-                m_StellarSolver->setProperty("UsePostion", false);
+                m_StellarSolver->setProperty("UsePosition", false);
         }
         else
         {
             //Setting the initial search scale settings
-            if(Options::astrometryUseImageScale())
+            if (useImageScale)
             {
                 SSolver::ScaleUnits units = static_cast<SSolver::ScaleUnits>(Options::astrometryImageScaleUnits());
                 // Extend search scale from 80% to 120%
@@ -3427,16 +2026,19 @@ void Align::startSolving()
             else
                 m_StellarSolver->setProperty("UseScale", false);
             //Setting the initial search location settings
-            if(Options::astrometryUsePosition())
+            if(useImagePosition)
                 m_StellarSolver->setSearchPositionInDegrees(telescopeCoord.ra().Degrees(), telescopeCoord.dec().Degrees());
             else
-                m_StellarSolver->setProperty("UsePostion", false);
+                m_StellarSolver->setProperty("UsePosition", false);
         }
 
         if(Options::alignmentLogging())
         {
-            m_StellarSolver->setLogLevel(static_cast<SSolver::logging_level>(Options::loggerLevel()));
-            m_StellarSolver->setSSLogLevel(SSolver::LOG_NORMAL);
+            // Not trusting SSolver logging right now (Hy Aug 1, 2021)
+            // m_StellarSolver->setLogLevel(static_cast<SSolver::logging_level>(Options::loggerLevel()));
+            // m_StellarSolver->setSSLogLevel(SSolver::LOG_NORMAL);
+            m_StellarSolver->setLogLevel(SSolver::LOG_NONE);
+            m_StellarSolver->setSSLogLevel(SSolver::LOG_OFF);
             if(Options::astrometryLogToFile())
             {
                 m_StellarSolver->setProperty("LogToFile", true);
@@ -3449,18 +2051,16 @@ void Align::startSolving()
             m_StellarSolver->setSSLogLevel(SSolver::LOG_OFF);
         }
 
-        //Unless we decide to load the WCS Coord, let's turn it off.
-        //Be sure to set this to true instead if we want WCS from the solve.
-        m_StellarSolver->setLoadWCS(false);
-
         // Start solving process
         m_StellarSolver->start();
     }
     else
     {
+        if (m_ImageData.isNull())
+            m_ImageData = m_AlignView->imageData();
         // This should run only for load&slew. For regular solve, we don't get here
         // as the image is read and solved server-side.
-        remoteParser->startSolver(data->filename(), generateRemoteArgs(data), false);
+        remoteParser->startSolver(m_ImageData->filename(), generateRemoteArgs(m_ImageData), false);
     }
 
     // Kick off timer
@@ -3475,25 +2075,16 @@ void Align::solverComplete()
     disconnect(m_StellarSolver.get(), &StellarSolver::ready, this, &Align::solverComplete);
     if(!m_StellarSolver->solvingDone() || m_StellarSolver->failed())
     {
-        if ((m_PAHStage == PAH_FIRST_CAPTURE || m_PAHStage == PAH_SECOND_CAPTURE || m_PAHStage == PAH_THIRD_CAPTURE)
-                && ++m_PAHRetrySolveCounter < 4)
-        {
-            captureAndSolve();
+        // If processed, we retruned. Otherwise, it is a fail
+        if (CHECK_PAH(processSolverFailure()))
             return;
-        }
         solverFailed();
-        if (m_PAHStage != PAH_IDLE)
-        {
-            appendLogText(i18n("PAA: Stopping, solver failed too many times."));
-            stopPAHProcess();
-        }
         return;
     }
     else
     {
         FITSImage::Solution solution = m_StellarSolver->getSolution();
-        // Would be better if parity was a bool field instead of a QString with "pos" and "neg" as possible values.
-        const bool eastToTheRight = solution.parity == "pos" ? false : true;
+        const bool eastToTheRight = solution.parity == FITSImage::POSITIVE ? false : true;
         solverFinished(solution.orientation, solution.ra, solution.dec, solution.pixscale, eastToTheRight);
     }
 }
@@ -3503,7 +2094,6 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     pi->stopAnimation();
     stopB->setEnabled(false);
     solveB->setEnabled(true);
-    manualRotatorDialog.hide();
 
     sOrientation = orientation;
     sRA          = ra;
@@ -3539,12 +2129,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     }
 
     // When solving (without Load&Slew), update effective FOV and focal length accordingly.
-    if (!solveFromFile &&
-            (fov_x == 0 || m_EffectiveFOVPending || std::fabs(pixscale - fov_pixscale) > 0.005) &&
+    if (!m_SolveFromFile &&
+            (m_FOVWidth == 0 || m_EffectiveFOVPending || std::fabs(pixscale - m_FOVPixelScale) > 0.005) &&
             pixscale > 0)
     {
-        double newFOVW = ccd_width * pixscale / binx / 60.0;
-        double newFOVH = ccd_height * pixscale / biny / 60.0;
+        double newFOVW = m_CameraWidth * pixscale / binx / 60.0;
+        double newFOVH = m_CameraHeight * pixscale / biny / 60.0;
 
         calculateEffectiveFocalLength(newFOVW);
         saveNewEffectiveFOV(newFOVW, newFOVH);
@@ -3554,7 +2144,6 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
 
     alignCoord.setRA0(ra / 15.0);
     alignCoord.setDec0(dec);
-    RotOut->setText(QString::number(orientation, 'f', 5));
 
     // Convert to JNow
     alignCoord.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
@@ -3562,27 +2151,23 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     alignCoord.EquatorialToHorizontal(KStarsData::Instance()->lst(), KStarsData::Instance()->geo()->lat());
 
     // Do not update diff if we are performing load & slew.
-    if (!solveFromFile)
+    if (!m_SolveFromFile)
     {
         pixScaleOut->setText(QString::number(pixscale, 'f', 2));
         calculateAlignTargetDiff();
     }
 
-    double solverPA = orientation;
     // TODO 2019-11-06 JM: KStars needs to support "upside-down" displays since this is a hack.
     // Because astrometry reads image upside-down (bottom to top), the orientation is rotated 180 degrees when compared to PA
     // PA = Orientation + 180
-    double solverFlippedPA = orientation + 180;
-    // Limit PA to -180 to +180
-    if (solverFlippedPA > 180)
-        solverFlippedPA -= 360;
-    if (solverFlippedPA < -180)
-        solverFlippedPA += 360;
+    double solverPA = SolverUtils::rotationToPositionAngle(orientation);
     solverFOV->setCenter(alignCoord);
-    solverFOV->setPA(solverFlippedPA);
+    solverFOV->setPA(solverPA);
     solverFOV->setImageDisplay(Options::astrometrySolverOverlay());
     // Sensor FOV as well
-    sensorFOV->setPA(solverFlippedPA);
+    sensorFOV->setPA(solverPA);
+
+    PAOut->setText(QString::number(solverPA, 'f', 5));
 
     QString ra_dms, dec_dms;
     getFormattedCoords(alignCoord.ra().Hours(), alignCoord.dec().Degrees(), ra_dms, dec_dms);
@@ -3626,7 +2211,7 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     appendLogText(i18n("Solution coordinates: RA (%1) DEC (%2) Telescope Coordinates: RA (%3) DEC (%4)",
                        alignCoord.ra().toHMSString(), alignCoord.dec().toDMSString(), telescopeCoord.ra().toHMSString(),
                        telescopeCoord.dec().toDMSString()));
-    if (!solveFromFile && currentGotoMode == GOTO_SLEW)
+    if (!m_SolveFromFile && m_CurrentGotoMode == GOTO_SLEW)
     {
         dms diffDeg(m_TargetDiffTotal / 3600.0);
         appendLogText(i18n("Target is within %1 degrees of solution coordinates.", diffDeg.toDMSString()));
@@ -3635,20 +2220,24 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     if (rememberUploadMode != currentCCD->getUploadMode())
         currentCCD->setUploadMode(rememberUploadMode);
 
-    if (rememberCCDExposureLooping)
-        currentCCD->setExposureLoopingEnabled(true);
+    // Remember to reset fast exposure
+    if (m_RememberCameraFastExposure)
+    {
+        m_RememberCameraFastExposure = false;
+        currentCCD->setFastExposureEnabled(true);
+    }
 
     //This block of code along with some sections in the switch below will set the status report in the solution table for this item.
     std::unique_ptr<QTableWidgetItem> statusReport(new QTableWidgetItem());
     int currentRow = solutionTable->rowCount() - 1;
-    if (!solveFromFile)
+    if (!m_SolveFromFile)
     {
         stopProgressAnimation();
         solutionTable->setCellWidget(currentRow, 3, new QWidget());
         statusReport->setFlags(Qt::ItemIsSelectable);
     }
 
-    if (solveFromFile && Options::astrometryUseRotator())
+    if (m_SolveFromFile && Options::astrometryUseRotator())
     {
         loadSlewTargetPA = solverPA;
         qCDebug(KSTARS_EKOS_ALIGN) << "loaSlewTargetPA:" << loadSlewTargetPA;
@@ -3658,29 +2247,38 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
         currentRotatorPA = solverPA;
 
         // When Load&Slew image is solved, we check if we need to rotate the rotator to match the position angle of the image
-        if (currentRotator != nullptr)
+        if (currentRotator != nullptr && currentRotator->isConnected())
         {
             // Update Rotator offsets
             auto absAngle = currentRotator->getBaseDevice()->getNumber("ABS_ROTATOR_ANGLE");
             if (absAngle)
             {
-                // PA = RawAngle * Multiplier + Offset
+                // 1. PA = (RawAngle * Multiplier) - Offset
+                // 2. Offset = (RawAngle * Multiplier) - PA
+                // 3. RawAngle = (Offset + PA) / Multiplier
                 double rawAngle = absAngle->at(0)->getValue();
-                double offset   = range360(solverPA - (rawAngle * Options::pAMultiplier()));
+                double offset   = range360((rawAngle * Options::pAMultiplier()) - currentRotatorPA);
+
+                auto reverseStatus = "Unknown";
+                auto reverseProperty = currentRotator->getBaseDevice()->getSwitch("REVERSE_ROTATOR");
+                if (reverseProperty)
+                {
+                    if (reverseProperty->at(0)->getState() == ISS_ON)
+                        reverseStatus = "Reversed Direction";
+                    else
+                        reverseStatus = "Normal Direction";
+                }
 
                 qCDebug(KSTARS_EKOS_ALIGN) << "Raw Rotator Angle:" << rawAngle << "Rotator PA:" << currentRotatorPA
-                                           << "Rotator Offset:" << offset;
+                                           << "Rotator Offset:" << offset << "Direction:" << reverseStatus;
                 Options::setPAOffset(offset);
             }
 
             if (absAngle && std::isnan(loadSlewTargetPA) == false
                     && fabs(currentRotatorPA - loadSlewTargetPA) * 60 > Options::astrometryRotatorThreshold())
             {
-                double rawAngle = range360((loadSlewTargetPA - Options::pAOffset()) / Options::pAMultiplier());
-                //                if (rawAngle < 0)
-                //                    rawAngle += 360;
-                //                else if (rawAngle > 360)
-                //                    rawAngle -= 360;
+                // 3. RawAngle = (Offset + PA) / Multiplier
+                double rawAngle = range360((Options::pAOffset() + loadSlewTargetPA) / Options::pAMultiplier());
                 absAngle->at(0)->setValue(rawAngle);
                 ClientManager *clientManager = currentRotator->getDriverInfo()->getClientManager();
                 clientManager->sendNewNumber(absAngle);
@@ -3690,49 +2288,27 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
         }
         else if (std::isnan(loadSlewTargetPA) == false)
         {
-            double current = range360(currentRotatorPA);
-            double target = range360(loadSlewTargetPA);
-            double targetFlipped = range360(loadSlewTargetPA + 180);
+            double current = currentRotatorPA;
+            double target = loadSlewTargetPA;
 
-            double diff = current - target;
-            if (fabs(current + 360.0 - target) < fabs(diff))
-            {
-                diff = current + 360.0 - target;
-            }
+            double diff = SolverUtils::rangePA(current - target);
+            double threshold = Options::astrometryRotatorThreshold() / 60.0;
 
-            if (fabs(current - targetFlipped) < fabs(diff))
-            {
-                diff = current - targetFlipped;
-                target = targetFlipped;
-            }
+            appendLogText(i18n("Current PA is %1; Target PA is %2; diff: %3", current, target, diff));
 
-            if (fabs(current + 360.0 - targetFlipped) < fabs(diff))
-            {
-                diff = current + 360.0 - targetFlipped;
-                target = targetFlipped;
-            }
+            emit manualRotatorChanged(current, target, threshold);
 
-            double threshold = Options::astrometryRotatorThreshold();
-
-            appendLogText(i18n("Current Rotation is %1; Target Rotation is %2; diff: %3", current, target, diff));
-
+            m_ManualRotator->setRotatorDiff(current, target, diff);
             if (fabs(diff) > threshold)
             {
-                QString icon = "object-rotate-right";
-                if (diff > 0.0)
-                {
-                    icon = "object-rotate-left";
-                }
-
-                manualRotator.icon->setPixmap(QIcon::fromTheme(icon).pixmap(350, 350));
-                manualRotator.diff->setText(i18n("%1°", int(round(fabs(diff)))));
-
-                manualRotator.targetRotation->setText(i18n("%1°", int(round(target))));
-                manualRotator.currentRotation->setText(i18n("%1°", int(round(current))));
-
                 targetAccuracyNotMet = true;
-                manualRotatorDialog.show();
-                return;
+                m_ManualRotator->show();
+                m_ManualRotator->raise();
+            }
+            else
+            {
+                loadSlewTargetPA = std::numeric_limits<double>::quiet_NaN();
+                targetAccuracyNotMet = false;
             }
         }
     }
@@ -3740,23 +2316,24 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     emit newSolverResults(orientation, ra, dec, pixscale);
     QJsonObject solution =
     {
+        {"camera", currentCCD->getDeviceName()},
         {"ra", SolverRAOut->text()},
         {"de", SolverDecOut->text()},
         {"dRA", m_TargetDiffRA},
         {"dDE", m_TargetDiffDE},
         {"targetDiff", m_TargetDiffTotal},
         {"pix", pixscale},
-        {"rot", orientation},
+        {"PA", solverPA},
         {"fov", FOVOut->text()},
     };
     emit newSolution(solution.toVariantMap());
 
-    switch (currentGotoMode)
+    switch (m_CurrentGotoMode)
     {
         case GOTO_SYNC:
             executeGOTO();
 
-            if (!solveFromFile)
+            if (!m_SolveFromFile)
             {
                 stopProgressAnimation();
                 statusReport->setIcon(QIcon(":/icons/AlignSuccess.svg"));
@@ -3766,27 +2343,25 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
             return;
 
         case GOTO_SLEW:
-            if (solveFromFile || m_TargetDiffTotal > static_cast<double>(accuracySpin->value()))
+            if (m_SolveFromFile || m_TargetDiffTotal > static_cast<double>(accuracySpin->value()))
             {
-                if (!solveFromFile && ++solverIterations == MAXIMUM_SOLVER_ITERATIONS)
+                if (!m_SolveFromFile && ++solverIterations == MAXIMUM_SOLVER_ITERATIONS)
                 {
                     appendLogText(i18n("Maximum number of iterations reached. Solver failed."));
 
-                    if (!solveFromFile)
+                    if (!m_SolveFromFile)
                     {
                         statusReport->setIcon(QIcon(":/icons/AlignFailure.svg"));
                         solutionTable->setItem(currentRow, 3, statusReport.release());
                     }
 
                     solverFailed();
-                    if (mountModelRunning)
-                        finishAlignmentPoint(false);
                     return;
                 }
 
                 targetAccuracyNotMet = true;
 
-                if (!solveFromFile)
+                if (!m_SolveFromFile)
                 {
                     stopProgressAnimation();
                     statusReport->setIcon(QIcon(":/icons/AlignWarning.svg"));
@@ -3797,7 +2372,7 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
                 return;
             }
 
-            if (!solveFromFile)
+            if (!m_SolveFromFile)
             {
                 stopProgressAnimation();
                 statusReport->setIcon(QIcon(":/icons/AlignSuccess.svg"));
@@ -3806,26 +2381,20 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
 
             appendLogText(i18n("Target is within acceptable range. Astrometric solver is successful."));
 
-            if (mountModelRunning)
-            {
-                finishAlignmentPoint(true);
-                if (mountModelRunning)
-                    return;
-            }
+            //            if (mountModelRunning)
+            //            {
+            //                finishAlignmentPoint(true);
+            //                if (mountModelRunning)
+            //                    return;
+            //            }
             break;
 
         case GOTO_NOTHING:
-            if (!solveFromFile)
+            if (!m_SolveFromFile)
             {
                 stopProgressAnimation();
                 statusReport->setIcon(QIcon(":/icons/AlignSuccess.svg"));
                 solutionTable->setItem(currentRow, 3, statusReport.release());
-            }
-            if (mountModelRunning)
-            {
-                finishAlignmentPoint(true);
-                if (mountModelRunning)
-                    return;
             }
             break;
     }
@@ -3837,10 +2406,8 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
 
     solverFOV->setProperty("visible", true);
 
-    if (m_PAHStage != PAH_IDLE)
-        processPAHStage(orientation, ra, dec, pixscale, eastToTheRight);
-    else if (azStage > AZ_INIT || altStage > ALT_INIT)
-        executePolarAlign();
+    if (!matchPAHStage(PAA::PAH_IDLE))
+        m_PolarAlignmentAssistant->processPAHStage(orientation, ra, dec, pixscale, eastToTheRight);
     else
     {
         solveB->setEnabled(true);
@@ -3850,26 +2417,44 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
 
 void Align::solverFailed()
 {
-    appendLogText(i18n("Solver Failed."));
-    if(!Options::alignmentLogging())
-        appendLogText(
-            i18n("Please check you have sufficient stars in the image. Enable Alignment Logging in Setup Tab -> Logs to get detailed information on the failure."));
+    if (state != ALIGN_ABORTED)
+    {
+        // Try to solve with scale turned off, if not turned off already
+        if (Options::astrometryUseImageScale() && useBlindScale == BLIND_IDLE)
+        {
+            useBlindScale = BLIND_ENGAGNED;
+            setAlignTableResult(ALIGN_RESULT_FAILED);
+            captureAndSolve();
+            return;
+        }
 
-    KSNotification::event(QLatin1String("AlignFailed"), i18n("Astrometry alignment failed"),
-                          KSNotification::EVENT_ALERT);
+        // Try to solve with the position turned off, if not turned off already
+        if (Options::astrometryUsePosition() && useBlindPosition == BLIND_IDLE)
+        {
+            useBlindPosition = BLIND_ENGAGNED;
+            setAlignTableResult(ALIGN_RESULT_FAILED);
+            captureAndSolve();
+            return;
+        }
+
+
+        appendLogText(i18n("Solver Failed."));
+        if(!Options::alignmentLogging())
+            appendLogText(
+                i18n("Please check you have sufficient stars in the image, the indicated FOV is correct, and the necessary index files are installed. Enable Alignment Logging in Setup Tab -> Logs to get detailed information on the failure."));
+
+        KSNotification::event(QLatin1String("AlignFailed"), i18n("Astrometry alignment failed"),
+                              KSNotification::EVENT_ALERT);
+    }
 
     pi->stopAnimation();
     stopB->setEnabled(false);
     solveB->setEnabled(true);
     loadSlewB->setEnabled(true);
-    manualRotatorDialog.hide();
 
     m_AlignTimer.stop();
 
-    azStage  = AZ_INIT;
-    altStage = ALT_INIT;
-
-    solveFromFile = false;
+    m_SolveFromFile = false;
     solverIterations = 0;
     m_CaptureErrorCounter = 0;
     m_CaptureTimeoutCounter = 0;
@@ -3883,10 +2468,10 @@ void Align::solverFailed()
     setAlignTableResult(ALIGN_RESULT_FAILED);
 }
 
-void Align::stop(AlignState mode)
+void Align::stop(Ekos::AlignState mode)
 {
     m_CaptureTimer.stop();
-    if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL && m_StellarSolver)
+    if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
         m_StellarSolver->abort();
     else if (solverModeButtonGroup->checkedId() == SOLVER_REMOTE && remoteParser)
         remoteParser->stopSolver();
@@ -3903,10 +2488,7 @@ void Align::stop(AlignState mode)
         rememberTelescopeType = ISD::CCD::TELESCOPE_UNKNOWN;
     }
 
-    azStage  = AZ_INIT;
-    altStage = ALT_INIT;
-
-    solveFromFile = false;
+    m_SolveFromFile = false;
     solverIterations = 0;
     m_CaptureErrorCounter = 0;
     m_CaptureTimeoutCounter = 0;
@@ -3919,13 +2501,17 @@ void Align::stop(AlignState mode)
     if (rememberUploadMode != currentCCD->getUploadMode())
         currentCCD->setUploadMode(rememberUploadMode);
 
-    if (rememberCCDExposureLooping)
-        currentCCD->setExposureLoopingEnabled(true);
+    // Remember to reset fast exposure
+    if (m_RememberCameraFastExposure)
+    {
+        m_RememberCameraFastExposure = false;
+        currentCCD->setFastExposureEnabled(true);
+    }
 
     ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
 
     // If capture is still in progress, let's stop that.
-    if (m_PAHStage == PAH_REFRESH)
+    if (matchPAHStage(PAA::PAH_POST_REFRESH))
     {
         if (targetChip->isCapturing())
             targetChip->abortExposure();
@@ -3942,7 +2528,8 @@ void Align::stop(AlignState mode)
         else
         {
             double elapsed = solverTimer.elapsed() / 1000.0;
-            appendLogText(i18n("Solver aborted after %1 seconds.", QString::number(elapsed, 'f', 2)));
+            if (elapsed > 0)
+                appendLogText(i18n("Solver aborted after %1 seconds.", QString::number(elapsed, 'f', 2)));
         }
     }
 
@@ -4034,22 +2621,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
     {
         QString ra_dms, dec_dms;
 
-        if (!strcmp(nvp->name, "EQUATORIAL_COORD"))
-        {
-            telescopeCoord.setRA0(nvp->np[0].value);
-            telescopeCoord.setDec0(nvp->np[1].value);
-            // Get JNow as well
-            telescopeCoord.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
-        }
-        else
-        {
-            telescopeCoord.setRA(nvp->np[0].value);
-            telescopeCoord.setDec(nvp->np[1].value);
-        }
-
         getFormattedCoords(telescopeCoord.ra().Hours(), telescopeCoord.dec().Degrees(), ra_dms, dec_dms);
-
-        telescopeCoord.EquatorialToHorizontal(KStarsData::Instance()->lst(), KStarsData::Instance()->geo()->lat());
 
         ScopeRAOut->setText(ra_dms);
         ScopeDecOut->setText(dec_dms);
@@ -4090,14 +2662,14 @@ void Align::processNumber(INumberVectorProperty *nvp)
                 }
 
                 // If we are looking for celestial pole
-                if (m_wasSlewStarted && m_PAHStage == PAH_FIND_CP)
+                if (m_wasSlewStarted && matchPAHStage(PAA::PAH_FIND_CP))
                 {
                     //qCDebug(KSTARS_EKOS_ALIGN) << "## PAH_FIND_CP--> setting slewStarted to FALSE";
                     m_wasSlewStarted = false;
                     appendLogText(i18n("Mount completed slewing near celestial pole. Capture again to verify."));
                     setSolverAction(GOTO_NOTHING);
-                    m_PAHStage = PAH_FIRST_CAPTURE;
-                    emit newPAHStage(m_PAHStage);
+
+                    m_PolarAlignmentAssistant->setPAHStage(PAA::PAH_FIRST_CAPTURE);
                     return;
                 }
 
@@ -4110,7 +2682,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
                     {
                         m_wasSlewStarted = false;
                         //qCDebug(KSTARS_EKOS_ALIGN) << "## ALIGN_SYNCING --> setting slewStarted to FALSE";
-                        if (currentGotoMode == GOTO_SLEW)
+                        if (m_CurrentGotoMode == GOTO_SLEW)
                         {
                             Slew();
                             return;
@@ -4123,9 +2695,6 @@ void Align::processNumber(INumberVectorProperty *nvp)
                             state = ALIGN_COMPLETE;
                             emit newStatus(state);
                             solverIterations = 0;
-
-                            if (mountModelRunning)
-                                finishAlignmentPoint(true);
                         }
                     }
                     break;
@@ -4141,9 +2710,9 @@ void Align::processNumber(INumberVectorProperty *nvp)
 
                         //qCDebug(KSTARS_EKOS_ALIGN) << "Mount slew completed.";
                         m_wasSlewStarted = false;
-                        if (solveFromFile)
+                        if (m_SolveFromFile)
                         {
-                            solveFromFile = false;
+                            m_SolveFromFile = false;
 
                             state = ALIGN_PROGRESS;
                             emit newStatus(state);
@@ -4160,11 +2729,8 @@ void Align::processNumber(INumberVectorProperty *nvp)
                             state = ALIGN_COMPLETE;
                             emit newStatus(state);
                             solverIterations = 0;
-
-                            if (mountModelRunning)
-                                finishAlignmentPoint(true);
                         }
-                        else if (currentGotoMode == GOTO_SLEW || mountModelRunning)
+                        else if (m_CurrentGotoMode == GOTO_SLEW || (m_MountModel && m_MountModel->isRunning()))
                         {
                             if (targetAccuracyNotMet)
                                 appendLogText(i18n("Slew complete. Target accuracy is not met, running solver again..."));
@@ -4223,7 +2789,7 @@ void Align::processNumber(INumberVectorProperty *nvp)
                     }
                     else
                     {
-                        if (currentGotoMode == GOTO_SLEW)
+                        if (m_CurrentGotoMode == GOTO_SLEW)
                             Slew();
                         else
                             Sync();
@@ -4234,148 +2800,36 @@ void Align::processNumber(INumberVectorProperty *nvp)
             }
         }
 
-        if (m_PAHStage == PAH_FIRST_ROTATE)
-        {
-            // only wait for telescope to slew to new position if manual slewing is switched off
-            if(!PAHManual->isChecked())
-            {
-                double deltaAngle = fabs(telescopeCoord.ra().deltaAngle(targetPAH.ra()).Degrees());
-                qCDebug(KSTARS_EKOS_ALIGN) << "First mount rotation remaining degrees:" << deltaAngle;
-                if (deltaAngle <= PAH_ROTATION_THRESHOLD)
-                {
-                    currentTelescope->StopWE();
-                    appendLogText(i18n("Mount first rotation is complete."));
-
-                    m_PAHStage = PAH_SECOND_CAPTURE;
-                    emit newPAHStage(m_PAHStage);
-
-                    PAHWidgets->setCurrentWidget(PAHSecondCapturePage);
-                    emit newPAHMessage(secondCaptureText->text());
-
-                    if (delaySpin->value() >= 0)
-                    {
-                        PAHWidgets->setCurrentWidget(PAHFirstSettlePage);
-                        appendLogText(i18n("Settling..."));
-                    }
-                    m_CaptureTimer.start(delaySpin->value());
-                }
-                // If for some reason we didn't stop, let's stop if we get too far
-                else if (deltaAngle > PAHRotationSpin->value() * 1.25)
-                {
-                    currentTelescope->Abort();
-                    appendLogText(i18n("Mount aborted. Please restart the process and reduce the speed."));
-                    stopPAHProcess();
-                }
-                return;
-            } // endif not manual slew
-        }
-        else if (m_PAHStage == PAH_SECOND_ROTATE)
-        {
-            // only wait for telescope to slew to new position if manual slewing is switched off
-            if(!PAHManual->isChecked())
-            {
-                double deltaAngle = fabs(telescopeCoord.ra().deltaAngle(targetPAH.ra()).Degrees());
-                qCDebug(KSTARS_EKOS_ALIGN) << "Second mount rotation remaining degrees:" << deltaAngle;
-                if (deltaAngle <= PAH_ROTATION_THRESHOLD)
-                {
-                    currentTelescope->StopWE();
-                    appendLogText(i18n("Mount second rotation is complete."));
-
-                    m_PAHStage = PAH_THIRD_CAPTURE;
-                    emit newPAHStage(m_PAHStage);
-
-
-                    PAHWidgets->setCurrentWidget(PAHThirdCapturePage);
-                    emit newPAHMessage(thirdCaptureText->text());
-
-                    if (delaySpin->value() >= 0)
-                    {
-                        PAHWidgets->setCurrentWidget(PAHSecondSettlePage);
-                        appendLogText(i18n("Settling..."));
-                    }
-                    m_CaptureTimer.start(delaySpin->value());
-                }
-                // If for some reason we didn't stop, let's stop if we get too far
-                else if (deltaAngle > PAHRotationSpin->value() * 1.25)
-                {
-                    currentTelescope->Abort();
-                    appendLogText(i18n("Mount aborted. Please restart the process and reduce the speed."));
-                    stopPAHProcess();
-                }
-                return;
-            } // endif not manual slew
-        }
-
-        switch (azStage)
-        {
-            case AZ_SYNCING:
-                if (currentTelescope->isSlewing())
-                    azStage = AZ_SLEWING;
-                break;
-
-            case AZ_SLEWING:
-                if (currentTelescope->isSlewing() == false)
-                {
-                    azStage = AZ_SECOND_TARGET;
-                    measureAzError();
-                }
-                break;
-
-            case AZ_CORRECTING:
-                if (currentTelescope->isSlewing() == false)
-                {
-                    appendLogText(i18n(
-                                      "Slew complete. Please adjust azimuth knob until the target is in the center of the view."));
-                    azStage = AZ_INIT;
-                }
-                break;
-
-            default:
-                break;
-        }
-
-        switch (altStage)
-        {
-            case ALT_SYNCING:
-                if (currentTelescope->isSlewing())
-                    altStage = ALT_SLEWING;
-                break;
-
-            case ALT_SLEWING:
-                if (currentTelescope->isSlewing() == false)
-                {
-                    altStage = ALT_SECOND_TARGET;
-                    measureAltError();
-                }
-                break;
-
-            case ALT_CORRECTING:
-                if (currentTelescope->isSlewing() == false)
-                {
-                    appendLogText(i18n(
-                                      "Slew complete. Please adjust altitude knob until the target is in the center of the view."));
-                    altStage = ALT_INIT;
-                }
-                break;
-            default:
-                break;
-        }
+        RUN_PAH(processMountRotation(telescopeCoord.ra(), delaySpin->value()));
     }
     else if (!strcmp(nvp->name, "ABS_ROTATOR_ANGLE"))
     {
-        // PA = RawAngle * Multiplier + Offset
-        currentRotatorPA = (nvp->np[0].value * Options::pAMultiplier()) + Options::pAOffset();
-        if (currentRotatorPA > 180)
-            currentRotatorPA -= 360;
-        if (currentRotatorPA < -180)
-            currentRotatorPA += 360;
-        if (std::isnan(loadSlewTargetPA) == false
-                && fabs(currentRotatorPA - loadSlewTargetPA) * 60 <= Options::astrometryRotatorThreshold())
+        // 1. PA = (RawAngle * Multiplier) - Offset
+        currentRotatorPA = SolverUtils::rangePA( (nvp->np[0].value * Options::pAMultiplier()) - Options::pAOffset());
+        if (std::isnan(loadSlewTargetPA) == false && nvp->s == IPS_OK)
         {
-            appendLogText(i18n("Rotator reached target position angle."));
-            targetAccuracyNotMet = true;
-            loadSlewTargetPA = std::numeric_limits<double>::quiet_NaN();
-            QTimer::singleShot(Options::settlingTime(), this, &Ekos::Align::executeGOTO);
+            auto diff = fabs(currentRotatorPA - loadSlewTargetPA) * 60;
+            qCDebug(KSTARS_EKOS_ALIGN) << "Raw Rotator Angle:" << nvp->np[0].value << "Current PA:" << currentRotatorPA
+                                       << "Target PA:" << loadSlewTargetPA << "Diff (arcmin):" << diff << "Offset:" << Options::pAOffset();
+
+            if (diff <= Options::astrometryRotatorThreshold())
+            {
+                appendLogText(i18n("Rotator reached target position angle."));
+                targetAccuracyNotMet = true;
+                loadSlewTargetPA = std::numeric_limits<double>::quiet_NaN();
+                QTimer::singleShot(Options::settlingTime(), this, &Ekos::Align::executeGOTO);
+            }
+            // If close, but not quite there
+            else if (diff <= Options::astrometryRotatorThreshold() * 2)
+            {
+                appendLogText(i18n("Rotator failed to arrive at the requested position angle. Check power, backlash, or obstructions."));
+            }
+            // If very far off, then we might need to reverse direction
+            else
+            {
+                appendLogText(
+                    i18n("Rotator failed to arrive at the requested position angle. Try to reverse rotation direction in Rotator Settings."));
+            }
         }
     }
 
@@ -4388,16 +2842,16 @@ void Align::handleMountMotion()
 {
     if (state == ALIGN_PROGRESS)
     {
-        if (m_PAHStage == PAH_IDLE)
+        if (matchPAHStage(PAA::PAH_IDLE))
         {
             // whoops, mount slews during alignment
             appendLogText(i18n("Slew detected, suspend solving..."));
             suspend();
             // reset the state to busy so that solving restarts after slewing finishes
-            solveFromFile = true;
+            m_SolveFromFile = true;
             // if mount model is running, retry the current alignment point
-            if (mountModelRunning)
-                appendLogText(i18n("Restarting alignment point %1", currentAlignmentPoint + 1));
+            //            if (mountModelRunning)
+            //                appendLogText(i18n("Restarting alignment point %1", currentAlignmentPoint + 1));
         }
 
         state = ALIGN_SLEWING;
@@ -4416,14 +2870,14 @@ void Align::handleMountStatus()
 
 void Align::executeGOTO()
 {
-    if (solveFromFile)
+    if (m_SolveFromFile)
     {
-        targetCoord = alignCoord;
+        m_targetCoord = alignCoord;
         SlewToTarget();
     }
-    else if (currentGotoMode == GOTO_SYNC)
+    else if (m_CurrentGotoMode == GOTO_SYNC)
         Sync();
-    else if (currentGotoMode == GOTO_SLEW)
+    else if (m_CurrentGotoMode == GOTO_SLEW)
         SlewToTarget();
 }
 
@@ -4451,20 +2905,20 @@ void Align::Slew()
     emit newStatus(state);
 
     //qCDebug(KSTARS_EKOS_ALIGN) << "## Before SLEW command: wasSlewStarted -->" << m_wasSlewStarted;
-    //m_wasSlewStarted = currentTelescope->Slew(&targetCoord);
+    //m_wasSlewStarted = currentTelescope->Slew(&m_targetCoord);
     //qCDebug(KSTARS_EKOS_ALIGN) << "## After SLEW command: wasSlewStarted -->" << m_wasSlewStarted;
 
     // JM 2019-08-23: Do not assume that slew was started immediately. Wait until IPS_BUSY state is triggered
     // from Goto
-    currentTelescope->Slew(&targetCoord);
+    currentTelescope->Slew(&m_targetCoord);
     slewStartTimer.start();
-    appendLogText(i18n("Slewing to target coordinates: RA (%1) DEC (%2).", targetCoord.ra().toHMSString(),
-                       targetCoord.dec().toDMSString()));
+    appendLogText(i18n("Slewing to target coordinates: RA (%1) DEC (%2).", m_targetCoord.ra().toHMSString(),
+                       m_targetCoord.dec().toDMSString()));
 }
 
 void Align::SlewToTarget()
 {
-    if (canSync && !solveFromFile)
+    if (canSync && !m_SolveFromFile)
     {
         // 2018-01-24 JM: This is ugly. Maybe use DBus? Signal/Slots? Ekos Manager usage like this should be avoided
 #if 0
@@ -4479,11 +2933,11 @@ void Align::SlewToTarget()
         // Do we perform a regular sync or use differential slewing?
         if (Options::astrometryDifferentialSlewing())
         {
-            dms m_TargetDiffRA = alignCoord.ra().deltaAngle(targetCoord.ra());
-            dms m_TargetDiffDE = alignCoord.dec().deltaAngle(targetCoord.dec());
+            dms m_TargetDiffRA = alignCoord.ra().deltaAngle(m_targetCoord.ra());
+            dms m_TargetDiffDE = alignCoord.dec().deltaAngle(m_targetCoord.dec());
 
-            targetCoord.setRA(targetCoord.ra() - m_TargetDiffRA);
-            targetCoord.setDec(targetCoord.dec() - m_TargetDiffDE);
+            m_targetCoord.setRA(m_targetCoord.ra() - m_TargetDiffRA);
+            m_targetCoord.setDec(m_targetCoord.dec() - m_TargetDiffDE);
 
             differentialSlewingActivated = true;
 
@@ -4500,444 +2954,6 @@ void Align::SlewToTarget()
     Slew();
 }
 
-void Align::executePolarAlign()
-{
-    appendLogText(i18n("Processing solution for polar alignment..."));
-
-    switch (azStage)
-    {
-        case AZ_FIRST_TARGET:
-        case AZ_FINISHED:
-            measureAzError();
-            break;
-
-        default:
-            break;
-    }
-
-    switch (altStage)
-    {
-        case ALT_FIRST_TARGET:
-        case ALT_FINISHED:
-            measureAltError();
-            break;
-
-        default:
-            break;
-    }
-}
-
-void Align::measureAzError()
-{
-    static double initRA = 0, initDEC = 0, finalRA = 0, finalDEC = 0, initAz = 0;
-
-    if (m_PAHStage != PAH_IDLE &&
-            (KMessageBox::warningContinueCancel(KStars::Instance(),
-                    i18n("Polar Alignment Helper is still active. Do you want to continue "
-                         "using legacy polar alignment tool?")) != KMessageBox::Continue))
-        return;
-
-    m_PAHStage = PAH_IDLE;
-    emit newPAHStage(m_PAHStage);
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Measuring Azimuth Error...";
-
-    switch (azStage)
-    {
-        case AZ_INIT:
-
-            // Display message box confirming user point scope near meridian and south
-
-            // N.B. This action cannot be automated.
-            if (KMessageBox::warningContinueCancel(
-                        nullptr,
-                        hemisphere == NORTH_HEMISPHERE ?
-                        i18n("Point the telescope at the southern meridian. Press Continue when ready.") :
-                        i18n("Point the telescope at the northern meridian. Press Continue when ready."),
-                        i18n("Polar Alignment Measurement"), KStandardGuiItem::cont(), KStandardGuiItem::cancel(),
-                        "ekos_measure_az_error") != KMessageBox::Continue)
-                return;
-
-            appendLogText(i18n("Solving first frame near the meridian."));
-            azStage = AZ_FIRST_TARGET;
-            captureAndSolve();
-            break;
-
-        case AZ_FIRST_TARGET:
-            // start solving there, find RA/DEC
-            initRA  = alignCoord.ra().Degrees();
-            initDEC = alignCoord.dec().Degrees();
-            initAz  = alignCoord.az().Degrees();
-
-            qCDebug(KSTARS_EKOS_ALIGN) << "Polar initRA " << alignCoord.ra().toHMSString() << " initDEC "
-                                       << alignCoord.dec().toDMSString() << " initlAz " << alignCoord.az().toDMSString()
-                                       << " initAlt " << alignCoord.alt().toDMSString();
-
-            // Now move 30 arcminutes in RA
-            if (canSync)
-            {
-                azStage = AZ_SYNCING;
-                currentTelescope->Sync(initRA / 15.0, initDEC);
-                currentTelescope->Slew((initRA - RAMotion) / 15.0, initDEC);
-            }
-            // If telescope doesn't sync, we slew relative to its current coordinates
-            else
-            {
-                azStage = AZ_SLEWING;
-                currentTelescope->Slew(telescopeCoord.ra().Hours() - RAMotion / 15.0, telescopeCoord.dec().Degrees());
-            }
-
-            appendLogText(i18n("Slewing 30 arcminutes in RA..."));
-            break;
-
-        case AZ_SECOND_TARGET:
-            // We reached second target now
-            // Let now solver for RA/DEC
-            appendLogText(i18n("Solving second frame near the meridian."));
-            azStage = AZ_FINISHED;
-            captureAndSolve();
-            break;
-
-        case AZ_FINISHED:
-            // Measure deviation in DEC
-            // Call function to report error
-            // set stage to AZ_FIRST_TARGET again
-            appendLogText(i18n("Calculating azimuth alignment error..."));
-            finalRA  = alignCoord.ra().Degrees();
-            finalDEC = alignCoord.dec().Degrees();
-
-            qCDebug(KSTARS_EKOS_ALIGN) << "Polar finalRA " << alignCoord.ra().toHMSString() << " finalDEC "
-                                       << alignCoord.dec().toDMSString() << " finalAz " << alignCoord.az().toDMSString()
-                                       << " finalAlt " << alignCoord.alt().toDMSString();
-
-            // Slew back to original position
-            if (canSync)
-                currentTelescope->Slew(initRA / 15.0, initDEC);
-            else
-            {
-                currentTelescope->Slew(telescopeCoord.ra().Hours() + RAMotion / 15.0, telescopeCoord.dec().Degrees());
-            }
-
-            appendLogText(i18n("Slewing back to original position..."));
-
-            calculatePolarError(initRA, initDEC, finalRA, finalDEC, initAz);
-
-            azStage = AZ_INIT;
-            break;
-
-        default:
-            break;
-    }
-}
-
-void Align::measureAltError()
-{
-    static double initRA = 0, initDEC = 0, finalRA = 0, finalDEC = 0, initAz = 0;
-
-    if (m_PAHStage != PAH_IDLE && (KMessageBox::warningContinueCancel(KStars::Instance(),
-                                   i18n("Polar Alignment Helper is still active. Do you want to continue "
-                                        "using legacy polar alignment tool?")) != KMessageBox::Continue))
-        return;
-
-    m_PAHStage = PAH_IDLE;
-    emit newPAHStage(m_PAHStage);
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Measuring Altitude Error...";
-
-    switch (altStage)
-    {
-        case ALT_INIT:
-
-            // Display message box confirming user point scope near meridian and south
-
-            // N.B. This action cannot be automated.
-            if (KMessageBox::warningContinueCancel(nullptr,
-                                                   i18n("Point the telescope to the eastern or western horizon with a "
-                                                           "minimum altitude of 20 degrees. Press continue when ready."),
-                                                   i18n("Polar Alignment Measurement"), KStandardGuiItem::cont(),
-                                                   KStandardGuiItem::cancel(),
-                                                   "ekos_measure_alt_error") != KMessageBox::Continue)
-                return;
-
-            appendLogText(i18n("Solving first frame."));
-            altStage = ALT_FIRST_TARGET;
-            if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
-                appendLogText(i18n("Settling..."));
-            m_CaptureTimer.start(delaySpin->value());
-            break;
-
-        case ALT_FIRST_TARGET:
-            // start solving there, find RA/DEC
-            initRA  = alignCoord.ra().Degrees();
-            initDEC = alignCoord.dec().Degrees();
-            initAz  = alignCoord.az().Degrees();
-
-            qCDebug(KSTARS_EKOS_ALIGN) << "Polar initRA " << alignCoord.ra().toHMSString() << " initDEC "
-                                       << alignCoord.dec().toDMSString() << " initlAz " << alignCoord.az().toDMSString()
-                                       << " initAlt " << alignCoord.alt().toDMSString();
-
-            // Now move 30 arcminutes in RA
-            if (canSync)
-            {
-                altStage = ALT_SYNCING;
-                currentTelescope->Sync(initRA / 15.0, initDEC);
-                currentTelescope->Slew((initRA - RAMotion) / 15.0, initDEC);
-            }
-            // If telescope doesn't sync, we slew relative to its current coordinates
-            else
-            {
-                altStage = ALT_SLEWING;
-                currentTelescope->Slew(telescopeCoord.ra().Hours() - RAMotion / 15.0, telescopeCoord.dec().Degrees());
-            }
-
-            appendLogText(i18n("Slewing 30 arcminutes in RA..."));
-            break;
-
-        case ALT_SECOND_TARGET:
-            // We reached second target now
-            // Let now solver for RA/DEC
-            appendLogText(i18n("Solving second frame."));
-            altStage = ALT_FINISHED;
-
-            if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
-                appendLogText(i18n("Settling..."));
-            m_CaptureTimer.start(delaySpin->value());
-            break;
-
-        case ALT_FINISHED:
-            // Measure deviation in DEC
-            // Call function to report error
-            appendLogText(i18n("Calculating altitude alignment error..."));
-            finalRA  = alignCoord.ra().Degrees();
-            finalDEC = alignCoord.dec().Degrees();
-
-            qCDebug(KSTARS_EKOS_ALIGN) << "Polar finalRA " << alignCoord.ra().toHMSString() << " finalDEC "
-                                       << alignCoord.dec().toDMSString() << " finalAz " << alignCoord.az().toDMSString()
-                                       << " finalAlt " << alignCoord.alt().toDMSString();
-
-            // Slew back to original position
-            if (canSync)
-                currentTelescope->Slew(initRA / 15.0, initDEC);
-            // If telescope doesn't sync, we slew relative to its current coordinates
-            else
-            {
-                currentTelescope->Slew(telescopeCoord.ra().Hours() + RAMotion / 15.0, telescopeCoord.dec().Degrees());
-            }
-
-            appendLogText(i18n("Slewing back to original position..."));
-
-            calculatePolarError(initRA, initDEC, finalRA, finalDEC, initAz);
-
-            altStage = ALT_INIT;
-            break;
-
-        default:
-            break;
-    }
-}
-
-void Align::calculatePolarError(double initRA, double initDEC, double finalRA, double finalDEC, double initAz)
-{
-    double raMotion = finalRA - initRA;
-    decDeviation    = finalDEC - initDEC;
-
-    // East/West of meridian
-    int horizon = (initAz > 0 && initAz <= 180) ? 0 : 1;
-
-    // How much time passed siderrally form initRA to finalRA?
-    //double RATime = fabs(raMotion / SIDRATE) / 60.0;
-
-    // 2016-03-30: Diff in RA is sufficient for time difference
-    // raMotion in degrees. RATime in minutes.
-    double RATime = fabs(raMotion) * 60.0;
-
-    // Equation by Frank Berret (Measuring Polar Axis Alignment Error, page 4)
-    // In degrees
-    double deviation = (3.81 * (decDeviation * 3600)) / (RATime * cos(initDEC * dms::DegToRad)) / 60.0;
-    dms devDMS(fabs(deviation));
-
-    KLocalizedString deviationDirection;
-
-    switch (hemisphere)
-    {
-        // Northern hemisphere
-        case NORTH_HEMISPHERE:
-            if (azStage == AZ_FINISHED)
-            {
-                if (decDeviation > 0)
-                    deviationDirection = ki18n("%1 too far east");
-                else
-                    deviationDirection = ki18n("%1 too far west");
-            }
-            else if (altStage == ALT_FINISHED)
-            {
-                switch (horizon)
-                {
-                    // East
-                    case 0:
-                        if (decDeviation > 0)
-                            deviationDirection = ki18n("%1 too far high");
-                        else
-                            deviationDirection = ki18n("%1 too far low");
-
-                        break;
-
-                    // West
-                    case 1:
-                        if (decDeviation > 0)
-                            deviationDirection = ki18n("%1 too far low");
-                        else
-                            deviationDirection = ki18n("%1 too far high");
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-            break;
-
-        // Southern hemisphere
-        case SOUTH_HEMISPHERE:
-            if (azStage == AZ_FINISHED)
-            {
-                if (decDeviation > 0)
-                    deviationDirection = ki18n("%1 too far west");
-                else
-                    deviationDirection = ki18n("%1 too far east");
-            }
-            else if (altStage == ALT_FINISHED)
-            {
-                switch (horizon)
-                {
-                    // East
-                    case 0:
-                        if (decDeviation > 0)
-                            deviationDirection = ki18n("%1 too far low");
-                        else
-                            deviationDirection = ki18n("%1 too far high");
-                        break;
-
-                    // West
-                    case 1:
-                        if (decDeviation > 0)
-                            deviationDirection = ki18n("%1 too far high");
-                        else
-                            deviationDirection = ki18n("%1 too far low");
-                        break;
-
-                    default:
-                        break;
-                }
-            }
-            break;
-    }
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Hemisphere is " << ((hemisphere == NORTH_HEMISPHERE) ? "North" : "South")
-                               << " --- initAz " << initAz;
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar initRA " << initRA << " initDEC " << initDEC << " finalRA " << finalRA
-                               << " finalDEC " << finalDEC;
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar decDeviation " << decDeviation * 3600 << " arcsec "
-                               << " RATime " << RATime << " minutes";
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Raw Deviation " << deviation << " degrees.";
-
-    if (azStage == AZ_FINISHED)
-    {
-        azError->setText(deviationDirection.subs(QString("%1").arg(devDMS.toDMSString())).toString());
-        azDeviation = deviation * (decDeviation > 0 ? 1 : -1);
-
-        qCDebug(KSTARS_EKOS_ALIGN) << "Polar Azimuth Deviation " << azDeviation << " degrees.";
-
-        correctAzB->setEnabled(true);
-    }
-    if (altStage == ALT_FINISHED)
-    {
-        altError->setText(deviationDirection.subs(QString("%1").arg(devDMS.toDMSString())).toString());
-        altDeviation = deviation * (decDeviation > 0 ? 1 : -1);
-
-        qCDebug(KSTARS_EKOS_ALIGN) << "Polar Altitude Deviation " << altDeviation << " degrees.";
-
-        correctAltB->setEnabled(true);
-    }
-}
-
-void Align::correctAltError()
-{
-    double newRA, newDEC;
-
-    SkyPoint currentCoord(telescopeCoord);
-    dms targetLat;
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Correcting Altitude Error...";
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Current Mount RA " << currentCoord.ra().toHMSString() << " DEC "
-                               << currentCoord.dec().toDMSString() << "Az " << currentCoord.az().toDMSString() << " Alt "
-                               << currentCoord.alt().toDMSString();
-
-    // An error in polar alignment altitude reflects a deviation in the latitude of the mount from actual latitude of the site
-    // Calculating the latitude accounting for the altitude deviation. This is the latitude at which the altitude deviation should be zero.
-    targetLat.setD(KStars::Instance()->data()->geo()->lat()->Degrees() + altDeviation);
-
-    // Calculate the Az/Alt of the mount if it were located at the corrected latitude
-    currentCoord.EquatorialToHorizontal(KStars::Instance()->data()->lst(), &targetLat);
-
-    // Convert corrected Az/Alt to RA/DEC given the local sideral time and current (not corrected) latitude
-    currentCoord.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-
-    // New RA/DEC should reflect the position in the sky at which the polar alignment altitude error is minimal.
-    newRA  = currentCoord.ra().Hours();
-    newDEC = currentCoord.dec().Degrees();
-
-    altStage = ALT_CORRECTING;
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Target Latitude = Latitude "
-                               << KStars::Instance()->data()->geo()->lat()->Degrees() << " + Altitude Deviation " << altDeviation
-                               << " = " << targetLat.Degrees();
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Slewing to calibration position...";
-
-    currentTelescope->Slew(newRA, newDEC);
-
-    appendLogText(i18n("Slewing to calibration position, please wait until telescope completes slewing."));
-}
-
-void Align::correctAzError()
-{
-    double newRA, newDEC, currentAlt, currentAz;
-
-    SkyPoint currentCoord(telescopeCoord);
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Correcting Azimuth Error...";
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Current Mount RA " << currentCoord.ra().toHMSString() << " DEC "
-                               << currentCoord.dec().toDMSString() << "Az " << currentCoord.az().toDMSString() << " Alt "
-                               << currentCoord.alt().toDMSString();
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Target Azimuth = Current Azimuth " << currentCoord.az().Degrees()
-                               << " + Azimuth Deviation " << azDeviation << " = " << currentCoord.az().Degrees() + azDeviation;
-
-    // Get current horizontal coordinates of the mount
-    currentCoord.EquatorialToHorizontal(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-
-    // Keep Altitude as it is and change Azimuth to account for the azimuth deviation
-    // The new sky position should be where the polar alignment azimuth error is minimal
-    currentAlt = currentCoord.alt().Degrees();
-    currentAz  = currentCoord.az().Degrees() + azDeviation;
-
-    // Update current Alt and Azimuth to new values
-    currentCoord.setAlt(currentAlt);
-    currentCoord.setAz(currentAz);
-
-    // Convert Alt/Az back to equatorial coordinates
-    currentCoord.HorizontalToEquatorial(KStars::Instance()->data()->lst(), KStars::Instance()->data()->geo()->lat());
-
-    // Get new RA and DEC
-    newRA  = currentCoord.ra().Hours();
-    newDEC = currentCoord.dec().Degrees();
-
-    azStage = AZ_CORRECTING;
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Polar Slewing to calibration position...";
-
-    currentTelescope->Slew(newRA, newDEC);
-
-    appendLogText(i18n("Slewing to calibration position, please wait until telescope completes slewing."));
-}
 
 void Align::getFormattedCoords(double ra, double dec, QString &ra_str, QString &dec_str)
 {
@@ -4963,21 +2979,8 @@ void Align::getFormattedCoords(double ra, double dec, QString &ra_str, QString &
 
 bool Align::loadAndSlew(QString fileURL)
 {
-#ifdef Q_OS_OSX
-    if(Options::solverType() == SSolver::SOLVER_LOCALASTROMETRY
-            && Options::solveSextractorType() == SSolver::EXTRACTOR_BUILTIN)
-    {
-        if( !opsPrograms->astropyInstalled() || !opsPrograms->pythonInstalled() )
-        {
-            KSNotification::error(
-                i18n("Astrometry.net uses python3 and the astropy package for plate solving images offline when using the built in Sextractor. These were not detected on your system.  Please install Python and the Astropy package or select a different Sextractor for solving."));
-            return false;
-        }
-    }
-#endif
-
     if (fileURL.isEmpty())
-        fileURL = QFileDialog::getOpenFileName(Ekos::Manager::Instance(), i18n("Load Image"), dirPath,
+        fileURL = QFileDialog::getOpenFileName(Ekos::Manager::Instance(), i18nc("@title:window", "Load Image"), dirPath,
                                                "Images (*.fits *.fits.fz *.fit *.fts "
                                                "*.jpg *.jpeg *.png *.gif *.bmp "
                                                "*.cr2 *.cr3 *.crw *.nef *.raf *.dng *.arw *.orf)");
@@ -4991,12 +2994,13 @@ bool Align::loadAndSlew(QString fileURL)
 
     differentialSlewingActivated = false;
 
-    solveFromFile = true;
+    m_SolveFromFile = true;
 
-    stopPAHProcess();
+    if (m_PolarAlignmentAssistant)
+        m_PolarAlignmentAssistant->stopPAHProcess();
 
     slewR->setChecked(true);
-    currentGotoMode = GOTO_SLEW;
+    m_CurrentGotoMode = GOTO_SLEW;
 
     solveB->setEnabled(false);
     stopB->setEnabled(true);
@@ -5008,41 +3012,33 @@ bool Align::loadAndSlew(QString fileURL)
         setSolverMode(SOLVER_LOCAL);
     }
 
-    alignView->loadFile(fileURL, false);
+    m_ImageData.clear();
+
+    m_AlignView->loadFile(fileURL);
     //m_FileToSolve = fileURL;
-    connect(alignView, &FITSView::loaded, this, &Align::startSolving);
+    connect(m_AlignView.get(), &FITSView::loaded, this, &Align::startSolving);
 
     return true;
 }
 
 bool Align::loadAndSlew(const QByteArray &image, const QString &extension)
 {
-#ifdef Q_OS_OSX
-    if(Options::solverType() == SSolver::SOLVER_LOCALASTROMETRY
-            && Options::solveSextractorType() == SSolver::EXTRACTOR_BUILTIN)
-    {
-        if( !opsPrograms->astropyInstalled() || !opsPrograms->pythonInstalled() )
-        {
-            KSNotification::error(
-                i18n("Astrometry.net uses python3 and the astropy package for plate solving images offline when using the built in Sextractor. These were not detected on your system.  Please install Python and the Astropy package or select a different Sextractor for solving."));
-            return false;
-        }
-    }
-#endif
-
     differentialSlewingActivated = false;
-    solveFromFile = true;
-    stopPAHProcess();
+    m_SolveFromFile = true;
+    RUN_PAH(stopPAHProcess());
     slewR->setChecked(true);
-    currentGotoMode = GOTO_SLEW;
+    m_CurrentGotoMode = GOTO_SLEW;
     solveB->setEnabled(false);
     stopB->setEnabled(true);
     pi->startAnimation();
 
+    // Must clear image data so we are forced to read the
+    // image data again from align view when solving begins.
+    m_ImageData.clear();
     QSharedPointer<FITSData> data;
     data.reset(new FITSData(), &QObject::deleteLater);
     data->loadFromBuffer(image, extension);
-    alignView->loadData(data);
+    m_AlignView->loadData(data);
     startSolving();
     return true;
 }
@@ -5190,6 +3186,9 @@ void Align::setWCSEnabled(bool enable)
 
     auto wcsControl = currentCCD->getBaseDevice()->getSwitch("WCS_CONTROL");
 
+    if (!wcsControl)
+        return;
+
     auto wcs_enable  = wcsControl->findWidgetByName("WCS_ENABLE");
     auto wcs_disable = wcsControl->findWidgetByName("WCS_DISABLE");
 
@@ -5202,19 +3201,17 @@ void Align::setWCSEnabled(bool enable)
     wcsControl->reset();
     if (enable)
     {
-        appendLogText(i18n("World Coordinate System (WCS) is enabled. CCD rotation must be set either manually in the "
-                           "CCD driver or by solving an image before proceeding to capture any further images, "
-                           "otherwise the WCS information may be invalid."));
+        appendLogText(i18n("World Coordinate System (WCS) is enabled."));
         wcs_enable->setState(ISS_ON);
     }
     else
     {
+        appendLogText(i18n("World Coordinate System (WCS) is disabled."));
         wcs_disable->setState(ISS_ON);
         m_wcsSynced    = false;
-        appendLogText(i18n("World Coordinate System (WCS) is disabled."));
     }
 
-    ClientManager *clientManager = currentCCD->getDriverInfo()->getClientManager();
+    auto clientManager = currentCCD->getDriverInfo()->getClientManager();
     if (clientManager)
         clientManager->sendNewSwitch(wcsControl);
 }
@@ -5226,10 +3223,9 @@ void Align::checkCCDExposureProgress(ISD::CCDChip *targetChip, double remaining,
 
     if (state == IPS_ALERT)
     {
-        if (++m_CaptureErrorCounter == 3 && m_PAHStage != PAH_REFRESH)
+        if (++m_CaptureErrorCounter == 3 && !matchPAHStage(PolarAlignmentAssistant::PAH_REFRESH))
         {
             appendLogText(i18n("Capture error. Aborting..."));
-
             abort();
             return;
         }
@@ -5309,11 +3305,11 @@ void Align::setCaptureStatus(CaptureState newState)
     {
         case CAPTURE_PROGRESS:
         {
-            // Only reset targetCoord if capture wasn't suspended then resumed due to error duing ongoing
+            // Only reset m_targetCoord if capture wasn't suspended then resumed due to error duing ongoing
             // capture
             if (currentTelescope && m_CaptureState != CAPTURE_SUSPENDED)
             {
-                syncTargetToMount();
+                updateTargetCoords();
             }
 
         }
@@ -5321,8 +3317,8 @@ void Align::setCaptureStatus(CaptureState newState)
         case CAPTURE_ALIGNING:
             if (currentTelescope && currentTelescope->hasAlignmentModel() && Options::resetMountModelAfterMeridian())
             {
-                mountModelReset = currentTelescope->clearAlignmentModel();
-                qCDebug(KSTARS_EKOS_ALIGN) << "Post meridian flip mount model reset" << (mountModelReset ? "successful." : "failed.");
+                qCDebug(KSTARS_EKOS_ALIGN) << "Post meridian flip mount model reset" << (currentTelescope->clearAlignmentModel() ?
+                                           "successful." : "failed.");
             }
 
             m_CaptureTimer.start(Options::settlingTime());
@@ -5364,514 +3360,10 @@ void Align::toggleAlignWidgetFullScreen()
     else
     {
         alignWidget->setParent(nullptr);
-        alignWidget->setWindowTitle(i18n("Align Frame"));
+        alignWidget->setWindowTitle(i18nc("@title:window", "Align Frame"));
         alignWidget->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::CustomizeWindowHint);
         alignWidget->showMaximized();
         alignWidget->show();
-    }
-}
-
-bool Align::checkPAHForMeridianCrossing()
-{
-    // Make sure using -180 to 180 for hourAngle and DEC. (Yes dec should be between -90 and 90).
-    double hourAngle = mountHa.Degrees();
-    while (hourAngle < -180)
-        hourAngle += 360;
-    while (hourAngle > 180)
-        hourAngle -= 360;
-    double dec = mountDec.Degrees();
-    while (dec < -180)
-        dec += 360;
-    while (dec > 180)
-        dec -= 360;
-
-    // Don't do this check within 2 degrees of the poles.
-    bool nearThePole = fabs(dec) > 88;
-    if (nearThePole)
-        return false;
-
-    double degreesPerSlew = PAHRotationSpin->value();
-    bool closeToMeridian = fabs(hourAngle) < 2.0 * degreesPerSlew;
-    bool goingWest = PAHDirectionCombo->currentIndex() == 0;
-
-    // If the pier is on the east side (pointing west) and will slew west and is within 2 slews of the HA=0,
-    // or on the west side (pointing east) and will slew east, and is within 2 slews of HA=0
-    // then warn and give the user a chance to cancel.
-    bool wouldCrossMeridian =
-        ((mountPierSide == ISD::Telescope::PIER_EAST && !goingWest && closeToMeridian) ||
-         (mountPierSide == ISD::Telescope::PIER_WEST && goingWest && closeToMeridian) ||
-         (mountPierSide == ISD::Telescope::PIER_UNKNOWN && closeToMeridian));
-
-    return wouldCrossMeridian;
-}
-
-void Align::startPAHProcess()
-{
-    qCInfo(KSTARS_EKOS_ALIGN) << QString("Starting Polar Alignment Assistant process %1 ...").arg(PAA_VERSION);
-
-    auto executePAH = [ this ]()
-    {
-        m_PAHStage = PAH_FIRST_CAPTURE;
-        emit newPAHStage(m_PAHStage);
-
-        nothingR->setChecked(true);
-        currentGotoMode = GOTO_NOTHING;
-        loadSlewB->setEnabled(false);
-
-        rememberSolverWCS = Options::astrometrySolverWCS();
-        rememberAutoWCS   = Options::autoWCS();
-        //rememberMeridianFlip = Options::executeMeridianFlip();
-
-        Options::setAutoWCS(false);
-        Options::setAstrometrySolverWCS(true);
-        //Options::setExecuteMeridianFlip(false);
-
-        if (Options::limitedResourcesMode())
-            appendLogText(i18n("Warning: Equatorial Grid Lines will not be drawn due to limited resources mode."));
-
-        if (currentTelescope->hasAlignmentModel())
-        {
-            appendLogText(i18n("Clearing mount Alignment Model..."));
-            mountModelReset = currentTelescope->clearAlignmentModel();
-        }
-
-        // Unpark
-        currentTelescope->UnPark();
-
-        // Set tracking ON if not already
-        if (currentTelescope->canControlTrack() && currentTelescope->isTracking() == false)
-            currentTelescope->setTrackEnabled(true);
-
-        PAHStartB->setEnabled(false);
-        PAHStopB->setEnabled(true);
-
-        PAHUpdatedErrorTotal->clear();
-        PAHUpdatedErrorAlt->clear();
-        PAHUpdatedErrorAz->clear();
-        PAHOrigErrorTotal->clear();
-        PAHOrigErrorAlt->clear();
-        PAHOrigErrorAz->clear();
-
-        PAHWidgets->setCurrentWidget(PAHFirstCapturePage);
-        emit newPAHMessage(firstCaptureText->text());
-
-        m_PAHRetrySolveCounter = 0;
-        captureAndSolve();
-    };
-
-    // Right off the bat, check if this alignment might cause a pier crash.
-    // If we're crossing the meridian, warn unless within 5-degrees from the pole.
-    if (checkPAHForMeridianCrossing())
-    {
-        connect(KSMessageBox::Instance(), &KSMessageBox::accepted, this, [this, executePAH]()
-        {
-            KSMessageBox::Instance()->disconnect(this);
-            executePAH();
-        });
-
-        KSMessageBox::Instance()->warningContinueCancel(
-            i18n("Warning, This could cause the telescope to cross the meridian. Check your direction."),
-            i18n("Polar Alignment"), 15);
-    }
-    else
-        executePAH();
-}
-
-void Align::stopPAHProcess()
-{
-    if (m_PAHStage == PAH_IDLE)
-        return;
-
-    qCInfo(KSTARS_EKOS_ALIGN) << "Stopping Polar Alignment Assistant process...";
-
-    // Only display dialog if user explicitly restarts
-    if ((static_cast<QPushButton *>(sender()) == PAHStopB) && KMessageBox::questionYesNo(KStars::Instance(),
-            i18n("Are you sure you want to stop the polar alignment process?"),
-            i18n("Polar Alignment Assistant"), KStandardGuiItem::yes(), KStandardGuiItem::no(),
-            "restart_PAA_process_dialog") == KMessageBox::No)
-        return;
-
-    Options::setAstrometrySolverWCS(rememberSolverWCS);
-    Options::setAutoWCS(rememberAutoWCS);
-    //Options::setExecuteMeridianFlip(rememberMeridianFlip);
-
-    stopB->click();
-    if (currentTelescope && currentTelescope->isInMotion())
-        currentTelescope->Abort();
-
-    m_PAHStage = PAH_IDLE;
-    emit newPAHStage(m_PAHStage);
-
-    PAHStartB->setEnabled(true);
-    PAHStopB->setEnabled(false);
-    PAHRefreshB->setEnabled(true);
-    PAHWidgets->setCurrentWidget(PAHIntroPage);
-    emit newPAHMessage(introText->text());
-
-    alignView->reset();
-    alignView->setRefreshEnabled(false);
-
-    emit newFrame(alignView);
-    disconnect(alignView, &AlignView::trackingStarSelected, this, &Ekos::Align::setPAHCorrectionOffset);
-    disconnect(alignView, &AlignView::newCorrectionVector, this, &Ekos::Align::newCorrectionVector);
-
-    if (Options::pAHAutoPark())
-    {
-        currentTelescope->Park();
-        appendLogText(i18n("Parking the mount..."));
-    }
-
-    state = ALIGN_IDLE;
-    emit newStatus(state);
-}
-
-void Align::rotatePAH()
-{
-    double TargetDiffRA = PAHRotationSpin->value();
-    bool westMeridian = PAHDirectionCombo->currentIndex() == 0;
-
-    // West
-    if (westMeridian)
-        TargetDiffRA *= -1;
-    // East
-    else
-        TargetDiffRA *= 1;
-
-    // JM 2018-05-03: Hemispheres shouldn't affect rotation direction in RA
-
-    // if Manual slewing is selected, don't move the mount
-    if (PAHManual->isChecked())
-    {
-        return;
-    }
-
-    // TargetDiffRA is in degrees
-    dms newTelescopeRA = (telescopeCoord.ra() + dms(TargetDiffRA)).reduce();
-
-    targetPAH.setRA(newTelescopeRA);
-    targetPAH.setDec(telescopeCoord.dec());
-
-    //currentTelescope->Slew(&targetPAH);
-    // Set Selected Speed
-    if (PAHSlewRateCombo->currentIndex() >= 0)
-        currentTelescope->setSlewRate(PAHSlewRateCombo->currentIndex());
-    // Go to direction
-    currentTelescope->MoveWE(westMeridian ? ISD::Telescope::MOTION_WEST : ISD::Telescope::MOTION_EAST,
-                             ISD::Telescope::MOTION_START);
-
-    appendLogText(i18n("Please wait until mount completes rotating to RA (%1) DE (%2)", targetPAH.ra().toHMSString(),
-                       targetPAH.dec().toDMSString()));
-}
-
-void Align::setupCorrectionGraphics(const QPointF &pixel)
-{
-    // We use the previously stored image (the 3rd PAA image)
-    // so we can continue to estimage the correction even after
-    // capturing new images during the refresh stage.
-    const QSharedPointer<FITSData> &imageData = alignView->keptImage();
-
-    // Just the altitude correction
-    if (!polarAlign.findCorrectedPixel(imageData, pixel, &correctionAltTo, true))
-    {
-        qCInfo(KSTARS_EKOS_ALIGN) << QString(i18n("PAA: Failed to findCorrectedPixel."));
-        return;
-    }
-    // The whole correction.
-    if (!polarAlign.findCorrectedPixel(imageData, pixel, &correctionTo))
-    {
-        qCInfo(KSTARS_EKOS_ALIGN) << QString(i18n("PAA: Failed to findCorrectedPixel."));
-        return;
-    }
-    QString debugString = QString("PAA: Correction: %1,%2 --> %3,%4 (alt only %5,%6)")
-                          .arg(pixel.x(), 4, 'f', 0).arg(pixel.y(), 4, 'f', 0)
-                          .arg(correctionTo.x(), 4, 'f', 0).arg(correctionTo.y(), 4, 'f', 0)
-                          .arg(correctionAltTo.x(), 4, 'f', 0).arg(correctionAltTo.y(), 4, 'f', 0);
-    qCDebug(KSTARS_EKOS_ALIGN) << debugString;
-    correctionFrom = pixel;
-    alignView->setCorrectionParams(correctionFrom, correctionTo, correctionAltTo);
-
-    return;
-}
-
-void Align::calculatePAHError()
-{
-    // Hold on to the imageData so we can use it during the refresh phase.
-    alignView->holdOnToImage();
-
-    const QSharedPointer<FITSData> imageData = alignView->imageData();
-    if (!polarAlign.findAxis())
-    {
-        appendLogText(i18n("PAA: Failed to find RA Axis center."));
-        stopPAHProcess();
-        return;
-    }
-
-    double azimuthError, altitudeError;
-    polarAlign.calculateAzAltError(&azimuthError, &altitudeError);
-    dms polarError(hypot(altitudeError, azimuthError));
-    dms azError(azimuthError), altError(altitudeError);
-
-    if (alignView->isEQGridShown() == false && !Options::limitedResourcesMode())
-        alignView->toggleEQGrid();
-
-    QString msg = QString("%1. Azimuth: %2  Altitude: %3")
-                  .arg(polarError.toDMSString()).arg(azError.toDMSString())
-                  .arg(altError.toDMSString());
-    appendLogText(QString("Polar Alignment Error: %1").arg(msg));
-    PAHErrorLabel->setText(msg);
-
-    // These are viewed during the refresh phase.
-    PAHOrigErrorTotal->setText(polarError.toDMSString());
-    PAHOrigErrorAlt->setText(altError.toDMSString());
-    PAHOrigErrorAz->setText(azError.toDMSString());
-
-    setupCorrectionGraphics(QPointF(imageData->width() / 2, imageData->height() / 2));
-
-    // Find Celestial pole location and mount's RA axis
-    SkyPoint CP(0, (hemisphere == NORTH_HEMISPHERE) ? 90 : -90);
-    QPointF imagePoint, celestialPolePoint;
-    imageData->wcsToPixel(CP, celestialPolePoint, imagePoint);
-    if (imageData->contains(celestialPolePoint))
-    {
-        alignView->setCelestialPole(celestialPolePoint);
-        QPointF raAxis;
-        if (polarAlign.findCorrectedPixel(imageData, celestialPolePoint, &raAxis))
-            alignView->setRaAxis(raAxis);
-    }
-
-    connect(alignView, &AlignView::trackingStarSelected, this, &Ekos::Align::setPAHCorrectionOffset);
-    emit polarResultUpdated(QLineF(correctionFrom, correctionTo), polarError.Degrees(), azError.Degrees(), altError.Degrees());
-
-    connect(alignView, &AlignView::newCorrectionVector, this, &Ekos::Align::newCorrectionVector, Qt::UniqueConnection);
-    emit newCorrectionVector(QLineF(correctionFrom, correctionTo));
-    emit newFrame(alignView);
-}
-
-void Align::syncCorrectionVector()
-{
-    emit newCorrectionVector(QLineF(correctionFrom, correctionTo));
-    alignView->setCorrectionParams(correctionFrom, correctionTo, correctionAltTo);
-}
-
-void Align::setPAHCorrectionOffsetPercentage(double dx, double dy)
-{
-    double x = dx * alignView->zoomedWidth();
-    double y = dy * alignView->zoomedHeight();
-
-
-    setPAHCorrectionOffset(static_cast<int>(round(x)), static_cast<int>(round(y)));
-
-}
-
-void Align::setPAHCorrectionOffset(int x, int y)
-{
-    if (m_PAHStage == PAH_REFRESH || m_PAHStage == PAH_PRE_REFRESH)
-    {
-        appendLogText(i18n("Polar-alignment star cannot be updated during refresh phase as it might affect error measurements."));
-    }
-    else
-    {
-        setupCorrectionGraphics(QPointF(x, y));
-        emit newCorrectionVector(QLineF(correctionFrom, correctionTo));
-        emit newFrame(alignView);
-    }
-}
-
-void Align::setPAHCorrectionSelectionComplete()
-{
-    m_PAHStage = PAH_PRE_REFRESH;
-    emit newPAHStage(m_PAHStage);
-
-    // If user stops here, we restore the settings, if not we
-    // disable again in the refresh process
-    // and restore when refresh is complete
-    Options::setAstrometrySolverWCS(rememberSolverWCS);
-    Options::setAutoWCS(rememberAutoWCS);
-    //Options::setExecuteMeridianFlip(rememberMeridianFlip);
-
-    PAHWidgets->setCurrentWidget(PAHRefreshPage);
-    emit newPAHMessage(refreshText->text());
-}
-
-void Align::setPAHSlewDone()
-{
-    emit newPAHMessage("Manual slew done.");
-    switch(m_PAHStage)
-    {
-        case PAH_FIRST_ROTATE :
-            m_PAHStage = PAH_SECOND_CAPTURE;
-            emit newPAHStage(m_PAHStage);
-            PAHWidgets->setCurrentWidget(PAHSecondCapturePage);
-            appendLogText(i18n("First manual rotation done."));
-            break;
-        case PAH_SECOND_ROTATE :
-            m_PAHStage = PAH_THIRD_CAPTURE;
-            emit newPAHStage(m_PAHStage);
-            PAHWidgets->setCurrentWidget(PAHThirdCapturePage);
-            appendLogText(i18n("Second manual rotation done."));
-            break;
-        default :
-            return; // no other stage should be able to trigger this event
-    }
-    if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
-        appendLogText(i18n("Settling..."));
-    m_CaptureTimer.start(delaySpin->value());
-}
-
-
-
-void Align::startPAHRefreshProcess()
-{
-    qCInfo(KSTARS_EKOS_ALIGN) << "Starting Polar Alignment Assistant refreshing...";
-
-    refreshIteration = 0;
-
-    m_PAHStage = PAH_REFRESH;
-    emit newPAHStage(m_PAHStage);
-
-    PAHRefreshB->setEnabled(false);
-
-    // Hide EQ Grids if shown
-    if (alignView->isEQGridShown())
-        alignView->toggleEQGrid();
-
-    alignView->setRefreshEnabled(true);
-
-    Options::setAstrometrySolverWCS(false);
-    Options::setAutoWCS(false);
-
-    // We for refresh, just capture really
-    captureAndSolve();
-}
-
-void Align::setPAHRefreshComplete()
-{
-    abort();
-    refreshIteration = 0;
-
-    Options::setAstrometrySolverWCS(rememberSolverWCS);
-    Options::setAutoWCS(rememberAutoWCS);
-    //Options::setExecuteMeridianFlip(rememberMeridianFlip);
-
-    stopPAHProcess();
-}
-
-void Align::processPAHStage(double orientation, double ra, double dec, double pixscale, bool eastToTheRight)
-{
-    if (m_PAHStage == PAH_FIND_CP)
-    {
-        setSolverAction(GOTO_NOTHING);
-        appendLogText(
-            i18n("Mount is synced to celestial pole. You can now continue Polar Alignment Assistant procedure."));
-        m_PAHStage = PAH_FIRST_CAPTURE;
-        emit newPAHStage(m_PAHStage);
-        return;
-    }
-
-    if (m_PAHStage == PAH_FIRST_CAPTURE || m_PAHStage == PAH_SECOND_CAPTURE || m_PAHStage == PAH_THIRD_CAPTURE)
-    {
-        bool doWcs = (m_PAHStage == PAH_THIRD_CAPTURE) || !Options::limitedResourcesMode();
-        if (doWcs)
-        {
-            appendLogText(i18n("Please wait while WCS data is processed..."));
-            PAHWidgets->setCurrentWidget(
-                m_PAHStage == PAH_FIRST_CAPTURE
-                ? PAHFirstWcsPage
-                : (m_PAHStage == PAH_SECOND_CAPTURE ? PAHSecondWcsPage
-                   : PAHThirdWcsPage));
-        }
-        connect(alignView, &AlignView::wcsToggled, this, &Ekos::Align::setWCSToggled, Qt::UniqueConnection);
-        alignView->injectWCS(orientation, ra, dec, pixscale, eastToTheRight, doWcs);
-        return;
-    }
-}
-
-void Align::setWCSToggled(bool result)
-{
-    appendLogText(i18n("WCS data processing is complete."));
-
-    //alignView->disconnect(this);
-    disconnect(alignView, &AlignView::wcsToggled, this, &Ekos::Align::setWCSToggled);
-
-    if (m_PAHStage == PAH_FIRST_CAPTURE)
-    {
-        // We need WCS to be synced first
-        if (result == false && m_wcsSynced == true)
-        {
-            appendLogText(i18n("WCS info is now valid. Capturing next frame..."));
-            captureAndSolve();
-            return;
-        }
-
-        polarAlign.reset();
-        polarAlign.addPoint(alignView->imageData());
-
-        m_PAHStage = PAH_FIRST_ROTATE;
-        emit newPAHStage(m_PAHStage);
-
-        if (PAHManual->isChecked())
-        {
-            QString msg = QString("Please rotate your mount about %1 deg in RA")
-                          .arg(PAHRotationSpin->value());
-            manualRotateText->setText(msg);
-            appendLogText(msg);
-            PAHWidgets->setCurrentWidget(PAHManualRotatePage);
-            emit newPAHMessage(manualRotateText->text());
-        }
-        else
-        {
-            PAHWidgets->setCurrentWidget(PAHFirstRotatePage);
-            emit newPAHMessage(firstRotateText->text());
-        }
-
-        rotatePAH();
-    }
-    else if (m_PAHStage == PAH_SECOND_CAPTURE)
-    {
-        m_PAHStage = PAH_SECOND_ROTATE;
-        emit newPAHStage(m_PAHStage);
-
-        if (PAHManual->isChecked())
-        {
-            QString msg = QString("Please rotate your mount about %1 deg in RA")
-                          .arg(PAHRotationSpin->value());
-            manualRotateText->setText(msg);
-            appendLogText(msg);
-            PAHWidgets->setCurrentWidget(PAHManualRotatePage);
-            emit newPAHMessage(manualRotateText->text());
-        }
-        else
-        {
-            PAHWidgets->setCurrentWidget(PAHSecondRotatePage);
-            emit newPAHMessage(secondRotateText->text());
-        }
-
-        polarAlign.addPoint(alignView->imageData());
-
-        rotatePAH();
-    }
-    else if (m_PAHStage == PAH_THIRD_CAPTURE)
-    {
-        const QSharedPointer<FITSData> &imageData = alignView->imageData();
-
-        // Critical error
-        if (result == false)
-        {
-            appendLogText(i18n("Failed to process World Coordinate System: %1. Try again.", imageData->getLastError()));
-            return;
-        }
-
-        polarAlign.addPoint(imageData);
-
-        // We have 3 points which uniquely defines a circle with its center representing the RA Axis
-        // We have celestial pole location. So correction vector is just the vector between these two points
-        calculatePAHError();
-
-        m_PAHStage = PAH_STAR_SELECT;
-        emit newPAHStage(m_PAHStage);
-
-        PAHWidgets->setCurrentWidget(PAHCorrectionPage);
-        emit newPAHMessage(correctionText->text());
     }
 }
 
@@ -5885,26 +3377,24 @@ void Align::updateTelescopeType(int index)
 
     syncSettings();
 
-    focal_length = (index == ISD::CCD::TELESCOPE_PRIMARY) ? primaryFL : guideFL;
-    aperture = (index == ISD::CCD::TELESCOPE_PRIMARY) ? primaryAperture : guideAperture;
+    m_TelescopeFocalLength = (index == ISD::CCD::TELESCOPE_PRIMARY) ? primaryFL : guideFL;
+    m_TelescopeAperture = (index == ISD::CCD::TELESCOPE_PRIMARY) ? primaryAperture : guideAperture;
 
     Options::setSolverScopeType(index);
 
     syncTelescopeInfo();
 }
 
-
-
-void Align::setMountCoords(const QString &raStr, const QString &decStr, const QString &azStr,
-                           const QString &altStr, int pierSide, const QString &haStr)
-{
-    mountRa = dms(raStr, false);
-    mountDec = dms(decStr, true);
-    mountHa = dms(haStr, false);
-    mountAz = dms(azStr, true);
-    mountAlt = dms(altStr, true);
-    mountPierSide = static_cast<ISD::Telescope::PierSide>(pierSide);
-}
+//void Align::setMountCoords(const QString &raStr, const QString &decStr, const QString &azStr,
+//                           const QString &altStr, int pierSide, const QString &haStr)
+//{
+//    mountRa = dms(raStr, false);
+//    mountDec = dms(decStr, true);
+//    mountHa = dms(haStr, false);
+//    mountAz = dms(azStr, true);
+//    mountAlt = dms(altStr, true);
+//    mountPierSide = static_cast<ISD::Telescope::PierSide>(pierSide);
+//}
 
 void Align::setMountStatus(ISD::Telescope::Status newState)
 {
@@ -5915,21 +3405,21 @@ void Align::setMountStatus(ISD::Telescope::Status newState)
         case ISD::Telescope::MOUNT_MOVING:
             solveB->setEnabled(false);
             loadSlewB->setEnabled(false);
-            PAHStartB->setEnabled(false);
             break;
 
         default:
             if (state != ALIGN_PROGRESS)
             {
                 solveB->setEnabled(true);
-                if (m_PAHStage == PAH_IDLE)
+                if (matchPAHStage(PAA::PAH_IDLE))
                 {
-                    PAHStartB->setEnabled(true);
                     loadSlewB->setEnabled(true);
                 }
             }
             break;
     }
+
+    RUN_PAH(setMountStatus(newState));
 }
 
 void Align::setAstrometryDevice(ISD::GDInterface *newAstrometry)
@@ -6021,20 +3511,20 @@ QVariantMap Align::getEffectiveFOV()
 {
     KStarsData::Instance()->userdb()->GetAllEffectiveFOVs(effectiveFOVs);
 
-    fov_x = fov_y = 0;
+    m_FOVWidth = m_FOVHeight = 0;
 
     for (auto &map : effectiveFOVs)
     {
         if (map["Profile"].toString() == m_ActiveProfile->name)
         {
-            if (map["Width"].toInt() == ccd_width &&
-                    map["Height"].toInt() == ccd_height &&
-                    map["PixelW"].toDouble() == ccd_hor_pixel &&
-                    map["PixelH"].toDouble() == ccd_ver_pixel &&
-                    map["FocalLength"].toDouble() == focal_length)
+            if (map["Width"].toInt() == m_CameraWidth &&
+                    map["Height"].toInt() == m_CameraHeight &&
+                    map["PixelW"].toDouble() == m_CameraPixelWidth &&
+                    map["PixelH"].toDouble() == m_CameraPixelHeight &&
+                    map["FocalLength"].toDouble() == m_TelescopeFocalLength)
             {
-                fov_x = map["FovW"].toDouble();
-                fov_y = map["FovH"].toDouble();
+                m_FOVWidth = map["FovW"].toDouble();
+                m_FOVHeight = map["FovH"].toDouble();
                 return map;
             }
         }
@@ -6045,7 +3535,7 @@ QVariantMap Align::getEffectiveFOV()
 
 void Align::saveNewEffectiveFOV(double newFOVW, double newFOVH)
 {
-    if (newFOVW < 0 || newFOVH < 0 || (newFOVW == fov_x && newFOVH == fov_y))
+    if (newFOVW < 0 || newFOVH < 0 || (newFOVW == m_FOVWidth && newFOVH == m_FOVHeight))
         return;
 
     QVariantMap effectiveMap = getEffectiveFOV();
@@ -6062,11 +3552,11 @@ void Align::saveNewEffectiveFOV(double newFOVW, double newFOVH)
     }
 
     effectiveMap["Profile"] = m_ActiveProfile->name;
-    effectiveMap["Width"] = ccd_width;
-    effectiveMap["Height"] = ccd_height;
-    effectiveMap["PixelW"] = ccd_hor_pixel;
-    effectiveMap["PixelH"] = ccd_ver_pixel;
-    effectiveMap["FocalLength"] = focal_length;
+    effectiveMap["Width"] = m_CameraWidth;
+    effectiveMap["Height"] = m_CameraHeight;
+    effectiveMap["PixelW"] = m_CameraPixelWidth;
+    effectiveMap["PixelH"] = m_CameraPixelHeight;
+    effectiveMap["FocalLength"] = m_TelescopeFocalLength;
     effectiveMap["FovW"] = newFOVW;
     effectiveMap["FovH"] = newFOVH;
 
@@ -6076,55 +3566,21 @@ void Align::saveNewEffectiveFOV(double newFOVW, double newFOVH)
 
 }
 
-//int Align::getActiveSolver() const
-//{
-//    return Options::solverMode();
-//}
-
-QString Align::getPAHMessage() const
-{
-    switch (m_PAHStage)
-    {
-        case PAH_IDLE:
-        case PAH_FIND_CP:
-            return introText->text();
-        case PAH_FIRST_CAPTURE:
-            return firstCaptureText->text();
-        case PAH_FIRST_ROTATE:
-            return firstRotateText->text();
-        case PAH_SECOND_CAPTURE:
-            return secondCaptureText->text();
-        case PAH_SECOND_ROTATE:
-            return secondRotateText->text();
-        case PAH_THIRD_CAPTURE:
-            return thirdCaptureText->text();
-        case PAH_STAR_SELECT:
-            return correctionText->text();
-        case PAH_PRE_REFRESH:
-        case PAH_REFRESH:
-            return refreshText->text();
-        case PAH_ERROR:
-            return PAHErrorDescriptionLabel->text();
-    }
-
-    return QString();
-}
-
 void Align::zoomAlignView()
 {
-    alignView->ZoomDefault();
+    m_AlignView->ZoomDefault();
 
-    emit newFrame(alignView);
+    emit newFrame(m_AlignView);
 }
 
 void Align::setAlignZoom(double scale)
 {
     if (scale > 1)
-        alignView->ZoomIn();
+        m_AlignView->ZoomIn();
     else if (scale < 1)
-        alignView->ZoomOut();
+        m_AlignView->ZoomOut();
 
-    emit newFrame(alignView);
+    emit newFrame(m_AlignView);
 }
 
 QJsonObject Align::getSettings() const
@@ -6159,6 +3615,9 @@ void Align::setSettings(const QJsonObject &settings)
 
     auto syncControl = [settings](const QString & key, QWidget * widget)
     {
+        if (settings.contains(key) == false)
+            return false;
+
         QSpinBox *pSB = nullptr;
         QDoubleSpinBox *pDSB = nullptr;
         QCheckBox *pCB = nullptr;
@@ -6229,7 +3688,10 @@ void Align::setSettings(const QJsonObject &settings)
 
     int solverAction = settings["solverAction"].toInt(gotoModeButtonGroup->checkedId());
     if (solverAction != gotoModeButtonGroup->checkedId())
+    {
         gotoModeButtonGroup->button(solverAction)->setChecked(true);
+        m_CurrentGotoMode = static_cast<GotoMode>(solverAction);
+    }
 
     FOVScopeCombo->setCurrentIndex(settings["scopeType"].toInt(0));
 
@@ -6260,28 +3722,6 @@ void Align::syncSettings()
     emit settingsUpdated(getSettings());
 }
 
-QJsonObject Align::getPAHSettings() const
-{
-    QJsonObject settings = getSettings();
-
-    settings.insert("mountDirection", PAHDirectionCombo->currentIndex());
-    settings.insert("mountSpeed", PAHSlewRateCombo->currentIndex());
-    settings.insert("mountRotation", PAHRotationSpin->value());
-    settings.insert("refresh", PAHExposure->value());
-    settings.insert("manualslew", PAHManual->isChecked());
-
-    return settings;
-}
-
-void Align::setPAHSettings(const QJsonObject &settings)
-{
-    PAHDirectionCombo->setCurrentIndex(settings["mountDirection"].toInt(0));
-    PAHRotationSpin->setValue(settings["mountRotation"].toInt(30));
-    PAHExposure->setValue(settings["refresh"].toDouble(1));
-    if (settings.contains("mountSpeed"))
-        PAHSlewRateCombo->setCurrentIndex(settings["mountSpeed"].toInt(0));
-    PAHManual->setChecked(settings["manualslew"].toBool(false));
-}
 
 void Align::syncFOV()
 {
@@ -6318,29 +3758,52 @@ bool Align::didSlewStart()
     return false;
 }
 
-void Align::setTargetCoords(double ra, double de)
+void Align::setTargetCoords(double ra0, double de0)
 {
-    targetCoord.setRA0(ra);
-    targetCoord.setDec0(de);
-    targetCoord.updateCoordsNow(KStarsData::Instance()->updateNum());
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Target Coordinates updated to JNow RA:" << targetCoord.ra().toHMSString()
-                               << "DE:" << targetCoord.dec().toDMSString();
+    SkyPoint target;
+    target.setRA0(ra0);
+    target.setDec0(de0);
+    target.updateCoordsNow(KStarsData::Instance()->updateNum());
+    setTarget(target);
 }
 
-void Align::setTargetRotation(double rotation)
+void Align::setTarget(const SkyPoint &targetCoord)
 {
-    loadSlewTargetPA = rotation;
+    m_targetCoord = targetCoord;
+    m_targetCoordValid = true;
+    qCInfo(KSTARS_EKOS_ALIGN) << "Target updated to JNow RA:" << m_targetCoord.ra().toHMSString()
+                              << "DE:" << m_targetCoord.dec().toDMSString();
+}
 
+QList<double> Align::getTargetCoords()
+{
+    QList<double> coord;
+    // if a target has been set, take the target coordinates. Otherwise, take the coordinates the scope is pointing to currently
+    if (m_targetCoordValid)
+        coord << m_targetCoord.ra0().Hours() << m_targetCoord.dec0().Degrees();
+    else
+        coord << telescopeCoord.ra0().Hours() << telescopeCoord.dec0().Degrees();
+
+    return coord;
+}
+
+void Align::setTargetPositionAngle(double value)
+{
+    loadSlewTargetPA =  value;
     qCDebug(KSTARS_EKOS_ALIGN) << "Target Rotation updated to: " << loadSlewTargetPA;
 }
 
 void Align::calculateAlignTargetDiff()
 {
-    if (m_PAHStage == PAH_FIRST_CAPTURE || m_PAHStage == PAH_SECOND_CAPTURE || m_PAHStage == PAH_THIRD_CAPTURE)
+    if (matchPAHStage(PAA::PAH_FIRST_CAPTURE) ||
+            matchPAHStage(PAA::PAH_SECOND_CAPTURE) ||
+            matchPAHStage(PAA::PAH_THIRD_CAPTURE) ||
+            matchPAHStage(PAA::PAH_FIRST_SOLVE) ||
+            matchPAHStage(PAA::PAH_SECOND_SOLVE) ||
+            matchPAHStage(PAA::PAH_THIRD_SOLVE))
         return;
-    m_TargetDiffRA = (alignCoord.ra().deltaAngle(targetCoord.ra())).Degrees() * 3600;
-    m_TargetDiffDE = (alignCoord.dec().deltaAngle(targetCoord.dec())).Degrees() * 3600;
+    m_TargetDiffRA = (alignCoord.ra().deltaAngle(m_targetCoord.ra())).Degrees() * 3600;
+    m_TargetDiffDE = (alignCoord.dec().deltaAngle(m_targetCoord.dec())).Degrees() * 3600;
 
     dms RADiff(fabs(m_TargetDiffRA) / 3600.0), DEDiff(m_TargetDiffDE / 3600.0);
     QString dRAText = QString("%1%2").arg((m_TargetDiffRA > 0 ? "+" : "-"), RADiff.toHMSString());
@@ -6408,23 +3871,19 @@ void Align::calculateAlignTargetDiff()
     alignPlot->replot();
 }
 
-void Align::syncTargetToMount()
+void Align::updateTargetCoords()
 {
-    double ra, dec;
-    currentTelescope->getEqCoords(&ra, &dec);
-    SkyPoint currentMountCoords(ra, dec);
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Mount Coordinates JNow RA:" << currentMountCoords.ra().toHMSString()
-                               << "DE:" << currentMountCoords.dec().toDMSString();
-
-    // While we can set targetCoord = J2000Coord now, it's better to use setTargetCoord
-    // Function to do that in case of any changes in the future in that function.
-    SkyPoint J2000Coord = currentMountCoords.catalogueCoord(KStarsData::Instance()->lt().djd());
-
-    qCDebug(KSTARS_EKOS_ALIGN) << "Mount Coordinates J2000 RA:" << J2000Coord.ra().toHMSString()
-                               << "DE:" << J2000Coord.dec().toDMSString();
-
-    setTargetCoords(J2000Coord.ra0().Hours(), J2000Coord.dec0().Degrees());
+    // if target has already been set, we're done
+    if (m_targetCoordValid)
+        return;
+    else
+    {
+        // otherwise, the best guess is the position the mount reports
+        m_targetCoord = telescopeCoord;
+        m_targetCoordValid = true;
+        qCDebug(KSTARS_EKOS_ALIGN) << "No target set, using mount Coordinates JNow RA:" << telescopeCoord.ra().toHMSString()
+                                   << "DE:" << telescopeCoord.dec().toDMSString();
+    }
 }
 
 QStringList Align::getStellarSolverProfiles()
@@ -6436,5 +3895,183 @@ QStringList Align::getStellarSolverProfiles()
     return profiles;
 }
 
+void Align::exportSolutionPoints()
+{
+    if (solutionTable->rowCount() == 0)
+        return;
 
+    QUrl exportFile = QFileDialog::getSaveFileUrl(Ekos::Manager::Instance(), i18nc("@title:window", "Export Solution Points"),
+                      alignURLPath,
+                      "CSV File (*.csv)");
+    if (exportFile.isEmpty()) // if user presses cancel
+        return;
+    if (exportFile.toLocalFile().endsWith(QLatin1String(".csv")) == false)
+        exportFile.setPath(exportFile.toLocalFile() + ".csv");
+
+    QString path = exportFile.toLocalFile();
+
+    if (QFile::exists(path))
+    {
+        int r = KMessageBox::warningContinueCancel(nullptr,
+                i18n("A file named \"%1\" already exists. "
+                     "Overwrite it?",
+                     exportFile.fileName()),
+                i18n("Overwrite File?"), KStandardGuiItem::overwrite());
+        if (r == KMessageBox::Cancel)
+            return;
+    }
+
+    if (!exportFile.isValid())
+    {
+        QString message = i18n("Invalid URL: %1", exportFile.url());
+        KSNotification::sorry(message, i18n("Invalid URL"));
+        return;
+    }
+
+    QFile file;
+    file.setFileName(path);
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        QString message = i18n("Unable to write to file %1", path);
+        KSNotification::sorry(message, i18n("Could Not Open File"));
+        return;
+    }
+
+    QTextStream outstream(&file);
+
+    QString epoch = QString::number(KStarsDateTime::currentDateTime().epoch());
+
+    outstream << "RA (J" << epoch << "),DE (J" << epoch
+              << "),RA (degrees),DE (degrees),Name,RA Error (arcsec),DE Error (arcsec)" << Qt::endl;
+
+    for (int i = 0; i < solutionTable->rowCount(); i++)
+    {
+        QTableWidgetItem *raCell      = solutionTable->item(i, 0);
+        QTableWidgetItem *deCell      = solutionTable->item(i, 1);
+        QTableWidgetItem *objNameCell = solutionTable->item(i, 2);
+        QTableWidgetItem *raErrorCell = solutionTable->item(i, 4);
+        QTableWidgetItem *deErrorCell = solutionTable->item(i, 5);
+
+        if (!raCell || !deCell || !objNameCell || !raErrorCell || !deErrorCell)
+        {
+            KSNotification::sorry(i18n("Error in table structure."));
+            return;
+        }
+        dms raDMS = dms::fromString(raCell->text(), false);
+        dms deDMS = dms::fromString(deCell->text(), true);
+        outstream << raDMS.toHMSString() << ',' << deDMS.toDMSString() << ',' << raDMS.Degrees() << ','
+                  << deDMS.Degrees() << ',' << objNameCell->text() << ',' << raErrorCell->text().remove('\"') << ','
+                  << deErrorCell->text().remove('\"') << Qt::endl;
+    }
+    emit newLog(i18n("Solution Points Saved as: %1", path));
+    file.close();
+}
+
+void Align::initPolarAlignmentAssistant()
+{
+    // Create PAA instance
+    m_PolarAlignmentAssistant = new PolarAlignmentAssistant(this, m_AlignView);
+    connect(m_PolarAlignmentAssistant, &Ekos::PAA::captureAndSolve, this, &Ekos::Align::captureAndSolve);
+    connect(m_PolarAlignmentAssistant, &Ekos::PAA::newAlignTableResult, this, &Ekos::Align::setAlignTableResult);
+    connect(m_PolarAlignmentAssistant, &Ekos::PAA::newFrame, this, &Ekos::Align::newFrame);
+    connect(m_PolarAlignmentAssistant, &Ekos::PAA::newPAHStage, this, &Ekos::Align::processPAHStage);
+    connect(m_PolarAlignmentAssistant, &Ekos::PAA::newLog, this, &Ekos::Align::appendLogText);
+
+    tabWidget->addTab(m_PolarAlignmentAssistant, i18n("Polar Alignment"));
+}
+
+void Align::initManualRotator()
+{
+    if (m_ManualRotator)
+        return;
+
+    m_ManualRotator = new ManualRotator(this);
+    connect(m_ManualRotator, &Ekos::ManualRotator::captureAndSolve, this, &Ekos::Align::captureAndSolve);
+    // If user cancel manual rotator, reset load slew target PA, otherwise it will keep popping up
+    // for any subsequent solves.
+    connect(m_ManualRotator, &Ekos::ManualRotator::rejected, this, [this]()
+    {
+        loadSlewTargetPA = std::numeric_limits<double>::quiet_NaN();
+    });
+}
+
+void Align::initDarkProcessor()
+{
+    if (m_DarkProcessor)
+        return;
+
+    m_DarkProcessor = new DarkProcessor(this);
+    connect(m_DarkProcessor, &DarkProcessor::newLog, this, &Ekos::Align::appendLogText);
+    connect(m_DarkProcessor, &DarkProcessor::darkFrameCompleted, this, [this](bool completed)
+    {
+        alignDarkFrameCheck->setChecked(completed);
+        m_AlignView->setProperty("suspended", false);
+        if (completed)
+        {
+            m_AlignView->rescale(ZOOM_KEEP_LEVEL);
+            m_AlignView->updateFrame();
+        }
+        setCaptureComplete();
+    });
+}
+
+void Align::processPAHStage(int stage)
+{
+    switch (stage)
+    {
+        case PAA::PAH_IDLE:
+            // Abort any solver that might be running.
+            // Assumes this state change won't happen randomly (e.g. in the middle of align).
+            // Alternatively could just let the stellarsolver finish naturally.
+            if (m_StellarSolver && m_StellarSolver->isRunning())
+                m_StellarSolver->abort();
+            break;
+        case PAA::PAH_POST_REFRESH:
+        {
+            Options::setAstrometrySolverWCS(rememberSolverWCS);
+            Options::setAutoWCS(rememberAutoWCS);
+            stop(ALIGN_IDLE);
+        }
+        break;
+
+        case PAA::PAH_FIRST_CAPTURE:
+            nothingR->setChecked(true);
+            m_CurrentGotoMode = GOTO_NOTHING;
+            loadSlewB->setEnabled(false);
+
+            rememberSolverWCS = Options::astrometrySolverWCS();
+            rememberAutoWCS   = Options::autoWCS();
+
+            Options::setAutoWCS(false);
+            Options::setAstrometrySolverWCS(true);
+            break;
+        case PAA::PAH_SECOND_CAPTURE:
+        case PAA::PAH_THIRD_CAPTURE:
+            if (delaySpin->value() >= DELAY_THRESHOLD_NOTIFY)
+                emit newLog(i18n("Settling..."));
+            m_CaptureTimer.start(delaySpin->value());
+            break;
+
+        default:
+            break;
+    }
+
+    emit newPAAStage(stage);
+}
+
+bool Align::matchPAHStage(uint32_t stage)
+{
+    return m_PolarAlignmentAssistant && m_PolarAlignmentAssistant->getPAHStage() == stage;
+}
+
+void Align::toggleManualRotator(bool toggled)
+{
+    if (toggled)
+    {
+        m_ManualRotator->show();
+        m_ManualRotator->raise();
+    }
+    else
+        m_ManualRotator->close();
+}
 }

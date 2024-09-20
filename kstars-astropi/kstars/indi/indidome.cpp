@@ -1,11 +1,8 @@
-/*  INDI Dome
-    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include <basedevice.h>
 #include <KActionCollection>
@@ -19,6 +16,11 @@
 
 namespace ISD
 {
+
+const QList<const char *> Dome::domeStates = { I18N_NOOP("Idle"), I18N_NOOP("Moving clockwise"), I18N_NOOP("Moving counter clockwise"),
+                                               I18N_NOOP("Tracking"), I18N_NOOP("Parking"), I18N_NOOP("UnParking"), I18N_NOOP("Parked"),
+                                               I18N_NOOP("Error")
+                                             };
 
 Dome::Dome(GDInterface *iPtr) : DeviceDecorator(iPtr)
 {
@@ -521,38 +523,10 @@ Dome::ShutterStatus Dome::shutterStatus(ISwitchVectorProperty *svp)
     return SHUTTER_UNKNOWN;
 }
 
-const QString Dome::getStatusString(Dome::Status status)
+const QString Dome::getStatusString(Dome::Status status, bool translated)
 {
-    switch (status)
-    {
-        case ISD::Dome::DOME_IDLE:
-            return i18n("Idle");
-
-        case ISD::Dome::DOME_PARKED:
-            return i18n("Parked");
-
-        case ISD::Dome::DOME_PARKING:
-            return i18n("Parking");
-
-        case ISD::Dome::DOME_UNPARKING:
-            return i18n("UnParking");
-
-        case ISD::Dome::DOME_MOVING_CW:
-            return i18n("Moving clockwise");
-
-        case ISD::Dome::DOME_MOVING_CCW:
-            return i18n("Moving counter clockwise");
-
-        case ISD::Dome::DOME_TRACKING:
-            return i18n("Tracking");
-
-        case ISD::Dome::DOME_ERROR:
-            return i18n("Error");
-    }
-
-    return i18n("Error");
+    return translated ? i18n(domeStates[status]) : domeStates[status];
 }
-
 
 }
 
@@ -573,3 +547,4 @@ const QDBusArgument &operator>>(const QDBusArgument &argument, ISD::Dome::Status
     dest = static_cast<ISD::Dome::Status>(a);
     return argument;
 }
+

@@ -1,11 +1,8 @@
-/*  Correspondence class.
-    Copyright (C) 2020 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -49,8 +46,8 @@ class StarCorrespondence
         // not correspond to any input stars. There will be no star-reference mapping with
         // distance longer than maxDistance. If adapt is true, the input positions are used
         // to incrementally adapt the reference positions.
-        Vector find(const QList<Edge> &stars, double maxDistance, QVector<int> *starMap, bool adapt = true,
-                    double minFraction = 0.5);
+        GuiderUtils::Vector find(const QList<Edge> &stars, double maxDistance, QVector<int> *starMap, bool adapt = true,
+                                 double minFraction = 0.5);
 
         // Returns the number of reference stars.
         int size() const
@@ -123,8 +120,8 @@ class StarCorrespondence
         // Offsets are offsets that were created for a new "substitude guide star".
         // StarMap is the map made for that substitude by findInternal().
         // Offset is the offset from the original guide star to that substitute guide star.
-        Vector inventStarPosition(const QList<Edge> &stars, QVector<int> &starMap,
-                                  QVector<Offsets> offsets, Offsets offset) const;
+        GuiderUtils::Vector inventStarPosition(const QList<Edge> &stars, QVector<int> &starMap,
+                                               QVector<Offsets> offsets, Offsets offset) const;
 
         // Finds the star closest to x,y. Returns the index in sortedStars.
         // sortedStars should be sorted in x, which allows for a speedup in search.

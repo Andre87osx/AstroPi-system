@@ -1,11 +1,8 @@
-/*  INDI WebManager
-    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "indiwebmanager.h"
 
@@ -82,7 +79,7 @@ bool getWebManagerResponse(QNetworkAccessManager::Operation operation, const QUr
 
             if (parseError.error != QJsonParseError::NoError)
             {
-                qDebug() << "INDI: JSon error during parsing " << parseError.errorString();
+                qDebug() << Q_FUNC_INFO << "INDI: JSon error during parsing " << parseError.errorString();
                 return false;
             }
         }
@@ -91,7 +88,7 @@ bool getWebManagerResponse(QNetworkAccessManager::Operation operation, const QUr
     }
     else
     {
-        qDebug() << "INDI: Error communicating with INDI Web Manager: " << response->errorString();
+        qDebug() << Q_FUNC_INFO << "INDI: Error communicating with INDI Web Manager: " << response->errorString();
         return false;
     }
 }
@@ -135,7 +132,7 @@ bool isOnline(ProfileInfo *pi)
     return false;
 }
 
-bool isStellarMate(ProfileInfo *pi)
+bool checkVersion(ProfileInfo *pi)
 {
     QNetworkAccessManager manager;
     QUrl url(QString("http://%1:%2/api/info/version").arg(pi->host).arg(pi->INDIWebManagerPort));
@@ -146,7 +143,7 @@ bool isStellarMate(ProfileInfo *pi)
         QJsonObject version = json.object();
         if (version.contains("version") == false)
             return false;
-        qInfo(KSTARS_EKOS) << "Detect StellarMate version" << version["version"].toString();
+        qInfo(KSTARS_EKOS) << "Detected Web Manager version" << version["version"].toString();
         return true;
     }
     return false;
@@ -173,7 +170,7 @@ bool syncCustomDrivers(ProfileInfo *pi)
     // Search for locked filter by filter color name
     const QList<QVariantMap> &customDrivers = DriverManager::Instance()->getCustomDrivers();
 
-    for (auto label : customDriversLabels)
+    for (auto &label : customDriversLabels)
     {
         auto pos = std::find_if(customDrivers.begin(), customDrivers.end(), [label](QVariantMap oneDriver)
         {
@@ -255,18 +252,30 @@ bool syncProfile(ProfileInfo *pi)
 {
     QUrl url;
     QJsonDocument jsonDoc;
+    QJsonParseError jsonError;
     QByteArray data;
+    QJsonArray profileScripts;
 
     //Add Profile
     url = QUrl(QString("http://%1:%2/api/profiles/%3").arg(pi->host).arg(pi->INDIWebManagerPort).arg(pi->name));
     getWebManagerResponse(QNetworkAccessManager::PostOperation, url, nullptr);
 
-    // Update profile info
-    url = QUrl(QString("http://%1:%2/api/profiles/%3").arg(pi->host).arg(pi->INDIWebManagerPort).arg(pi->name));
-    QJsonObject profileObject{ { "port", pi->port } };
-    jsonDoc = QJsonDocument(profileObject);
-    data    = jsonDoc.toJson();
-    getWebManagerResponse(QNetworkAccessManager::PutOperation, url, nullptr, &data);
+    // If we have scripts, let's try to parse and send them.
+    if (pi->scripts.isEmpty() == false)
+    {
+        auto doc = QJsonDocument::fromJson(pi->scripts, &jsonError);
+
+        if (jsonError.error == QJsonParseError::NoError)
+        {
+            profileScripts = doc.array();
+            // Update profile info
+            url = QUrl(QString("http://%1:%2/api/profiles/%3").arg(pi->host).arg(pi->INDIWebManagerPort).arg(pi->name));
+            QJsonObject profileObject{ { "port", pi->port }, {"scripts", profileScripts} };
+            jsonDoc = QJsonDocument(profileObject);
+            data    = jsonDoc.toJson();
+            getWebManagerResponse(QNetworkAccessManager::PutOperation, url, nullptr, &data);
+        }
+    }
 
     // Add drivers
     url = QUrl(QString("http://%1:%2/api/profiles/%3/drivers").arg(pi->host).arg(pi->INDIWebManagerPort).arg(pi->name));
@@ -304,10 +313,37 @@ bool syncProfile(ProfileInfo *pi)
     // Remote Drivers
     if (pi->remotedrivers.isEmpty() == false)
     {
-        for (auto remoteDriver : pi->remotedrivers.split(","))
+        for (auto &remoteDriver : pi->remotedrivers.split(","))
         {
             driverArray.append(QJsonObject({{"remote", remoteDriver}}));
         }
+    }
+
+    QJsonArray sortedList;
+    for (const auto &oneRule : qAsConst(profileScripts))
+    {
+        auto matchingDriver = std::find_if(driverArray.begin(), driverArray.end(), [oneRule](const auto & oneDriver)
+        {
+            return oneDriver.toObject()["label"].toString() == oneRule.toObject()["Driver"].toString();
+        });
+
+        if (matchingDriver != driverArray.end())
+        {
+            sortedList.append(*matchingDriver);
+        }
+    }
+
+    // If we have any profile scripts drivers, let's re-sort managed drivers
+    // so that profile script drivers
+    if (!sortedList.isEmpty())
+    {
+        for (const auto oneDriver : driverArray)
+        {
+            if (sortedList.contains(oneDriver) == false)
+                sortedList.append(oneDriver);
+        }
+
+        driverArray = sortedList;
     }
 
     data    = QJsonDocument(driverArray).toJson();
@@ -361,7 +397,7 @@ QFuture<bool> isOnline(ProfileInfo *pi)
 
 QFuture<bool> isStellarMate(ProfileInfo *pi)
 {
-    return QtConcurrent::run(WebManager::isStellarMate, pi);
+    return QtConcurrent::run(WebManager::checkVersion, pi);
 }
 
 QFuture<bool> syncCustomDrivers(ProfileInfo *pi)
