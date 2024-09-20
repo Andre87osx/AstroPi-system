@@ -71,7 +71,6 @@ while [ "${CONN}" == "true" ]; do
 	echo "${ask_pass}" | sudo -S echo '' 2>/dev/null
 	echo "$USER ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee "/etc/sudoers.d/dont-prompt-$USER-for-sudo-password" > /dev/null
 
-
 	# Chk USER and create path
 	chkUser
 
@@ -84,6 +83,7 @@ while [ "${CONN}" == "true" ]; do
 		wget -c ${release} | tar --strip-components=1 -xz -C "${appDir}" ) | \
 	zenity --progress --title="Downloading AstroPi v${AstroPi_v}..." --pulsate --auto-close --auto-kill --width=${Wprogress}
 	echo ""
+ 
 	# Make all script executable
 	make_executable
     
