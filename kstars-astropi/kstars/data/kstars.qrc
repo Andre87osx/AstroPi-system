@@ -1,0 +1,86 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/ekos_align.png</file>
+        <file>icons/ekos_ccd.png</file>
+        <file>icons/ekos_focus.png</file>
+        <file>icons/ekos_guide.png</file>
+        <file>icons/ekos_mount.png</file>
+        <file>icons/ekos_scheduler.png</file>
+        <file>icons/ekos_analyze.png</file>
+        <file>icons/ekos_setup.png</file>
+        <file>icons/fov.png</file>
+        <file>icons/histogram.png</file>
+        <file>icons/glstarbase.png</file>
+        <file>icons/center_telescope.svg</file>
+        <file>icons/center_telescope_red.svg</file>
+        <file>icons/AlignFailure.svg</file>
+        <file>icons/AlignSuccess.svg</file>
+        <file>icons/AlignWarning.svg</file>
+        <file>icons/astrometry.svg</file>
+        <file>icons/stellarmate.svg</file>
+        <file>icons/center_telescope_magenta.svg</file>
+        <file>icons/dome-park.svg</file>
+        <file>icons/dome-unpark.svg</file>
+        <file>icons/star_profile.svg</file>
+        <file>icons/astrometry-optional.svg</file>
+        <file>icons/astrometry-recommended.svg</file>
+        <file>icons/astrometry-required.svg</file>
+        <file>indidrivers.xml</file>
+        <file>qml/whatisinteresting/CategoryTitle.qml</file>
+        <file>qml/whatisinteresting/DetailsItem.qml</file>
+        <file>qml/whatisinteresting/downloadIcon.png</file>
+        <file>qml/whatisinteresting/favoriteIcon.png</file>
+        <file>qml/whatisinteresting/helpIcon.png</file>
+        <file>qml/whatisinteresting/iconcredits.dat</file>
+        <file>qml/whatisinteresting/inspectIcon.png</file>
+        <file>qml/whatisinteresting/leftArrow.png</file>
+        <file>qml/whatisinteresting/next.png</file>
+        <file>qml/whatisinteresting/previous.png</file>
+        <file>qml/whatisinteresting/reloadIcon.png</file>
+        <file>qml/whatisinteresting/ScrollBar.qml</file>
+        <file>qml/whatisinteresting/settingsIcon.png</file>
+        <file>qml/whatisinteresting/visibleIcon.png</file>
+        <file>qml/whatisinteresting/wiview.qml</file>
+        <file>qml/mount/go-east.png</file>
+        <file>qml/mount/go-north.png</file>
+        <file>qml/mount/go-northeast.png</file>
+        <file>qml/mount/go-northwest.png</file>
+        <file>qml/mount/go-south.png</file>
+        <file>qml/mount/go-southeast.png</file>
+        <file>qml/mount/go-southwest.png</file>
+        <file>qml/mount/go-west.png</file>
+        <file>qml/mount/mountbox.qml</file>
+        <file>qml/mount/timer.qml</file>
+        <file>qml/mount/stop.png</file>
+        <file>icons/kstars_terrain.png</file>
+        <file>icons/kstars_developer.png</file>
+        <file>icons/kstars_satellites_invisible.svg</file>
+        <file>icons/kstars_satellites_visible.svg</file>
+        <file>icons/cloud-online.svg</file>
+        <file>icons/ekos_observatory.png</file>
+        <file>icons/cfa.svg</file>
+        <file>icons/pi.svg</file>
+        <file>icons/atikbase.svg</file>
+        <file>icons/astap.ico</file>
+        <file>icons/timedout.svg</file>
+        <file>icons/indihub.svg</file>
+        <file>icons/indihub_logo.svg</file>
+        <file>icons/StellarSolverIcon.png</file>
+        <file>icons/select_stat.png</file>
+    </qresource>
+    <qresource prefix="/kconfig">
+        <file>kstars.knsrc</file>
+    </qresource>
+    <qresource prefix="/kxmlgui5/kstars">
+        <file>kstarsui.rc</file>
+        <file>fitsviewerui.rc</file>
+    </qresource>
+    <qresource prefix="/images">
+        <file>noimage.png</file>
+        <file>reticle12.png</file>
+        <file>reticle24.png</file>
+    </qresource>
+    <qresource prefix="/videos">
+        <file>sm_animation.gif</file>
+    </qresource>
+</RCC>

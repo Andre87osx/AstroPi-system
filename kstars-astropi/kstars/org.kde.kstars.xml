@@ -1,0 +1,216 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kstars">
+    <property name="colorScheme" type="s" access="readwrite"/>
+    <method name="setRaDec">
+      <arg name="ra" type="d" direction="in"/>
+      <arg name="dec" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setRaDecJ2000">
+      <arg name="ra0" type="d" direction="in"/>
+      <arg name="dec0" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setAltAz">
+      <arg name="alt" type="d" direction="in"/>
+      <arg name="az" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setAltAz">
+      <arg name="alt" type="d" direction="in"/>
+      <arg name="az" type="d" direction="in"/>
+      <arg name="altIsRefracted" type="bool" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="lookTowards">
+      <arg name="direction" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="addLabel">
+      <arg name="name" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="removeLabel">
+      <arg name="name" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="addTrail">
+      <arg name="name" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="removeTrail">
+      <arg name="name" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="zoomIn">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="zoomOut">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="defaultZoom">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="zoom">
+      <arg name="z" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setLocalTime">
+      <arg name="yr" type="i" direction="in"/>
+      <arg name="mth" type="i" direction="in"/>
+      <arg name="day" type="i" direction="in"/>
+      <arg name="hr" type="i" direction="in"/>
+      <arg name="min" type="i" direction="in"/>
+      <arg name="sec" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setTimeToNow">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="waitFor">
+      <arg name="t" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="waitForKey">
+      <arg name="k" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setTracking">
+      <arg name="track" type="b" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="changeViewOption">
+      <arg name="option" type="s" direction="in"/>
+      <arg name="value" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="readConfig">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="writeConfig">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="popupMessage">
+      <arg name="x" type="i" direction="in"/>
+      <arg name="y" type="i" direction="in"/>
+      <arg name="message" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="drawLine">
+      <arg name="x1" type="i" direction="in"/>
+      <arg name="y1" type="i" direction="in"/>
+      <arg name="x2" type="i" direction="in"/>
+      <arg name="y2" type="i" direction="in"/>
+      <arg name="speed" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setGeoLocation">
+      <arg name="city" type="s" direction="in"/>
+      <arg name="province" type="s" direction="in"/>
+      <arg name="country" type="s" direction="in"/>
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="location">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="setGPSLocation">
+      <arg name="longitude" type="d" direction="in"/>
+      <arg name="latitude" type="d" direction="in"/>
+      <arg name="elevation" type="d" direction="in"/>
+      <arg name="tz0" type="d" direction="in"/>
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="setColor">
+      <arg name="colorName" type="s" direction="in"/>
+      <arg name="value" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="exportImage">
+      <arg name="filename" type="s" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+      <arg name="includeLegend" type="b" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="exportImage">
+      <arg name="filename" type="s" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <arg name="height" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="exportImage">
+      <arg name="filename" type="s" direction="in"/>
+      <arg name="width" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="exportImage">
+      <arg name="filename" type="s" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="getDSSURL">
+      <arg type="s" direction="out"/>
+      <arg name="objectName" type="s" direction="in"/>
+    </method>
+    <method name="getDSSURL">
+      <arg type="s" direction="out"/>
+      <arg name="RA_J2000" type="d" direction="in"/>
+      <arg name="Dec_J2000" type="d" direction="in"/>
+    </method>
+    <method name="getObjectDataXML">
+      <arg type="s" direction="out"/>
+      <arg name="objectName" type="s" direction="in"/>
+    </method>
+    <method name="getObjectDataXML">
+      <arg type="s" direction="out"/>
+      <arg name="objectName" type="s" direction="in"/>
+      <arg name="fallbackToInternet" type="b" direction="in"/>
+      <arg name="storeInternetResolved" type="b" direction="in"/>
+    </method>
+    <method name="getObjectPositionInfo">
+      <arg type="s" direction="out"/>
+      <arg name="objectName" type="s" direction="in"/>
+    </method>
+    <method name="renderEyepieceView">
+      <arg name="objectName" type="s" direction="in"/>
+      <arg name="destPathChart" type="s" direction="in"/>
+      <arg name="fovWidth" type="d" direction="in"/>
+      <arg name="fovHeight" type="d" direction="in"/>
+      <arg name="rotation" type="d" direction="in"/>
+      <arg name="scale" type="d" direction="in"/>
+      <arg name="flip" type="b" direction="in"/>
+      <arg name="invert" type="b" direction="in"/>
+      <arg name="imagePath" type="s" direction="in"/>
+      <arg name="destPathImage" type="s" direction="in"/>
+      <arg name="overlay" type="b" direction="in"/>
+      <arg name="invertColors" type="b" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setApproxFOV">
+      <arg name="FOV_Degrees" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="getSkyMapDimensions">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="getObservingWishListObjectNames">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="getObservingSessionPlanObjectNames">
+      <arg type="s" direction="out"/>
+    </method>
+    <method name="printImage">
+      <arg name="usePrintDialog" type="b" direction="in"/>
+      <arg name="useChartColors" type="b" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="openFITS">
+      <arg name="imageURL" type="(i)" direction="in"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QUrl"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QUrl"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <signal name="colorSchemeChanged">
+    </signal>
+  </interface>
+</node>
