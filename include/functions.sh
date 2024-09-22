@@ -14,8 +14,8 @@
 majorRelease=1								# Major Release
 minorRelease=7								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
-KStars_v=3.5.4v1.7							# Based on KDE Kstrs v.3.5.4
-Indi_v=1.9.1								# Based on INDI 1.9.1 Core
+KStars_v=3.6.0v1.7							# Based on KDE Kstrs v.3.6.0
+Indi_v=1.9.7								# Based on INDI 1.9.7 Core
 
 # Get width and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
