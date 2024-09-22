@@ -1,15 +1,18 @@
 PROJECT(kstars CXX C)
 set (KStars_VERSION_MAJOR 3)
-set (KStars_VERSION_MINOR 5)
-set (KStars_VERSION_REVISION 4)
-set (KSTARS_BUILD_RELEASE "KStars AstroPi - v1.7")
+set (KStars_VERSION_MINOR 6)
+set (KStars_VERSION_REVISION 0)
+set (KSTARS_BUILD_RELEASE "Stable")
 set (CMAKE_CXX_STANDARD 14)
+
+set(QT_MIN_VERSION 5.9.0)
+set(KF5_MIN_VERSION 5.44.0)
 
 # Build KStars Lite with -DBUILD_KSTARS_LITE=ON
 option(BUILD_KSTARS_LITE "Build KStars Lite" OFF)
 
 # Build KStars documentation
-option(BUILD_DOC "Build Documentation" OFF)
+option(BUILD_DOC "Build Documentation" ON)
 
 # Fetch translations with -DFETCH_TRANSLATIONS=ON
 option(FETCH_TRANSLATIONS "Fetch Translations" OFF)
@@ -18,7 +21,7 @@ option(FETCH_TRANSLATIONS "Fetch Translations" OFF)
 option(BUILD_PYKSTARS "Build SkyMesh Python Bindings" OFF)
 
 # minimal requirements
-cmake_minimum_required (VERSION 3.4.0 FATAL_ERROR)
+cmake_minimum_required (VERSION 3.10.0 FATAL_ERROR)
 
 # KStars Timestap build
 string(TIMESTAMP KSTARS_BUILD_TS UTC)
@@ -38,12 +41,6 @@ endif()
 if (FETCH_TRANSLATIONS)
 SET(KDE_L10N_AUTO_TRANSLATIONS ON)
 SET(KDE_L10N_BRANCH "trunk")
-endif()
-
-if(BUILD_KSTARS_LITE)
-    set (QT_MIN_VERSION "5.7.0") #QtQuickControls 2 is available only in the Qt 5.7.0
-else()
-    set (QT_MIN_VERSION "5.4.0")
 endif()
 
 # Find includes in corresponding build directories
@@ -70,7 +67,7 @@ if("${CMAKE_TOOLCHAIN_FILE}" MATCHES "android.toolchain.cmake$")
     include(${CMAKE_BINARY_DIR}/kf5/kde/install/share/ECM/cmake/ECMConfig.cmake)
 endif()
 
-find_package(ECM 1.7.0 REQUIRED NO_MODULE)
+find_package(ECM ${KF5_MIN_VERSION} REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules" ${CMAKE_MODULE_PATH})
 
@@ -104,11 +101,11 @@ if(BUILD_KSTARS_LITE)
         else()
             list(APPEND QT_EXTRA_COMPONENTS PrintSupport)
         endif()
-        find_package(Qt5 5.7 REQUIRED COMPONENTS Gui Qml Quick QuickControls2 Xml Svg Sql Network Positioning PositioningQuick Concurrent WebSockets ${QT_EXTRA_COMPONENTS})
+        find_package(Qt5 ${QT_MIN_VERSION} REQUIRED COMPONENTS Gui Qml Quick QuickControls2 Xml Svg Sql Network Positioning PositioningQuick Concurrent WebSockets ${QT_EXTRA_COMPONENTS})
     endif()
 else()
     #find_package(Qt5 5.4 REQUIRED COMPONENTS Gui Qml Quick Xml Sql Svg Network PrintSupport Positioning Concurrent)
-    find_package(Qt5 5.4 REQUIRED COMPONENTS Gui Qml Quick Xml Sql Svg Network PrintSupport Concurrent WebSockets)
+    find_package(Qt5 ${QT_MIN_VERSION} REQUIRED COMPONENTS Gui Qml Quick Xml Sql Svg Network PrintSupport Concurrent WebSockets)
 endif()
 include(ExternalProject)
 include(ECMInstallIcons)
@@ -130,18 +127,17 @@ if(BUILD_KSTARS_LITE)
         include(${CMAKE_BINARY_DIR}/kf5/kde/install/lib/cmake/KF5Plotting/KF5PlottingConfig.cmake)
     else()
         # Find Optional package NotifyConfig for desktop notifications
-        find_package(KF5 COMPONENTS NotifyConfig)
+        find_package(KF5 ${KF5_MIN_VERSION} COMPONENTS NotifyConfig)
         MACRO_BOOL_TO_01(KF5NotifyConfig_FOUND HAVE_NOTIFYCONFIG)
 
-        find_package(KF5 REQUIRED COMPONENTS Auth Config Crash WidgetsAddons NewStuff I18n KIO XmlGui Plotting Notifications)
+        find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS Auth Config Crash WidgetsAddons NewStuff I18n KIO XmlGui Plotting Notifications)
     endif()
 else(BUILD_KSTARS_LITE)
     # Find Optional package NotifyConfig for desktop notifications
-    find_package(KF5 COMPONENTS NotifyConfig)
+    find_package(KF5 ${KF5_MIN_VERSION} COMPONENTS NotifyConfig)
     MACRO_BOOL_TO_01(KF5NotifyConfig_FOUND HAVE_NOTIFYCONFIG)
 
-    find_package(KF5 REQUIRED COMPONENTS
-      Auth
+    find_package(KF5 ${KF5_MIN_VERSION} REQUIRED COMPONENTS
       Config
       Crash
       DocTools
@@ -156,9 +152,7 @@ else(BUILD_KSTARS_LITE)
 endif(BUILD_KSTARS_LITE)
 
 ## Eigen3 Library
-find_package(Eigen3 REQUIRED)
-add_definitions(${EIGEN_DEFINITIONS})
-include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
+find_package(Eigen3 REQUIRED CONFIG)
 
 ## CFITSIO Library
 if(ANDROID)
@@ -218,7 +212,7 @@ MACRO_BOOL_TO_01(INDI_FOUND HAVE_INDI)
 set_package_properties(INDI PROPERTIES DESCRIPTION "Astronomical instrumentation control" URL "https://www.indilib.org" TYPE OPTIONAL PURPOSE "Support for controlling astronomical devices on Linux with KStars.")
 
 if (INDI_FOUND AND NOT ANDROID)
-    find_package(StellarSolver REQUIRED)
+    find_package(StellarSolver REQUIRED 2.2)
 endif(INDI_FOUND AND NOT ANDROID)
 MACRO_BOOL_TO_01(StellarSolver_FOUND HAVE_STELLARSOLVER)
 
@@ -227,6 +221,13 @@ MACRO_BOOL_TO_01(NOVA_FOUND HAVE_LIBNOVA)
 if (NOVA_FOUND)
     include_directories(${NOVA_INCLUDE_DIR})
 endif()
+
+if(BUILD_TESTING)
+    # Find liberfa, which we check our computation against
+    find_package(ERFA)
+    MACRO_BOOL_TO_01(ERFA_FOUND HAVE_LIBERFA)
+    set_package_properties(ERFA PROPERTIES TYPE OPTIONAL PURPOSE "BSD-compatible version of SOFA, used to test core computations of KStars (only needed by tests)")
+endif ()
 
 ## Libraw
 if(BUILD_KSTARS_LITE AND ANDROID)
@@ -275,12 +276,6 @@ MACRO_BOOL_TO_01(Qt5Keychain_FOUND HAVE_KEYCHAIN)
 ## OpenGL
 find_package(OpenGL)
 set_package_properties(OpenGL PROPERTIES DESCRIPTION "Open Graphics Library" URL "https://www.opengl.org/" TYPE OPTIONAL PURPOSE "Support for hardware rendering in KStars.")
-
-if (${KF5_VERSION} VERSION_GREATER 5.17.0)
-SET(HAVE_KF5WIT 1)
-else()
-SET(HAVE_KF5WIT 0)
-endif()
 
 add_definitions(-DQT_USE_FAST_CONCATENATION -DQT_USE_FAST_OPERATOR_PLUS)
 add_definitions(-DQT_NO_URL_CAST_FROM_STRING)
@@ -366,6 +361,7 @@ IF (UNIX OR APPLE)
     # Omit problematic warnings
     IF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         SET(COMP_FLAGS "${COMP_FLAGS} -Wno-unused-but-set-variable")
+        SET(COMP_FLAGS "${COMP_FLAGS} -Wno-stringop-truncation")
     ENDIF ()
     IF (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 6.9.9)
         SET(COMP_FLAGS "${COMP_FLAGS} -Wno-format-truncation")
@@ -469,7 +465,9 @@ IF (NOT ANDROID)
     endif()
 ENDIF ()
 
-install(FILES org.kde.kstars.appdata.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
+if(NOT APPLE) #This is not used on MacOS
+    install(FILES org.kde.kstars.appdata.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
+endif(NOT APPLE)
 
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
 

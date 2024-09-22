@@ -1,19 +1,20 @@
 /*
     Helper class of KStars UI tests
 
-    Copyright (C) 2021
-    Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
+    SPDX-FileCopyrightText: 2021 Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "config-kstars.h"
 #include "test_ekos.h"
 #include "test_ekos_debug.h"
 #include "test_ekos_simulator.h"
+
+#include "indi/indidevice.h"
+#include "indi/indigroup.h"
+#include "indi/indiproperty.h"
+#include "indi/indielement.h"
 
 #include "ekos/profileeditor.h"
 
@@ -60,7 +61,7 @@ do {\
 { bool passed = false; \
     [&]() { statement; passed = true;}(); \
     if (!passed) return false; \
-} while (false)
+} while (false);
 
 /**
   * @brief Subroutine version of QTRY_TIMEOUT_DEBUG_IMPL
@@ -318,30 +319,87 @@ do {\
     toolsWidget->setCurrentWidget(module); \
     QTRY_COMPARE_WITH_TIMEOUT(toolsWidget->currentWidget(), module, timeout);} while (false)
 
+#define SET_INDI_VALUE_DOUBLE(device, group, property, value) do {\
+    int result = QProcess::execute(QString("indi_setprop"), {QString("-n"), QString("%1.%2.%3=%4").arg(device).arg(group).arg(property).arg(value)});\
+    qCInfo(KSTARS_EKOS_TEST) << "Process result code: " << result;\
+    } while (false)
+
+#define SET_INDI_VALUE_SWITCH(device, group, property, value) do {\
+    int result = QProcess::execute(QString("indi_setprop"), {QString("-s"), QString("%1.%2.%3=%4").arg(device).arg(group).arg(property).arg(value==true?"On":"Off")});\
+    qCInfo(KSTARS_EKOS_TEST) << "Process result code: " << result;\
+    } while (false)
+
+#define CLOSE_MODAL_DIALOG(button_nr) do { \
+    QTimer::singleShot(1000, capture, [&]() { \
+        QDialog * const dialog = qobject_cast <QDialog*> (QApplication::activeModalWidget()); \
+        if (dialog) \
+        { \
+            QList<QPushButton*> pb = dialog->findChildren<QPushButton*>(); \
+            QTest::mouseClick(pb[button_nr], Qt::MouseButton::LeftButton); \
+        } \
+    }); \
+    } while (false)
+
+
+
 class TestEkosHelper : public QObject
 {
     Q_OBJECT
 public:
-    explicit TestEkosHelper();
+    explicit TestEkosHelper(QString guider = nullptr);
 
     // Mount device
-    QString m_MountDevice;
+    QString m_MountDevice = nullptr;
     // CCD device
-    QString m_CCDDevice;
+    QString m_CCDDevice = nullptr;
+    // Rotator device
+    QString m_RotatorDevice = nullptr;
     // Guiding device
-    QString m_GuiderDevice;
+    QString m_GuiderDevice = nullptr;
     // Focusing device
-    QString m_FocuserDevice;
+    QString m_FocuserDevice = nullptr;
+    // Flat light panel device
+    QString m_LightPanelDevice = nullptr;
+    // Dome device
+    QString m_DomeDevice = nullptr;
+
+    // Guider (PHD2 or Internal)
+    QString m_Guider = "Internal";
+
+    // PHD2 setup (host and port)
+    QProcess *phd2 { nullptr };
+    QString const phd2_guider_host = "localhost";
+    QString const phd2_guider_port = "4400";
+
+    // guiding used?
+    bool use_guiding = false;
+
+    // sequence of alignment states that are expected
+    QQueue<Ekos::AlignState> expectedAlignStates;
+    // sequence of capture states that are expected
+    QQueue<Ekos::CaptureState> expectedCaptureStates;
+    // sequence of focus states that are expected
+    QQueue<Ekos::FocusState> expectedFocusStates;
+    // sequence of guiding states that are expected
+    QQueue<Ekos::GuideState> expectedGuidingStates;
+    // sequence of mount states that are expected
+    QQueue<ISD::Telescope::Status> expectedMountStates;
+    // sequence of dome states that are expected
+    QQueue<ISD::Dome::Status> expectedDomeStates;
+    // sequence of meridian flip states that are expected
+    QQueue<Ekos::Mount::MeridianFlipStatus> expectedMeridianFlipStates;
+    // sequence of scheduler states that are expected
+    QQueue<Ekos::SchedulerState> expectedSchedulerStates;
 
     /**
      * @brief Initialization ahead of executing the test cases.
      */
-    void virtual initTestCase();
+    void virtual init();
 
     /**
      * @brief Cleanup after test cases have been executed.
      */
-    void virtual cleanupTestCase();
+    void virtual cleanup();
 
     /**
      * @brief Fill mount, guider, CCD and focuser of an EKOS profile
@@ -374,11 +432,43 @@ public:
      */
     bool shutdownEkosProfile();
 
+
+    /**
+     * @brief Helper function starting PHD2
+     */
+    void startPHD2();
+
+    /**
+     * @brief Helper function stopping PHD2
+     */
+    void stopPHD2();
+
+    /**
+     * @brief Helper function for preparing the PHD2 test configuration
+     */
+    void preparePHD2();
+
+    /**
+     * @brief Helper function for cleaning up PHD2 test configuration
+     */
+    void cleanupPHD2();
+
     /**
      * @brief Slew to a given position
      * @param fast set to true if slewing should be fast using sync first close to the position
      */
     bool slewTo(double RA, double DEC, bool fast);
+
+    /**
+     * @brief Helper function for start of guiding
+     * @param guiding exposure time
+     */
+    bool startGuiding(double expTime);
+
+    /**
+     * @brief Helper function to stop guiding
+     */
+    bool stopGuiding();
 
     /**
      * @brief Start alignment process
@@ -400,4 +490,133 @@ public:
      * @param lookup target value
      */
     void setTreeviewCombo(QComboBox *combo, const QString lookup);
+
+    /**
+     * @brief Simple write-string-to-file utility.
+     * @param filename name of the file to be created
+     * @param lines file content
+     */
+    bool writeFile(const QString &filename, const QStringList &lines, QFileDevice::Permissions permissions = QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+
+    /**
+     * @brief Retrieve the current alignment status.
+     */
+    inline Ekos::AlignState getAlignStatus() {return m_AlignStatus;}
+    /**
+     * @brief Retrieve the current capture status.
+     */
+    inline Ekos::CaptureState getCaptureStatus() {return m_CaptureStatus;}
+    /**
+     * @brief Retrieve the current focus status.
+     */
+    inline Ekos::FocusState getFocusStatus() {return m_FocusStatus;}
+    /**
+     * @brief Retrieve the current guiding status.
+     */
+    Ekos::GuideState getGuidingStatus() { return m_GuideStatus;}
+    /**
+     * @brief Retrieve the current guide deviation
+     */
+    double getGuideDeviation() {return m_GuideDeviation;}
+    /**
+     * @brief Retrieve the current mount meridian flip status.
+     */
+    Ekos::Mount::MeridianFlipStatus getMeridianFlipStatus() {return m_MFStatus;}
+    /**
+     * @brief Retrieve the current scheduler status.
+     */
+    Ekos::SchedulerState getSchedulerStatus() {return m_SchedulerStatus;}
+    /**
+     * @brief Retrieve the current dome status.
+     */
+    ISD::Dome::Status getDomeStatus() {return m_DomeStatus;}
+
+    /**
+     * @brief Connect to read all modules state changes
+     */
+    void connectModules();
+
+private:
+    // current mount status
+    ISD::Telescope::Status m_MountStatus { ISD::Telescope::MOUNT_IDLE };
+
+    // current mount meridian flip status
+    Ekos::Mount::MeridianFlipStatus m_MFStatus { Ekos::Mount::FLIP_NONE };
+
+    // current alignment status
+    Ekos::AlignState m_AlignStatus { Ekos::ALIGN_IDLE };
+
+    // current capture status
+    Ekos::CaptureState m_CaptureStatus { Ekos::CAPTURE_IDLE };
+
+    // current focus status
+    Ekos::FocusState m_FocusStatus { Ekos::FOCUS_IDLE };
+
+    // current guiding status
+    Ekos::GuideState m_GuideStatus { Ekos::GUIDE_IDLE };
+
+    // current dome status
+    ISD::Dome::Status m_DomeStatus { ISD::Dome::DOME_IDLE };
+
+    // current guiding deviation
+    double m_GuideDeviation { -1 };
+
+    // current scheduler status
+    Ekos::SchedulerState m_SchedulerStatus { Ekos::SCHEDULER_IDLE };
+
+    /**
+     * @brief Slot to track the align status of the mount
+     * @param status new align state
+     */
+    void alignStatusChanged(Ekos::AlignState status);
+
+    /**
+     * @brief Slot to track the mount status
+     * @param status new mount status
+     */
+    void mountStatusChanged(ISD::Telescope::Status status);
+
+    /**
+     * @brief Slot to track the meridian flip stage of the mount
+     * @param status new meridian flip state
+     */
+    void meridianFlipStatusChanged(Ekos::Mount::MeridianFlipStatus status);
+
+    /**
+     * @brief Slot to track the focus status
+     * @param status new focus status
+     */
+    void focusStatusChanged(Ekos::FocusState status);
+
+    /**
+     * @brief Slot to track the guiding status
+     * @param status new guiding status
+     */
+    void guidingStatusChanged(Ekos::GuideState status);
+
+    /**
+     * @brief Slot to track guiding deviation events
+     * @param delta_ra RA deviation
+     * @param delta_dec DEC deviation
+     */
+    void guideDeviationChanged(double delta_ra, double delta_dec);
+
+    /**
+     * @brief Slot to track the capture status
+     * @param status new capture status
+     */
+    void captureStatusChanged(Ekos::CaptureState status);
+
+    /**
+     * @brief Slot to track the scheduler status
+     * @param status new scheduler status
+     */
+    void schedulerStatusChanged(Ekos::SchedulerState status);
+
+    /**
+     * @brief Slot to track the dome status
+     * @param status new scheduler status
+     */
+    void domeStatusChanged(ISD::Dome::Status status);
+
 };

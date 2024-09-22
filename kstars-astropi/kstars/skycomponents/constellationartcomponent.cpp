@@ -1,19 +1,8 @@
-/***************************************************************************
-                          ConstellationArtComponent.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2015-05-27
-    copyright            : (C) 2015 by M.S.Adityan
-    email                : msadityan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2015 M.S.Adityan <msadityan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "constellationartcomponent.h"
 
@@ -52,7 +41,7 @@ void ConstellationArtComponent::loadData()
     if (m_ConstList.isEmpty())
     {
         QSqlDatabase skydb = QSqlDatabase::addDatabase("QSQLITE", "skycultures");
-        QString dbfile     = KSPaths::locate(QStandardPaths::GenericDataLocation, "skycultures.sqlite");
+        QString dbfile     = KSPaths::locate(QStandardPaths::AppLocalDataLocation, "skycultures.sqlite");
 
         skydb.setDatabaseName(dbfile);
         if (skydb.open() == false)
@@ -66,7 +55,7 @@ void ConstellationArtComponent::loadData()
         {
             if (!get_query.exec("SELECT * FROM western"))
             {
-                qDebug() << get_query.lastError();
+                qDebug() << Q_FUNC_INFO << get_query.lastError();
                 return;
             }
         }
@@ -74,7 +63,7 @@ void ConstellationArtComponent::loadData()
         {
             if (!get_query.exec("SELECT * FROM inuit"))
             {
-                qDebug() << get_query.lastError();
+                qDebug() << Q_FUNC_INFO << get_query.lastError();
                 return;
             }
         }
@@ -108,8 +97,8 @@ void ConstellationArtComponent::showList()
     int i = 0;
     for (i = 0; i < m_ConstList.size(); i++)
     {
-        qDebug() << m_ConstList[i]->getAbbrev() << m_ConstList[i]->getImageFileName();
-        qDebug() << m_ConstList[i]->pa();
+        qDebug() << Q_FUNC_INFO << m_ConstList[i]->getAbbrev() << m_ConstList[i]->getImageFileName();
+        qDebug() << Q_FUNC_INFO << m_ConstList[i]->pa();
     }
 }
 

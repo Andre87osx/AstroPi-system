@@ -1,19 +1,8 @@
-/***************************************************************************
-                          modelmanager.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2012/26/05
-    copyright            : (C) 2012 by Samikshan Bairagya
-    email                : samikshan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Samikshan Bairagya <samikshan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "modelmanager.h"
 
@@ -25,6 +14,7 @@
 #include "skyobjitem.h"
 #include "skyobjlistmodel.h"
 #include "starobject.h"
+#include "catalogsdb.h"
 
 #include <QtConcurrent>
 
@@ -259,6 +249,14 @@ int ModelManager::getModelNumber(QString modelName)
         return Supernovas;
     if (modelName == "satellites")
         return Satellites;
+    if (modelName == "messier")
+        return Messier;
+    if (modelName == "ngc")
+        return NGC;
+    if (modelName == "ic")
+        return IC;
+    if (modelName == "sharpless")
+        return Sharpless;
     else
         return -1;
 }
@@ -271,3 +269,38 @@ SkyObjListModel *ModelManager::returnModel(QString modelName)
     else
         return tempModel;
 }
+
+void ModelManager::loadCatalog(const QString &name)
+{
+    const auto id = getModelNumber(name);
+    if (m_CatalogMap.count(id) > 0)
+        return;
+
+    const std::unordered_map<QString, QString> search_prefixes{
+        { "ngc", "NGC " }, { "ic", "IC " }, { "messier", "M " }, { "sharpless", "Sh2 " }
+    };
+
+    CatalogsDB::DBManager manager{ CatalogsDB::dso_db_path() };
+
+    const auto &prefix = search_prefixes.at(name);
+    const int offset   = prefix.size();
+
+    m_CatalogMap[id] = std::get<2>(manager.general_master_query(
+        QString("name LIKE '%1'").arg(prefix + "%"),
+        QString("CAST(SUBSTR(name,%1) AS INT)").arg(offset)));
+
+    auto &lst = m_CatalogSkyObjItems[id];
+
+    for (auto &obj : m_CatalogMap[id])
+    {
+        obj.updateCoordsNow(KStarsData::Instance()->updateNum());
+        lst.emplace_back(&obj);
+    }
+
+    auto &p_lst = m_ObjectList[id];
+    for (auto &obj : lst)
+        p_lst.append(&obj);
+
+    updateModel(m_ObsConditions, name);
+    emit loadProgressUpdated(1);
+};

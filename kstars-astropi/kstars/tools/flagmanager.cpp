@@ -1,18 +1,8 @@
-/***************************************************************************
-                          flagmanager.cpp  -  Flags manager
-                             -------------------
-    begin                : Mon Feb 01 2009
-    copyright            : (C) 2009 by Jerome SONRIER
-    email                : jsid@emor3j.fr.eu.org
- ***************************************************************************/
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2009 Jerome SONRIER <jsid@emor3j.fr.eu.org>
+
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "flagmanager.h"
 
@@ -57,7 +47,7 @@ FlagManager::FlagManager(QWidget *ks) : QDialog(ks)
 
     ui = new FlagManagerUI(this);
 
-    setWindowTitle(i18n("Flag Manager"));
+    setWindowTitle(i18nc("@title:window", "Flag Manager"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ui);
@@ -72,7 +62,7 @@ FlagManager::FlagManager(QWidget *ks) : QDialog(ks)
     ui->hintLabel->setText(i18n("To add custom icons, just add images in %1. File names must begin with flag. "
                                 "For example, the file <i>flagSmall_red_cross.png</i> will be shown as <b>Small red "
                                 "cross</b> in the combo box.",
-                                KSPaths::writableLocation(QStandardPaths::GenericDataLocation)));
+                                KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)));
     //Set up the Table Views
     m_Model = new QStandardItemModel(0, 5, this);
     m_Model->setHorizontalHeaderLabels(QStringList() << i18nc("Right Ascension", "RA") << i18nc("Declination", "Dec")
@@ -126,8 +116,8 @@ FlagManager::FlagManager(QWidget *ks) : QDialog(ks)
 
 void FlagManager::setRaDec(const dms &ra, const dms &dec)
 {
-    ui->raBox->show(ra, false);
-    ui->decBox->show(dec, true);
+    ui->raBox->show(ra);
+    ui->decBox->show(dec);
 }
 
 void FlagManager::clearFields()
@@ -139,7 +129,7 @@ void FlagManager::clearFields()
     ui->flagLabel->clear();
     ui->flagLabel->setFocus();
 
-    //disable "Save changes" button
+    //disable "Save Changes" button
     ui->saveButton->setEnabled(false);
 
     //unselect item from flagList
@@ -174,8 +164,8 @@ void FlagManager::showFlag(int flagIdx)
 bool FlagManager::validatePoint()
 {
     bool raOk(false), decOk(false);
-    dms ra(ui->raBox->createDms(false, &raOk)); //false means expressed in hours
-    dms dec(ui->decBox->createDms(true, &decOk));
+    dms ra(ui->raBox->createDms(&raOk));
+    dms dec(ui->decBox->createDms(&decOk));
 
     QString message;
 
@@ -214,8 +204,8 @@ void FlagManager::slotAddFlag()
     if (validatePoint() == false)
         return;
 
-    dms ra(ui->raBox->createDms(false)); //false means expressed in hours
-    dms dec(ui->decBox->createDms(true));
+    dms ra(ui->raBox->createDms());
+    dms dec(ui->decBox->createDms());
 
     insertFlag(true);
 
@@ -275,28 +265,23 @@ void FlagManager::slotCenterTelescope()
         return;
     }
 
-    foreach (ISD::GDInterface *gd, INDIListener::Instance()->getDevices())
+    for (auto oneDevice : INDIListener::Instance()->getDevices())
     {
-        INDI::BaseDevice *bd = gd->getBaseDevice();
-
-        if (gd->getType() != KSTARS_TELESCOPE)
+        if (oneDevice->getType() != KSTARS_TELESCOPE)
             continue;
 
-        if (bd == nullptr)
-            continue;
-
-        if (bd->isConnected() == false)
+        if (oneDevice->isConnected() == false)
         {
             KSNotification::error(
-                i18n("Telescope %1 is offline. Please connect and retry again.", gd->getDeviceName()));
+                i18n("Telescope %1 is offline. Please connect and retry again.", oneDevice->getDeviceName()));
             return;
         }
 
         ISD::GDSetCommand SlewCMD(INDI_SWITCH, "ON_COORD_SET", "TRACK", ISS_ON, this);
 
-        gd->setProperty(&SlewCMD);
-        gd->runCommand(INDI_SEND_COORDS,
-                       m_Ks->data()->skyComposite()->flags()->pointList().at(ui->flagList->currentIndex().row()).get());
+        oneDevice->setProperty(&SlewCMD);
+        oneDevice->runCommand(INDI_SEND_COORDS,
+                              m_Ks->data()->skyComposite()->flags()->pointList().at(ui->flagList->currentIndex().row()).get());
 
         return;
     }
@@ -317,8 +302,8 @@ void FlagManager::slotSaveChanges()
 
     m_Ks->map()->forceUpdate();
 
-    dms ra(ui->raBox->createDms(false)); //false means expressed in hours
-    dms dec(ui->decBox->createDms(true));
+    dms ra(ui->raBox->createDms());
+    dms dec(ui->decBox->createDms());
 
     SkyPoint flagPoint(ra, dec);
 
@@ -340,8 +325,8 @@ void FlagManager::slotSetShownFlag(QModelIndex idx)
 
 void FlagManager::insertFlag(bool isNew, int row)
 {
-    dms ra(ui->raBox->createDms(false)); //false means expressed in hours
-    dms dec(ui->decBox->createDms(true));
+    dms ra(ui->raBox->createDms());
+    dms dec(ui->decBox->createDms());
     SkyPoint flagPoint(ra, dec);
 
     // Add flag in the list

@@ -1,14 +1,10 @@
 /*
     KStars UI tests for meridian flip
 
-    Copyright (C) 2020
-    Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
+    SPDX-FileCopyrightText: 2020 Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -26,38 +22,12 @@
 #include "ekos/align/align.h"
 #include "ekos/guide/guide.h"
 #include "ekos/mount/mount.h"
+#include "ekos/scheduler/scheduler.h"
 #include "ekos/profileeditor.h"
 
 #include "test_ekos_simulator.h"
 #include "test_ekos_capture.h"
 #include "test_ekos_capture_helper.h"
-
-
-#define QTEST_KSTARS_MAIN_GUIDERSELECT(klass) \
-int main(int argc, char *argv[]) { \
-    QString guider = "Internal"; \
-    std::vector<char *> testargv; \
-    bool showfunctions = false; \
-    for (int i = 0; i < argc; i++) { \
-        if (!strcmp("-functions", argv[i])) \
-        {testargv.push_back(argv[i]); showfunctions = true;} \
-        else if (!strcmp("-guider", argv[i]) && i+1 < argc) \
-        { guider = argv[i+1]; i++; } \
-        else testargv.push_back(argv[i]); } \
-    klass tc(guider); \
-    if (showfunctions) return QTest::qExec(&tc, testargv.size(), testargv.data()); \
-    QApplication app(argc, argv); \
-    prepare_tests(); \
-    int failure = 0; \
-    QTimer::singleShot(1000, &app, [&] { \
-        qDebug("Starting tests..."); \
-        failure |= run_wizards(testargv.size(), testargv.data()); \
-        if (!failure) { failure |= QTest::qExec(&tc, testargv.size(), testargv.data()); } \
-        qDebug("Tests are done."); \
-        app.quit(); }); \
-    execute_tests(); \
-    return failure; }
-
 
 class TestEkosMeridianFlipBase : public QObject
 {
@@ -69,21 +39,6 @@ public:
 
 protected:
     /**
-     * @brief Configure the EKOS profile
-     * @param name of the profile
-     * @param isPHD2 use internal guider or PHD2
-     */
-    bool setupEkosProfile(QString name, bool isPHD2);
-
-    /**
-     * @brief create a new EKOS profile
-     * @param name name of the profile
-     * @param isPHD2 use internal guider or PHD2
-     * @param isDone will be true if everything succeeds
-     */
-    void createEkosProfile(QString name, bool isPHD2, bool *isDone);
-
-    /**
      * @brief Start a test EKOS profile.
      */
     bool startEkosProfile();
@@ -91,20 +46,7 @@ protected:
     /**
      * @brief Shutdown the current test EKOS profile.
      */
-    bool shutdownEkosProfile(QString guider);
-
-    /**
-     * @brief Fill mount, guider, CCD and focuser of an EKOS profile
-     * @param isDone will be true if everything succeeds
-     */
-    void fillProfile(bool *isDone);
-
-    /**
-     * @brief Set a tree view combo to a given value
-     * @param combo box with tree view
-     * @param lookup target value
-     */
-    void setTreeviewCombo(QComboBox *combo, const QString lookup);
+    bool shutdownEkosProfile();
 
     /**
      * @brief Enable the meridian flip on the mount tab
@@ -120,6 +62,12 @@ protected:
     bool positionMountForMF(int secsToMF, bool fast = true);
 
     /**
+     * @brief Check if meridian flip has been started
+     * @param startDelay upper limit for expected time in seconds that are expected the flip to start
+     */
+    bool checkMFStarted (int startDelay);
+
+    /**
      * @brief Check if meridian flip runs and completes
      * @param startDelay upper limit for expected time in seconds that are expected the flip to start
      */
@@ -133,14 +81,38 @@ protected:
     int secondsToMF();
 
     /**
-     * @brief Helper function that reads capture sequence test data, creates entries in the capture module,
-     *        executes upfront focusing if necessary and positions the mount close to the meridian.
-     * @param secsToMF seconds until the meridian will be crossed
-     * @param calibrate execute initial guiding to calibrate the guider
+     * @brief Determine the target close to the meridian
+     * @param secsToMF seconds to meridian flip
+     * @param set to true if a sync close to the target should be executed
+     */
+    void findMFTestTarget(int secsToMF, bool fast);
+
+    /**
+     * @brief General preparations used both for pure capturing test cases as well as those with the scheduler.
      * @param initialFocus execute upfront focusing
      * @param guideDeviation select "Abort if Guide Deviation"
      */
-    bool prepareCaptureTestcase(int secsToMF, bool calibrate, bool initialFocus, bool guideDeviation);
+    bool prepareMFTestcase(bool initialFocus, bool guideDeviation);
+
+    /**
+     * @brief Helper function that reads capture sequence test data, creates entries in the capture module,
+     *        executes upfront focusing if necessary and positions the mount close to the meridian.
+     * @param secsToMF seconds until the meridian will be crossed
+     * @param initialFocus execute upfront focusing
+     * @param guideDeviation select "Abort if Guide Deviation"
+     */
+    bool prepareCaptureTestcase(int secsToMF, bool initialFocus, bool guideDeviation);
+
+    /**
+     * @brief Prepare the scheduler with a single based upon the capture sequences filled
+     *        by @see prepareCaptureTestcase(int,bool,bool,bool)
+     * @param secsToMF seconds until the meridian will be crossed
+     * @param useFocus use focusing for the scheduler job
+     * @param completionCondition completion condition for the scheduler
+     * @param iterations number of iterations to be executed (only relevant if completionCondition == FINISH_REPEAT)
+     * @return true iff preparation was successful
+     */
+    bool prepareSchedulerTestcase(int secsToMF, bool useFocus, Ekos::Scheduler::SchedulerAlgorithm algorithm, SchedulerJob::CompletionCondition completionCondition, int iterations);
 
     /**
      * @brief Prepare test data iterating over all combination of parameters.
@@ -150,10 +122,11 @@ protected:
      * @param filterList variants of filter parameter tests
      * @param focusList variants with/without focus tests
      * @param autofocusList variants with/without HFR autofocus tests
+     * @param guideList variants with/without guiding tests
      * @param ditherList variants with/without dithering tests
      */
-    void prepareTestData(double exptime, QList<QString> locationList, QList<bool> culminationList, QList<QString> filterList,
-                         QList<bool> focusList, QList<bool> autofocusList, QList<bool> ditherList);
+    void prepareTestData(double exptime, QList<QString> locationList, QList<bool> culminationList, QList<std::pair<QString, int> > filterList,
+                         QList<bool> focusList, QList<bool> autofocusList, QList<bool> guideList, QList<bool> ditherList);
 
     /**
      * @brief Check if astrometry files exist.
@@ -193,6 +166,16 @@ protected:
     bool stopCapturing();
 
     /**
+     * @brief Helper function for starting the scheduler
+     */
+    bool startScheduler();
+
+    /**
+     * @brief Helper function for stopping the scheduler
+     */
+    bool stopScheduler();
+
+    /**
      * @brief Helper function for start focusing
      */
     bool startFocusing();
@@ -202,104 +185,28 @@ protected:
      */
     bool stopFocusing();
 
-    /**
-     * @brief Helper function for start of guiding
-     * @param guiding exposure time
-     */
-    bool startGuiding(double expTime);
-
-    /**
-     * @brief Helper function to stop guiding
-     */
-    bool stopGuiding();
-
-    /**
-     * @brief Helper function starting PHD2
-     */
-    void startPHD2();
-
-    /**
-     * @brief Helper function stopping PHD2
-     */
-    void stopPHD2();
-
-    /**
-     * @brief Helper function for preparing the PHD2 test configuration
-     */
-    void preparePHD2();
-
-    /**
-     * @brief Helper function for cleaning up PHD2 test configuration
-     */
-    void cleanupPHD2();
-
     /** @brief Check if after a meridian flip all features work as expected: capturing, aligning, guiding and focusing */
     bool checkPostMFBehavior();
 
+    // helper class
+    TestEkosCaptureHelper *m_CaptureHelper = nullptr;
 
-    // Mount device
-    QString m_MountDevice = "Telescope Simulator";
-    // CCD device
-    QString m_CCDDevice = "CCD Simulator";
-    // Guiding device
-    QString m_GuiderDevice = "Guide Simulator";
-    // Focusing device
-    QString m_FocuserDevice = "Focuser Simulator";
-    // Guider (PHD2 or Internal)
-    QString m_Guider = "Internal";
+    // target position
+    SkyPoint *target;
 
-    // PHD2 setup (host and port)
-    QProcess *phd2 { nullptr };
-    QString const phd2_guider_host = "localhost";
-    QString const phd2_guider_port = "4400";
-
-    // current mount meridian flip status
-    Ekos::Mount::MeridianFlipStatus m_MFStatus { Ekos::Mount::FLIP_NONE };
-    // sequence of alignment states that are expected
-    QQueue<Ekos::AlignState> expectedAlignStates;
-    // sequence of capture states that are expected
-    QQueue<Ekos::CaptureState> expectedCaptureStates;
-    // sequence of focus states that are expected
-    QQueue<Ekos::FocusState> expectedFocusStates;
-    // sequence of guiding states that are expected
-    QQueue<Ekos::GuideState> expectedGuidingStates;
-    // sequence of meridian flip states that are expected
-    QQueue<Ekos::Mount::MeridianFlipStatus> expectedMeridianFlipStates;
+    // initial focuser position
+    int initialFocusPosition = -1;
 
     // regular focusing on?
     bool refocus_checked = false;
     // HFR autofocus on?
     bool autofocus_checked = false;
-    // guiding used?
-    bool use_guiding = false;
     // aligning used?
     bool use_aligning = false;
     // regular dithering on?
     bool dithering_checked = false;
     // astrometry files available?
     bool astrometry_available = true;
-
-    /**
-     * @brief Retrieve the current alignment status.
-     */
-    inline Ekos::AlignState getAlignStatus() {return m_AlignStatus;}
-    /**
-     * @brief Retrieve the current capture status.
-     */
-    inline Ekos::CaptureState getCaptureStatus() {return m_CaptureStatus;}
-    /**
-     * @brief Retrieve the current focus status.
-     */
-    inline Ekos::FocusState getFocusStatus() {return m_FocusStatus;}
-    /**
-     * @brief Retrieve the current guiding status.
-     */
-    Ekos::GuideState getGuidingStatus() { return m_GuideStatus;}
-    /**
-     * @brief Retrieve the current mount meridian flip status.
-     */
-    Ekos::Mount::MeridianFlipStatus getMeridianFlipStatus() {return m_MFStatus;}
-
         
 protected slots:
     void initTestCase();
@@ -307,51 +214,6 @@ protected slots:
 
     void init();
     void cleanup();
-
-
-private:
-    // current alignment status
-    Ekos::AlignState m_AlignStatus { Ekos::ALIGN_IDLE };
-
-    // current capture status
-    Ekos::CaptureState m_CaptureStatus { Ekos::CAPTURE_IDLE };
-
-    // current focus status
-    Ekos::FocusState m_FocusStatus { Ekos::FOCUS_IDLE };
-
-    // current guiding status
-    Ekos::GuideState m_GuideStatus { Ekos::GUIDE_IDLE };
-
-    /**
-     * @brief Slot to track the align status of the mount
-     * @param status new align state
-     */
-    void alignStatusChanged(Ekos::AlignState status);
-
-    /**
-     * @brief Slot to track the meridian flip stage of the mount
-     * @param status new meridian flip state
-     */
-    void meridianFlipStatusChanged(Ekos::Mount::MeridianFlipStatus status);
-
-    /**
-     * @brief Slot to track the focus status
-     * @param status new focus status
-     */
-    void focusStatusChanged(Ekos::FocusState status);
-
-    /**
-     * @brief Slot to track the guiding status
-     * @param status new guiding status
-     */
-    void guidingStatusChanged(Ekos::GuideState status);
-
-    /**
-     * @brief Slot to track the capture status
-     * @param status new capture status
-     */
-    void captureStatusChanged(Ekos::CaptureState status);
-
 };
 
 #endif // HAVE_INDI
