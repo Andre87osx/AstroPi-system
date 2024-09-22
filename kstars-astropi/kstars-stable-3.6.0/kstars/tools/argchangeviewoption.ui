@@ -1,0 +1,151 @@
+<ui version="4.0" >
+ <class>ArgChangeViewOption</class>
+ <widget class="QWidget" name="ArgChangeViewOption" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>260</width>
+    <height>171</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" >
+   <property name="margin" >
+    <number>10</number>
+   </property>
+   <property name="spacing" >
+    <number>6</number>
+   </property>
+   <item>
+    <layout class="QGridLayout" >
+     <property name="margin" >
+      <number>0</number>
+     </property>
+     <property name="spacing" >
+      <number>6</number>
+     </property>
+     <item row="0" column="1" >
+      <widget class="QComboBox" name="OptionName" >
+       <property name="toolTip" >
+        <string>List of adjustable options</string>
+       </property>
+       <property name="whatsThis" >
+        <string>Select an option from this list to set its value.  You may also select the option using an organized Tree List using the &quot;Browse Tree...&quot; button.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" >
+      <spacer>
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType" >
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
+       <property name="sizeHint" >
+        <size>
+         <width>50</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="3" column="0" >
+      <widget class="QLabel" name="textLabel1_2" >
+       <property name="text" >
+        <string>Value:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1" >
+      <widget class="QPushButton" name="TreeButton" >
+       <property name="toolTip" >
+        <string>Show Tree View of options</string>
+       </property>
+       <property name="whatsThis" >
+        <string>Press this button to select a View Option from a Tree list, in which they are grouped by subject.  Also shown are a short description of each option, and the data type of the option's value (string, integer, float or boolean).</string>
+       </property>
+       <property name="text" >
+        <string>Browse Tree...</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1" >
+      <widget class="QLineEdit" name="OptionValue" >
+       <property name="toolTip" >
+        <string>value for selected option</string>
+       </property>
+       <property name="whatsThis" >
+        <string>Set the value for the selected view option here.  Make sure the value you enter matches the data type expected by the option.  For example, the &quot;UseAltAz&quot; option expects a boolean value, so you should enter &quot;true&quot;, &quot;false&quot;, &quot;1&quot;, or &quot;0&quot;.  If you are unsure what data type is expected, examine the Tree View of options using the &quot;Browse Tree...&quot; button.</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0" colspan="2" >
+      <spacer>
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType" >
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
+       <property name="sizeHint" >
+        <size>
+         <width>160</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item row="0" column="0" >
+      <widget class="QLabel" name="textLabel1" >
+       <property name="text" >
+        <string>Option:</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer>
+     <property name="orientation" >
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType" >
+      <enum>QSizePolicy::Expanding</enum>
+     </property>
+     <property name="sizeHint" >
+      <size>
+       <width>20</width>
+       <height>16</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+  <customwidgets>
+  <customwidget>
+   <class>QLineEdit</class>
+   <extends></extends>
+   <header>klineedit.h</header>
+   <container>0</container>
+   <pixmap></pixmap>
+  </customwidget>
+  <customwidget>
+   <class>QPushButton</class>
+   <extends></extends>
+   <header>kpushbutton.h</header>
+   <container>0</container>
+   <pixmap></pixmap>
+  </customwidget>
+  <customwidget>
+   <class>QComboBox</class>
+   <extends></extends>
+   <header>QComboBox.h</header>
+   <container>0</container>
+   <pixmap></pixmap>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,197 @@
+<ui version="4.0" >
+ <class>ArgSetGeoLocation</class>
+ <widget class="QWidget" name="ArgSetGeoLocation" >
+  <property name="geometry" >
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>316</width>
+    <height>208</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" >
+   <property name="margin" >
+    <number>10</number>
+   </property>
+   <property name="spacing" >
+    <number>6</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" >
+     <property name="margin" >
+      <number>0</number>
+     </property>
+     <property name="spacing" >
+      <number>6</number>
+     </property>
+     <item>
+      <layout class="QVBoxLayout" >
+       <property name="margin" >
+        <number>0</number>
+       </property>
+       <property name="spacing" >
+        <number>6</number>
+       </property>
+       <item>
+        <layout class="QGridLayout" >
+         <property name="margin" >
+          <number>0</number>
+         </property>
+         <property name="spacing" >
+          <number>6</number>
+         </property>
+         <item row="1" column="0" >
+          <widget class="QLabel" name="textLabel1_2" >
+           <property name="text" >
+            <string>Province:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1" >
+          <widget class="QLineEdit" name="CountryName" >
+           <property name="toolTip" >
+            <string>Country name</string>
+           </property>
+           <property name="whatsThis" >
+            <string>Enter the Country name for the desired location.  It might be easier to use the &quot;Find City...&quot; button to choose your location from the list of predefined cities.</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0" >
+          <widget class="QLabel" name="textLabel1" >
+           <property name="text" >
+            <string>City:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" >
+          <widget class="QLabel" name="textLabel1_2_3" >
+           <property name="text" >
+            <string>Country:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" >
+          <widget class="QLineEdit" name="CityName" >
+           <property name="toolTip" >
+            <string>City name</string>
+           </property>
+           <property name="whatsThis" >
+            <string>Enter the City name for the desired location.  It might be easier to use the &quot;Find City...&quot; button to choose your location from the list of predefined cities.</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1" >
+          <widget class="QLineEdit" name="ProvinceName" >
+           <property name="toolTip" >
+            <string>Province name</string>
+           </property>
+           <property name="whatsThis" >
+            <string>Enter the Province name for the desired location.  It might be easier to use the &quot;Find City...&quot; button to choose your location from the list of predefined cities.</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" >
+         <property name="margin" >
+          <number>0</number>
+         </property>
+         <property name="spacing" >
+          <number>6</number>
+         </property>
+         <item>
+          <spacer>
+           <property name="orientation" >
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType" >
+            <enum>QSizePolicy::Expanding</enum>
+           </property>
+           <property name="sizeHint" >
+            <size>
+             <width>49</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="FindCityButton" >
+           <property name="toolTip" >
+            <string>Open the Set Location tool</string>
+           </property>
+           <property name="whatsThis" >
+            <string>Press this button to open the Set Location dialog, which will allow you to choose a location from our list of over 2500 cities around the word.  Once a location has been selected, the City, Province and Country fields will be filled in.</string>
+           </property>
+           <property name="text" >
+            <string>Find City...</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer>
+       <property name="orientation" >
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType" >
+        <enum>QSizePolicy::Expanding</enum>
+       </property>
+       <property name="sizeHint" >
+        <size>
+         <width>49</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <spacer>
+     <property name="orientation" >
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType" >
+      <enum>QSizePolicy::Expanding</enum>
+     </property>
+     <property name="sizeHint" >
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+  <customwidgets>
+  <customwidget>
+   <class>QPushButton</class>
+   <extends></extends>
+   <header>kpushbutton.h</header>
+   <container>0</container>
+   <pixmap></pixmap>
+  </customwidget>
+  <customwidget>
+   <class>QLineEdit</class>
+   <extends></extends>
+   <header>klineedit.h</header>
+   <container>0</container>
+   <pixmap></pixmap>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>CityName</tabstop>
+  <tabstop>ProvinceName</tabstop>
+  <tabstop>CountryName</tabstop>
+  <tabstop>FindCityButton</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>

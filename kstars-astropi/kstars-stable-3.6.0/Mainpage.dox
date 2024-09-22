@@ -1,0 +1,132 @@
+/*! \mainpage KStars API
+\tableofcontents
+
+\section Introduction Introduction
+
+KStars is free, open source, cross-platform Astronomy Software.
+
+It provides an accurate graphical simulation of the night sky, from any location on Earth, at any date and time. The display includes up to 100 million stars, 13,000 deep-sky objects,all 8 planets, the Sun and Moon, and thousands of comets, asteroids, supernovae, and satellites. 
+
+For students and teachers, it supports adjustable simulation speeds in order to view phenomena that happen over long timescales, the KStars Astrocalculator to predict conjunctions, and many common astronomical calculations. For the amateur astronomer, it provides an observation planner, a sky calendar tool, and an FOV editor to calculate field of view of equipment and display them. Find out interesting objects in the "What's up Tonight" tool, plot altitude vs. time graphs for any object, print high-quality sky charts, and gain access to lots of information and resources to help you explore the universe!
+
+Included with KStars is Ekos astrophotography suite, a complete astrophotography solution that can control all INDI devices including numerous telescopes, CCDs, DSLRs, focusers, filters, and a lot more. Ekos supports highly accurate tracking using online and offline astrometry solver, autofocus and autoguiding capabilities, and capture of single or multiple images using the powerful built in sequence manager.
+
+\section APIStructure Structure
+
+KStars is a simulation of the night sky.  The whole program is essentially a (very complicated) model/view implementation.  The "model" is all of the data regarding objects in the night sky, and how
+they change with time, and the "view" is the graphical display of this model on your screen.
+
+The "model" is encapsulated in the KStarsData class, and the "view" is encapsulated in the KStars class.  Here is a list of the major components of KStars:
+
+\subsection Data Data
+    - KStarsData: Master class for the backend "model".
+    - SkyMapComposite: Top of hierarchy for plottable objects.
+    - SkyComponent are lists of objects of the same type that are drawn in the sky map. Individual objects are represented as an instance of SkyPoint, or one of its children.
+    Only imaginary positions in the sky use SkyPoint directly.  Most real objects use the derived class SkyObject, which adds names and other data. Stars, planets, comets, asteroids, deep-sky objects, constellations,
+    guide lines, the Milky Way, etc. each have their own Component
+    - \subpage Stars "Stars: How stars are handled in KStars?"
+    - SkyObject itself has many derivatives for different kinds of objects:
+        - StarObject
+        - DeepSkyObject
+        - KSPlanetBase
+            - KSSun
+            - KSPlanet
+            - KSMoon
+            - KSAsteroid
+                - KSPluto
+            - KSComet
+        - PlanetMoons
+            - JupiterMoons
+        - Satellite
+        - Supernova
+        - TrailObject
+
+\subsection View View
+    - KStars: main window; master class for the frontend "view".
+    - SkyMap: sky widget
+    - KSPopupMenu: right-click menu
+    - InfoBoxes: on-screen information on time, position, and focused object
+    - SkyLabeler
+    - Flags: FlagComponent represents a flag on the sky map and is managed by FlagManager.
+    - FOVs: FOV represents a Field-of-View symbol on the skymap. The \ref FOVDialog "FOV Dialog" enables editing and \ref NewFOV "adding a new FOV".
+    - \ref Projector "Projections": Multiple projection systems are supported to map the celestial sphere unto a 2D surface.
+
+\subsection Time Time
+    - \subpage TimeKeeping "Time Keeping": How is time stored and simulated in KStars?
+    - SimClock (controls passage of time in the simulation)
+    - KStarsDateTime
+
+\subsection Math Math
+    - KSNumbers
+    - HTMesh: Primary backbone to index stars and deep sky objects using \subpage HTMIndexing "multi-level Hierarchical Triangular Mesh"
+    - KSAlmanac
+
+\subsection Tools Tools
+    - \ref AstroCalc "Calculator": Calculator tool covering many astronomical calculations.
+    - FITSViewer: Open and preview FITS files.
+    - \ref INDI "Devices & INDI": Establish INDI drivers locally or connect to remote INDI servers.
+    - Ekos
+    - \ref SkyCalendar "Sky Calendar"
+    - \ref DetailDialog "Detail Dialog"
+    - \ref WUTDialog "What's up tonight"
+    - What's interesting
+    - \ref PlanetViewer "Solar System": Display an overhead view of the solar system
+    - \ref JMoonTool "Jupiter Moons"
+    - \ref StarHopper "Star Hopper"
+    - \ref PrintingWizard "Printing"
+
+\subsection Observation Observation
+    - OAL: Open Astronomy Log
+    - \ref ObservingList "Observation Planner"
+
+\subsection Auxiliary Auxiliary
+     Auxiliary are helper classes/dialogs/functions used throughout KStars.
+    - \ref ImageViewer "Image Viewer"
+    - dms : Encapsulates an angle value.
+    - GeoLocation: Encapsulates a location on Earth.
+    - TimeZoneRule: Encapsulates a daylight savings time rule.
+    - \ref ColorScheme "Color Schemes"
+    - ThumbnailPicker / ThumbnailEditor
+    - \ref FocusDialog "Focus Dialog"
+    - \ref KSWizard "Wizard"
+    - Settings: OpsCatalog, OpsAdvanced, OpsColors, OpsGuides, OpsSatellites, OpsSolarSystem, OpsSupernovae, OpsINDI, OpsEkos
+    - \ref KSNotification "Notifications"
+
+\subsection Scripting Scripting
+    - \ref DBusInterface KStars DBus Interface
+    - \ref INDIDBusInterface INDI DBus Interface: Provides low level access to all INDI devices and properties.
+    - \ref EkosDBusInterface Ekos DBus Interface: Provides high level access to Ekos \ref Manager and corresponding modules. Ekos Modules with DBus Interface:
+    <ul>
+    <li>\ref CaptureDBusInterface "Capture Module DBus Interface"</li>
+    <li>\ref FocusDBusInterface "Focus Module DBus Interface"</li>
+    <li>\ref MountDBusInterface "Mount Module DBus Interface"</li>
+    <li>\ref GuideDBusInterface "Guide Module DBus Interface"</li>
+    <li>\ref AlignDBusInterface "Align Module DBus Interface"</li>
+    <li>\ref SchedulerDBusInterface "Scheduler Module DBus Interface"</li>
+    <li>\ref DomeDBusInterface "Dome DBus Interface"</li>
+    <li>\ref DustCapDBusInterface "Dust Cap DBus Interface"</li>
+    </ul>
+    - \ref ScriptBuilder Script builder
+
+\section HowItWorks How does it work?
+
+The following explanation is a \e very high level and general overview on the basic workflow in KStars. When you run KStars, the following general steps are executed (not necessarily in this order):
+-# An Instance of KStars is created. KStars will start with the SimClock running and set to the system date and time unless otherwise specified in command line arguments.
+-# An Instance of KStarsData is created. Data for stars, catalogs, deep sky objects, comets...etc are read and loaded into memory.
+  Some data are not read unless necessary, such as stars that only appear at very high zoom levels.
+-# Date and Time are initialized. Simulated clocks normally ticks forward at a particular interval, the default being once per second like a real clock.
+-# KStars splash screen is created.
+-# An Instance of SkyMap is created. The SkyMap is the primary central widget in KStars. Toolbars, menus, actions, and status bar are initialized.
+-# SimClock emits the timeAdvanced() signal, which is connected to KStarsData::updateTime(), which takes care of updating object coordinates and drawing the skymap.
+  Effects for precession, nutation, aberration, and refraction are taken into account.
+-# SkyMap can have multiple draw backends (QPainter or OpenGL). It calls the selected backend to draw the overlays and objects unto the sky map.
+-# The backend implementing SkyMapDrawAbstract receives a PaintEvent(..) from SkyMap which begins by drawing the background first. Afterwards, it calls KStarsData SkyMapComposite instance which in turn calls
+  all child composites and components to draw themselves. Each component draws itself on the skymap. The order of the drawing routine ensures layers such as equatorial/horizontal
+  grid lines are drawn last.
+-# The sky map responds to user input from keyboard and mouse to perform various actions such as panning, zooming, invoking the popup menu for a particular object...etc.
+-# SimClock emits timeAdvanced() signal and the cycle repeats.
+-# The user can invoke tools, change settings, download new data, run scripts..etc while the cycle above is taking place in the background.
+-# Upon exit destructors are called to properly terminate all objects, free memory, and save options if necessary.
+
+\author Jasem Mutlaq
+*/
