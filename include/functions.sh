@@ -426,7 +426,7 @@ function setupWiFi()
 	
 	case "$?" in
 	0)
-		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
+		if [ -n "$(sudo grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
 			sudo chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
 			echo -e "country=IT\nctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nap_scan=1\n\nupdate_config=1\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
 			case $? in
