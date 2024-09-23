@@ -24,7 +24,7 @@ SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 # GUI windows width and height
 W=$(( SCREEN_WIDTH / 5 ))
 H=$(( SCREEN_HEIGHT / 3 ))
-Wprogress=$(( SCREEN_WIDTH / 5 ))
+Wprogress=$(( SCREEN_WIDTH / 4 ))
 
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
@@ -703,10 +703,10 @@ function chkKStars()
 	# =================================================================
 	# Build KStar AstroPi
 	commands=(
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off"${appDir}"/kstars-astropi"
+    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off ${appDir}/kstars-astropi"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
-	)
+		)
 
 	steps=("Running cmake" "Running make" "Running make install")
 	percentages=(30 60 90)
