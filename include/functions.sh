@@ -14,7 +14,7 @@
 majorRelease=1								# Major Release
 minorRelease=7								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
-KStars_v=3.6.0v1.7							# Based on KDE Kstrs v.3.6.0
+KStars_v=3.6.0_v1.7							# Based on KDE Kstrs v.3.6.0
 Indi_v=1.9.7								# Based on INDI 1.9.7 Core
 
 # Get width and height of screen
@@ -426,7 +426,7 @@ function setupWiFi()
 	
 	case "$?" in
 	0)
-		if [ -n "$(sudo grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
+		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
 			sudo chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
 			echo -e "country=IT\nctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nap_scan=1\n\nupdate_config=1\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
 			case $? in
@@ -477,40 +477,104 @@ function chkHotspot()
 # Install / Update INDI 
 function chkINDI()
 {
+	# Ensure unbuffer is installed
+	if ! command -v unbuffer &> /dev/null; then
+    	sudo apt-get install -y expect
+	fi
+	if [ ! -d "${WorkDir}" ]; then mkdir "${WorkDir}"; fi
+	cd "${WorkDir}" || exit 1
+
+	# =================================================================
+	# Dowload pakage from git
 	(
-		echo "# Download Indi $Indi_v..."
-		if [ ! -d "${WorkDir}" ]; then mkdir "${WorkDir}"; fi
-		cd "${WorkDir}" || exit 1
-		wget -c https://github.com/indilib/indi/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "${WorkDir}"
-		wget -c https://github.com/indilib/indi-3rdparty/archive/refs/tags/v"$Indi_v".tar.gz -O - | tar -xz -C "${WorkDir}"
-		git clone https://github.com/rlancaste/stellarsolver.git
+    	wget -c "https://github.com/indilib/indi/archive/refs/tags/v${Indi_v}.tar.gz" -O - | \
+    	tar -xz -C "${WorkDir}" 2>&1 | \
+    	while IFS= read -r line; do
+        	echo "# $line"
+    	done
+
+    	echo "33"  # Update progress to 33%
+    	echo "# Downloading INDI 3rd-party libraries..."
+    
+    	wget -c "https://github.com/indilib/indi-3rdparty/archive/refs/tags/v${Indi_v}.tar.gz" -O - | \
+    	tar -xz -C "${WorkDir}" 2>&1 | \
+    	while IFS= read -r line; do
+        	echo "# $line"
+    	done
+
+   		echo "66"  # Update progress to 66%
+    	echo "# Downloading StellarSolver..."
+    
+    	git clone https://github.com/rlancaste/stellarsolver.git "${WorkDir}/stellarsolver" 2>&1 | \
+    	while IFS= read -r line; do
+        	echo "# $line"
+    	done
+	) | zenity --progress --title="Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver" --text="Starting..." --percentage=0 --auto-close
+
+	if [ $? = -1 ]; then
+    	zenity --error --width=${W} --text="Error Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver
+		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	fi
+
+	# =================================================================
+	(
+    	steps=("Updating package list" "Installing first set of packages" "Installing second set of packages" "Installing third set of packages")
+    	percentages=(10 20 50 80 100)
+    	commands=(
+        "sudo apt-get update -y"
+        "sudo apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev libusb-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev"
+        "sudo apt-get -y install libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev"
+        "sudo apt-get -y install ffmpeg libavcodec-dev libavdevice-dev libfftw3-dev libev-dev"
+    	)
+
+    	for i in "${!steps[@]}"; do
+        	echo "${percentages[$i]}"
+        	echo "# ${steps[$i]}..."
+        	${commands[$i]} 2>&1 | while IFS= read -r line; do
+            	echo "# $line"
+        	done
+    	done
+
+    	echo "100"
+    	echo "# Installation complete!"
+	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width=500
+
+	if [ $? = -1 ]; then
+   		zenity --error --width=${W} --text="Error installing dependencies
+		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	fi
 
 		# =================================================================
-		# echo "# Install dependencies..."
-		# #echo "${ask_pass}" | sudo -S apt-get -y install patchelf
-		# #(($? != 0)) && zenity --width=${W} --error --text="Error installing PatchELF\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme libqt5datavisualization5-dev gsc gsc-data
-		# (($? != 0)) && zenity --width=${W} --error --text="Error installing Kstars dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt-get install -y libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libfftw3-dev
-		# (($? != 0)) && zenity --error --width=${W} --text="Error installing INDI Core dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev
-		# (($? != 0)) && zenity --error --width=${W} --text="Error installing INDI Driver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		# echo "${ask_pass}" | sudo -S apt -y install git cmake qt5-default libcfitsio-dev libgsl-dev wcslib-dev
-		# (($? != 0)) && zenity --error --width=${W} --text="Error installing Stellarsolver dependencies\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	commands=(
+    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ${WorkDir}/indi-${Indi_v}"
+    	"make -j2"
+    	"sudo make install"
+	)
 
-		# =================================================================
-		echo "# Checking INDI Core..."
-		if [ ! -d "${WorkDir}"/indi-cmake ]; then mkdir -p "${WorkDir}"/indi-cmake; fi
-		cd "${WorkDir}"/indi-cmake || exit 1
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug "${WorkDir}"/indi-"$Indi_v"
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>CMake</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo "${ask_pass}" | sudo -S make install
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Instal</b> INDI Core\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	steps=("Running cmake" "Running make" "Running make install")
+	percentages=(30 60 90)
 
+	(
+    	echo "10"
+    	echo "# Preparing to run cmake..."
+
+    	for i in "${!commands[@]}"; do
+        	echo "${percentages[$i]}"
+        	echo "# ${steps[$i]}..."
+        	${commands[$i]} 2>&1 | while IFS= read -r line; do
+            	echo "# $line"
+        	done
+    	done
+
+    	echo "100"
+    	echo "# Installation complete!"
+	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=500
+
+	if [ $? = -1 ]; then
+		zenity --error --width=${W} --text="Error Build and installation failed.
+		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+    
+	fi
 		# =================================================================		
 		#echo "# Fix Indi $Indi_v for ARM_64..."
 		#cd "${WorkDir}"/indi-3rdparty-"$Indi_v" || exit 1
