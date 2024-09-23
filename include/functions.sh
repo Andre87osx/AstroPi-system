@@ -543,7 +543,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width=800
+	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
    		zenity --error --width=${W} --text="Error installing dependencies
@@ -579,7 +579,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=800
+	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
@@ -613,7 +613,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI 3rd party LIB ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=800
+	) | zenity --progress --title="Building and Installing INDI 3rd party LIB ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
@@ -647,7 +647,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI 3rd party DRIVER ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=800
+	) | zenity --progress --title="Building and Installing INDI 3rd party DRIVER ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
@@ -681,7 +681,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width=800
+	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
@@ -694,33 +694,43 @@ function chkINDI()
 # Install / Update KStars AstroPi 
 function chkKStars()
 {
-	(	
-		echo "# Check KStars AstroPi"
-		if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
-		if [ ! -d "${HOME}"/.indi/logs ]; then mkdir -p "${HOME}"/.indi/logs; fi
-		(($? != 0)) && zenity --error --width=${W} --text="Error MKdir <b>INDI log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		if [ ! -d "${HOME}"/.local/share/kstars/logs ]; then mkdir -p "${HOME}"/.local/share/kstars/logs; fi
-		(($? != 0)) && zenity --error --width=${W} --text="Error MKdir <b>KStars log dir</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		cd "${WorkDir}"/kstars-cmake || exit 1
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo "${appDir}"/kstars-astropi
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>CMake</b>  KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && sudo rm -rf "${WorkDir}" && exit 1
 	
-		# =================================================================
-		echo "# Install KStars AstroPi $KStars_v"
-		make -j $JOBS
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	echo "# Check KStars AstroPi"
+	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
+	if [ ! -d "${HOME}"/.indi/logs ]; then mkdir -p "${HOME}"/.indi/logs; fi
+	if [ ! -d "${HOME}"/.local/share/kstars/logs ]; then mkdir -p "${HOME}"/.local/share/kstars/logs; fi
+	cd "${WorkDir}"/kstars-cmake || exit 1	
+	# =================================================================
+	# Build KStar AstroPi
+	commands=(
+    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off"${appDir}"/kstars-astropi"
+    	"make -j $(expr $(nproc) + 2)"
+    	"sudo make install"
+	)
 
-		# =================================================================
-		sudo make install
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Install</b> KStars AstroPi\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	steps=("Running cmake" "Running make" "Running make install")
+	percentages=(30 60 90)
 
-		# =================================================================
-		echo "# Removing the temporary files"
-		sudo rm -rf "${WorkDir}"
+	(
+    	echo "10"
+    	echo "# Preparing to run cmake..."
 
-		# =================================================================
-		echo "# All finished."
-		zenity --info --width=${W} --text="KStars AstroPi $KStars_v allredy installed" --title="${W_Title}"
+    	for i in "${!commands[@]}"; do
+        	echo "${percentages[$i]}"
+        	echo "# ${steps[$i]}..."
+        	${commands[$i]} 2>&1 | while IFS= read -r line; do
+            	echo "# $line"
+        	done
+    	done
 
-	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
+    	echo "100"
+    	echo "# Installation complete!"
+	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+
+	if [ $? = -1 ]; then
+		zenity --error --width=${W} --text="Error Build and installation failed.
+		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+    
+	fi
+	zenity --info --width=${W} --text="KStars AstroPi $KStars_v allredy installed" --title="${W_Title}"
 }
