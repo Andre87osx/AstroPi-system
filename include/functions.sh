@@ -527,10 +527,10 @@ function chkINDI()
         "sudo apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev libusb-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev"
         "sudo apt-get -y install libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev"
         "sudo apt-get -y install ffmpeg libavcodec-dev libavdevice-dev libfftw3-dev libev-dev"
-		"sudo apt-get -y install libeigen3-dev libkf5doctools-dev libqt5datavisualization5-dev"
+		"sudo apt-get -y install libeigen3-dev libkf5doctools-dev libqt5datavisualization5-dev qml-module-qtquick-controls"
     	"sudo apt-get -y install extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev"
         "sudo apt-get -y install libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libkf5notifyconfig-dev wcslib-dev"
-        "sudo apt-get -y install libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme indi-full gsc"
+        "sudo apt-get -y install libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme"
     	)
 
     	for i in "${!steps[@]}"; do
@@ -543,7 +543,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width=800
 
 	if [ $? = -1 ]; then
    		zenity --error --width=${W} --text="Error installing dependencies
@@ -579,7 +579,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=800
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
@@ -595,7 +595,7 @@ function chkINDI()
     	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
-		"cd '${WorkDir}'/indi3rd_driver-cmake"
+		"cd ${WorkDir}/indi3rd_driver-cmake"
     	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
@@ -618,7 +618,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI 3rd party ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Building and Installing INDI 3rd party ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=800
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
