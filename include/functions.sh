@@ -509,7 +509,8 @@ function chkINDI()
     	while IFS= read -r line; do
         	echo "# $line"
     	done
-	) | zenity --progress --title="Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver" --text="Starting..." --percentage=0 --auto-close
+	) | zenity --progress --title="Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver" \
+		--text="Starting..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
     	zenity --error --width=${W} --text="Error Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver
@@ -517,6 +518,7 @@ function chkINDI()
 	fi
 
 	# =================================================================
+	# Update dependencies and library for INDI
 	(
     	steps=("Updating package list" "Installing first set of packages" "Installing second set of packages" "Installing third set of packages")
     	percentages=(10 20 50 80 100)
@@ -537,17 +539,20 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width=500
+	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
    		zenity --error --width=${W} --text="Error installing dependencies
 		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 	fi
 
-		# =================================================================
+	# =================================================================
+	# Build INDI Core
 	commands=(
+		"if [ ! -d "${WorkDir}"/indi-cmake ]; then mkdir -p "${WorkDir}"/indi-cmake; fi"
+		"cd "${WorkDir}"/indi-cmake || exit 1"
     	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ${WorkDir}/indi-${Indi_v}"
-    	"make -j2"
+    	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
 	)
 
@@ -568,49 +573,61 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width=500
+	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	if [ $? = -1 ]; then
 		zenity --error --width=${W} --text="Error Build and installation failed.
 		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
     
 	fi
-		# =================================================================		
-		#echo "# Fix Indi $Indi_v for ARM_64..."
-		#cd "${WorkDir}"/indi-3rdparty-"$Indi_v" || exit 1
-		#for f in $(find lib* -type f -name *bin | grep -E 'x64|64' | sed '/arm64/d' | xargs); do echo "=> Checking $f" ; patchelf --debug --print-soname $f; echo "------"; done
+	# =================================================================
+	# Build INDI 3rd party LIB
+	commands=(
+		"if [ ! -d "${WorkDir}"/indi3rd_lib-cmake ]; then mkdir -p "${WorkDir}"/indi3rd_lib-cmake; fi"
+		"cd "${WorkDir}"/indi3rd_lib-cmake || exit 1"
+    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
+    	"make -j $(expr $(nproc) + 2)"
+    	"sudo make install"
+		"if [ ! -d "${WorkDir}"/indi3rd_driver-cmake ]; then mkdir -p "${WorkDir}"/indi3rd_driver-cmake; fi"
+		"cd "${WorkDir}"/indi3rd_driver-cmake || exit 1"
+    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
+    	"make -j $(expr $(nproc) + 2)"
+    	"sudo make install"
+	)
 
-		# =================================================================
-		echo "# Checking INDI 3rd Party Library"
-		if [ ! -d "${WorkDir}"/indi3rdlib-cmake ]; then mkdir -p "${WorkDir}"/indi3rdlib-cmake; fi
-		cd "${WorkDir}"/indi3rdlib-cmake || exit 1
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -DBUILD_LIBS=1 "${WorkDir}"/indi-3rdparty-"$Indi_v"
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>CMake</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo "${ask_pass}" | sudo -S make install
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Instal</b> INDI 3rd Party Library\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	steps=("Running cmake" "Running make" "Running make install")
+	percentages=(30 60 90)
 
-		# =================================================================		
-		#echo "# Fix Indi $Indi_v for ARM_64..."
-		#cd "${WorkDir}"/indi-3rdparty-"$Indi_v" || exit 1
-		#for f in $(find lib* -type f -name *bin | grep -E 'x64|64' | sed '/arm64/d' | xargs); do echo "=> Checking $f" ; patchelf --debug --print-soname $f; echo "------"; done
+	(
+    	echo "10"
+    	echo "# Preparing to run cmake..."
 
-		# =================================================================
-		echo "# Check INDI 3rd Party Driver"
-		if [ ! -d "${WorkDir}"/indi3rd-cmake ]; then mkdir -p "${WorkDir}"/indi3rd-cmake; fi
-		cd "${WorkDir}"/indi3rd-cmake || exit 1
-		cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 "${WorkDir}"/indi-3rdparty-"$Indi_v"
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>CMake</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		make -j2
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-		echo "${ask_pass}" | sudo -S make install
-		(($? != 0)) && zenity --error --width=${W} --text="Error <b>Make</b> Instal INDI 3rd Party Driver\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+    	for i in "${!commands[@]}"; do
+        	echo "${percentages[$i]}"
+        	echo "# ${steps[$i]}..."
+        	${commands[$i]} 2>&1 | while IFS= read -r line; do
+            	echo "# $line"
+        	done
+    	done
 
+    	echo "100"
+    	echo "# Installation complete!"
+	) | zenity --progress --title="Building and Installing INDI 3rd party ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+
+	if [ $? = -1 ]; then
+		zenity --error --width=${W} --text="Error Build and installation failed.
+		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+    
+	fi
+
+
+
+
+
+
+
+	(
+		
 		# =================================================================
 		echo "# Checking Stellarsolver"
 		if [ ! -d "${WorkDir}"/stellarsolver-cmake ]; then mkdir -p "${WorkDir}"/stellarsolver-cmake; fi
