@@ -548,9 +548,11 @@ function chkINDI()
 
 	# =================================================================
 	# Build INDI Core
+	if [ ! -d "${WorkDir}"/indi-cmake ]; then mkdir "${WorkDir}"/indi-cmake; fi
+	cd "${WorkDir}"/indi-cmake || exit 1
+
 	commands=(
-		"if [ ! -d "${WorkDir}"/indi-cmake ]; then mkdir -p "${WorkDir}"/indi-cmake; fi"
-		"cd "${WorkDir}"/indi-cmake || exit 1"
+
     	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ${WorkDir}/indi-${Indi_v}"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
@@ -582,14 +584,14 @@ function chkINDI()
 	fi
 	# =================================================================
 	# Build INDI 3rd party LIB
+	if [ ! -d "${WorkDir}"/indi3rd_lib-cmake ]; then mkdir "${WorkDir}"/indi3rd_lib-cmake; fi
+	if [ ! -d "${WorkDir}"/indi3rd_driver-cmake ]; then mkdir "${WorkDir}"/indi3rd_driver-cmake; fi
+	cd "${WorkDir}"/indi3rd_lib-cmake || exit 1
 	commands=(
-		"if [ ! -d "${WorkDir}"/indi3rd_lib-cmake ]; then mkdir -p "${WorkDir}"/indi3rd_lib-cmake; fi"
-		"cd "${WorkDir}"/indi3rd_lib-cmake || exit 1"
     	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
-		"if [ ! -d "${WorkDir}"/indi3rd_driver-cmake ]; then mkdir -p "${WorkDir}"/indi3rd_driver-cmake; fi"
-		"cd "${WorkDir}"/indi3rd_driver-cmake || exit 1"
+		"cd '${WorkDir}'/indi3rd_driver-cmake"
     	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
