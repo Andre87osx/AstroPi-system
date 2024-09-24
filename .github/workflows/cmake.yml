@@ -76,8 +76,6 @@ jobs:
             rm -Rf ${{github.workspace}}/build/*
 ## <<<<
 ## INDI3rdDRIVER SETUP >>>>
-    - name: Dowload indilib3rd-AstroPi an configure
-      run: git clone -b v1.9.7 https://github.com/indilib/indi-3rdparty.git
 
     - name: Configure indilib3rd-AstroPi
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWITH_FXLOAD=1 ${{github.workspace}}/indi-3rdparty
