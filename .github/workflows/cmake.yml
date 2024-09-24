@@ -46,7 +46,7 @@ jobs:
       run: git clone -b v1.9.7 https://github.com/indilib/indi.git
 
     - name: Configure indilib-AstroPi
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/indi-AstroPi
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTER=ON ${{github.workspace}}/indi
 
     - name: Build indilib-AstroPi
       working-directory: ${{github.workspace}}/build
@@ -63,7 +63,7 @@ jobs:
       run: git clone -b v1.9.7 https://github.com/indilib/indi-3rdparty.git
 
     - name: Configure indilib3rd-AstroPi
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_LIBS=1 -DBUILD_TESTER=ON ${{github.workspace}}/indi3rd-AstroPi
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_LIBS=1 -DBUILD_TESTER=ON ${{github.workspace}}/indi-3rdparty
 
     - name: Build indilib3rd-AstroPi
       working-directory: ${{github.workspace}}/build
@@ -80,7 +80,7 @@ jobs:
       run: git clone -b v1.9.7 https://github.com/indilib/indi-3rdparty.git
 
     - name: Configure indilib3rd-AstroPi
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWITH_FXLOAD=1 ${{github.workspace}}/indi3rd-AstroPi
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DWITH_FXLOAD=1 ${{github.workspace}}/indi-3rdparty
 
     - name: Build indilib3rd-AstroPi
       working-directory: ${{github.workspace}}/build
