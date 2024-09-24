@@ -95,7 +95,7 @@
       <entry name="ShowJ2000RADecField" type="Bool">
          <label>Display J2000.0 RA/Dec coordinates in the statusbar?</label>
          <whatsthis>Toggle display of the Equatorial coordinates of the mouse cursor at the standard epoch in the status bar.</whatsthis>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ShowSensorFOV" type="Bool">
          <label>Display CCD sensor angular size on the sky map?</label>
@@ -115,7 +115,7 @@
       </entry>
       <entry name="CurrentTheme" type="String">
          <label>Current application theme</label>
-         <default>Default</default>
+         <default>Black Body</default>
       </entry>
    </group>
 
@@ -165,11 +165,11 @@
    <group name="indi">
     <entry name="INDIWindowWidth" type="UInt">
           <label>INDI window width</label>
-          <default>800</default>
+          <default>900</default>
     </entry>
     <entry name="INDIWindowHeight" type="UInt">
           <label>INDI window height</label>
-          <default>600</default>
+          <default>700</default>
     </entry>
       <entry name="useGeographicUpdate" type="Bool">
          <label>Automatically updates geographic location?</label>
@@ -181,7 +181,7 @@
       </entry>
       <entry name="independentWindowINDI" type="Bool">
          <label>Make INDI Control Panel window independent of KStars main window</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="showTargetCrosshair" type="Bool">
          <label>Draw crosshairs at telescope position in the sky map?</label>
@@ -460,7 +460,7 @@
       <entry name="ShowAsteroids" type="Bool">
          <label>Draw asteroids in the sky map?</label>
          <whatsthis>Toggle whether asteroids are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowAsteroidNames" type="Bool">
          <label>Label asteroid names in the sky map?</label>
@@ -469,12 +469,12 @@
       </entry>
       <entry name="OrbitalElementsAutoUpdate" type="Bool">
          <label>Update orbital elements for comets and asteroids from online sources on startup.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowComets" type="Bool">
          <label>Draw comets in the sky map?</label>
          <whatsthis>Toggle whether comets are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowCometComas" type="Bool">
          <label>Draw comet comas in the sky map?</label>
@@ -604,7 +604,7 @@
       <entry name="ShowSolarSystem" type="Bool">
          <label>Meta-option for all planets in the sky map.</label>
          <whatsthis>Meta-option to control whether all major planets (and the Sun and Moon) are drawn in the sky map.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="ShowPlanetImages" type="Bool">
          <label>Draw planets as images in the sky map?</label>
@@ -1345,7 +1345,7 @@
       <entry name="RegularLogging" type="Bool">
          <label>Enable Regular Logging</label>
          <whatsthis>Checking this option causes KStars to generate regular debug information.</whatsthis>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="DisableLogging" type="Bool">
          <label>Disable Verbose Logging</label>
@@ -1402,7 +1402,7 @@
    <group name="FITSViewer">
    <entry name="useFITSViewer" type="Bool">
       <label>Display every image captured in a FITS Viewer window.</label>
-      <default>true</default>
+      <default>false</default>
    </entry>
    <entry name="singlePreviewFITS" type="Bool">
       <label>Preview FITS in a single tab?</label>
@@ -1412,7 +1412,7 @@
    <entry name="singleWindowCapturedFITS" type="Bool">
       <label>Display all captured FITS in one window?</label>
       <whatsthis>Display all captured FITS images in a single FITS Viewer window. By default each camera create its own FITS Viewer instance</whatsthis>
-      <default>false</default>
+      <default>true</default>
    </entry>
    <entry name="singleWindowOpenedFITS" type="Bool">
       <label>Display all opened FITS in one window?</label>
@@ -1485,19 +1485,19 @@
    <group name="Ekos">
     <entry name="EkosWindowWidth" type="UInt">
              <label>Ekos window width</label>
-             <default>600</default>
+             <default>900</default>
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
-             <default>600</default>
+             <default>700</default>
     </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLeftIcons" type="Bool">
        <label>Ekos modules icons are placed to the left of pages</label>
-       <default>false</default>
+       <default>true</default>
     </entry>
     <entry name="RememberCredentials" type="Bool">
        <label>Remember Ekos Live credentials.</label>
@@ -1505,7 +1505,7 @@
     </entry>
     <entry name="AutoStartEkosLive" type="Bool">
        <label>Start Ekos Live on KStars startup.</label>
-       <default>true</default>
+       <default>false</default>
     </entry>
     <entry name="EkosLiveOnline" type="Bool">
        <label>Whether EkosLive connection mode is online.</label>
@@ -1567,7 +1567,7 @@
       <entry name="MinimumAltLimit" type="Double">
          <label>Default minimum mount altitude limit</label>
          <whatsthis>Minimum telescope altitude limit. If the telescope is below this limit, it will be commanded to stop.</whatsthis>
-         <default>0</default>
+         <default>15.0</default>
       </entry>
       <entry name="MaximumAltLimit" type="Double">
          <label>Default maximum mount altitude limit.</label>
@@ -1576,7 +1576,7 @@
       </entry>
       <entry name="EnableAltitudeLimits" type="Bool">
          <label>Enable mount altitude limits.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ConfirmBelowHorizon" type="Bool">
          <label>Warn user before command mount to go to a target below horizon.</label>
@@ -1597,7 +1597,7 @@
       </entry>
       <entry name="ExecuteMeridianFlip" type="Bool">
          <label>Flips the mount when reaching the meridian, if supported.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="MeridianFlipUnitDegrees" type="Bool">
          <label>Sets the display unit for meridian flip to degrees.</label>
@@ -2525,7 +2525,7 @@
       </entry>
       <entry name="ForceAlignmentBeforeJob" type="Bool">
          <label>Force alignment before starting or restarting each job.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ReuseGuideCalibration" type="Bool">
          <label>Guider may re-use guiding calibration if one is available.</label>
@@ -2552,7 +2552,7 @@
       </entry>
       <entry name="RememberJobProgress" type="Bool">
          <label>When processing a scheduled job, resume the sequence starting from the last image present in storage.</label>
-         <default>true</default>
+         <default>false</default>
       </entry>
       <entry name="LeadTime" type="Double">
          <label>Minimum time between jobs in minutes.</label>
@@ -2608,7 +2608,7 @@
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="AlignCheckFrequency" type="UInt">
          <label>When calculating position after captures, compute it every Nth capture. Set to 0 to disable.</label>
@@ -2624,7 +2624,7 @@
       </entry>
       <entry name="SchedulerParkMount" type="Bool">
          <label>Default scheduler checkbox for parking mount on shutdown.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="SchedulerCloseDustCover" type="Bool">
          <label>Default scheduler checkbox for closing dust cover on shutdown.</label>
@@ -2632,7 +2632,7 @@
       </entry>
       <entry name="SchedulerWarmCCD" type="Bool">
          <label>Default scheduler checkbox for warming the CCD on shutdown.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="SchedulerUnparkDome" type="Bool">
          <label>Default scheduler checkbox for unparking dome on startup.</label>
@@ -2640,7 +2640,7 @@
       </entry>
       <entry name="SchedulerUnparkMount" type="Bool">
          <label>Default scheduler checkbox for unparking mount on startup.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="SchedulerOpenDustCover" type="Bool">
          <label>Default scheduler checkbox for opening dust cover on startup.</label>
@@ -2668,7 +2668,7 @@
       </entry>
       <entry name="SchedulerAltitudeValue" type="Double">
          <label>Default scheduler job altitude constraint.</label>
-         <default>0</default>
+         <default>15.0</default>
       </entry>
       <entry name="SchedulerHorizon" type="Bool">
          <label>Default scheduler checkbox for job artificial horizon constraints.</label>
