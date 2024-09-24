@@ -16,6 +16,7 @@ minorRelease=7								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
 KStars_v=3.6.0_v1.7							# Based on KDE Kstrs v.3.6.0
 Indi_v=1.9.7								# Based on INDI 1.9.7 Core
+StellarSolver_v=2.3							# From Rlancaste GitHub
 
 # Get width and height of screen
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
@@ -32,16 +33,6 @@ W_err_generic="<b>Something went wrong...</b>\nContact support at
 
 # System full info, linux version and aarch
 sysinfo=$(uname -sonmr)
-
-# Calculate cmake processor
-JOBS=$(grep -c ^processor /proc/cpuinfo)
-
-# 64 bit systems need more memory for compilation
-if [ $(getconf LONG_BIT) -eq 64 ] && [ $(grep MemTotal < /proc/meminfo | cut -f 2 -d ':' | sed s/kB//) -lt 5000000 ]
-then
-	echo "Low memory limiting to JOBS=2"
-	JOBS=2
-fi
 
 # Disk usage
 diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
@@ -68,7 +59,7 @@ function chkUser()
 		break
 	else
 		appDir=${HOME}/.local/share/astropi		# Default application path
-		WorkDir=${HOME}/.Projects			# Working path for cmake
+		WorkDir=${HOME}/.Projects				# Working path for cmake
   		mkdir -p ${HOME}/.local/share/astropi
     	mkdir -p ${HOME}/.Projects
 		echo "Wellcome to AstroPi System"
@@ -505,17 +496,15 @@ function chkINDI()
    		echo "66"  # Update progress to 66%
     	echo "# Downloading StellarSolver..."
     
-    	git clone -b 1.9 https://github.com/rlancaste/stellarsolver.git "${WorkDir}/stellarsolver" 2>&1 | \
+    	git clone -b "${StellarSolver_v}" https://github.com/rlancaste/stellarsolver.git "${WorkDir}/stellarsolver" 2>&1 | \
     	while IFS= read -r line; do
         	echo "# $line"
     	done
 	) | zenity --progress --title="Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver" \
 		--text="Starting..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-    	zenity --error --width=${W} --text="Error Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-	fi
+	(($? != 0)) && zenity --error --width=${W} --text="Error dowloading <b>c++ pakage to build</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
 	# =================================================================
 	# Update dependencies and library for INDI
@@ -545,10 +534,8 @@ function chkINDI()
     	echo "# Installation complete!"
 	) | zenity --progress --title="Installing Packages and library" --text="Starting installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-   		zenity --error --width=${W} --text="Error installing dependencies
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-	fi
+	(($? != 0)) && zenity --error --width=${W} --text="Error install <b>dependencies and library for INDI</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
 	# =================================================================
 	# Build INDI Core
@@ -581,11 +568,9 @@ function chkINDI()
     	echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-		zenity --error --width=${W} --text="Error Build and installation failed.
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-    
-	fi
+	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI Core</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
 	# =================================================================
 	# Build INDI 3rd party LIB
 	if [ ! -d "${WorkDir}"/indi3rd_lib-cmake ]; then mkdir "${WorkDir}"/indi3rd_lib-cmake; fi
@@ -615,11 +600,9 @@ function chkINDI()
     	echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing INDI 3rd party LIB ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-		zenity --error --width=${W} --text="Error Build and installation failed.
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-    
-	fi
+	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party LIB</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
 	# =================================================================
 	# Build INDI 3rd party DRIVER
 	if [ ! -d "${WorkDir}"/indi3rd_driver-cmake ]; then mkdir "${WorkDir}"/indi3rd_driver-cmake; fi
@@ -649,17 +632,15 @@ function chkINDI()
     	echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing INDI 3rd party DRIVER ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-		zenity --error --width=${W} --text="Error Build and installation failed.
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-    
-	fi
+	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party DRIVER</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
 	# =================================================================
 	# Build Stella Solver
 	if [ ! -d "${WorkDir}"/solver-cmake ]; then mkdir "${WorkDir}"/solver-cmake; fi
 	cd "${WorkDir}"/solver-cmake || exit 1
 	commands=(
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=Off  ${WorkDir}/stellarsolver"
+    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=Off  ${WorkDir}/stellarsolver"
     	"make -j $(expr $(nproc) + 2)"
     	"sudo make install"
 	)
@@ -683,11 +664,9 @@ function chkINDI()
     	echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-		zenity --error --width=${W} --text="Error Build and installation failed.
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-    
-	fi
+	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>Stellar Solver</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
 	zenity --info --text="INDI and Driver has been updated to version $Indi_v" --width=${W} --title="${W_Title}"
 }
 
@@ -727,10 +706,9 @@ function chkKStars()
     	echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-	if [ $? = -1 ]; then
-		zenity --error --width=${W} --text="Error Build and installation failed.
-		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-    
-	fi
+
+	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>KStars AstroPi</b>
+	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
 	zenity --info --width=${W} --text="KStars AstroPi $KStars_v allredy installed" --title="${W_Title}"
 }
