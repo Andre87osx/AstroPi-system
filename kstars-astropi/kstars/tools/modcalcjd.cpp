@@ -1,19 +1,8 @@
-/***************************************************************************
-                          modcalcjd.cpp  -  description
-                             -------------------
-    begin                : Tue Jan 15 2002
-    copyright            : (C) 2002 by Pablo de Vicente
-    email                : vicente@oan.es
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2002 Pablo de Vicente <vicente@oan.es>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "modcalcjd.h"
 
@@ -27,6 +16,9 @@
 #include <QDebug>
 #include <QLineEdit>
 #include <QTextStream>
+
+// Qt version calming
+#include <qtskipemptyparts.h>
 
 #define MJD0 2400000.5
 
@@ -155,7 +147,7 @@ void modCalcJD::processLines(QTextStream &istream, int inputData)
     {
         line             = istream.readLine();
         line             = line.trimmed();
-        QStringList data = line.split(' ', QString::SkipEmptyParts);
+        QStringList data = line.split(' ', Qt::SkipEmptyParts);
 
         if (inputData == 0) //Parse date & time
         {
@@ -166,9 +158,9 @@ void modCalcJD::processLines(QTextStream &istream, int inputData)
                 dt = KStarsDateTime(QDate::fromString(data[0]), QTime(0, 0, 0));
 
             //DEBUG
-            qDebug() << data[0];
+            qDebug() << Q_FUNC_INFO << data[0];
             if (dt.isValid())
-                qDebug() << dt.toString();
+                qDebug() << Q_FUNC_INFO << dt.toString();
 
             if (dt.isValid())
             {

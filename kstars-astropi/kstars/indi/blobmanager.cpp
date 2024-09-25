@@ -1,12 +1,8 @@
-/*  INDI Client Manager
-    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "clientmanager.h"
 
@@ -19,7 +15,8 @@
 
 #include <indi_debug.h>
 
-BlobManager::BlobManager(const QString &host, int port, const QString &device, const QString &prop) : m_Device(device), m_Property(prop)
+BlobManager::BlobManager(QObject *parent, const QString &host, int port, const QString &device,
+                         const QString &prop) : QObject(parent), m_Device(device), m_Property(prop)
 {
     // Set INDI server params
     setServer(host.toLatin1().constData(), port);
@@ -33,11 +30,12 @@ BlobManager::BlobManager(const QString &host, int port, const QString &device, c
 
 void BlobManager::serverDisconnected(int exit_code)
 {
-    qCDebug(KSTARS_INDI) << "INDI server disconnected from BLOB manager for Device:" << m_Device << "Property:" << m_Property << "Exit code:" << exit_code;
+    qCDebug(KSTARS_INDI) << "INDI server disconnected from BLOB manager for Device:" << m_Device << "Property:" << m_Property <<
+                         "Exit code:" << exit_code;
 }
 
 void BlobManager::newBLOB(IBLOB *bp)
-{    
+{
     emit newINDIBLOB(bp);
 }
 
@@ -47,6 +45,10 @@ void BlobManager::newDevice(INDI::BaseDevice *device)
     if (QString(device->getDeviceName()) == m_Device)
     {
         setBLOBMode(B_ONLY, m_Device.toLatin1().constData(), m_Property.toLatin1().constData());
+        // enable Direct Blob Access for faster BLOB loading.
+#if INDI_VERSION_MAJOR >= 1 && INDI_VERSION_MINOR >= 9 && INDI_VERSION_RELEASE >= 7
+        enableDirectBlobAccess(m_Device.toLatin1().constData(), m_Property.toLatin1().constData());
+#endif
         emit connected();
     }
 }

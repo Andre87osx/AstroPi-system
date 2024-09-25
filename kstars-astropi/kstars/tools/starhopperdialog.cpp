@@ -1,19 +1,8 @@
-/***************************************************************************
-               starhopperdialog.cpp  -  UI of Star Hopping Guide for KStars
-                             -------------------
-    begin                : Sat 15th Nov 2014
-    copyright            : (C) 2014 Utkarsh Simha
-    email                : utkarshsimha@gmail.com
-***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2014 Utkarsh Simha <utkarshsimha@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "starhopperdialog.h"
 
@@ -74,6 +63,7 @@ void StarHopperDialog::starHop(const SkyPoint &startHop, const SkyPoint &stopHop
         delete starList;
         KSNotification::error(i18n("Star-hopper algorithm failed. If you're trying a large star hop, try using a "
                                    "smaller FOV or changing the source point"));
+        this->done(QDialog::Rejected);
     }
 }
 
@@ -158,7 +148,7 @@ void StarHopperDialog::slotRefreshMetadata()
 {
     int row = m_lw->currentRow();
 
-    qDebug() << "Slot RefreshMetadata";
+    qDebug() << Q_FUNC_INFO << "Slot RefreshMetadata";
     if (row >= 0)
     {
         ui->directionsLabel->setText(m_Metadata->at(row));
@@ -167,5 +157,5 @@ void StarHopperDialog::slotRefreshMetadata()
     {
         ui->directionsLabel->setText(m_Metadata->at(0));
     }
-    qDebug() << "Slot RefreshMetadata";
+    qDebug() << Q_FUNC_INFO << "Slot RefreshMetadata";
 }

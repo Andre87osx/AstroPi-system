@@ -1,18 +1,8 @@
-/***************************************************************************
-                          FITS Tab
-                             -------------------
-    copyright            : (C) 2012 by Jasem Mutlaq
-    email                : mutlaqja@ikarustech.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "fitstab.h"
 
@@ -356,7 +346,7 @@ QHBoxLayout* FITSTab::setupStretchBar()
 
 bool FITSTab::setupView(FITSMode mode, FITSScale filter)
 {
-    if (m_View.get() == nullptr)
+    if (m_View.isNull())
     {
         m_View.reset(new FITSView(this, mode, filter));
         m_View->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -428,7 +418,7 @@ bool FITSTab::setupView(FITSMode mode, FITSScale filter)
     return false;
 }
 
-void FITSTab::loadFile(const QUrl &imageURL, FITSMode mode, FITSScale filter, bool silent)
+void FITSTab::loadFile(const QUrl &imageURL, FITSMode mode, FITSScale filter)
 {
     // check if the address points to an appropriate address
     if (imageURL.isEmpty() || !imageURL.isValid() || !QFileInfo(imageURL.toLocalFile()).exists())
@@ -452,7 +442,7 @@ void FITSTab::loadFile(const QUrl &imageURL, FITSMode mode, FITSScale filter, bo
 
     m_View->setFilter(filter);
 
-    m_View->loadFile(imageURL.toLocalFile(), silent);
+    m_View->loadFile(imageURL.toLocalFile());
 }
 
 bool FITSTab::shouldComputeHFR() const
@@ -461,7 +451,7 @@ bool FITSTab::shouldComputeHFR() const
         return true;
     if (!Options::autoHFR())
         return false;
-    return (m_View != nullptr) && (m_View->getMode() == FITS_NORMAL);
+    return ((!m_View.isNull()) && (m_View->getMode() == FITS_NORMAL));
 }
 
 void FITSTab::processData()
@@ -642,6 +632,7 @@ void FITSTab::statFITS()
         fitsSplitter->setSizes(QList<int>() << 200 << m_View->width() - 200);
     else
         fitsSplitter->setSizes(QList<int>() << 50 << 50);
+    evaluateStats();
 }
 
 void FITSTab::loadFITSHeader()
@@ -694,10 +685,15 @@ bool FITSTab::saveFile()
 
     if (currentURL.isEmpty())
     {
+#ifdef Q_OS_OSX //For some reason, the other code caused KStars to crash on MacOS
         currentURL =
-            QFileDialog::getSaveFileUrl(KStars::Instance(), i18n("Save FITS"), currentDir,
+            QFileDialog::getSaveFileUrl(KStars::Instance(), i18nc("@title:window", "Save FITS"), currentDir,
+                                        "Images (*.fits *.fits.gz *.fit *.jpg *.jpeg *.png)");
+#else
+        currentURL =
+            QFileDialog::getSaveFileUrl(KStars::Instance(), i18nc("@title:window", "Save FITS"), currentDir,
                                         "FITS (*.fits *.fits.gz *.fit);;JPEG (*.jpg *.jpeg);;PNG (*.png)");
-
+#endif
         // if user presses cancel
         if (currentURL.isEmpty())
         {

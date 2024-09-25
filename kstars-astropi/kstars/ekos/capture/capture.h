@@ -1,15 +1,14 @@
-/*  Ekos Capture tool
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
 #include "ui_capture.h"
+#include "capturedeviceadaptor.h"
+#include "sequencejobstate.h"
 #include "customproperties.h"
 #include "oal/filter.h"
 #include "ekos/ekos.h"
@@ -21,7 +20,9 @@
 #include "indi/inditelescope.h"
 #include "ekos/auxiliary/filtermanager.h"
 #include "ekos/scheduler/schedulerjob.h"
+#include "ekos/auxiliary/darkprocessor.h"
 #include "dslrinfodialog.h"
+#include "ui_limits.h"
 
 #include <QTimer>
 #include <QUrl>
@@ -94,31 +95,6 @@ class Capture : public QWidget, public Ui::Capture
 
     public:
         typedef enum { MF_NONE, MF_REQUESTED, MF_READY, MF_INITIATED, MF_FLIPPING, MF_SLEWING, MF_COMPLETED, MF_ALIGNING, MF_GUIDING } MFStage;
-        typedef enum
-        {
-            CAL_NONE,
-            CAL_DUSTCAP_PARKING,
-            CAL_DUSTCAP_PARKED,
-            CAL_LIGHTBOX_ON,
-            CAL_SLEWING,
-            CAL_SLEWING_COMPLETE,
-            CAL_MOUNT_PARKING,
-            CAL_MOUNT_PARKED,
-            CAL_DOME_PARKING,
-            CAL_DOME_PARKED,
-            CAL_PRECAPTURE_COMPLETE,
-            CAL_CALIBRATION,
-            CAL_CALIBRATION_COMPLETE,
-            CAL_CAPTURING,
-            CAL_DUSTCAP_UNPARKING,
-            CAL_DUSTCAP_UNPARKED
-        } CalibrationStage;
-
-        typedef enum
-        {
-            CAL_CHECK_TASK,
-            CAL_CHECK_CONFIRMATION,
-        } CalibrationCheckType;
 
         typedef enum
         {
@@ -247,6 +223,12 @@ class Capture : public QWidget, public Ui::Capture
 
         /** DBUS interface function.
              * @param id job number. Job IDs start from 0 to N-1.
+             * @return Returns the job filter name.
+             */
+        Q_SCRIPTABLE QString getJobFilterName(int id);
+
+        /** DBUS interface function.
+             * @param id job number. Job IDs start from 0 to N-1.
              * @return Returns The number of images completed capture in the job.
              */
         Q_SCRIPTABLE int getJobImageProgress(int id);
@@ -268,6 +250,12 @@ class Capture : public QWidget, public Ui::Capture
              * @return Returns the total requested exposure duration in the job.
              */
         Q_SCRIPTABLE double getJobExposureDuration(int id);
+
+        /** DBUS interface function.
+             * @param id job number. Job IDs start from 0 to N-1.
+             * @return Returns the frame type (light, dark, ...) of the job.
+             */
+        Q_SCRIPTABLE CCDFrameType getJobFrameType(int id);
 
         /** DBUS interface function.
              * Clear in-sequence focus settings. It sets the autofocus HFR to zero so that next autofocus value is remembered for the in-sequence focusing.
@@ -302,25 +290,18 @@ class Capture : public QWidget, public Ui::Capture
 
         void addCCD(ISD::GDInterface *newCCD);
         void addFilter(ISD::GDInterface *newFilter);
-        void setDome(ISD::GDInterface *device)
-        {
-            currentDome = dynamic_cast<ISD::Dome *>(device);
-        }
-        void setDustCap(ISD::GDInterface *device)
-        {
-            currentDustCap = dynamic_cast<ISD::DustCap *>(device);
-        }
-        void setLightBox(ISD::GDInterface *device)
-        {
-            currentLightBox = dynamic_cast<ISD::LightBox *>(device);
-        }
+        void setDome(ISD::GDInterface *device);
+        void setDustCap(ISD::GDInterface *device);
+        void setLightBox(ISD::GDInterface *device);
         void removeDevice(ISD::GDInterface *device);
         void addGuideHead(ISD::GDInterface *newCCD);
         void syncFrameType(ISD::GDInterface *ccd);
         void setTelescope(ISD::GDInterface *newTelescope);
         void setRotator(ISD::GDInterface *newRotator);
+        void setRotatorReversed(bool toggled);
         void setFilterManager(const QSharedPointer<FilterManager> &manager);
         void syncTelescopeInfo();
+        void syncCCDControls();
         void syncFilterInfo();
 
         // Restart driver
@@ -552,6 +533,12 @@ class Capture : public QWidget, public Ui::Capture
         }
 
         /**
+         * @brief Slot receiving the update of the current target distance.
+         * @param targetDiff distance to the target in arcseconds.
+         */
+        void updateTargetDistance(double targetDiff);
+
+        /**
              * @brief captureImage Initiates image capture in the active job.
              */
         void captureImage();
@@ -587,18 +574,32 @@ class Capture : public QWidget, public Ui::Capture
         void processTelescopeNumber(INumberVectorProperty *nvp);
 
         /**
+         * @brief processNewTargetName If mount slews to a new object, process it as it can be used for prefix
+         * @param name new sky object under tracking.
+         */
+        void processNewTargetName(const QString &name);
+
+        /**
+         * @brief addSequenceJob Add a sequence job. This simply calls addJob below with both preview and isDarkFlat set to false.
+         * @return return result of addJob(..)
+         */
+        bool addSequenceJob();
+
+        /**
              * @brief addJob Add a new job to the sequence queue given the settings in the GUI.
              * @param preview True if the job is a preview job, otherwise, it is added as a batch job.
+             * @param isDarkFlat True if the job is a dark flat job, false otherwise.
              * @return True if job is added successfully, false otherwise.
              */
-        bool addJob(bool preview = false);
+        bool addJob(bool preview = false, bool isDarkFlat = false);
 
         /**
          * @brief removeJob Remove a job sequence from the queue
          * @param index Row index for job to remove, if left as -1 (default), the currently selected row will be removed.
          *        if no row is selected, the last job shall be removed.
+         * @param true if sequence is removed. False otherwise.
          */
-        void removeJob(int index = -1);
+        bool removeJob(int index = -1);
 
         void removeJobFromQueue();
 
@@ -681,7 +682,7 @@ class Capture : public QWidget, public Ui::Capture
         // Update Mount module status
         void setMountStatus(ISD::Telescope::Status newState);
 
-        void setGuideChip(ISD::CCDChip *chip);
+        void setGuideChip(ISD::CCDChip *guideChip);
         //void setGeneratedPreviewFITS(const QString &previewFITS);
 
         // Clear Camera Configuration
@@ -697,6 +698,11 @@ class Capture : public QWidget, public Ui::Capture
          */
         void registerNewModule(const QString &name);
 
+        /**
+         * @brief generateDarkFlats Generate a list of dark flat jobs from available flat frames.
+         */
+        void generateDarkFlats();
+
     private slots:
 
         /**
@@ -707,6 +713,7 @@ class Capture : public QWidget, public Ui::Capture
         void checkFrameType(int index);
         void resetFrame();
         void setExposureProgress(ISD::CCDChip *tChip, double value, IPState state);
+        void updateCaptureCountDown(int deltaMillis);
         void checkSeqBoundary(const QString &path);
         void saveFITSDirectory();
         void setDefaultCCD(QString ccd);
@@ -720,7 +727,7 @@ class Capture : public QWidget, public Ui::Capture
 
         // Jobs
         void resetJobs();
-        void selectJob(QModelIndex i);
+        bool selectJob(QModelIndex i);
         void editJob(QModelIndex i);
         void resetJobEdit();
         void executeJob();
@@ -758,15 +765,6 @@ class Capture : public QWidget, public Ui::Capture
          */
         IPState checkLightFramePendingTasks();
 
-        /**
-         * @brief Check whether the scope cover is removed (manual cover, flat covers, dark covers etc.)
-         * @return true iff scope cover is open
-         */
-        IPState checkLightFrameScopeCoverOpen();
-
-        IPState checkFlatFramePendingTasks();
-        IPState checkDarkFramePendingTasks();
-
         // Send image info
         //void sendNewImage(const QString &filename, ISD::CCDChip *myChip);
 
@@ -785,7 +783,7 @@ class Capture : public QWidget, public Ui::Capture
         void updatePrepareState(Ekos::CaptureState prepareState);
 
         // Rotator
-        void updateRotatorNumber(INumberVectorProperty *nvp);
+        void updateRotatorAngle(double value);
 
         // Cooler
         void setCoolerToggled(bool enabled);
@@ -797,12 +795,20 @@ class Capture : public QWidget, public Ui::Capture
         Q_SCRIPTABLE void meridianFlipStarted();
         Q_SCRIPTABLE void meridianFlipCompleted();
         Q_SCRIPTABLE void newStatus(Ekos::CaptureState status);
-        Q_SCRIPTABLE void newSequenceImage(const QString &filename, const QString &previewFITS);
+        Q_SCRIPTABLE void captureComplete(const QVariantMap &metadata);
 
         void ready();
 
+        // signals to the sequence job
+        void prepareCapture();
+
+        // device status
+        void newGuiderDrift(double deviation_rms);
+
+        // communication with other modules
         void checkFocus(double);
         void resetFocus();
+        void abortFocus();
         void suspendGuiding();
         void resumeGuiding();
         void newImage(Ekos::SequenceJob *job, const QSharedPointer<FITSData> &data);
@@ -815,13 +821,17 @@ class Capture : public QWidget, public Ui::Capture
         void dslrInfoRequested(const QString &cameraName);
         void driverTimedout(const QString &deviceName);
 
-        // Signals for the Analyze tab.
-        void captureComplete(const QString &filename, double exposureSeconds, const QString &filter,
-                             double hfr, int numStars, int median, double eccentricity);
+        // Signals for the Analyze tab.        
         void captureStarting(double exposureSeconds, const QString &filter);
         void captureAborted(double exposureSeconds);
 
     private:
+        /**
+         * @brief Set the currently active sequence job. Use this function to ensure
+         *        that everything is cleaned up properly.
+         */
+        void setActiveJob(SequenceJob *value);
+
         void setBusy(bool enable);
         IPState resumeSequence();
         IPState startNextExposure();
@@ -895,9 +905,6 @@ class Capture : public QWidget, public Ui::Capture
          */
         bool checkDithering();
 
-        // Remaining Time in seconds
-        int getJobRemainingTime(SequenceJob *job);
-
         void resetFrameToZero();
 
         /* Refocus */
@@ -940,17 +947,47 @@ class Capture : public QWidget, public Ui::Capture
          */
         int getTotalFramesCount(QString signature);
 
+        /**
+         * @brief processCaptureError Handle when image capture fails
+         * @param type error type
+         */
+        void processCaptureError(ISD::CCD::ErrorType type);
+
+        /**
+         * @brief setDarkFlatExposure Given a dark flat job, find the exposure suitable from it by searching for
+         * completed flat frames.
+         * @param job Dark flat job
+         * @return True if a matching exposure is found and set, false otherwise.
+         * @warning This only works if the flat frames were captured in the same live session.
+         * If the flat frames were captured in another session (i.e. Ekos restarted), then all automatic exposure
+         * calculation results are discarded since Ekos does not save this information to the sequene file.
+         * Possible solution is to write to a local config file to keep this information persist between sessions.
+         */
+        bool setDarkFlatExposure(SequenceJob *job);
+
         double seqExpose { 0 };
         int seqTotalCount;
         int seqCurrentCount { 0 };
+        // time left of the current exposure
+        QTime imageCountDown;
+        double lastRemainingFrameTimeMS;
+        // time left for the current sequence
+        QTime sequenceCountDown;
+
         int seqDelay { 0 };
         int retries { 0 };
-        QTimer *seqTimer { nullptr };
+        // Timer for starting the next capture sequence with delay
+        // @see startNextExposure()
+        QTimer *seqDelayTimer { nullptr };
+        // Timer to start the entire capturing with the delay configured
+        // for the first capture job that is ready to be executed.
+        // @see start().
+        QTimer *captureDelayTimer { nullptr };
         QString seqPrefix;
         int nextSequenceID { 0 };
         int seqFileCount { 0 };
         bool isBusy { false };
-        bool m_isLooping { false };
+        bool m_isFraming { false };
 
         // Capture timeout timer
         QTimer captureTimeout;
@@ -961,30 +998,21 @@ class Capture : public QWidget, public Ui::Capture
         bool autoGuideReady { false};
 
         QString m_TargetName;
+        QString m_FullTargetName;
         QString m_ObserverName;
 
+        // Currently active sequence job.
+        // DO NOT SET IT MANUALLY, USE {@see setActiveJob()} INSTEAD!
         SequenceJob *activeJob { nullptr };
+        QSharedPointer<CaptureDeviceAdaptor> m_captureDeviceAdaptor;
+        QSharedPointer<SequenceJobState::CaptureState> m_captureState;
 
         QList<ISD::CCD *> CCDs;
-
-        ISD::CCDChip *targetChip { nullptr };
-        ISD::CCDChip *guideChip { nullptr };
-        ISD::CCDChip *blobChip { nullptr };
-        //QString blobFilename;
-        //QString m_GeneratedPreviewFITS;
 
         // They're generic GDInterface because they could be either ISD::CCD or ISD::Filter
         QList<ISD::GDInterface *> Filters;
 
         QList<SequenceJob *> jobs;
-
-        ISD::Telescope *currentTelescope { nullptr };
-        ISD::CCD *currentCCD { nullptr };
-        ISD::GDInterface *currentFilter { nullptr };
-        ISD::GDInterface *currentRotator { nullptr };
-        ISD::DustCap *currentDustCap { nullptr };
-        ISD::LightBox *currentLightBox { nullptr };
-        ISD::Dome *currentDome { nullptr };
 
         QPointer<QDBusInterface> mountInterface;
 
@@ -995,12 +1023,10 @@ class Capture : public QWidget, public Ui::Capture
         bool m_Dirty { false };
         bool m_JobUnderEdit { false };
         int m_CurrentFilterPosition { -1 };
-        QProgressIndicator *pi { nullptr };
 
         // Guide Deviation
         bool m_DeviationDetected { false };
-        bool m_SpikeDetected { false };
-        bool m_FilterOverride { false };
+        int m_SpikesDetected { 0 };
         QTimer guideDeviationTimer;
 
         // Autofocus
@@ -1019,6 +1045,8 @@ class Capture : public QWidget, public Ui::Capture
         // Refocus in progress because of time forced refocus or temperature change
         bool isRefocus { false };
 
+        // Fast Exposure
+        bool m_RememberFastExposure {false};
         // Focus on Temperature change
         bool isTemperatureDeltaCheckActive { false };
         double focusTemperatureDelta { 0 }; // Temperature delta as received from the Ekos focus module
@@ -1026,6 +1054,8 @@ class Capture : public QWidget, public Ui::Capture
         // Refocus every N minutes
         int refocusEveryNMinutesValue { 0 };  // number of minutes between forced refocus
         QElapsedTimer refocusEveryNTimer; // used to determine when next force refocus should occur
+
+        bool refocusAfterMeridianFlip { false };// set to true at meridian flip to request refocus
 
         // Meridian flip
         SkyPoint initialMountCoords;
@@ -1045,13 +1075,8 @@ class Capture : public QWidget, public Ui::Capture
         bool preDomePark { false };
         FlatFieldDuration flatFieldDuration { DURATION_MANUAL };
         FlatFieldSource flatFieldSource { SOURCE_MANUAL };
-        CalibrationStage calibrationStage { CAL_NONE };
-        CalibrationCheckType calibrationCheckType { CAL_CHECK_TASK };
         bool dustCapLightEnabled { false };
         bool lightBoxLightEnabled { false };
-        bool m_TelescopeCoveredDarkExposure { false };
-        bool m_TelescopeCoveredFlatExposure { false };
-        ISD::CCD::UploadMode rememberUploadMode { ISD::CCD::UPLOAD_CLIENT };
         QMap<ScriptTypes, QString> m_Scripts;
 
         QUrl dirPath;
@@ -1090,9 +1115,6 @@ class Capture : public QWidget, public Ui::Capture
         void createDSLRDialog();
         std::unique_ptr<DSLRInfo> dslrInfoDialog;
 
-        // Filter Manager
-        QSharedPointer<FilterManager> filterManager;
-
         // DSLR Infos
         QList<QMap<QString, QVariant>> DSLRInfos;
 
@@ -1107,9 +1129,15 @@ class Capture : public QWidget, public Ui::Capture
         double GainSpinSpecialValue { INVALID_VALUE };
         double OffsetSpinSpecialValue { INVALID_VALUE };
 
+        // Dark Processor
+        QPointer<DarkProcessor> m_DarkProcessor;
+        std::unique_ptr<Ui::Limits> m_LimitsUI;
+        QPointer<QDialog> m_LimitsDialog;
+
         QList<double> downloadTimes;
-        QElapsedTimer downloadTimer;
+        QElapsedTimer m_DownloadTimer;
         QTimer downloadProgressTimer;
+        QVariantMap m_Metadata;
         void processGuidingFailed();
 };
 }

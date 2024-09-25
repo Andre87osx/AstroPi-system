@@ -1,15 +1,9 @@
-add_subdirectory( data )
-add_subdirectory( icons )
-add_subdirectory( htmesh )
+if(NOT APPLE) #This is not needed on MacOS, since the data directory and icons are now installed to the app bundle first using the code at the bottom
+    add_subdirectory( data )
+    add_subdirectory( icons )
+endif(NOT APPLE)
 
-if (${KF5_VERSION} VERSION_EQUAL 5.18.0 OR ${KF5_VERSION} VERSION_GREATER 5.18.0)
-    SET(HAVE_KF5WIT 1)
-#    if(NOT BUILD_KSTARS_LITE)
-#        add_subdirectory( tools/whatsinteresting/qml)
-#    endif(NOT BUILD_KSTARS_LITE)
-else()
-    SET(HAVE_KF5WIT 0)
-endif()
+add_subdirectory( htmesh )
 
 if (ANDROID AND CMAKE_TOOLCHAIN_FILE)
     include(${CMAKE_TOOLCHAIN_FILE})
@@ -17,12 +11,19 @@ endif ()
 
 if (NOT ANDROID)
     find_package(ZLIB REQUIRED)
+    include_directories(${ZLIB_INCLUDE_DIR})
     find_package(Threads REQUIRED)
 endif ()
 
 if(MSVC)
     add_definitions(-D_USE_MATH_DEFINES=1)
     add_definitions(-DNOMINMAX)
+endif()
+
+include(CheckCXXSymbolExists)
+check_cxx_symbol_exists(sincos "math.h" HAVE_SINCOS)
+if(HAVE_SINCOS)
+    add_definitions(-DHAVE_SINCOS)
 endif()
 
 include_directories(
@@ -102,6 +103,8 @@ if (INDI_FOUND)
         set(ekosui_SRCS
             ekos/opsekos.ui
             ekos/manager.ui
+            ekos/manager/focusmanager.ui
+            ekos/manager/guidemanager.ui
             ekos/profileeditor.ui
             ekos/profilewizard.ui
             # Analyze
@@ -109,13 +112,19 @@ if (INDI_FOUND)
             # Scheduler
             ekos/scheduler/scheduler.ui
             ekos/scheduler/mosaic.ui
+            ekos/scheduler/framingassistant.ui
             # Capture
             ekos/capture/capture.ui
             ekos/capture/calibrationoptions.ui
+            ekos/capture/capturepreviewwidget.ui
+            ekos/capture/capturecountswidget.ui
+            ekos/capture/captureprocessoverlay.ui
+            ekos/capture/capturestatuswidget.ui
             ekos/capture/dslrinfo.ui
             ekos/capture/rotatorsettings.ui
             ekos/capture/customproperties.ui
             ekos/capture/scriptsmanager.ui
+            ekos/capture/limits.ui
             # Align
             ekos/align/align.ui
             ekos/align/opsastrometry.ui
@@ -125,6 +134,8 @@ if (INDI_FOUND)
             ekos/align/opsastrometryindexfiles.ui
             ekos/align/manualrotator.ui
             ekos/align/mountmodel.ui
+            ekos/align/polaralignmentassistant.ui
+            ekos/align/polaralignwidget.ui
             #ekos/align/opsastap.ui
             # Focus
             ekos/focus/focus.ui
@@ -132,8 +143,10 @@ if (INDI_FOUND)
             ekos/mount/mount.ui
             # Guide
             ekos/guide/guide.ui
+            ekos/guide/guidestatewidget.ui
             ekos/guide/opscalibration.ui
             ekos/guide/opsguide.ui
+            ekos/guide/opsdither.ui
             ekos/guide/opsgpg.ui
             ekos/guide/manualdither.ui
             ekos/observatory/observatory.ui
@@ -155,8 +168,12 @@ if (INDI_FOUND)
         set(ekos_SRCS
             ekos/ekos.cpp
             ekos/manager.cpp
+            ekos/manager/focusmanager.cpp
+            ekos/manager/guidemanager.cpp
             ekos/profileeditor.cpp
             ekos/profilewizard.cpp
+            ekos/profilescript.cpp
+            ekos/profilescriptdialog.cpp
             ekos/qMDNS.cpp
             ekos/opsekos.cpp
 
@@ -165,6 +182,7 @@ if (INDI_FOUND)
             ekos/auxiliary/weather.cpp
             ekos/auxiliary/dustcap.cpp
             ekos/auxiliary/darklibrary.cpp
+            ekos/auxiliary/darkprocessor.cpp
             ekos/auxiliary/darkview.cpp
             ekos/auxiliary/defectmap.cpp
             ekos/auxiliary/filtermanager.cpp
@@ -172,11 +190,19 @@ if (INDI_FOUND)
             ekos/auxiliary/opslogs.cpp
             ekos/auxiliary/stellarsolverprofileeditor.cpp
             ekos/auxiliary/stellarsolverprofile.cpp
+            ekos/auxiliary/solverutils.cpp
             ekos/auxiliary/serialportassistant.cpp
+            ekos/auxiliary/portselector.cpp
 
             # Capture
             ekos/capture/capture.cpp
+            ekos/capture/capturestatuswidget.cpp
+            ekos/capture/capturedeviceadaptor.cpp
+            ekos/capture/capturepreviewwidget.cpp
+            ekos/capture/capturecountswidget.cpp
+            ekos/capture/captureprocessoverlay.cpp
             ekos/capture/sequencejob.cpp
+            ekos/capture/sequencejobstate.cpp
             ekos/capture/dslrinfodialog.cpp
             ekos/capture/rotatorsettings.cpp
             ekos/capture/customproperties.cpp
@@ -190,11 +216,20 @@ if (INDI_FOUND)
             ekos/scheduler/schedulerjob.cpp
             ekos/scheduler/scheduler.cpp
             ekos/scheduler/mosaic.cpp
+            ekos/scheduler/framingassistantui.cpp
+            ekos/scheduler/mosaictilesmanager.cpp
+            ekos/scheduler/mosaictilesmodel.cpp
+            #ekos/scheduler/mosaicrenderer.cpp
+            ekos/scheduler/greedyscheduler.cpp
 
             # Focus
             ekos/focus/focus.cpp
+            ekos/focus/focushfrvplot.cpp
+            ekos/focus/focusprofileplot.cpp
             ekos/focus/focusalgorithms.cpp
             ekos/focus/polynomialfit.cpp
+            ekos/focus/focusstars.cpp
+            ekos/focus/curvefit.cpp
 
             # Mount
             ekos/mount/mount.cpp
@@ -206,25 +241,31 @@ if (INDI_FOUND)
             ekos/align/opsastrometry.cpp
             ekos/align/opsalign.cpp
             ekos/align/opsprograms.cpp
-            #ekos/align/opsastrometrycfg.cpp
             ekos/align/opsastrometryindexfiles.cpp
-            #ekos/align/opsastap.cpp
-            #ekos/align/offlineastrometryparser.cpp
-            #ekos/align/onlineastrometryparser.cpp
             ekos/align/remoteastrometryparser.cpp
-            #ekos/align/astapastrometryparser.cpp
             ekos/align/poleaxis.cpp
             ekos/align/polaralign.cpp
             ekos/align/rotations.cpp
+            ekos/align/mountmodel.cpp
+            ekos/align/polaralignmentassistant.cpp
+            ekos/align/manualrotator.cpp
+            ekos/align/polaralignwidget.cpp
+
 
             # Guide
             ekos/guide/guide.cpp
+            ekos/guide/guidestatewidget.cpp
             ekos/guide/guideinterface.cpp
             ekos/guide/opscalibration.cpp
             ekos/guide/opsguide.cpp
+            ekos/guide/opsdither.cpp
             ekos/guide/opsgpg.cpp
+            ekos/guide/guidedriftgraph.cpp
+            ekos/guide/guidetargetplot.cpp
             # Internal Guide
             ekos/guide/internalguide/gmath.cpp
+            ekos/guide/internalguide/guidealgorithms.cpp
+            ekos/guide/internalguide/calibrationprocess.cpp
             ekos/guide/internalguide/internalguider.cpp
             #ekos/guide/internalguide/guider.cpp
             ekos/guide/internalguide/matr.cpp
@@ -302,6 +343,7 @@ if (CFITSIO_FOUND)
         fitsviewer/fitshistogramview.cpp
         fitsviewer/fitshistogramcommand.cpp
         fitsviewer/fitsview.cpp
+        fitsviewer/summaryfitsview.cpp
         fitsviewer/fitsdata.cpp
         fitsviewer/fitsstardetector.cpp
         fitsviewer/fitsthresholddetector.cpp
@@ -416,6 +458,8 @@ set(libkstarstools_SRCS
     tools/exporteyepieceview.cpp
     tools/starhopperdialog.cpp
     tools/greatcircle.cpp
+
+    tools/import_skycomp.cpp
 )
 
 if(${KF5_VERSION} VERSION_EQUAL 5.18.0 OR ${KF5_VERSION} VERSION_GREATER 5.18.0)
@@ -510,8 +554,6 @@ ki18n_wrap_ui(libkstarswidgets_ui_SRCS
     widgets/unitspinboxwidget.ui
 )
 
-set(kstars_KCFG_SRCS Options.kcfgc)
-
 set(kstars_options_SRCS
     options/opsadvanced.cpp
     options/opscatalog.cpp
@@ -521,6 +563,7 @@ set(kstars_options_SRCS
     options/opssatellites.cpp
     options/opssupernovae.cpp
     options/opsterrain.cpp
+    options/opsdeveloper.cpp
 )
 
 set(kstars_optionsui_SRCS
@@ -532,12 +575,14 @@ set(kstars_optionsui_SRCS
     options/opssatellites.ui
     options/opssupernovae.ui
     options/opsterrain.ui
+    options/opsdeveloper.ui
 )
 
 set(kstars_dialogs_SRCS
     dialogs/addcatalogobject.cpp
     dialogs/catalogsdbui.cpp
     dialogs/catalogeditform.cpp
+    dialogs/catalogcoloreditor.cpp
     dialogs/catalogdetails.cpp
     dialogs/catalogcsvimport.cpp
     dialogs/catalogobjectlistmodel.cpp
@@ -555,6 +600,7 @@ set(kstars_dialogsui_SRCS
     dialogs/addcatalogobject.ui
     dialogs/catalogsdbui.ui
     dialogs/catalogeditform.ui
+    dialogs/catalogcoloreditor.ui
     dialogs/catalogdetails.ui
     dialogs/catalogcsvimport.ui
     dialogs/addlinkdialog.ui
@@ -579,6 +625,7 @@ set(kstars_dialogsui_SRCS
 set(hips_SRCS
     hips/healpix.cpp
     hips/hipsrenderer.cpp
+    hips/hipsfinder.cpp
     hips/scanrender.cpp
     hips/pixcache.cpp
     hips/urlfiledownload.cpp
@@ -644,7 +691,6 @@ set(printingui_SRCS
     printing/pwizwelcome.ui
 )
 
-set( kstars_KCFG_SRCS Options.kcfgc )
 set(libkstarscomponents_SRCS
     skycomponents/skylabeler.cpp
     skycomponents/highpmstarlist.cpp
@@ -692,6 +738,12 @@ set(libkstarscomponents_SRCS
     skycomponents/targetlistcomponent.cpp
     )
 
+IF (INDI_FOUND)
+LIST(APPEND libkstarscomponents_SRCS
+    skycomponents/mosaiccomponent.cpp
+    )
+ENDIF(INDI_FOUND)
+
 #LIST(APPEND libkstarscomponents_SRCS
 #    #skycomponents/notifyupdatesui.cpp
 #    )
@@ -724,6 +776,12 @@ set(kstars_skyobjects_SRCS
     skyobjects/satellitegroup.cpp
     skyobjects/supernova.cpp
     )
+
+IF (INDI_FOUND)
+LIST(APPEND kstars_skyobjects_SRCS
+    skyobjects/mosaictiles.cpp
+    )
+ENDIF(INDI_FOUND)
 
 set(kstars_projection_SRCS
     projections/projector.cpp
@@ -763,7 +821,7 @@ set(kstars_extra_SRCS
     kstarsdata.cpp
     texturemanager.cpp
     #to minimize number of indef KSTARS_LITE
-    skypainter.cpp
+    skypainter.cpp    
     )
 
 SET(kstars_extra_kstars_SRCS
@@ -794,6 +852,7 @@ SET(kstars_extra_kstars_SRCS
 SET(catalogsdb_SRCS
         catalogsdb/catalogsdb.cpp)
 
+if(NOT APPLE) #KStarsLite files including the QML files are not needed on MacOS right now
 # Temporary solution to allow use of qml files from source dir DELETE
 SET(KSTARSLITE_CPP_OPTIONS -DSOURCE_DIR=\"${kstars_SOURCE_DIR}\" -DQML_IMPORT="${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -967,6 +1026,7 @@ set(kstarsliteqml_SRCS
     )
 add_subdirectory(kstarslite/qml)
 ADD_CUSTOM_TARGET(kstarsliteqml SOURCES ${kstarsliteqml_SRCS})
+endif(NOT APPLE) #This is the end of the Mac KStars disabling of the KStarsLite Code
 
 if(ANDROID)
     add_subdirectory(kstarslite/res)
@@ -1027,12 +1087,30 @@ ecm_qt_declare_logging_category(kstars_SRCS HEADER ekos_observatory_debug.h IDEN
 
 ecm_qt_declare_logging_category(kstars_SRCS HEADER catalogsdb_debug.h IDENTIFIER KSTARS_CATALOGS CATEGORY_NAME org.kde.kstars.catalogdb)
 
-kconfig_add_kcfg_files(kstars_SRCS ${kstars_KCFG_SRCS})
+
+set( kstars_KCFG_SRCS Options.kcfgc )
+
+# We cannot generate property up until KF5 Config v5.78.0 or later
+if (${KF5_VERSION} VERSION_GREATER_EQUAL "5.78.0")
+    set(KF5_CONFIG_OK true)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/Options.kcfgc.cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/Options.kcfgc
+    )
+    kconfig_add_kcfg_files(kstars_SRCS ${kstars_KCFG_SRCS} GENERATE_MOC)
+    kconfig_add_kcfg_files(kstarslite_SRCS ${kstars_KCFG_SRCS} GENERATE_MOC)
+else()
+    set(KF5_CONFIG_OK false)
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/Options.kcfgc.cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/Options.kcfgc
+    )
+    kconfig_add_kcfg_files(kstars_SRCS ${kstars_KCFG_SRCS})
+    kconfig_add_kcfg_files(kstarslite_SRCS ${kstars_KCFG_SRCS})
+endif()
 
 ecm_qt_declare_logging_category(kstarslite_SRCS HEADER kstars_debug.h IDENTIFIER KSTARS CATEGORY_NAME org.kde.kstars)
 ecm_qt_declare_logging_category(kstarslite_SRCS HEADER fits_debug.h IDENTIFIER KSTARS_FITS CATEGORY_NAME org.kde.kstars.fits)
-
-kconfig_add_kcfg_files(kstarslite_SRCS ${kstars_KCFG_SRCS})
 
 IF (UNITY_BUILD)
     ENABLE_UNITY_BUILD(kstars kstars_SRCS 10 cpp)
@@ -1112,6 +1190,7 @@ IF (NOT ANDROID)
         Qt5::Concurrent
         Qt5::WebSockets
         ${ZLIB_LIBRARIES}
+        Eigen3::Eigen
         )
 
     if (Qt5Keychain_FOUND)
@@ -1267,9 +1346,129 @@ else ()
 endif ()
 
 if(APPLE)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files)
+        message(STATUS "Updating KStars Mac Files")
+        execute_process(COMMAND "git" "pull"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files")
+    else(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files)
+        message(STATUS "Downloading KStars Mac Files")
+        execute_process(COMMAND "git" "clone" "https://github.com/rlancaste/kstars-mac-files.git"
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files)
+
+    set(KSTARS_APP "${CMAKE_BINARY_DIR}/bin/KStars.app")
+    execute_process(COMMAND ${CMAKE_COMMAND}
+                    -DBUNDLED_DATA_LOCATION=${CMAKE_BINARY_DIR}/bin/KStars.app/Contents/Resources
+                    ${CMAKE_CURRENT_SOURCE_DIR}/data
+                    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/kstars/data")
+    execute_process(COMMAND ${CMAKE_COMMAND} --build . --target install
+                    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/kstars/data")
     file(COPY
-        ${CMAKE_CURRENT_SOURCE_DIR}/data/
-        DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/KStars.app/Contents/Resources/kstars)
+        "${CMAKE_CURRENT_SOURCE_DIR}/data/qml"
+        DESTINATION "${KSTARS_APP}/Contents/Resources/kstars/")
+    file(COPY
+        "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/icons"
+        DESTINATION "${KSTARS_APP}/Contents/Resources/")
+    file(COPY
+        "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/dbus"
+        DESTINATION "${KSTARS_APP}/Contents/Plugins/")
+    file(COPY
+        "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/gsc"
+        DESTINATION "${KSTARS_APP}/Contents/MacOS/")
+    file(COPY
+        "${CMAKE_CURRENT_SOURCE_DIR}/kstars.notifyrc"
+        DESTINATION "${KSTARS_APP}/Contents/Resources/knotifications5/")
+    file(COPY
+        "${CMAKE_CURRENT_SOURCE_DIR}/kstars.kcfg"
+        DESTINATION "${KSTARS_APP}/Contents/Resources/")
+
+    find_program(DBUS_SEND dbus-send PATHS ${PATHS})
+    if(NOT DBUS_SEND)
+        message(WARNING "DBUS Send program not found in Path, DBUS, KStars Scripting, and the Scheduler won't work without it.")
+    else(NOT DBUS_SEND)
+    	file(COPY
+            "${DBUS_SEND}"
+            DESTINATION "${KSTARS_APP}/Contents/MacOS/")
+    endif(NOT DBUS_SEND)
+
+    find_program(DBUS_DAEMON dbus-daemon PATHS ${PATHS})
+    if(NOT DBUS_DAEMON)
+        message(WARNING "DBUS Daemon program not found in Path, DBUS, KStars Scripting, and the Scheduler won't work without it.")
+    else(NOT DBUS_DAEMON)
+    	file(COPY
+            "${DBUS_DAEMON}"
+            DESTINATION "${KSTARS_APP}/Contents/MacOS/")    
+    endif(NOT DBUS_DAEMON)
+
+    find_program(XPLANET xplanet PATHS ${PATHS})
+    if(NOT XPLANET)
+        message(WARNING "X Planet program not found in Path, the XPlanet Solar System Simulator won't work without it.")
+    else(NOT XPLANET)
+        file(COPY
+            "${XPLANET}"
+            DESTINATION "${KSTARS_APP}/Contents/MacOS/")
+    endif(NOT XPLANET)
+
+    find_program(INDI_SERVER indiserver PATHS ${PATHS})
+    if(NOT INDI_SERVER)
+        message(WARNING "indiserver program and drivers not found, you can't run local indi drivers without it.")
+    else(NOT INDI_SERVER)
+        get_filename_component(INDI_DRIVERS_DIR "${INDI_SERVER}" DIRECTORY)
+        # INDISERVER
+        file(COPY
+            "${INDI_SERVER}"
+            DESTINATION "${KSTARS_APP}/Contents/MacOS/")
+        # INDI Drivers
+        file(GLOB INDI_DRIVERS
+            "${INDI_DRIVERS_DIR}/indi*"
+          )
+        list(FILTER INDI_DRIVERS EXCLUDE REGEX "dSYM$")
+        file(COPY ${INDI_DRIVERS} DESTINATION "${KSTARS_APP}/Contents/MacOS/")
+        # Driver Support Files (Note: On some installations it is in the install prefix, in others in the /usr/local/lib directory)
+        if(EXISTS "${CMAKE_INSTALL_PREFIX}/usr/local/lib/indi/DriverSupport")
+            file(COPY "${CMAKE_INSTALL_PREFIX}/usr/local/lib/indi/DriverSupport" DESTINATION "${KSTARS_APP}/Contents/Resources/")
+        elseif(EXISTS "/usr/local/lib/indi/DriverSupport")
+            file(COPY "/usr/local/lib/indi/DriverSupport" DESTINATION "${KSTARS_APP}/Contents/Resources/")
+        endif(EXISTS "${CMAKE_INSTALL_PREFIX}/usr/local/lib/indi/DriverSupport")
+        file(GLOB XML_FILES
+            "${CMAKE_INSTALL_PREFIX}/share/indi/*"
+          )
+        file(COPY ${XML_FILES} DESTINATION "${KSTARS_APP}/Contents/Resources/DriverSupport/")
+        file(COPY "${CMAKE_INSTALL_PREFIX}/lib/indi/MathPlugins" DESTINATION "${KSTARS_APP}/Contents/Resources/")
+        # GPHOTO Stuff
+        #execute_process(COMMAND "pkg-config --modversion libgphoto2" OUTPUT_VARIABLE GPHOTO_VERSION)
+        set(GPHOTO_VERSION "2.5.27")
+        set(PORT_VERSION "0.12.0")
+        file(GLOB IOLIBS
+            "${CMAKE_INSTALL_PREFIX}/lib/libgphoto2_port/${PORT_VERSION}/*"
+          )
+        list(FILTER IOLIBS EXCLUDE REGEX "dSYM$")
+        file(COPY ${IOLIBS} DESTINATION "${KSTARS_APP}/Contents/Resources/DriverSupport/gphoto/IOLIBS/")
+        file(GLOB CAMLIBS
+            "${CMAKE_INSTALL_PREFIX}/lib/libgphoto2/${GPHOTO_VERSION}/*"
+          )
+        list(FILTER CAMLIBS EXCLUDE REGEX "dSYM$")
+        file(COPY ${CAMLIBS} DESTINATION "${KSTARS_APP}/Contents/Resources/DriverSupport/gphoto/CAMLIBS/")
+    endif(NOT INDI_SERVER)
+
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-E" "tar" "xvz" "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/phonon/FrameworksForVLC.zip"
+        WORKING_DIRECTORY "${KSTARS_APP}/Contents/")
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-E" "tar" "xvz" "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/phonon/backend.zip"
+        WORKING_DIRECTORY "${KSTARS_APP}/Contents/Plugins/")
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-E" "tar" "xvz" "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/phonon/vlc.zip"
+        WORKING_DIRECTORY "${KSTARS_APP}/Contents/Plugins/")
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-E" "tar" "xvz" "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/xplanet-data.zip"
+        WORKING_DIRECTORY "${KSTARS_APP}/Contents/Resources/kstars/")
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-E" "tar" "xvz" "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/sounds.zip"
+        WORKING_DIRECTORY "${KSTARS_APP}/Contents/Resources/")
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-E" "tar" "xvz" "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/locale.zip"
+        WORKING_DIRECTORY "${KSTARS_APP}/Contents/Resources/")
+    set(KSTARS_VERSION "${KStars_VERSION_MAJOR}.${KStars_VERSION_MINOR}.${KStars_VERSION_REVISION}")
+    execute_process(COMMAND date "+%Y" OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE THIS-YEAR)
+    set_target_properties(kstars PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/kstars-mac-files/macosbundle.plist.in"
+    )
 endif(APPLE)
 
 if (BUILD_PYKSTARS)
@@ -1279,9 +1478,11 @@ endif()
 install(TARGETS kstars ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 
 ########### install files ###############
+if(NOT APPLE) # The desktop file is not needed on MacOS and the other two are bundled above
 install(PROGRAMS org.kde.kstars.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES kstars.kcfg DESTINATION ${KDE_INSTALL_KCFGDIR})
 install(FILES kstars.notifyrc DESTINATION ${KNOTIFYRC_INSTALL_DIR})
+endif(NOT APPLE)
 
 if(INDI_FOUND)
 #install(FILES ekos/mount/mountbox.qml DESTINATION  ${KDE_INSTALL_DATADIR}/kstars/ekos/mount/qml)

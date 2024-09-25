@@ -1,19 +1,8 @@
-/***************************************************************************
-                          ksuserdb.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Wed May 2 2012
-    copyright            : (C) 2012 by Rishab Arora
-    email                : ra.rishab@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Rishab Arora <ra.rishab@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "ksuserdb.h"
 
@@ -42,8 +31,8 @@ KSUserDB::~KSUserDB()
     m_UserDB.close();
 
     // Backup
-    QString current_dbfile = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "userdb.sqlite";
-    QString backup_dbfile = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "userdb.sqlite.backup";
+    QString current_dbfile = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("userdb.sqlite");
+    QString backup_dbfile = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("userdb.sqlite.backup");
     QFile::remove(backup_dbfile);
     QFile::copy(current_dbfile, backup_dbfile);
 }
@@ -52,159 +41,210 @@ bool KSUserDB::Initialize()
 {
     // Every logged in user has their own db.
     m_UserDB = QSqlDatabase::addDatabase("QSQLITE", "userdb");
-    QString dbfile = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "userdb.sqlite";
-    QFile testdb(dbfile);
-    bool first_run = false;
-    if (!testdb.exists())
+    if (!m_UserDB.isValid())
     {
-        qCInfo(KSTARS) << "User DB does not exist. New User DB will be created.";
-        first_run = true;
+        qCCritical(KSTARS) << "Unable to prepare database of type sqlite!";
+        return false;
     }
-    m_UserDB.setDatabaseName(dbfile);
-    // If main files fail, write to backup.
+
+    // If the database file does not exist, look for a backup
+    // If the database file exists and is empty, look for a backup
+    // If the database file exists and has data, use it.
+    // If the backup file does not exist, start fresh.
+    // If the backup file exists and has data, replace and use it.
+    // If the database file exists and has no data and the backup file exists, use it.
+    // If the database file exists and has no data and no backup file exists, start fresh.
+
+    QFileInfo dbfile(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("userdb.sqlite"));
+    QFileInfo backup_file(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("userdb.sqlite.backup"));
+
+    bool const first_run = !dbfile.exists() && !backup_file.exists();
+
+    m_UserDB.setDatabaseName(dbfile.filePath());
+
+    // If main fails to open and we have no backup, fail
     if (!m_UserDB.open())
     {
-        qCWarning(KSTARS) << "Unable to open user database file. Recovering from backup...";
-        qCritical(KSTARS) << LastError();
-        return false;
-
+        if (!backup_file.exists())
+        {
+            qCCritical(KSTARS) << QString("Failed opening user database '%1'.").arg(dbfile.filePath());
+            qCCritical(KSTARS) << LastError();
+            return false;
+        }
     }
 
-    if (first_run == true)
-        FirstRun();
-    else
+    // If no main nor backup existed before opening, rebuild
+    if (m_UserDB.isOpen() && first_run)
     {
-        // Check for corrupted database
-        if (m_UserDB.tables().empty())
+        qCInfo(KSTARS) << "User DB does not exist. New User DB will be created.";
+        FirstRun();
+    }
+
+    // If main appears empty/corrupted, restore if possible or rebuild
+    if (m_UserDB.tables().empty())
+    {
+        if (backup_file.exists())
         {
             m_UserDB.close();
-            qCritical(KSTARS) << "Detected corrupted database. Attempting to recover from backup...";
-            QString backup_file = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "userdb.sqlite.backup";
-            QFile::remove(dbfile);
-            QFile::copy(backup_file, dbfile);
-            if (!m_UserDB.open())
-            {
-                qCritical(KSTARS) << LastError();
-                return false;
-            }
+            qCWarning(KSTARS) << "Detected corrupted database. Attempting to recover from backup...";
+            QFile::remove(dbfile.filePath());
+            QFile::copy(backup_file.filePath(), dbfile.filePath());
+            QFile::remove(backup_file.filePath());
+            return Initialize();
         }
+        else if (!FirstRun())
+        {
+            qCCritical(KSTARS) << QString("Failed initializing user database '%1.").arg(dbfile.filePath());
+            return false;
+        }
+    }
 
-        qCDebug(KSTARS) << "Opened the User DB. Ready.";
+    qCDebug(KSTARS) << "Opened the User DB. Ready.";
 
-        // Update table if previous version exists
-        QSqlTableModel version(nullptr, m_UserDB);
-        version.setTable("Version");
-        version.select();
-        QSqlRecord record = version.record(0);
-        version.clear();
+    // Update table if previous version exists
+    QSqlTableModel version(nullptr, m_UserDB);
+    version.setTable("Version");
+    version.select();
+    QSqlRecord record = version.record(0);
+    version.clear();
 
-        // Old version had 2.9.5 ..etc, so we remove them
-        // Starting with 2.9.7, we are using SCHEMA_VERSION which now decoupled from KStars Version and starts at 300
-        int currentDBVersion = record.value("Version").toString().remove(".").toInt();
+    // Old version had 2.9.5 ..etc, so we remove them
+    // Starting with 2.9.7, we are using SCHEMA_VERSION which now decoupled from KStars Version and starts at 300
+    int currentDBVersion = record.value("Version").toString().remove(".").toInt();
 
-        // Update database version to current KStars version
-        if (currentDBVersion != SCHEMA_VERSION)
+    // Update database version to current KStars version
+    if (currentDBVersion != SCHEMA_VERSION)
+    {
+        QSqlQuery query(m_UserDB);
+        QString versionQuery = QString("UPDATE Version SET Version=%1").arg(SCHEMA_VERSION);
+        if (!query.exec(versionQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // If prior to 2.9.4 extend filters table
+    if (currentDBVersion < 294)
+    {
+        QSqlQuery query(m_UserDB);
+
+        qCWarning(KSTARS) << "Detected old format filter table, re-creating...";
+        if (!query.exec("DROP table filter"))
+            qCWarning(KSTARS) << query.lastError();
+        if (!query.exec("CREATE TABLE filter ( "
+                        "id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, "
+                        "Vendor TEXT DEFAULT NULL, "
+                        "Model TEXT DEFAULT NULL, "
+                        "Type TEXT DEFAULT NULL, "
+                        "Color TEXT DEFAULT NULL,"
+                        "Exposure REAL DEFAULT 1.0,"
+                        "Offset INTEGER DEFAULT 0,"
+                        "UseAutoFocus INTEGER DEFAULT 0,"
+                        "LockedFilter TEXT DEFAULT '--',"
+                        "AbsoluteFocusPosition INTEGER DEFAULT 0)"))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // If prior to 2.9.5 create fov table
+    if (currentDBVersion < 295)
+    {
+        QSqlQuery query(m_UserDB);
+
+        if (!query.exec("CREATE TABLE effectivefov ( "
+                        "id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, "
+                        "Profile TEXT DEFAULT NULL, "
+                        "Width INTEGER DEFAULT NULL, "
+                        "Height INTEGER DEFAULT NULL, "
+                        "PixelW REAL DEFAULT 5.0,"
+                        "PixelH REAL DEFAULT 5.0,"
+                        "FocalLength REAL DEFAULT 0.0,"
+                        "FovW REAL DEFAULT 0.0,"
+                        "FovH REAL DEFAULT 0.0)"))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    if (currentDBVersion < 300)
+    {
+        QSqlQuery query(m_UserDB);
+        QString columnQuery = QString("ALTER TABLE profile ADD COLUMN remotedrivers TEXT DEFAULT NULL");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+
+        if (m_UserDB.tables().contains("customdrivers") == false)
         {
             QSqlQuery query(m_UserDB);
-            QString versionQuery = QString("UPDATE Version SET Version=%1").arg(SCHEMA_VERSION);
-            if (!query.exec(versionQuery))
-                qCWarning(KSTARS) << query.lastError();
-        }
 
-        // If prior to 2.9.4 extend filters table
-        if (currentDBVersion < 294)
-        {
-            QSqlQuery query(m_UserDB);
-
-            qCWarning(KSTARS) << "Detected old format filter table, re-creating...";
-            if (!query.exec("DROP table filter"))
-                qCWarning(KSTARS) << query.lastError();
-            if (!query.exec("CREATE TABLE filter ( "
+            if (!query.exec("CREATE TABLE customdrivers ( "
                             "id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, "
-                            "Vendor TEXT DEFAULT NULL, "
-                            "Model TEXT DEFAULT NULL, "
-                            "Type TEXT DEFAULT NULL, "
-                            "Color TEXT DEFAULT NULL,"
-                            "Exposure REAL DEFAULT 1.0,"
-                            "Offset INTEGER DEFAULT 0,"
-                            "UseAutoFocus INTEGER DEFAULT 0,"
-                            "LockedFilter TEXT DEFAULT '--',"
-                            "AbsoluteFocusPosition INTEGER DEFAULT 0)"))
-                qCWarning(KSTARS) << query.lastError();
-        }
-
-        // If prior to 2.9.5 create fov table
-        if (currentDBVersion < 295)
-        {
-            QSqlQuery query(m_UserDB);
-
-            if (!query.exec("CREATE TABLE effectivefov ( "
-                            "id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, "
-                            "Profile TEXT DEFAULT NULL, "
-                            "Width INTEGER DEFAULT NULL, "
-                            "Height INTEGER DEFAULT NULL, "
-                            "PixelW REAL DEFAULT 5.0,"
-                            "PixelH REAL DEFAULT 5.0,"
-                            "FocalLength REAL DEFAULT 0.0,"
-                            "FovW REAL DEFAULT 0.0,"
-                            "FovH REAL DEFAULT 0.0)"))
-                qCWarning(KSTARS) << query.lastError();
-        }
-
-        if (currentDBVersion < 300)
-        {
-            QSqlQuery query(m_UserDB);
-            QString columnQuery = QString("ALTER TABLE profile ADD COLUMN remotedrivers TEXT DEFAULT NULL");
-            if (!query.exec(columnQuery))
-                qCWarning(KSTARS) << query.lastError();
-
-            if (m_UserDB.tables().contains("customdrivers") == false)
-            {
-                QSqlQuery query(m_UserDB);
-
-                if (!query.exec("CREATE TABLE customdrivers ( "
-                                "id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, "
-                                "Name TEXT DEFAULT NULL, "
-                                "Label TEXT DEFAULT NULL UNIQUE, "
-                                "Manufacturer TEXT DEFAULT NULL, "
-                                "Family TEXT DEFAULT NULL, "
-                                "Exec TEXT DEFAULT NULL, "
-                                "Version TEXT DEFAULT 1.0)"))
-                    qCWarning(KSTARS) << query.lastError();
-            }
-        }
-
-        // Add manufacturer
-        if (currentDBVersion < 305)
-        {
-            QSqlQuery query(m_UserDB);
-            QString columnQuery = QString("ALTER TABLE customdrivers ADD COLUMN Manufacturer TEXT DEFAULT NULL");
-            if (!query.exec(columnQuery))
-                qCWarning(KSTARS) << query.lastError();
-        }
-
-        // Add indihub
-        if (currentDBVersion < 306)
-        {
-            QSqlQuery query(m_UserDB);
-            QString columnQuery = QString("ALTER TABLE profile ADD COLUMN indihub INTEGER DEFAULT 0");
-            if (!query.exec(columnQuery))
-                qCWarning(KSTARS) << query.lastError();
-        }
-
-        // Add Defect Map
-        if (currentDBVersion < 307)
-        {
-            QSqlQuery query(m_UserDB);
-            // If we are upgrading, remove all previous entries.
-            QString clearQuery = QString("DELETE FROM darkframe");
-            if (!query.exec(clearQuery))
-                qCWarning(KSTARS) << query.lastError();
-            QString columnQuery = QString("ALTER TABLE darkframe ADD COLUMN defectmap TEXT DEFAULT NULL");
-            if (!query.exec(columnQuery))
+                            "Name TEXT DEFAULT NULL, "
+                            "Label TEXT DEFAULT NULL UNIQUE, "
+                            "Manufacturer TEXT DEFAULT NULL, "
+                            "Family TEXT DEFAULT NULL, "
+                            "Exec TEXT DEFAULT NULL, "
+                            "Version TEXT DEFAULT 1.0)"))
                 qCWarning(KSTARS) << query.lastError();
         }
     }
+
+    // Add manufacturer
+    if (currentDBVersion < 305)
+    {
+        QSqlQuery query(m_UserDB);
+        QString columnQuery = QString("ALTER TABLE customdrivers ADD COLUMN Manufacturer TEXT DEFAULT NULL");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // Add indihub
+    if (currentDBVersion < 306)
+    {
+        QSqlQuery query(m_UserDB);
+        QString columnQuery = QString("ALTER TABLE profile ADD COLUMN indihub INTEGER DEFAULT 0");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // Add Defect Map
+    if (currentDBVersion < 307)
+    {
+        QSqlQuery query(m_UserDB);
+        // If we are upgrading, remove all previous entries.
+        QString clearQuery = QString("DELETE FROM darkframe");
+        if (!query.exec(clearQuery))
+            qCWarning(KSTARS) << query.lastError();
+        QString columnQuery = QString("ALTER TABLE darkframe ADD COLUMN defectmap TEXT DEFAULT NULL");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // Add port selector
+    if (currentDBVersion < 308)
+    {
+        QSqlQuery query(m_UserDB);
+        QString columnQuery = QString("ALTER TABLE profile ADD COLUMN portselector INTEGER DEFAULT 0");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // Add Gain/ISO to Dark Library
+    if (currentDBVersion < 309)
+    {
+        QSqlQuery query(m_UserDB);
+        QString columnQuery = QString("ALTER TABLE darkframe ADD COLUMN gain INTEGER DEFAULT -1");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+        columnQuery = QString("ALTER TABLE darkframe ADD COLUMN iso TEXT DEFAULT NULL");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
+    // Add scripts to profile
+    if (currentDBVersion < 310)
+    {
+        QSqlQuery query(m_UserDB);
+        QString columnQuery = QString("ALTER TABLE profile ADD COLUMN scripts TEXT DEFAULT NULL");
+        if (!query.exec(columnQuery))
+            qCWarning(KSTARS) << query.lastError();
+    }
+
     m_UserDB.close();
     return true;
 }
@@ -324,7 +364,7 @@ bool KSUserDB::RebuildDB()
                   "TEXT, port INTEGER, city TEXT, province TEXT, country TEXT, indiwebmanagerport INTEGER DEFAULT "
                   "NULL, autoconnect INTEGER DEFAULT 1, guidertype INTEGER DEFAULT 0, guiderhost TEXT, guiderport INTEGER,"
                   "primaryscope INTEGER DEFAULT 0, guidescope INTEGER DEFAULT 0, indihub INTEGER DEFAULT 0,"
-                  "remotedrivers TEXT DEFAULT NULL)");
+                  "portselector INTEGER DEFAULT 1, remotedrivers TEXT DEFAULT NULL, scripts TEXT DEFAULT NULL)");
     tables.append("CREATE TABLE driver (id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, label TEXT NOT NULL, role "
                   "TEXT NOT NULL, profile INTEGER NOT NULL, FOREIGN KEY(profile) REFERENCES profile(id))");
     //tables.append("CREATE TABLE custom_driver (id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, drivers TEXT NOT NULL, profile INTEGER NOT NULL, FOREIGN KEY(profile) REFERENCES profile(id))");
@@ -332,7 +372,7 @@ bool KSUserDB::RebuildDB()
 #ifdef Q_OS_WIN
     tables.append("INSERT INTO profile (name, host, port) VALUES ('Simulators', 'localhost', 7624)");
 #else
-    tables.append("INSERT INTO profile (name) VALUES ('Simulators')");
+    tables.append("INSERT INTO profile (name, portselector) VALUES ('Simulators', 0)");
 #endif
 
     tables.append("INSERT INTO driver (label, role, profile) VALUES ('Telescope Simulator', 'Mount', 1)");
@@ -340,8 +380,9 @@ bool KSUserDB::RebuildDB()
     tables.append("INSERT INTO driver (label, role, profile) VALUES ('Focuser Simulator', 'Focuser', 1)");
 
     tables.append("CREATE TABLE IF NOT EXISTS darkframe (id INTEGER DEFAULT NULL PRIMARY KEY AUTOINCREMENT, ccd TEXT "
-                  "NOT NULL, chip INTEGER DEFAULT 0, binX INTEGER, binY INTEGER, temperature REAL, duration REAL, "
-                  "filename TEXT NOT NULL, defectmap TEXT DEFAULT NULL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)");
+                  "NOT NULL, chip INTEGER DEFAULT 0, binX INTEGER, binY INTEGER, temperature REAL, gain INTEGER DEFAULT -1, "
+                  "iso TEXT DEFAULT NULL, duration REAL, filename TEXT NOT NULL, defectmap TEXT DEFAULT NULL, timestamp "
+                  "DATETIME DEFAULT CURRENT_TIMESTAMP)");
 
     tables.append("CREATE TABLE IF NOT EXISTS hips (ID TEXT NOT NULL UNIQUE,"
                   "obs_title TEXT NOT NULL, obs_description TEXT NOT NULL, hips_order TEXT NOT NULL,"
@@ -349,7 +390,7 @@ bool KSUserDB::RebuildDB()
                   "hips_service_url TEXT NOT NULL, moc_sky_fraction TEXT NOT NULL)");
 
     tables.append("INSERT INTO hips (ID, obs_title, obs_description, hips_order, hips_frame, hips_tile_width, hips_tile_format, hips_service_url, moc_sky_fraction)"
-                  "VALUES ('CDS/P/DSS2/color', 'DSS colored', 'Color composition generated by CDS. This HiPS survey is based on 2 others HiPS surveys,"
+                  "VALUES ('CDS/P/DSS2/color', 'DSS Colored', 'Color composition generated by CDS. This HiPS survey is based on 2 others HiPS surveys,"
                   " respectively DSS2-red and DSS2-blue HiPS, both of them directly generated from original scanned plates downloaded"
                   " from STScI site. The red component has been built from POSS-II F, AAO-SES,SR and SERC-ER plates. The blue component"
                   " has been build from POSS-II J and SERC-J,EJ. The green component is based on the mean of other components. Three"
@@ -358,7 +399,7 @@ bool KSUserDB::RebuildDB()
                   "'9', 'equatorial', '512', 'jpeg fits', 'http://alasky.u-strasbg.fr/DSS/DSSColor','1')");
 
     tables.append("INSERT INTO hips (ID, obs_title, obs_description, hips_order, hips_frame, hips_tile_width, hips_tile_format, hips_service_url, moc_sky_fraction)"
-                  "VALUES ('CDS/P/2MASS/color', '2MASS color J (1.23 microns), H (1.66 microns), K (2.16 microns)',"
+                  "VALUES ('CDS/P/2MASS/color', '2MASS Color J (1.23 microns), H (1.66 microns), K (2.16 microns)',"
                   "'2MASS has uniformly scanned the entire sky in three near-infrared bands to detect and characterize point sources"
                   " brighter than about 1 mJy in each band, with signal-to-noise ratio (SNR) greater than 10, using a pixel size of"
                   " 2.0\". This has achieved an 80,000-fold improvement in sensitivity relative to earlier surveys. 2MASS used two"
@@ -372,7 +413,7 @@ bool KSUserDB::RebuildDB()
                   "'9', 'equatorial', '512', 'jpeg fits', 'http://alaskybis.u-strasbg.fr/2MASS/Color', '1')");
 
     tables.append("INSERT INTO hips (ID, obs_title, obs_description, hips_order, hips_frame, hips_tile_width, hips_tile_format, hips_service_url, moc_sky_fraction)"
-                  "VALUES ('CDS/P/Fermi/color', 'Fermi Color HEALPix survey', 'Launched on June 11, 2008, the Fermi Gamma-ray Space Telescope observes the cosmos using the"
+                  "VALUES ('CDS/P/Fermi/color', 'Fermi Color HEALPix Survey', 'Launched on June 11, 2008, the Fermi Gamma-ray Space Telescope observes the cosmos using the"
                   " highest-energy form of light. This survey sums all data observed by the Fermi mission up to week 396. This version"
                   " of the Fermi survey are intensity maps where the summed counts maps are divided by the exposure for each pixel"
                   ". We anticipate using the HEASARC Hera capabilities to update this survey on a roughly quarterly basis. Data is"
@@ -537,8 +578,6 @@ void KSUserDB::AddDarkFrame(const QVariantMap &oneFrame)
     QSqlRecord record = darkframe.record();
     // Remove PK so that it gets auto-incremented later
     record.remove(0);
-    // Remove timestamp so that it gets auto-generated
-    record.remove(7);
 
     for (QVariantMap::const_iterator iter = oneFrame.begin(); iter != oneFrame.end(); ++iter)
         record.setValue(iter.key(), iter.value());
@@ -1206,41 +1245,44 @@ void KSUserDB::GetAllLenses(QList<OAL::Lens *> &lens_list)
 void KSUserDB::AddFilter(const QString &vendor, const QString &model, const QString &type, const QString &color,
                          int offset, double exposure, bool useAutoFocus, const QString &lockedFilter, int absFocusPos)
 {
-    m_UserDB.open();
-    QSqlTableModel equip(nullptr, m_UserDB);
-    equip.setTable("filter");
+    if (m_UserDB.open())
+    {
+        QSqlTableModel equip(nullptr, m_UserDB);
+        equip.setTable("filter");
 
-    QSqlRecord record = equip.record();
-    record.setValue("Vendor", vendor);
-    record.setValue("Model", model);
-    record.setValue("Type", type);
-    record.setValue("Color", color);
-    record.setValue("Offset", offset);
-    record.setValue("Exposure", exposure);
-    record.setValue("UseAutoFocus", useAutoFocus ? 1 : 0);
-    record.setValue("LockedFilter", lockedFilter);
-    record.setValue("AbsoluteFocusPosition", absFocusPos);
+        QSqlRecord record = equip.record();
+        record.setValue("Vendor", vendor);
+        record.setValue("Model", model);
+        record.setValue("Type", type);
+        record.setValue("Color", color);
+        record.setValue("Offset", offset);
+        record.setValue("Exposure", exposure);
+        record.setValue("UseAutoFocus", useAutoFocus ? 1 : 0);
+        record.setValue("LockedFilter", lockedFilter);
+        record.setValue("AbsoluteFocusPosition", absFocusPos);
 
-    if (equip.insertRecord(-1, record) == false)
-        qCritical() << __FUNCTION__ << equip.lastError();
+        if (equip.insertRecord(-1, record) == false)
+            qCritical() << __FUNCTION__ << equip.lastError();
 
 
-    /*int row = 0;
-    equip.insertRows(row, 1);
-    equip.setData(equip.index(row, 1), vendor);
-    equip.setData(equip.index(row, 2), model);
-    equip.setData(equip.index(row, 3), type);
-    equip.setData(equip.index(row, 4), offset);
-    equip.setData(equip.index(row, 5), color);
-    equip.setData(equip.index(row, 6), exposure);
-    equip.setData(equip.index(row, 7), lockedFilter);
-    equip.setData(equip.index(row, 8), useAutoFocus ? 1 : 0);
-    */
-    if (equip.submitAll() == false)
-        qCritical() << "AddFilter:" << equip.lastError();
+        /*int row = 0;
+        equip.insertRows(row, 1);
+        equip.setData(equip.index(row, 1), vendor);
+        equip.setData(equip.index(row, 2), model);
+        equip.setData(equip.index(row, 3), type);
+        equip.setData(equip.index(row, 4), offset);
+        equip.setData(equip.index(row, 5), color);
+        equip.setData(equip.index(row, 6), exposure);
+        equip.setData(equip.index(row, 7), lockedFilter);
+        equip.setData(equip.index(row, 8), useAutoFocus ? 1 : 0);
+        */
+        if (equip.submitAll() == false)
+            qCritical() << "AddFilter:" << equip.lastError();
 
-    equip.clear();
-    m_UserDB.close();
+        equip.clear();
+        m_UserDB.close();
+    }
+    else qCritical() << "Failed opening database connection to add filters.";
 }
 
 void KSUserDB::AddFilter(const QString &vendor, const QString &model, const QString &type, const QString &color,
@@ -1305,7 +1347,7 @@ void KSUserDB::GetAllFilters(QList<OAL::Filter *> &filter_list)
 #if 0
 bool KSUserDB::ImportFlags()
 {
-    QString flagfilename = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QDir::separator() + "flags.dat";
+    QString flagfilename = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("flags.dat");
     QFile flagsfile(flagfilename);
     if (!flagsfile.exists())
     {
@@ -1339,8 +1381,7 @@ bool KSUserDB::ImportFlags()
 
 bool KSUserDB::ImportUsers()
 {
-    QString usersfilename = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QDir::separator() +
-                            "observerlist.xml";
+    QString usersfilename = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("observerlist.xml");
     QFile usersfile(usersfilename);
 
     if (!usersfile.exists())
@@ -1415,8 +1456,7 @@ bool KSUserDB::ImportUsers()
 
 bool KSUserDB::ImportEquipment()
 {
-    QString equipfilename = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QDir::separator() +
-                            "equipmentlist.xml";
+    QString equipfilename = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("equipmentlist.xml");
     QFile equipfile(equipfilename);
 
     if (!equipfile.exists())
@@ -1875,7 +1915,7 @@ void KSUserDB::SaveProfile(ProfileInfo *pi)
     // Clear data
     if (!query.exec(QString("UPDATE profile SET "
                             "host=null,port=null,city=null,province=null,country=null,indiwebmanagerport=NULL,"
-                            "autoconnect=NULL,primaryscope=0,guidescope=0,indihub=0 WHERE id=%1")
+                            "autoconnect=NULL,portselector=NULL,primaryscope=0,guidescope=0,indihub=0 WHERE id=%1")
                     .arg(pi->id)))
         qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();
 
@@ -1914,6 +1954,10 @@ void KSUserDB::SaveProfile(ProfileInfo *pi)
     if (!query.exec(QString("UPDATE profile SET autoconnect=%1 WHERE id=%2").arg(pi->autoConnect ? 1 : 0).arg(pi->id)))
         qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();
 
+    // Update Port Selector Info
+    if (!query.exec(QString("UPDATE profile SET portselector=%1 WHERE id=%2").arg(pi->portSelector ? 1 : 0).arg(pi->id)))
+        qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();
+
     // Update Guide Application Info
     if (!query.exec(QString("UPDATE profile SET guidertype=%1 WHERE id=%2").arg(pi->guidertype).arg(pi->id)))
         qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();
@@ -1939,6 +1983,10 @@ void KSUserDB::SaveProfile(ProfileInfo *pi)
 
     // Update remote drivers
     if (!query.exec(QString("UPDATE profile SET remotedrivers='%1' WHERE id=%2").arg(pi->remotedrivers).arg(pi->id)))
+        qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();
+
+    // Update scripts
+    if (!query.exec(QString("UPDATE profile SET scripts='%1' WHERE id=%2").arg(QString::fromLocal8Bit(pi->scripts)).arg(pi->id)))
         qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();
 
     QMapIterator<QString, QString> i(pi->drivers);
@@ -1985,6 +2033,7 @@ void KSUserDB::GetAllProfiles(QList<std::shared_ptr<ProfileInfo>> &profiles)
 
         pi->INDIWebManagerPort = record.value("indiwebmanagerport").toInt();
         pi->autoConnect        = (record.value("autoconnect").toInt() == 1);
+        pi->portSelector       = (record.value("portselector").toInt() == 1);
 
         pi->indihub = record.value("indihub").toInt();
 
@@ -2000,8 +2049,9 @@ void KSUserDB::GetAllProfiles(QList<std::shared_ptr<ProfileInfo>> &profiles)
 
         pi->remotedrivers = record.value("remotedrivers").toString();
 
+        pi->scripts = record.value("scripts").toByteArray();
+
         GetProfileDrivers(pi.get());
-        //GetProfileCustomDrivers(pi);
 
         profiles.append(pi);
     }
@@ -2040,7 +2090,7 @@ void KSUserDB::GetProfileDrivers(ProfileInfo *pi)
     custom_driver.setTable("driver");
     custom_driver.setFilter("profile=" + QString::number(pi->id));
     if (custom_driver.select() == false)
-        qDebug() << "custom driver select error: " << custom_driver.query().lastQuery() << custom_driver.lastError().text();
+        qDebug() << Q_FUNC_INFO << "custom driver select error: " << custom_driver.query().lastQuery() << custom_driver.lastError().text();
 
     QSqlRecord record = custom_driver.record(0);
     pi->customDrivers   = record.value("drivers").toString();
@@ -2056,7 +2106,7 @@ void KSUserDB::DeleteProfileDrivers(ProfileInfo *pi)
     QSqlQuery query(m_UserDB);
 
     /*if (!query.exec("DELETE FROM custom_driver WHERE profile=" + QString::number(pi->id)))
-        qDebug() << query.lastQuery() << query.lastError().text();*/
+        qDebug() << Q_FUNC_INFO << query.lastQuery() << query.lastError().text();*/
 
     if (!query.exec("DELETE FROM driver WHERE profile=" + QString::number(pi->id)))
         qCWarning(KSTARS) << query.executedQuery() << query.lastError().text();

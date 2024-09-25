@@ -1,11 +1,8 @@
-/*  INDI DustCap
-    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include <basedevice.h>
 #include <KLocalizedString>
@@ -16,6 +13,10 @@
 
 namespace ISD
 {
+
+const QList<const char *> DustCap::capStates = { I18N_NOOP("Idle"), I18N_NOOP("Parking"), I18N_NOOP("UnParking"),
+                                                 I18N_NOOP("Parked"), I18N_NOOP("Error")
+                                               };
 
 DustCap::DustCap(GDInterface *iPtr): DeviceDecorator(iPtr)
 {
@@ -114,7 +115,7 @@ bool DustCap::isParked()
     if (!parkSP)
         return false;
 
-    return (parkSP->getState() == IPS_OK && parkSP->at(0)->getState() == ISS_ON);
+    return ((parkSP->getState() == IPS_OK || parkSP->getState() == IPS_IDLE) && parkSP->at(0)->getState() == ISS_ON);
 }
 
 bool DustCap::isUnParked()
@@ -123,7 +124,7 @@ bool DustCap::isUnParked()
     if (!parkSP)
         return false;
 
-    return (parkSP->getState() == IPS_OK && parkSP->at(1)->getState() == ISS_ON);
+    return ( (parkSP->getState() == IPS_OK || parkSP->getState() == IPS_IDLE) && parkSP->at(1)->getState() == ISS_ON);
 }
 
 bool DustCap::Park()
@@ -218,27 +219,9 @@ bool DustCap::SetBrightness(uint16_t val)
     return true;
 }
 
-const QString DustCap::getStatusString(DustCap::Status status)
+const QString DustCap::getStatusString(DustCap::Status status, bool translated)
 {
-    switch (status)
-    {
-        case ISD::DustCap::CAP_IDLE:
-            return i18n("Idle");
-
-        case ISD::DustCap::CAP_PARKED:
-            return i18n("Parked");
-
-        case ISD::DustCap::CAP_PARKING:
-            return i18n("Parking");
-
-        case ISD::DustCap::CAP_UNPARKING:
-            return i18n("UnParking");
-
-        case ISD::DustCap::CAP_ERROR:
-            return i18n("Error");
-    }
-
-    return i18n("Error");
+    return translated ? i18n(capStates[status]) : capStates[status];
 }
 
 }

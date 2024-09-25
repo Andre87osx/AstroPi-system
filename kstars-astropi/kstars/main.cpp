@@ -1,19 +1,8 @@
-/***************************************************************************
-                          main.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon Feb  5 01:11:45 PST 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "ksnumbers.h"
 #include "kspaths.h"
@@ -58,7 +47,7 @@
 #ifndef KSTARS_LITE
 static const char description[] = I18N_NOOP("Desktop Planetarium");
 static const char notice[]      = I18N_NOOP(
-    "Some images in KStars are for non-commercial use only. See README.images.");
+                                      "Some images in KStars are for non-commercial use only. See README.images.");
 #endif
 
 #if defined(Q_OS_ANDROID)
@@ -116,31 +105,21 @@ int main(int argc, char *argv[])
     KAboutData aboutData(
         "kstars", i18n("KStars"), versionString, i18n(description), KAboutLicense::GPL,
         "2001-" + QString::number(QDate::currentDate().year()) +
-            i18n(" (c), The KStars AstroPi Team\n\nThe Gaussian Process Guider Algorithm: (c) "
-                 "2014-2017 Max Planck Society"),
+        i18n(" (c), The KStars Team\n\nThe Gaussian Process Guider Algorithm: (c) "
+             "2014-2017 Max Planck Society"),
         i18nc("Build number followed by copyright notice", "Build: %1\n\n%2\n\n%3",
               KSTARS_BUILD_TS,
               KSTARS_BUILD_RELEASE == QLatin1String("Beta") ?
-                  "Pre-release beta snapshot. Do not use in production." :
-                  "Stable release.",
+              "Pre-release beta snapshot. Do not use in production." :
+              "Stable release.",
               i18n(notice)),
-        "https://github.com/Andre87osx/AstroPi-system");
-    aboutData.addAuthor(i18n("Aimone Andrea"), i18n("AstroPi System Author - Project manager and Developer"),
-                        "andrea.aimone@outlook.com", "https://github.com/Andre87osx/AstroPi-system");
-    aboutData.addAuthor(i18n("Dott. Ing. Ostorero Roberto"), i18n("Projects mechanical parts & Development AstroPi & BETA tester"),
-                        "robywan64@yahoo.it", "");
-
-    // Active developers
-    aboutData.addAuthor(i18n("Dr. Roberti Leali Roberto"), i18n("Ekos Improvements & BETA tester"),
-                        "r.robertileali@sinim.it", "");
-    aboutData.addAuthor(i18n("Dott. Ghio Giorgio"), i18n("Scientific and mathematical consultant"),
-                        "ghiogiorgio@yahoo.it", "");
-  
-    // Inactive developers
+        "https://edu.kde.org/kstars");
     aboutData.addAuthor(i18n("Jason Harris"), i18n("Original Author"),
                         "jharris@30doradus.org", "http://www.30doradus.org");
-    aboutData.addAuthor(i18n("Jasem Mutlaq"), i18n("Old Maintainer"),
+    aboutData.addAuthor(i18n("Jasem Mutlaq"), i18n("Current Maintainer"),
                         "mutlaqja@ikarustech.com", "https://www.indilib.org");
+
+    // Active developers
     aboutData.addAuthor(i18n("Akarsh Simha"), QString(), "akarsh@kde.org",
                         "http://www.ph.utexas.edu/~asimha");
     aboutData.addAuthor(i18n("Robert Lancaster"),
@@ -156,6 +135,8 @@ int main(int argc, char *argv[])
                         i18n("FITS, Focus, Guide Improvements"));
     aboutData.addAuthor("Valentin Boettcher", QString(), "hiro@protagon.space",
                         i18n("Binary Asteroid List, DSO Database & Catalogs"));
+
+    // Inactive developers
     aboutData.addAuthor(i18n("Artem Fedoskin"), i18n("KStars Lite"),
                         "afedoskin3@gmail.com");
     aboutData.addAuthor(i18n("James Bowlin"), QString(), "bowlin@mindspring.com");
@@ -303,14 +284,14 @@ int main(int argc, char *argv[])
             else //assume Text format for date string
             {
                 kdt = dat->geo()->LTtoUT(
-                    KStarsDateTime(QDateTime::fromString(datestring, Qt::TextDate)));
+                          KStarsDateTime(QDateTime::fromString(datestring, Qt::TextDate)));
             }
 
             if (!kdt.isValid())
             {
                 qCWarning(KSTARS) << i18n(
-                    "Supplied date string is invalid: %1. Using CPU date/time instead.",
-                    datestring);
+                                      "Supplied date string is invalid: %1. Using CPU date/time instead.",
+                                      datestring);
 
                 kdt = KStarsDateTime::currentDateTimeUtc();
             }
@@ -373,6 +354,12 @@ int main(int argc, char *argv[])
     }
 
 #endif
+
+    // Create writable data dir if it does not exist
+    QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).mkpath(".");
+    QDir(KSPaths::writableLocation(QStandardPaths::AppConfigLocation)).mkpath(".");
+    QDir(KSPaths::writableLocation(QStandardPaths::CacheLocation)).mkpath(".");
+    QDir(KSPaths::writableLocation(QStandardPaths::TempLocation)).mkpath(qAppName());
 
 #ifndef KSTARS_LITE
     KStars::createInstance(true, !parser.isSet("paused"), datestring);

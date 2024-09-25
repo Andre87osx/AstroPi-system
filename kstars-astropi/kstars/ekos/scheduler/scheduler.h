@@ -1,19 +1,18 @@
-/*  Ekos Scheduler Module
-    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    DBus calls from GSoC 2015 Ekos Scheduler project by Daniel Leu <daniel_mihai.leu@cti.pub.ro>
+    DBus calls from GSoC 2015 Ekos Scheduler project:
+    SPDX-FileCopyrightText: 2015 Daniel Leu <daniel_mihai.leu@cti.pub.ro>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
 #include "ui_scheduler.h"
 #include "ekos/align/align.h"
 #include "indi/indiweather.h"
+#include "ekos/auxiliary/solverutils.h"
 #include "schedulerjob.h"
 
 #include <lilxml.h>
@@ -34,10 +33,13 @@ class SkyObject;
 class KConfigDialog;
 class TestSchedulerUnit;
 
+class TestEkosSchedulerOps;
+
 namespace Ekos
 {
 
 class SequenceJob;
+class GreedyScheduler;
 
 /**
  * @brief The Ekos scheduler is a simple scheduler class to orchestrate automated multi object observation jobs.
@@ -102,6 +104,13 @@ class Scheduler : public QWidget, public Ui::Scheduler
             ERROR_RESTART_IMMEDIATELY
         } ErrorHandlingStrategy;
 
+        /** @brief Algorithms, in the same order as UI. */
+        typedef enum
+        {
+            ALGORITHM_CLASSIC,
+            ALGORITHM_GREEDY
+        } SchedulerAlgorithm;
+
         /** @brief Columns, in the same order as UI. */
         typedef enum
         {
@@ -117,7 +126,21 @@ class Scheduler : public QWidget, public Ui::Scheduler
             SCHEDCOL_COUNT
         } SchedulerColumns;
 
+        /** @brief IterationTypes, the different types of scheduler iterations that are run. */
+        typedef enum
+        {
+            RUN_WAKEUP = 0,
+            RUN_SCHEDULER,
+            RUN_JOBCHECK,
+            RUN_SHUTDOWN,
+            RUN_NOTHING
+        } SchedulerTimerState;
+
+        /** @brief Constructor, the starndard scheduler constructor. */
         Scheduler();
+        /** @brief DebugConstructor, a constructor used in testing with a mock ekos. */
+        Scheduler(const QString path, const QString interface,
+                  const QString &ekosPathStr, const QString &ekosInterfaceStr);
         ~Scheduler() = default;
 
         QString getCurrentJobName();
@@ -279,24 +302,35 @@ class Scheduler : public QWidget, public Ui::Scheduler
             SchedulerJob::StartupCondition startup, const QDateTime &startupTime, int16_t startupOffset,
             SchedulerJob::CompletionCondition completion, const QDateTime &completionTime, int completionRepeats,
             double minimumAltitude, double minimumMoonSeparation, bool enforceWeather, bool enforceTwilight,
-            bool track, bool focus, bool align, bool guide);
+            bool enforceArtificialHorizon, bool track, bool focus, bool align, bool guide);
 
         /**
              * @brief evaluateJobs Computes estimated start and end times for the SchedulerJobs passed in. Returns a proposed schedule.
              * @param jobs The input list of SchedulerJobs to evaluate.
-             * @param state The current scheduler state.
              * @param capturedFramesCount which parts of the schedulerJobs have already been completed.
              * @param dawn next dawn, as a KStarsDateTime
              * @param dusk next dusk, as a KStarsDateTime
+             * @param scheduler instance of the scheduler used for logging. Can be nullptr.
+             * @return list of sorted jobs
+             */
+        static QList<SchedulerJob *> evaluateJobs(QList<SchedulerJob *> &jobs, const QMap<QString, uint16_t> &capturedFramesCount,
+                QDateTime const &dawn, QDateTime const &dusk, Scheduler *scheduler);
+
+        /**
+             * @brief prepareJobsForEvaluation Start of job evaluation
+             * @param jobs The input list of SchedulerJobs to evaluate.
+             * @param state The current scheduler state.
+             * @param capturedFramesCount which parts of the schedulerJobs have already been completed.
              * @param rescheduleErrors whether jobs that failed with errors should be rescheduled.
              * @param restartJobs whether jobs that failed for one reason or another shoulc be rescheduled.
              * @param possiblyDelay a return value indicating whether the timer should try scheduling again after a delay.
              * @param scheduler instance of the scheduler used for logging. Can be nullptr.
              * @return Total score
              */
-        static QList<SchedulerJob *> evaluateJobs(QList<SchedulerJob *> &jobs, SchedulerState state,
-                const QMap<QString, uint16_t> &capturedFramesCount, QDateTime const &dawn, QDateTime const &dusk,
-                bool rescheduleErrors, bool restartJobs, bool *possiblyDelay, Scheduler *scheduler);
+        static QList<SchedulerJob *> prepareJobsForEvaluation(
+            QList<SchedulerJob *> &jobs, SchedulerState state, const QMap<QString, uint16_t> &capturedFramesCount,
+            bool rescheduleErrors, bool restartJobs, bool *possiblyDelay, Scheduler *scheduler);
+
         /**
              * @brief calculateJobScore Calculate job dark sky score, altitude score, and moon separation scores and returns the sum.
              * @param job Target
@@ -304,8 +338,11 @@ class Scheduler : public QWidget, public Ui::Scheduler
              * @param dusk next dusk, as a KStarsDateTime
              * @param when date and time to evaluate constraints, now if omitted.
              * @return Total score
+             *
              */
-        static int16_t calculateJobScore(SchedulerJob const *job, QDateTime const &dawn, QDateTime const &dusk, QDateTime const &when = QDateTime());
+
+        static int16_t calculateJobScore(SchedulerJob const *job, QDateTime const &dawn, QDateTime const &dusk,
+                                         QDateTime const &when = QDateTime());
 
         /**
              * @brief estimateJobTime Estimates the time the job takes to complete based on the sequence file and what modules to utilize during the observation run.
@@ -349,6 +386,91 @@ class Scheduler : public QWidget, public Ui::Scheduler
         }
         /** @} */
 
+        // Scheduler Settings
+        void setSettings(const QJsonObject &settings);
+
+        void setUpdateInterval(int ms)
+        {
+            m_UpdatePeriodMs = ms;
+        }
+        int getUpdateInterval()
+        {
+            return m_UpdatePeriodMs;
+        }
+
+        // Primary Settings
+        void setPrimarySettings(const QJsonObject &settings);
+
+        // Job Startup Conditions
+        void setJobStartupConditions(const QJsonObject &settings);
+
+        // Job Constraints
+        void setJobConstraints(const QJsonObject &settings);
+
+        // Job Completion Conditions
+        void setJobCompletionConditions(const QJsonObject &settings);
+
+        // Observatory Startup Procedure
+        void setObservatoryStartupProcedure(const QJsonObject &settings);
+
+        // Aborted Job Managemgent Settings
+        void setAbortedJobManagementSettings(const QJsonObject &settings);
+
+        // Observatory Shutdown Procedure
+        void setObservatoryShutdownProcedure(const QJsonObject &settings);
+
+        /**
+         * @brief Remove a job from current table row.
+         * @param index
+         */
+        void removeJob();
+
+        /**
+         * @brief Remove a job by selecting a table row.
+         * @param index
+         */
+        void removeOneJob(int index);
+
+        /**
+         * @brief addJob Add a new job from form values
+         */
+        void addJob();
+
+        /**
+         * @brief addToQueue Construct a SchedulerJob and add it to the queue or save job settings from current form values.
+         * jobUnderEdit determines whether to add or edit
+         */
+        void saveJob();
+
+        const QList<SchedulerJob *> &getJobs() const
+        {
+            return jobs;
+        }
+
+        QJsonArray getJSONJobs();
+
+        void toggleScheduler();
+
+        QJsonObject getSchedulerSettings();
+        /**
+             * @brief createJobSequence Creates a job sequence for the mosaic tool given the prefix and output dir. The currently selected sequence file is modified
+             * and a new version given the supplied parameters are saved to the output directory
+             * @param prefix Prefix to set for the job sequence
+             * @param outputDir Output dir to set for the job sequence
+             * @return True if new file is saved, false otherwise
+             */
+        bool createJobSequence(XMLEle *root, const QString &prefix, const QString &outputDir);
+
+        XMLEle *getSequenceJobRoot(const QString &filename) const;
+
+        /**
+             * @brief saveScheduler Save scheduler jobs to a file
+             * @param path path of a file
+             * @return true on success, false on failure.
+             */
+        bool saveScheduler(const QUrl &fileURL);
+
+
     private:
         /**
              * @brief processJobInfo a utility used by loadSequenceQueue() to help it read a capture sequence file
@@ -364,6 +486,9 @@ class Scheduler : public QWidget, public Ui::Scheduler
              * @return seconds of overhead.
              */
         static int timeHeuristics(const SchedulerJob *schedJob);
+
+        void setAlgorithm(int alg);
+        SchedulerAlgorithm getAlgorithm() const;
 
         // Used in testing, instead of KStars::Instance() resources
         static KStarsDateTime *storedLocalTime;
@@ -415,6 +540,14 @@ class Scheduler : public QWidget, public Ui::Scheduler
          */
         void syncProperties();
 
+        /**
+         * @brief checkInterfaceReady Sometimes syncProperties() is not sufficient since the ready signal could have fired already
+         * and cannot be relied on to know once a module interface is ready. Therefore, we explicitly check if the module interface
+         * is ready.
+         * @param iface interface to test for readiness.
+         */
+        void checkInterfaceReady(QDBusInterface *iface);
+
         void setAlignStatus(Ekos::AlignState status);
         void setGuideStatus(Ekos::GuideState status);
         void setCaptureStatus(Ekos::CaptureState status);
@@ -448,26 +581,10 @@ class Scheduler : public QWidget, public Ui::Scheduler
         void selectShutdownScript();
 
         /**
-             * @brief addToQueue Construct a SchedulerJob and add it to the queue or save job settings from current form values.
-             * jobUnderEdit determines whether to add or edit
-             */
-        void saveJob();
-
-        /**
-             * @brief addJob Add a new job from form values
-             */
-        void addJob();
-
-        /**
              * @brief editJob Edit an observation job
              * @param i index model in queue table
              */
         void loadJob(QModelIndex i);
-
-        /**
-             * @brief removeJob Remove a job from the currently selected row. If no row is selected, it remove the last job in the queue.
-             */
-        void removeJob();
 
         /**
              * @brief setJobAddApply Set first button state to add new job or apply changes.
@@ -518,7 +635,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
          */
         bool shouldSchedulerSleep(SchedulerJob *currentJob);
 
-        void toggleScheduler();
+        bool completeShutdown();
         void pause();
         void setPaused();
         void save();
@@ -527,8 +644,9 @@ class Scheduler : public QWidget, public Ui::Scheduler
         /**
          * @brief load Open a file dialog to select an ESL file, and load its contents.
          * @param clearQueue Clear the queue before loading, or append ESL contents to queue.
+         * @param filename If not empty, this file will be used instead of poping up a dialog.
          */
-        void load(bool clearQueue);
+        void load(bool clearQueue, const QString &filename = "");
 
         /**
          * @brief appendEkosScheduleList Append the contents of an ESL file to the queue.
@@ -541,8 +659,9 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
         /**
          * @brief updateNightTime update the Twilight restriction with the argument job properties.
+         * @param job SchedulerJob for which to display the next dawn and dusk, or the job currently selected if null, or today's next dawn and dusk if no job is selected.
          */
-        void updateNightTime(SchedulerJob const *);
+        void updateNightTime(SchedulerJob const * job = nullptr);
 
         /**
              * @brief checkJobStatus Check the overall state of the scheduler, Ekos, and INDI. When all is OK, it calls evaluateJobs() when no job is current or executeJob() if a job is selected.
@@ -554,6 +673,8 @@ class Scheduler : public QWidget, public Ui::Scheduler
              * @brief checkJobStage Check the progress of the job states and make DBUS call to start the next stage until the job is complete.
              */
         void checkJobStage();
+        bool checkJobStageClassic();
+        void checkJobStageEplogue();
 
         /**
              * @brief findNextJob Check if the job met the completion criteria, and if it did, then it search for next job candidate. If no jobs are found, it starts the shutdown stage.
@@ -624,11 +745,36 @@ class Scheduler : public QWidget, public Ui::Scheduler
         void simClockScaleChanged(float);
         void simClockTimeChanged();
 
+        /**
+         * @brief solverDone Process solver solution after it is done.
+         * @param timedOut True if the process timed out.
+         * @param success True if successful, false otherwise.
+         * @param solution The solver solution if successful.
+         * @param elapsedSeconds How many seconds elapsed to solve the image.
+         */
+        void solverDone(bool timedOut, bool success, const FITSImage::Solution &solution, double elapsedSeconds);
+
+        bool syncControl(const QJsonObject &settings, const QString &key, QWidget * widget);
+
+        /**
+         * @brief setCaptureComplete Handle one sequence image completion. This is used now only to run alignment check
+         * to ensure it does not deviation from current scheduler job target.
+         * @param metadata Metadata for image including filename, exposure, filter, hfr..etc.
+         */
+        void setCaptureComplete(const QVariantMap &metadata);
+
     signals:
         void newLog(const QString &text);
         void newStatus(Ekos::SchedulerState state);
         void weatherChanged(ISD::Weather::Status state);
         void newTarget(const QString &);
+        // distance in arc-seconds measured by plate solving the a captured image and
+        // comparing that position to the target position.
+        void targetDistance(double distance);
+        // Below 2 are for the Analyze timeline.
+        void jobStarted(const QString &jobName);
+        void jobEnded(const QString &jobName, const QString &endReason);
+        void jobsUpdated(QJsonArray jobsList);
 
     private:
         /**
@@ -642,8 +788,9 @@ class Scheduler : public QWidget, public Ui::Scheduler
              * @brief executeJob After the best job is selected, we call this in order to start the process that will execute the job.
              * checkJobStatus slot will be connected in order to figure the exact state of the current job each second
              * @param value
+             * @return True if job is accepted and can be executed, false otherwise.
              */
-        void executeJob(SchedulerJob *job);
+        bool executeJob(SchedulerJob *job);
 
         void executeScript(const QString &filename);
 
@@ -656,7 +803,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
         /**
              * @brief calculateDawnDusk Get dawn and dusk times for today
              */
-        void calculateDawnDusk();
+        static void calculateDawnDusk();
 
         /**
              * @brief checkEkosState Check ekos startup stages and take whatever action necessary to get Ekos up and running
@@ -750,27 +897,11 @@ class Scheduler : public QWidget, public Ui::Scheduler
         void checkCapParkingStatus();
 
         /**
-             * @brief saveScheduler Save scheduler jobs to a file
-             * @param path path of a file
-             * @return true on success, false on failure.
-             */
-        bool saveScheduler(const QUrl &fileURL);
-
-        /**
              * @brief processJobInfo Process the job information from a scheduler file and populate jobs accordingly
              * @param root XML root element of JOB
              * @return true on success, false on failure.
              */
         bool processJobInfo(XMLEle *root);
-
-        /**
-             * @brief createJobSequence Creates a job sequence for the mosaic tool given the prefix and output dir. The currently selected sequence file is modified
-             * and a new version given the supplied parameters are saved to the output directory
-             * @param prefix Prefix to set for the job sequence
-             * @param outputDir Output dir to set for the job sequence
-             * @return True if new file is saved, false otherwise
-             */
-        bool createJobSequence(XMLEle *root, const QString &prefix, const QString &outputDir);
 
         /** @internal Change the current job, updating associated widgets.
          * @param job is an existing SchedulerJob to set as current, or nullptr.
@@ -785,7 +916,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
         void loadProfiles();
 
-        XMLEle *getSequenceJobRoot();
+
 
         /**
             * @brief updateCompletedJobsCount For each scheduler job, examine sequence job storage and count captures.
@@ -793,11 +924,57 @@ class Scheduler : public QWidget, public Ui::Scheduler
             */
         void updateCompletedJobsCount(bool forced = false);
 
+        /**
+         * @brief Update the flag for the given job whether light frames are required
+         * @param oneJob scheduler job where the flag should be updated
+         * @param seqjobs list of capture sequences of the job
+         * @param framesCount map capture signature -> frame count
+         * @return true iff the job need to capture light frames
+         */
+        void updateLightFramesRequired(SchedulerJob *oneJob, const QList<SequenceJob *> &seqjobs,
+                                       const SchedulerJob::CapturedFramesMap &framesCount);
+
+        /**
+         * @brief Calculate the map signature -> expected number of captures from the given list of capture sequence jobs,
+         *        i.e. the expected number of captures from a single scheduler job run.
+         * @param seqJobs list of capture sequence jobs
+         * @param expected map to be filled
+         * @return total expected number of captured frames of a single run of all jobs
+         */
+        static uint16_t calculateExpectedCapturesMap(const QList<SequenceJob *> &seqJobs, QMap<QString, uint16_t> &expected);
+
+        /**
+         * @brief Fill the map signature -> frame count so that a single iteration of the scheduled job creates as many frames as possible
+         *        in addition to the already captured ones, but does not the expected amount.
+         * @param expected map signature -> expected frames count
+         * @param capturedFramesCount map signature -> already captured frames count
+         * @param schedJob scheduler job for which these calculations are done
+         * @param capture_map map signature -> frame count that will be handed over to the capture module to control that a single iteration
+         *        of the scheduler job creates as many frames as possible, but does not exceed the expected ones.
+         * @return total number of captured frames, truncated to the maximal number of frames the scheduler job could produce
+         */
+        static uint16_t fillCapturedFramesMap(const QMap<QString, uint16_t> &expected,
+                                              const SchedulerJob::CapturedFramesMap &capturedFramesCount,
+                                              SchedulerJob &schedJob, SchedulerJob::CapturedFramesMap &capture_map);
+
         int getCompletedFiles(const QString &path, const QString &seqPrefix);
 
         // retrieve the guiding status
         GuideState getGuidingStatus();
 
+        // Returns milliseconds since startCurrentOperationTImer() was called.
+        qint64 getCurrentOperationMsec();
+        // Starts the above operation timer.
+        void startCurrentOperationTimer();
+
+        // Controls for the guiding timer, which restarts guiding after failure.
+        void cancelGuidingTimer();
+        bool isGuidingTimerActive();
+        void startGuidingTimer(int milliseconds);
+        void processGuidingTimer();
+
+        // Returns true if the job is storing its captures on the same machine as the scheduler.
+        bool canCountCaptures(const SchedulerJob &job);
 
         Ekos::Scheduler *ui { nullptr };
         //DBus interfaces
@@ -810,6 +987,103 @@ class Scheduler : public QWidget, public Ui::Scheduler
         QPointer<QDBusInterface> domeInterface { nullptr };
         QPointer<QDBusInterface> weatherInterface { nullptr };
         QPointer<QDBusInterface> capInterface { nullptr };
+
+        // Interface strings for the dbus. Changeable for mocks when testing. Private so only tests can change.
+        QString schedulerPathString { "/KStars/Ekos/Scheduler" };
+        QString kstarsInterfaceString { "org.kde.kstars" };
+
+        QString focusInterfaceString { "org.kde.kstars.Ekos.Focus" };
+        void setFocusInterfaceString(const QString &interface)
+        {
+            focusInterfaceString = interface;
+        }
+        QString focusPathString { "/KStars/Ekos/Focus" };
+        void setFocusPathString(const QString &interface)
+        {
+            focusPathString = interface;
+        }
+
+        // This is only used in the constructor
+        QString ekosInterfaceString { "org.kde.kstars.Ekos" };
+        QString ekosPathString { "/KStars/Ekos" };
+
+        QString mountInterfaceString { "org.kde.kstars.Ekos.Mount" };
+        void setMountInterfaceString(const QString &interface)
+        {
+            mountInterfaceString = interface;
+        }
+        QString mountPathString { "/KStars/Ekos/Mount" };
+        void setMountPathString(const QString &interface)
+        {
+            mountPathString = interface;
+        }
+
+        QString captureInterfaceString { "org.kde.kstars.Ekos.Capture" };
+        void setCaptureInterfaceString(const QString &interface)
+        {
+            captureInterfaceString = interface;
+        }
+        QString capturePathString { "/KStars/Ekos/Capture" };
+        void setCapturePathString(const QString &interface)
+        {
+            capturePathString = interface;
+        }
+
+        QString alignInterfaceString { "org.kde.kstars.Ekos.Align" };
+        void setAlignInterfaceString(const QString &interface)
+        {
+            alignInterfaceString = interface;
+        }
+        QString alignPathString { "/KStars/Ekos/Align" };
+        void setAlignPathString(const QString &interface)
+        {
+            alignPathString = interface;
+        }
+
+        QString guideInterfaceString { "org.kde.kstars.Ekos.Guide" };
+        void setGuideInterfaceString(const QString &interface)
+        {
+            guideInterfaceString = interface;
+        }
+        QString guidePathString { "/KStars/Ekos/Guide" };
+        void setGuidePathString(const QString &interface)
+        {
+            guidePathString = interface;
+        }
+
+        QString domeInterfaceString { "org.kde.kstars.Ekos.Dome" };
+        void setDomeInterfaceString(const QString &interface)
+        {
+            domeInterfaceString = interface;
+        }
+        QString domePathString { "/KStars/Ekos/Dome" };
+        void setDomePathString(const QString &interface)
+        {
+            domePathString = interface;
+        }
+
+        QString weatherInterfaceString { "org.kde.kstars.Ekos.Weather" };
+        void setWeatherInterfaceString(const QString &interface)
+        {
+            weatherInterfaceString = interface;
+        }
+        QString weatherPathString { "/KStars/Ekos/Weather" };
+        void setWeatherPathString(const QString &interface)
+        {
+            weatherPathString = interface;
+        }
+
+        QString dustCapInterfaceString { "org.kde.kstars.Ekos.DustCap" };
+        void setDustCapInterfaceString(const QString &interface)
+        {
+            dustCapInterfaceString = interface;
+        }
+        QString dustCapPathString { "/KStars/Ekos/DustCap" };
+        void setDustCapPathString(const QString &interface)
+        {
+            dustCapPathString = interface;
+        }
+
         // Scheduler and job state and stages
         SchedulerState state { SCHEDULER_IDLE };
         EkosState ekosState { EKOS_IDLE };
@@ -846,19 +1120,27 @@ class Scheduler : public QWidget, public Ui::Scheduler
         /// Startup and Shutdown scripts process
         QProcess scriptProcess;
         /// Store next dawn to calculate dark skies range
-        QDateTime Dawn;
+        static QDateTime Dawn;
         /// Store next dusk to calculate dark skies range
-        QDateTime Dusk;
+        static QDateTime Dusk;
         /// Pre-dawn is where we stop all jobs, it is a user-configurable value before Dawn.
-        QDateTime preDawnDateTime;
+        static QDateTime preDawnDateTime;
         /// Was job modified and needs saving?
         bool mDirty { false };
         /// Keep watch of weather status
         ISD::Weather::Status weatherStatus { ISD::Weather::WEATHER_IDLE };
         /// Keep track of how many times we didn't receive weather updates
         uint8_t noWeatherCounter { 0 };
-        /// Are we shutting down until later?
-        bool preemptiveShutdown { false };
+
+        // Utilities to control the preemptiveShutdown feature.
+        // Is the scheduler shutting down until later when it will resume a job?
+        void enablePreemptiveShutdown(const QDateTime &wakeupTime);
+        void disablePreemptiveShutdown();
+        QDateTime getPreemptiveShutdownWakeupTime();
+        bool preemptiveShutdown();
+        // The various preemptiveShutdown states are controlled by this one variable.
+        QDateTime preemptiveShutdownWakeupTime;
+
         /// Keep track of Load & Slew operation
         bool loadAndSlewProgress { false };
         /// Check if initial autofocus is completed and do not run autofocus until there is a change is telescope position/alignment.
@@ -879,17 +1161,17 @@ class Scheduler : public QWidget, public Ui::Scheduler
         uint8_t checkJobStageCounter { 0 };
         /// Call checkWeather when weatherTimer time expires. It is equal to the UpdatePeriod time in INDI::Weather device.
         //QTimer weatherTimer;
-        /// Timer to put the scheduler into sleep mode until a job is ready
-        QTimer sleepTimer;
-        /// To call checkStatus
-        QTimer schedulerTimer;
-        /// To call checkJobStage
-        QTimer jobTimer;
-        /// Delay for restarting the guider
-        QTimer restartGuidingTimer;
 
-        /// Generic time to track timeout of current operation in progress
-        QElapsedTimer currentOperationTime;
+        /// Delay for restarting the guider
+        /// used by cancelGuidingTimer(), isGuidingTimerActive(), startGuidingTimer
+        /// and processGuidingTimer.
+        int restartGuidingInterval { -1 };
+        KStarsDateTime restartGuidingTime;
+
+        /// Generic time to track timeout of current operation in progress.
+        /// Used by startCurrentOperationTimer() and getCurrentOperationMsec().
+        KStarsDateTime currentOperationTime;
+        bool currentOperationTimeStarted { false };
 
         QUrl dirPath;
 
@@ -907,5 +1189,62 @@ class Scheduler : public QWidget, public Ui::Scheduler
         static const uint32_t FOCUS_INACTIVITY_TIMEOUT      = 120000;
         static const uint32_t CAPTURE_INACTIVITY_TIMEOUT    = 120000;
         static const uint16_t GUIDE_INACTIVITY_TIMEOUT      = 60000;
+
+        // Methods & variables that control the scheduler's iterations.
+
+        // Executes the scheduler
+        void execute();
+        // Repeatedly runs a scheduler iteration and then sleeps timerInterval millisconds
+        // and run the next iteration. This continues until the sleep time is negative.
+        void iterate();
+        // Initialize the scheduler.
+        void init();
+        // Run a single scheduler iteration.
+        int runSchedulerIteration();
+
+        // This is the time between typical scheduler iterations.
+        // The time can be modified for testing.
+        int m_UpdatePeriodMs = 1000;
+
+        // Setup the parameters for the next scheduler iteration.
+        // When milliseconds is not passed in, it uses m_UpdatePeriodMs.
+        void setupNextIteration(SchedulerTimerState nextState);
+        void setupNextIteration(SchedulerTimerState nextState, int milliseconds);
+        // True if the scheduler is between iterations and delaying longer than the typical update period.
+        bool currentlySleeping();
+        // Used by the constructor in testing mainly so a mock ekos could be used.
+        void setupScheduler(const QString &ekosPathStr, const QString &ekosInterfaceStr);
+        // Prints all the relative state variables set during an iteration. For debugging.
+        void printStates(const QString &label);
+
+
+        // The type of scheduler iteration that should be run next.
+        SchedulerTimerState timerState { RUN_NOTHING };
+        // Variable keeping the number of millisconds the scheduler should wait
+        // after the current scheduler iteration.
+        int timerInterval { -1 };
+        // Whether the scheduler has been setup for the next iteration,
+        // that is, whether timerInterval and timerState have been set this iteration.
+        bool iterationSetup { false };
+        // The timer used to wakeup the scheduler between iterations.
+        QTimer iterationTimer;
+        // Counter for how many scheduler iterations have been processed.
+        int schedulerIteration { 0 };
+        // The time when the scheduler first started running iterations.
+        qint64 startMSecs { 0 };
+
+        /// Target coordinates for pointing check
+        QSharedPointer<SolverUtils> m_Solver;
+        // Used when solving position every nth capture.
+        uint32_t m_SolverIteration {0};
+
+        void syncGreedyParams();
+        QPointer<Ekos::GreedyScheduler> m_GreedyScheduler;
+
+        friend TestEkosSchedulerOps;
+        QPointer<GreedyScheduler> &getGreedyScheduler()
+        {
+            return m_GreedyScheduler;
+        }
 };
 }

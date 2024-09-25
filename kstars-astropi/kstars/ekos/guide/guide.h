@@ -1,19 +1,18 @@
-/*  Ekos guide tool
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
 #include "ui_guide.h"
 #include "guideinterface.h"
+#include "guidestatewidget.h"
 #include "ekos/ekos.h"
 #include "indi/indiccd.h"
 #include "indi/inditelescope.h"
+#include "ekos/auxiliary/darkprocessor.h"
 
 #include <QTime>
 #include <QTimer>
@@ -33,6 +32,7 @@ namespace Ekos
 {
 class OpsCalibration;
 class OpsGuide;
+class OpsDither;
 class OpsGPG;
 class InternalGuider;
 class PHD2;
@@ -120,7 +120,7 @@ class Guide : public QWidget, public Ui::Guide
              */
         Q_SCRIPTABLE Ekos::GuideState status()
         {
-            return state;
+            return m_State;
         }
 
         /** DBUS interface function.
@@ -182,12 +182,6 @@ class Guide : public QWidget, public Ui::Guide
         Q_SCRIPTABLE Q_NOREPLY void setGuideAlgorithmIndex(int index);
 
         /** DBUS interface function.
-             * Set rapid guiding option. The options must be set before starting the guiding operation. If no options are set, the options loaded from the user configuration are used.
-             * @param enable if true, it will activate RapidGuide in the CCD driver. When Rapid Guide is used, no frames are sent to Ekos for analysis and the centeroid calculations are done in the CCD driver.
-             */
-        //Q_SCRIPTABLE Q_NOREPLY void setGuideRapidEnabled(bool enable);
-
-        /** DBUS interface function.
              * Enable or disables dithering. Set dither range
              * @param enable if true, dithering is enabled and is performed after each exposure is complete. Otherwise, dithering is disabled.
              * @param value dithering range in pixels. Ekos will move the guide star in a random direction for the specified dithering value in pixels.
@@ -240,9 +234,6 @@ class Guide : public QWidget, public Ui::Guide
         {
             return boxSizeCombo->currentText().toInt();
         }
-
-        //void startRapidGuide();
-        //void stopRapidGuide();
 
         GuideInterface *getGuider()
         {
@@ -356,15 +347,6 @@ class Guide : public QWidget, public Ui::Guide
              */
         void setST4(int index);
 
-        /*
-             * @brief processRapidStarData is called by INDI framework when we receive new Rapid Guide data
-             * @param targetChip target Chip for which rapid guide is enabled
-             * @param dx Deviation in X
-             * @param dy Deviation in Y
-             * @param fit fitting score
-             */
-        //void processRapidStarData(ISD::CCDChip *targetChip, double dx, double dy, double fit);
-
         /**
              * @brief Set telescope and guide scope info. All measurements is in millimeters.
              * @param primaryFocalLength Primary Telescope Focal Length. Set to 0 to skip setting this value.
@@ -387,8 +369,7 @@ class Guide : public QWidget, public Ui::Guide
         void setCaptureStatus(Ekos::CaptureState newState);
         // Update Mount module status
         void setMountStatus(ISD::Telescope::Status newState);
-        void setMountCoords(const QString &ra, const QString &dec, const QString &az, const QString &alt, int pierSide,
-                            const QString &ha);
+        void setMountCoords(const SkyPoint &position, ISD::Telescope::PierSide pierSide, const dms &ha);
 
         // Update Pier Side
         void setPierSide(ISD::Telescope::PierSide newSide);
@@ -409,32 +390,15 @@ class Guide : public QWidget, public Ui::Guide
              */
         void setDECSwap(bool enable);
 
-        /** @brief Update colors following a color scheme update notification.
-         */
-        void refreshColorScheme();
-
-        void setupNSEWLabels();
-
         //plot slots
         void handleVerticalPlotSizeChange();
         void handleHorizontalPlotSizeChange();
         void clearGuideGraphs();
         void clearCalibrationGraphs();
         void slotAutoScaleGraphs();
-        void slotZoomInX();
-        void slotZoomOutX();
         void buildTarget();
         void guideHistory();
         void setLatestGuidePoint(bool isChecked);
-        void toggleShowRAPlot(bool isChecked);
-        void toggleShowDEPlot(bool isChecked);
-        void toggleRACorrectionsPlot(bool isChecked);
-        void toggleDECorrectionsPlot(bool isChecked);
-        void toggleShowSNRPlot(bool isChecked);
-        void toggleShowRMSPlot(bool isChecked);
-        void exportGuideData();
-        void setCorrectionGraphScale();
-        void updateCorrectionsScaleVisibility();
 
         void updateDirectionsFromPHD2(const QString &mode);
 
@@ -461,21 +425,12 @@ class Guide : public QWidget, public Ui::Guide
 
         void updateTrackingBoxSize(int currentIndex);
 
-        // Display guide information when hovering over the drift graph
-        void driftMouseOverLine(QMouseEvent *event);
-
-        // Reset graph if right clicked
-        void driftMouseClicked(QMouseEvent *event);
-
         //void onXscaleChanged( int i );
         //void onYscaleChanged( int i );
         void onThresholdChanged(int i);
-        void onInfoRateChanged(double val);
         void onEnableDirRA(bool enable);
         void onEnableDirDEC(bool enable);
         void syncSettings();
-
-        //void onRapidGuideChanged(bool enable);
 
         void setAxisDelta(double ra, double de);
         void setAxisSigma(double ra, double de);
@@ -485,6 +440,7 @@ class Guide : public QWidget, public Ui::Guide
                                double dy = 0);
 
         void processGuideOptions();
+        void configSEPMultistarOptions();
 
         void onControlDirectionChanged(bool enable);
         void updatePHD2Directions();
@@ -499,10 +455,8 @@ class Guide : public QWidget, public Ui::Guide
         void newLog(const QString &text);
         void newStatus(Ekos::GuideState status);
 
-        void newImage(FITSView *view);
+        void newImage(const QSharedPointer<FITSView> &view);
         void newStarPixmap(QPixmap &);
-        void newProfilePixmap(QPixmap &);
-        void newDriftPlotPixmap(QPixmap &);
 
         // Immediate deviations in arcsecs
         void newAxisDelta(double ra, double de);
@@ -523,11 +477,6 @@ class Guide : public QWidget, public Ui::Guide
     private:
 
         void resizeEvent(QResizeEvent *event) override;
-
-        /**
-             * @brief zoomX zooms in or out of the X-axis of the drift graph.
-             */
-        void zoomX(int zoomLevel);
 
         /**
              * @brief updateGuideParams Update the guider and frame parameters due to any changes in the mount and/or ccd frame
@@ -568,10 +517,6 @@ class Guide : public QWidget, public Ui::Guide
          */
         void prepareCapture(ISD::CCDChip *targetChip);
 
-        /**
-         * @brief setRMSVisibility Decides which RMS plot is visible.
-         */
-        void setRMSVisibility();
 
         void handleManualDither();
 
@@ -583,7 +528,6 @@ class Guide : public QWidget, public Ui::Guide
         // Init Functions
         void initPlots();
         void initDriftGraph();
-        void initDriftPlot();
         void initCalibrationPlot();
         void initView();
         void initConnections();
@@ -591,7 +535,7 @@ class Guide : public QWidget, public Ui::Guide
         bool captureOneFrame();
 
         // Driver
-        void reconnectDriver(const QString &camera, const QString &via);
+        void reconnectDriver(const QString &camera, const QString &via, const QVariantMap &settings);
 
         // Operation Stack
         QStack<GuideState> operationStack;
@@ -601,7 +545,6 @@ class Guide : public QWidget, public Ui::Guide
         QString lastPHD2CameraName; //This is for the configure PHD2 camera method.
         ISD::Telescope *currentTelescope { nullptr };
         ISD::ST4 *ST4Driver { nullptr };
-        ISD::ST4 *AODriver { nullptr };
         ISD::ST4 *GuideDriver { nullptr };
 
         // Device Containers
@@ -616,6 +559,8 @@ class Guide : public QWidget, public Ui::Guide
         QVector3D starCenter;
 
         // Guide Params
+        int guideBinIndex { 0 };    // Selected or saved binning for guiding
+        int guideFilterIndex { 0 }; // Selected or saved filter for post-treatment
         double ccdPixelSizeX { -1 };
         double ccdPixelSizeY { -1 };
         double aperture { -1 };
@@ -625,14 +570,12 @@ class Guide : public QWidget, public Ui::Guide
         double pixScaleX { -1 };
         double pixScaleY { -1 };
 
-        // Rapid Guide
-        //bool rapidGuideReticleSet;
-
         // State
-        GuideState state { GUIDE_IDLE };
+        GuideState m_State { GUIDE_IDLE };
+        GuideStateWidget *guideStateWidget { nullptr };
 
         // Guide timer
-        QTime guideTimer;
+        QElapsedTimer guideTimer;
 
         // Capture timeout timer
         QTimer captureTimeout;
@@ -654,10 +597,11 @@ class Guide : public QWidget, public Ui::Guide
         // Options
         OpsCalibration *opsCalibration { nullptr };
         OpsGuide *opsGuide { nullptr };
+        OpsDither *opsDither { nullptr };
         OpsGPG *opsGPG { nullptr };
 
         // Guide Frame
-        GuideView *guideView { nullptr };
+        QSharedPointer<GuideView> m_GuideView;
 
         // Calibration done already?
         bool calibrationComplete { false };
@@ -683,16 +627,13 @@ class Guide : public QWidget, public Ui::Guide
         QPointer<FITSViewer> fv;
         QSharedPointer<FITSData> m_ImageData;
 
+        // Dark Processor
+        QPointer<DarkProcessor> m_DarkProcessor;
+
         double primaryFL = -1, primaryAperture = -1, guideFL = -1, guideAperture = -1;
         ISD::Telescope::Status m_MountStatus { ISD::Telescope::MOUNT_IDLE };
 
-        QCPCurve *centralTarget { nullptr };
-        QCPCurve *yellowTarget { nullptr };
-        QCPCurve *redTarget { nullptr };
-        QCPCurve *concentricRings { nullptr };
-
         bool graphOnLatestPt = true;
-        QUrl guideURLPath;
 
         //This is for enforcing the PHD2 Star lock when Guide is pressed,
         //autostar is not selected, and the user has chosen a star.
@@ -701,25 +642,17 @@ class Guide : public QWidget, public Ui::Guide
 
         QCPItemText *calLabel  { nullptr };
 
-        // State
-        KLed * idlingStateLed { nullptr };
-        KLed * preparingStateLed { nullptr };
-        KLed * runningStateLed { nullptr };
-
-        // Axis for the SNR part of the driftGraph. Qt owns this pointer's memory.
-        QCPAxis *snrAxis;
-
         // The scales of these zoom levels are defined in Guide::zoomX().
         static constexpr int defaultXZoomLevel = 3;
         int driftGraphZoomLevel {defaultXZoomLevel};
 
-        
-        // The accumulated non-guided dither offsets (in milliseconds) in the RA and DEC directions.   
+
+        // The accumulated non-guided dither offsets (in milliseconds) in the RA and DEC directions.
         int nonGuidedDitherRaOffsetMsec = 0, nonGuidedDitherDecOffsetMsec = 0;
 
         // Random generator for non guided dithering
         std::mt19937 nonGuidedPulseGenerator;
-        
+
         // Flag to check if random generator for non guided dithering is initialized.
         bool isNonGuidedDitherInitialized = false;
 

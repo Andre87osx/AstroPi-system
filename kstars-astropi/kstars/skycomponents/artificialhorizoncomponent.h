@@ -1,10 +1,7 @@
-/*  Artificial Horizon Component
-    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -84,6 +81,10 @@ class ArtificialHorizon
         // Returns true if the azimuth/altitude point is not blocked by the artificial horzon entities.
         bool isVisible(double azimuthDegrees, double altitudeDegrees) const;
 
+        // returns the (highest) altitude constraint at the given azimuth.
+        // If there are no constraints, then it returns -90.
+        double altitudeConstraint(double azimuthDegrees) const;
+
         // Finds the nearest enabled constraint at the azimuth and above or below (not not exactly at)
         // the altitude given.
         const ArtificialHorizonEntity *getConstraintAbove(double azimuthDegrees, double altitudeDegrees,
@@ -107,10 +108,19 @@ class ArtificialHorizon
         void drawSampledPolygons(int entity, double az1, double alt1, double az2, double alt2,
                                  double sampling, SkyPainter *painter, QList<LineList> *regions);
         bool computePolygon(int entity, double az1, double alt1, double az2, double alt2,
-                            LineList *region);
+                            double sampling, LineList *region);
 
         QList<ArtificialHorizonEntity *> m_HorizonList;
         bool testing { false };
+
+        // Methods and data structure for precomputing altitudeConstraint(azimuth).
+        // This way, we don't traverse the potentially horizon list each time
+        // we query the horizon constraint.
+        void precomputeConstraints() const;
+        void resetPrecomputeConstraints() const;
+        double precomputedConstraint(double azimuth) const;
+        double altitudeConstraintInternal(double azimuthDegrees) const;
+        mutable QVector<double> precomputedConstraints;
 
         friend TestArtificialHorizon;
 };

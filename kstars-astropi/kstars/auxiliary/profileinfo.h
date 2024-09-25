@@ -1,12 +1,8 @@
-/*  Profile Info
-    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -53,11 +49,11 @@ class ProfileInfo
         int indihub { 0 };
         QString remotedrivers;
         QString guiderhost;
+        QByteArray scripts;
         int id { 0 };
         int port { -1 };
         bool autoConnect { false };
-        bool isStellarMate { false };
+        bool portSelector {false};
         int INDIWebManagerPort { -1 };
-        // driver[role] = label
         QMap<QString, QString> drivers;
 };

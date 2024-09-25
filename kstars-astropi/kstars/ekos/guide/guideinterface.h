@@ -1,11 +1,8 @@
-/*  Ekos guide class interface
-    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -61,7 +58,7 @@ class GuideInterface : public QObject
 
         virtual void setStarPosition(QVector3D &starCenter);
 
-        virtual void setMountCoords(const QString &ra, const QString &dec, const QString &az, const QString &alt, int side);
+        virtual void setMountCoords(const SkyPoint &position, ISD::Telescope::PierSide side);
         virtual void setPierSide(ISD::Telescope::PierSide newSide);
         virtual void resetGPG() {};
 

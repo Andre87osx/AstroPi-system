@@ -1,18 +1,8 @@
-/***************************************************************************
-                          opssatellites.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Mon 21 Mar 2011
-    copyright            : (C) 2011 by Jérôme SONRIER
-    email                : jsid@emor3j.fr.eu.org
- ***************************************************************************/
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2011 Jérôme SONRIER <jsid@emor3j.fr.eu.org>
+
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "opssatellites.h"
 
@@ -74,8 +64,13 @@ OpsSatellites::OpsSatellites() : QFrame(KStars::Instance())
     connect(FilterEdit, SIGNAL(textChanged(QString)), this, SLOT(slotFilterReg(QString)));
     connect(m_Model, SIGNAL(itemChanged(QStandardItem*)), this, SLOT(slotItemChanged(QStandardItem*)));
 
+    #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     connect(satelliteButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::buttonPressed), this,
             [&]() { isDirty = true; });
+    #else
+    connect(satelliteButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::idPressed), this,
+            [&]() { isDirty = true; });
+    #endif
 
     isDirty = false;
 }
@@ -102,7 +97,7 @@ void OpsSatellites::updateListView()
     m_Model->clear();
     SatListTreeView->reset();
 
-    m_Model->setHorizontalHeaderLabels(QStringList(i18n("Satellite name")));
+    m_Model->setHorizontalHeaderLabels(QStringList(i18n("Satellite Name")));
 
     // Add each groups and satellites in the list
     foreach (SatelliteGroup *sat_group, data->skyComposite()->satellites()->groups())

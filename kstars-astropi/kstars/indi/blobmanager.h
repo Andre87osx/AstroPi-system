@@ -1,11 +1,7 @@
-/*  INDI Blob Manager
-    Copyright (C) 2018 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
-
+    SPDX-License-Identifier: GPL-2.0-or-later
 */
 
 #pragma once
@@ -42,7 +38,7 @@ class BlobManager : public QObject, public INDI::BaseClient
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled)
 
   public:
-    BlobManager(const QString &host, int port, const QString &device, const QString &prop);
+    BlobManager(QObject *parent, const QString &host, int port, const QString &device, const QString &prop);
     virtual ~BlobManager() override = default;
 
     bool enabled() { return m_Enabled; }

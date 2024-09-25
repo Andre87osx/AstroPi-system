@@ -9,14 +9,35 @@
 namespace Ekos
 {
 
-PolynomialFit::PolynomialFit(int degree_, const QVector<double>& x_, const QVector<double>& y_)
+PolynomialFit::PolynomialFit(int degree_, uint8_t maxCount, const QVector<double> &x_, const QVector<double> &y_)
     : degree(degree_), x(x_), y(y_)
 {
     Q_ASSERT(x_.size() == y_.size());
+    QVector<QPointF> values;
+    for (int i = 0; i < x.count(); i++)
+        values << QPointF(x[i], y[i]);
+
+    std::sort(values.begin(), values.end(), [](const QPointF & a, const QPointF & b)
+    {
+        return a.y() < b.y();
+    });
+
+    while(values.count() > maxCount)
+        values.takeLast();
+
+    x.clear();
+    y.clear();
+
+    for (const auto &onePoint : values)
+    {
+        x << onePoint.x();
+        y << onePoint.y();
+    }
+
     solve(x, y);
 }
 
-PolynomialFit::PolynomialFit(int degree_, const QVector<int>& x_, const QVector<double>& y_)
+PolynomialFit::PolynomialFit(int degree_, const QVector<int> &x_, const QVector<double> &y_)
     : degree(degree_), y(y_)
 {
     Q_ASSERT(x_.size() == y_.size());
@@ -27,7 +48,7 @@ PolynomialFit::PolynomialFit(int degree_, const QVector<int>& x_, const QVector<
     solve(x, y);
 }
 
-void PolynomialFit::solve(const QVector<double>& x, const QVector<double>& y)
+void PolynomialFit::solve(const QVector<double> &x, const QVector<double> &y)
 {
     double chisq = 0;
     coefficients = gsl_polynomial_fit(x.data(), y.data(), x.count(), degree, chisq);
@@ -38,14 +59,18 @@ double PolynomialFit::polynomialFunction(double x, void *params)
     PolynomialFit *instance = static_cast<PolynomialFit *>(params);
 
     if (instance && !instance->coefficients.empty())
-    {
-        const int order = instance->coefficients.size() - 1;
-        double sum = 0;
-        for (int i = 0; i <= order; ++i)
-            sum += instance->coefficients[i] * pow(x, i);
-        return sum;
-    }
-    return -1;
+        return instance->f(x);
+    else
+        return -1;
+}
+
+double PolynomialFit::f(double x)
+{
+    const int order = coefficients.size() - 1;
+    double sum = 0;
+    for (int i = 0; i <= order; ++i)
+        sum += coefficients[i] * pow(x, i);
+    return sum;
 }
 
 bool PolynomialFit::findMinimum(double expected, double minPosition, double maxPosition, double *position, double *value)
@@ -94,37 +119,6 @@ bool PolynomialFit::findMinimum(double expected, double minPosition, double maxP
 
     gsl_min_fminimizer_free(s);
     return (status == GSL_SUCCESS);
-}
-
-void PolynomialFit::drawPolynomial(QCustomPlot *plot, QCPGraph *graph)
-{
-    graph->data()->clear();
-    QCPRange range = plot->xAxis->range();
-    double interval = range.size() / 20.0;
-
-    for(double x = range.lower ; x < range.upper ; x += interval)
-    {
-        double y = polynomialFunction(x, this);
-        graph->addData(x, y);
-    }
-    plot->replot();
-}
-
-void PolynomialFit::drawMinimum(QCustomPlot *plot, QCPGraph *solutionGraph,
-                              double solutionPosition, double solutionValue, const QFont& font)
-{
-    solutionGraph->data()->clear();
-    solutionGraph->addData(solutionPosition, solutionValue);
-    QCPItemText *textLabel = new QCPItemText(plot);
-    textLabel->setPositionAlignment(Qt::AlignVCenter | Qt::AlignHCenter);
-    textLabel->position->setType(QCPItemPosition::ptPlotCoords);
-    textLabel->position->setCoords(solutionPosition, solutionValue / 2);
-    textLabel->setColor(Qt::red);
-    textLabel->setPadding(QMargins(0, 0, 0, 0));
-    textLabel->setBrush(Qt::white);
-    textLabel->setPen(Qt::NoPen);
-    textLabel->setFont(QFont(font.family(), 8));
-    textLabel->setText(QString::number(solutionPosition));
 }
 }  // namespace
 

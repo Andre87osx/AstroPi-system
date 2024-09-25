@@ -1,21 +1,12 @@
-/***************************************************************************
-                          fitsthresholddetector.cpp  -  FITS Image
-                             -------------------
-    begin                : Sat March 28 2020
-    copyright            : (C) 2004 by Jasem Mutlaq, (C) 2020 by Eric Dejouhanet
-    email                : eric.dejouhanet@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Jasem Mutlaq
+    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
- *   See http://members.aol.com/pkirchg for more details.                  *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+
+    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
+    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
+*/
 
 #include <math.h>
 #include <cmath>
@@ -23,6 +14,7 @@
 
 #include "fits_debug.h"
 #include "fitsthresholddetector.h"
+#include "fitsdata.h"
 
 //void FITSThresholdDetector::configure(const QString &setting, const QVariant &value)
 //{
@@ -130,7 +122,7 @@ bool FITSThresholdDetector::findOneStar(const QRect &boundary) const
                     pass++;
             }
 
-            //qDebug() << "Testing for radius " << r << " passes # " << pass << " @ threshold " << running_threshold;
+            //qDebug() << Q_FUNC_INFO << "Testing for radius " << r << " passes # " << pass << " @ threshold " << running_threshold;
             //if (pass >= 6)
             if (pass >= 5)
             {

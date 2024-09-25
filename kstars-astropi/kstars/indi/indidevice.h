@@ -1,11 +1,8 @@
-/*  GUI Device Manager
-    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -34,31 +31,26 @@ class INDI_G;
  *
  * @author Jasem Mutlaq
  */
-class INDI_D : public QDialog
+class INDI_D : public QWidget
 {
         Q_OBJECT
     public:
-        INDI_D(INDI::BaseDevice *in_idv, ClientManager *in_cm);
-        ~INDI_D();
+        INDI_D(QWidget *parent, INDI::BaseDevice *in_idv, ClientManager *in_cm);
 
-        QSplitter *getDeviceBox()
-        {
-            return deviceVBox;
-        }
 
-        ClientManager *getClientManager()
+        ClientManager *getClientManager() const
         {
             return m_ClientManager;
         }
 
-        INDI_G *getGroup(const QString &groupName);
+        INDI_G *getGroup(const QString &groupName) const;
 
-        INDI::BaseDevice *getBaseDevice()
+        INDI::BaseDevice *getBaseDevice() const
         {
             return m_BaseDevice;
         }
 
-        QList<INDI_G *> getGroups()
+        QList<INDI_G *> getGroups() const
         {
             return groupsList;
         }

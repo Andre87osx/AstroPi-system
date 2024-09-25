@@ -1,18 +1,17 @@
-/*  Ekos Focus tool
-    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
 #include "ui_focus.h"
+#include "focusprofileplot.h"
 #include "ekos/ekos.h"
 #include "ekos/auxiliary/filtermanager.h"
 #include "ekos/auxiliary/stellarsolverprofileeditor.h"
+#include "ekos/auxiliary/darkprocessor.h"
 #include "ekos/mount/mount.h"
 #include "fitsviewer/fitsviewer.h"
 #include "indi/indiccd.h"
@@ -56,7 +55,7 @@ class Focus : public QWidget, public Ui::Focus
 
         typedef enum { FOCUS_NONE, FOCUS_IN, FOCUS_OUT } FocusDirection;
         typedef enum { FOCUS_MANUAL, FOCUS_AUTO } FocusType;
-        typedef enum { FOCUS_ITERATIVE, FOCUS_POLYNOMIAL, FOCUS_LINEAR } FocusAlgorithm;
+        typedef enum { FOCUS_ITERATIVE, FOCUS_POLYNOMIAL, FOCUS_LINEAR, FOCUS_LINEAR1PASS } FocusAlgorithm;
         //typedef enum { FOCUSER_TEMPERATURE, OBSERVATORY_TEMPERATURE, NO_TEMPERATURE } TemperatureSource;
 
         /** @defgroup FocusDBusInterface Ekos DBus Interface - Focus Module
@@ -265,6 +264,12 @@ class Focus : public QWidget, public Ui::Focus
              */
         Q_SCRIPTABLE bool focusOut(int ms = -1);
 
+        /**
+             * @brief checkFocus Given the minimum required HFR, check focus and calculate HFR. If current HFR exceeds required HFR, start autofocus process, otherwise do nothing.
+             * @param requiredHFR Minimum HFR to trigger autofocus process.
+             */
+        Q_SCRIPTABLE Q_NOREPLY void checkFocus(double requiredHFR);
+
         /** @}*/
 
         /**
@@ -273,9 +278,20 @@ class Focus : public QWidget, public Ui::Focus
         void startFraming();
 
         /**
+         * @brief Move the focuser to the initial focus position.
+         */
+        void resetFocuser();
+
+        /**
              * @brief checkStopFocus Perform checks before stopping the autofocus operation. Some checks are necessary for in-sequence focusing.
+             * @param abort true iff focusing should be aborted, false if it should only be stopped and marked as failed
              */
-        void checkStopFocus();
+        void checkStopFocus(bool abort);
+
+        /**
+         * @brief React when a meridian flip has been started
+         */
+        void meridianFlipStarted();
 
         /**
              * @brief Check CCD and make sure information is updated accordingly. This simply calls syncCCDInfo for the current CCD.
@@ -288,6 +304,11 @@ class Focus : public QWidget, public Ui::Focus
              * @brief syncCCDInfo Read current CCD information and update settings accordingly.
              */
         void syncCCDInfo();
+
+        /**
+         * @brief Update camera controls like Gain, ISO, Offset...etc
+         */
+        void syncCCDControls();
 
         /**
              * @brief Check Focuser and make sure information is updated accordingly.
@@ -322,6 +343,14 @@ class Focus : public QWidget, public Ui::Focus
         void focusStarSelected(int x, int y);
 
         /**
+         * @brief selectFocusStarFraction Select the focus star based by fraction of the overall size.
+         * It calls focusStarSelected after multiplying the fractions (0.0 to 1.0) with the focus view width and height.
+         * @param x final x = x * focusview_width
+         * @param y final y = y * focusview_height
+         */
+        void selectFocusStarFraction(double x, double y);
+
+        /**
              * @brief newFITS A new FITS blob is received by the CCD driver.
              * @param bp pointer to blob data
              */
@@ -338,12 +367,6 @@ class Focus : public QWidget, public Ui::Focus
              * @param nvp pointer to updated focuser number property.
              */
         void processTemperatureSource(INumberVectorProperty *nvp);
-
-        /**
-             * @brief checkFocus Given the minimum required HFR, check focus and calculate HFR. If current HFR exceeds required HFR, start autofocus process, otherwise do nothing.
-             * @param requiredHFR Minimum HFR to trigger autofocus process.
-             */
-        void checkFocus(double requiredHFR);
 
         /**
              * @brief setFocusStatus Upon completion of the focusing process, set its status (fail or pass) and reset focus process to clean state.
@@ -368,8 +391,7 @@ class Focus : public QWidget, public Ui::Focus
         void setMountStatus(ISD::Telescope::Status newState);
 
         // Update Altitude From Mount
-        void setMountCoords(const QString &ra, const QString &dec, const QString &az, const QString &alt, int pierSide,
-                            const QString &ha);
+        void setMountCoords(const SkyPoint &position, ISD::Telescope::PierSide pierSide, const dms &ha);
 
         /**
          * @brief toggleVideo Turn on and off video streaming if supported by the camera.
@@ -396,6 +418,9 @@ class Focus : public QWidget, public Ui::Focus
 
 
 
+    protected:
+        void addPlotPosition(int pos, double hfr, bool plot = true);
+
     private slots:
         /**
              * @brief toggleSubframe Process enabling and disabling subfrag.
@@ -411,7 +436,7 @@ class Focus : public QWidget, public Ui::Focus
 
         void processCaptureTimeout();
 
-        void processCaptureFailure();
+        void processCaptureError(ISD::CCD::ErrorType type);
 
         void setCaptureComplete();
 
@@ -422,8 +447,6 @@ class Focus : public QWidget, public Ui::Focus
         void setVideoStreamEnabled(bool enabled);
 
         void syncSettings();
-
-        void graphPolynomialFunction();
 
         void calculateHFR();
         void setCurrentHFR(double value);
@@ -439,15 +462,84 @@ class Focus : public QWidget, public Ui::Focus
 
         void suspendGuiding();
         void resumeGuiding();
-        void newImage(FITSView *view);
+        void newImage(const QSharedPointer<FITSView> &view);
         void newStarPixmap(QPixmap &);
-        void newProfilePixmap(QPixmap &);
         void settingsUpdated(const QJsonObject &settings);
 
         // Signals for Analyze.
         void autofocusStarting(double temperature, const QString &filter);
         void autofocusComplete(const QString &filter, const QString &points);
         void autofocusAborted(const QString &filter, const QString &points);
+
+        // HFR V curve plot events
+        /**
+         * @brief initialize the HFR V plot
+         * @param showPosition show focuser position (true) or count focus iterations (false)
+         */
+        void initHFRPlot(bool showPosition);
+
+        /**
+          * @brief new HFR plot position
+          * @param pos focuser position
+          * @param hfr measured star HFR value
+          * @param pulseDuration Pulse duration in ms for relative focusers that only support timers,
+          *        or the number of ticks in a relative or absolute focuser
+          * */
+        void newHFRPlotPosition(double pos, double hfr, int pulseDuration, bool plot = true);
+
+        /**
+          * @brief new HFR plot position with sigma
+          * @param pos focuser position with associated error (sigma)
+          * @param hfr measured star HFR value
+          * @param sigma is the standard deviation of star HFRs
+          * @param pulseDuration Pulse duration in ms for relative focusers that only support timers,
+          *        or the number of ticks in a relative or absolute focuser
+          * */
+        void newHFRPlotPositionWithSigma(double pos, double hfr, double sigma, int pulseDuration, bool plot = true);
+
+        /**
+         * @brief draw the approximating polynomial into the HFR V-graph
+         * @param poly pointer to the polynomial approximation
+         * @param isVShape has the solution a V shape?
+         * @param activate make the graph visible?
+         */
+        void drawPolynomial(PolynomialFit *poly, bool isVShape, bool activate, bool plot = true);
+
+        /**
+         * @brief draw the curve into the HFR V-graph
+         * @param poly pointer to the polynomial approximation
+         * @param isVShape has the solution a V shape?
+         * @param activate make the graph visible?
+         */
+        void drawCurve(CurveFitting *curve, bool isVShape, bool activate, bool plot = true);
+
+        /**
+         * @brief Focus solution with minimal HFR found
+         * @param solutionPosition focuser position
+         * @param solutionValue HFR value
+         */
+        void minimumFound(double solutionPosition, double solutionValue, bool plot = true);
+
+        /**
+         * @brief redraw the entire HFR plot
+         * @param poly pointer to the polynomial approximation
+         * @param solutionPosition solution focuser position
+         * @param solutionValue solution HFR value
+         */
+        void redrawHFRPlot(PolynomialFit *poly, double solutionPosition, double solutionValue);
+
+        /**
+         * @brief draw a title on the focus plot
+         * @param title the title
+         */
+        void setTitle(const QString &title, bool plot = true);
+
+        /**
+         * @brief update the title on the focus plot
+         * @param title
+         */
+        void updateTitle(const QString &title, bool plot = true);
+
     private:
 
         QList<SSolver::Parameters> m_StellarSolverProfiles;
@@ -476,9 +568,6 @@ class Focus : public QWidget, public Ui::Focus
         /// HFR Plot
         ////////////////////////////////////////////////////////////////////
         void initPlots();
-        void drawHFRPlot();
-        void drawHFRIndeces();
-        void drawProfilePlot();
 
         ////////////////////////////////////////////////////////////////////
         /// Positions
@@ -488,8 +577,22 @@ class Focus : public QWidget, public Ui::Focus
         void autoFocusAbs();
         void autoFocusLinear();
         void autoFocusRel();
+
+        // Linear does plotting differently from the rest.
+        void plotLinearFocus();
+
+        // Linear final updates to the curve
+        void plotLinearFinalUpdates();
+
+        /** @brief Helper function determining whether the focuser behaves like a position
+         *         based one (vs. a timer based)
+         */
+        bool isPositionBased()
+        {
+            return (canAbsMove || canRelMove || (focusAlgorithm == FOCUS_LINEAR) || (focusAlgorithm == FOCUS_LINEAR1PASS));
+        }
         void resetButtons();
-        void stop(bool aborted = false);
+        void stop(FocusState completionState = FOCUS_ABORTED);
 
         void initView();
 
@@ -506,6 +609,8 @@ class Focus : public QWidget, public Ui::Focus
         // Sets the algorithm and enables/disables various UI inputs.
         void setFocusAlgorithm(FocusAlgorithm algorithm);
 
+        void setCurveFit(CurveFitting::CurveFit curvefit);
+
         // Move the focuser in (negative) or out (positive amount).
         bool changeFocus(int amount);
 
@@ -518,7 +623,8 @@ class Focus : public QWidget, public Ui::Focus
         // and set focuserAdditionalMovement to the extra motion, so that after this motion completes
         // we will then scan back in (back to the originally requested position). This "dance" is done
         // to reduce backlash on such movement changes and so that we've always focused in before capture.
-        int adjustLinearPosition(int position, int newPosition);
+        // For LINEAR1PASS algo use the user-defined backlash value to adjust by
+        int adjustLinearPosition(int position, int newPosition, int backlash);
 
         /**
          * @brief syncTrackingBoxPosition Sync the tracking box to the current selected star center
@@ -541,7 +647,14 @@ class Focus : public QWidget, public Ui::Focus
         /**
          * @brief completeAutofocusProcedure finishes off autofocus and emits a message for other modules.
          */
-        void completeFocusProcedure(bool success);
+        void completeFocusProcedure(FocusState completionState, bool plot = true);
+
+        /**
+         * @brief activities to be executed after the configured settling time
+         * @param completionState state the focuser completed with
+         * @param autoFocusUsed is autofocus running?
+         */
+        void settle(const FocusState completionState, const bool autoFocusUsed);
 
         //        void initializeFocuserTemperature();
         void setLastFocusTemperature();
@@ -592,6 +705,8 @@ class Focus : public QWidget, public Ui::Focus
         StarAlgorithm focusDetection { ALGORITHM_GRADIENT };
         /// Focus Process Algorithm
         FocusAlgorithm focusAlgorithm { FOCUS_ITERATIVE };
+        /// Curve fit, default to Quadratic
+        CurveFitting::CurveFit curveFit { CurveFitting::FOCUS_QUADRATIC };
 
         /*********************
          * HFR Club variables
@@ -655,7 +770,12 @@ class Focus : public QWidget, public Ui::Focus
         bool inAutoFocus { false };
         bool inFocusLoop { false };
         //bool inSequenceFocus { false };
-        bool resetFocus { false };
+        /// Keep track of request to retry or abort an AutoFocus run after focus position has been reset
+        /// RESTART_NONE = normal operation, no restart
+        /// RESTART_NOW = restart the autofocus routine
+        /// RESTART_ABORT = when autofocus has been tried MAXIMUM_RESET_ITERATIONS times, abort the routine
+        typedef enum { RESTART_NONE = 0, RESTART_NOW, RESTART_ABORT } FocusRestartState;
+        FocusRestartState m_RestartState { RESTART_NONE };
         /// Did we reverse direction?
         bool reverseDir { false };
         /// Did the user or the auto selection process finish selecting our focus star?
@@ -672,10 +792,14 @@ class Focus : public QWidget, public Ui::Focus
         int activeBin { 0 };
         /// HFR values for captured frames before averages
         QVector<double> HFRFrames;
-        // CCD Exposure Looping
-        bool rememberCCDExposureLooping = { false };
+        // Camera Fast Exposure
+        bool m_RememberCameraFastExposure = { false };
         // Future Watch
         QFutureWatcher<bool> m_StarFinderWatcher;
+        // R2 as a measure of how well the curve fits the datapoints. Passed to the V-curve graph for display
+        double R2 = 0;
+        // Counter to retry the auto focus run if the R2Limit has not been reached
+        int R2Retries = 0;
 
         /// Autofocus log file info.
         QStringList m_LogText;
@@ -694,21 +818,10 @@ class Focus : public QWidget, public Ui::Focus
         double minPos { 1e6 };
         /// Plot maximum positions
         double maxPos { 0 };
-        /// List of V curve plot points
-        /// V-Curve graph
-        QCPGraph *v_graph { nullptr };
 
-        // Last gaussian fit values
-        QVector<double> lastGausIndexes;
-        QVector<double> lastGausFrequencies;
-        QCPGraph *currentGaus { nullptr };
-        QCPGraph *firstGaus { nullptr };
-        QCPGraph *lastGaus { nullptr };
-
+        /// HFR V curve plot points
         QVector<double> hfr_position, hfr_value;
-
-        // Pixmaps
-        QPixmap profilePixmap;
+        bool isVShapeSolution = false;
 
         /// State
         Ekos::FocusState state { Ekos::FOCUS_IDLE };
@@ -726,7 +839,7 @@ class Focus : public QWidget, public Ui::Focus
         QVector3D rememberStarCenter;
 
         /// Focus Frame
-        FITSView *focusView { nullptr };
+        QSharedPointer<FITSView> m_FocusView;
 
         /// Star Select Timer
         QTimer waitStarSelectTimer;
@@ -738,15 +851,14 @@ class Focus : public QWidget, public Ui::Focus
         QVector<QVector3D> starsHFR;
 
         /// Relative Profile
-        QCustomPlot *profilePlot { nullptr };
+        FocusProfilePlot *profilePlot { nullptr };
         QDialog *profileDialog { nullptr };
 
         /// Polynomial fitting.
         std::unique_ptr<PolynomialFit> polynomialFit;
-        int polySolutionFound { 0 };
-        QCPGraph *polynomialGraph = nullptr;
-        QCPGraph *focusPoint = nullptr;
-        bool polynomialGraphIsShown = false;
+
+        // Curve fitting.
+        std::unique_ptr<CurveFitting> curveFitting;
 
         // Capture timers
         QTimer captureTimer;
@@ -780,5 +892,10 @@ class Focus : public QWidget, public Ui::Focus
 
         // Mount altitude value for logging
         double mountAlt { INVALID_VALUE };
+
+        static constexpr uint8_t MAXIMUM_FLUCTUATIONS {10};
+
+        // Dark Processor
+        QPointer<DarkProcessor> m_DarkProcessor;
 };
 }

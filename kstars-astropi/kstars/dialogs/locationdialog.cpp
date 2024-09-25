@@ -1,19 +1,8 @@
-/***************************************************************************
-                          locationdialog.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Feb 11 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : jharris@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "locationdialog.h"
 
@@ -63,7 +52,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
 
     ld->MapView->setLocationDialog(this);
 
-    setWindowTitle(i18n("Set Geographic Location"));
+    setWindowTitle(i18nc("@title:window", "Set Geographic Location"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -102,7 +91,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
 #ifdef HAVE_GEOCLUE_2
     source = QGeoPositionInfoSource::createDefaultSource(this);
     source->setPreferredPositioningMethods(QGeoPositionInfoSource::SatellitePositioningMethods);
-    qDebug() << "Last known position" << source->lastKnownPosition().coordinate();
+    qDebug() << Q_FUNC_INFO << "Last known position" << source->lastKnownPosition().coordinate();
 
     connect(source, SIGNAL(positionUpdated(QGeoPositionInfo)), this, SLOT(positionUpdated(QGeoPositionInfo)));
     connect(source, SIGNAL(error(QGeoPositionInfoSource::Error)), this, SLOT(positionUpdateError(QGeoPositionInfoSource::Error)));
@@ -111,7 +100,7 @@ LocationDialog::LocationDialog(QWidget *parent) : QDialog(parent), timer(nullptr
     connect(ld->GetLocationButton, SIGNAL(clicked()), this, SLOT(requestUpdate()));
 #endif
 
-    ld->DSTLabel->setText("<a href=\"showrules\">" + i18n("DST Rule:") + "</a>");
+    ld->DSTLabel->setText("<a href=\"showrules\">" + i18n("DST rule:") + "</a>");
     connect(ld->DSTLabel, SIGNAL(linkActivated(QString)), this, SLOT(showTZRules()));
 
     dataModified = false;
@@ -254,8 +243,8 @@ void LocationDialog::changeCity()
             ld->NewProvinceName->setText(SelectedCity->translatedProvince());
 
         ld->NewCountryName->setText(SelectedCity->translatedCountry());
-        ld->NewLong->showInDegrees(SelectedCity->lng());
-        ld->NewLat->showInDegrees(SelectedCity->lat());
+        ld->NewLong->show(SelectedCity->lng());
+        ld->NewLat->show(SelectedCity->lat());
         ld->TZBox->setEditText(QLocale().toString(SelectedCity->TZ0()));
         ld->NewElev->setValue(SelectedCity->elevation());
 
@@ -316,8 +305,8 @@ bool LocationDialog::updateCity(CityOperation operation)
     }
 
     bool latOk(false), lngOk(false), tzOk(false);
-    dms lat                = ld->NewLat->createDms(true, &latOk);
-    dms lng                = ld->NewLong->createDms(true, &lngOk);
+    dms lat                = ld->NewLat->createDms(&latOk);
+    dms lng                = ld->NewLong->createDms(&lngOk);
     QString TimeZoneString = ld->TZBox->lineEdit()->text();
     TimeZoneString.replace(QLocale().decimalPoint(), ".");
     double TZ = TimeZoneString.toDouble(&tzOk);
@@ -354,7 +343,7 @@ bool LocationDialog::updateCity(CityOperation operation)
     }*/
 
     QSqlDatabase mycitydb = QSqlDatabase::database("mycitydb");
-    QString dbfile        = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "mycitydb.sqlite";
+    QString dbfile        = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("mycitydb.sqlite");
 
     // If it doesn't exist, create it
     if (QFile::exists(dbfile) == false)
@@ -536,10 +525,10 @@ bool LocationDialog::checkLongLat()
         return false;
 
     bool ok;
-    double lng = ld->NewLong->createDms(true, &ok).Degrees();
+    double lng = ld->NewLong->createDms(&ok).Degrees();
     if (!ok)
         return false;
-    double lat = ld->NewLat->createDms(true, &ok).Degrees();
+    double lat = ld->NewLat->createDms(&ok).Degrees();
     if (!ok)
         return false;
 
@@ -679,7 +668,7 @@ void LocationDialog::getNameFromCoordinates(double latitude, double longitude)
     QUrlQuery query;
     query.addQueryItem("latlng", latlng);
     url.setQuery(query);
-    qDebug() << "submitting request";
+    qDebug() << Q_FUNC_INFO << "submitting request";
 
     nam->get(QNetworkRequest(url));
     connect(nam, SIGNAL(finished(QNetworkReply*)), this, SLOT(processLocationNameData(QNetworkReply*)));
@@ -727,17 +716,17 @@ void LocationDialog::requestUpdate()
 
 void LocationDialog::positionUpdated(const QGeoPositionInfo &info)
 {
-    qDebug() << "Position updated:" << info;
+    qDebug() << Q_FUNC_INFO << "Position updated:" << info;
 }
 
 void LocationDialog::positionUpdateError(QGeoPositionInfoSource::Error error)
 {
-    qDebug() << "Position update error: " << error;
+    qDebug() << Q_FUNC_INFO << "Position update error: " << error;
 }
 
 void LocationDialog::positionUpdateTimeout()
 {
-    qDebug() << "Timed out!";
-    qDebug() << source->error();
+    qDebug() << Q_FUNC_INFO << "Timed out!";
+    qDebug() << Q_FUNC_INFO << source->error();
 }
 #endif

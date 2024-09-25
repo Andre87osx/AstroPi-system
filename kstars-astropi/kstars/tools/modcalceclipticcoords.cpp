@@ -1,19 +1,8 @@
-/***************************************************************************
-                          modcalceclipticcoords.cpp  -  description
-                             -------------------
-    begin                : Fri May 14 2004
-    copyright            : (C) 2004 by Pablo de Vicente
-    email                : vicente@oan.es
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2004 Pablo de Vicente <vicente@oan.es>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "modcalceclipticcoords.h"
 
@@ -35,7 +24,7 @@
 modCalcEclCoords::modCalcEclCoords(QWidget *parentSplit) : QFrame(parentSplit)
 {
     setupUi(this);
-    RA->setDegType(false);
+    RA->setUnits(dmsBox::HOURS);
 
     //Initialize Date/Time and Location data
     DateTime->setDateTime(KStarsData::Instance()->lt());
@@ -64,8 +53,8 @@ void modCalcEclCoords::slotObject()
     if (FindDialog::Instance()->exec() == QDialog::Accepted)
     {
         SkyObject *o = FindDialog::Instance()->targetObject();
-        RA->showInHours(o->ra());
-        Dec->showInDegrees(o->dec());
+        RA->show(o->ra());
+        Dec->show(o->dec());
         slotCompute();
     }
 }
@@ -87,15 +76,15 @@ void modCalcEclCoords::slotCompute(void)
         //Validate ecliptic coordinates
         bool ok(false);
         dms elat;
-        dms elong = EcLong->createDms(true, &ok);
+        dms elong = EcLong->createDms(&ok);
         if (ok)
-            elat = EcLat->createDms(true, &ok);
+            elat = EcLat->createDms(&ok);
         if (ok)
         {
             SkyPoint sp;
             sp.setFromEcliptic(num.obliquity(), elong, elat);
-            RA->showInHours(sp.ra());
-            Dec->showInDegrees(sp.dec());
+            RA->show(sp.ra());
+            Dec->show(sp.dec());
         }
     }
     else
@@ -103,16 +92,16 @@ void modCalcEclCoords::slotCompute(void)
         //Validate RA and Dec coordinates
         bool ok(false);
         dms ra;
-        dms dec = Dec->createDms(true, &ok);
+        dms dec = Dec->createDms(&ok);
         if (ok)
-            ra = RA->createDms(false, &ok);
+            ra = RA->createDms(&ok);
         if (ok)
         {
             SkyPoint sp(ra, dec);
             dms elong, elat;
             sp.findEcliptic(num.obliquity(), elong, elat);
-            EcLong->showInDegrees(elong);
-            EcLat->showInDegrees(elat);
+            EcLong->show(elong);
+            EcLat->show(elat);
         }
     }
 }

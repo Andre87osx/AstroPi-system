@@ -1,19 +1,8 @@
-/***************************************************************************
-                          addlinkdialog.cpp  -  K Desktop Planetarium
-                             -------------------
-    begin                : Sun Oct 21 2001
-    copyright            : (C) 2001 by Jason Harris
-    email                : kstars@30doradus.org
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Jason Harris <kstars@30doradus.org>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "addlinkdialog.h"
 #include "Options.h"
@@ -38,7 +27,7 @@ AddLinkDialog::AddLinkDialog(QWidget *parent, const QString &oname) : QDialog(pa
 #endif
     ald = new AddLinkDialogUI(this);
 
-    setWindowTitle(i18n("Add Custom URL to %1", oname));
+    setWindowTitle(i18nc("@title:window", "Add Custom URL to %1", oname));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ald);

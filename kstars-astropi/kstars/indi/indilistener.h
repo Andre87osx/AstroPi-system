@@ -1,13 +1,10 @@
-/*  INDI Listener
-    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
+/*
+    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
+    SPDX-License-Identifier: GPL-2.0-or-later
 
     Handle INDI Standard properties.
- */
+*/
 
 #pragma once
 
@@ -44,18 +41,18 @@ class INDIListener : public QObject
         void addClient(ClientManager *cm);
         void removeClient(ClientManager *cm);
 
-        ISD::GDInterface *getDevice(const QString &name);
-        QList<ISD::GDInterface *> getDevices()
+        ISD::GDInterface *getDevice(const QString &name) const;
+        const QList<ISD::GDInterface *> getDevices() const
         {
             return devices;
         }
 
-        int size()
+        int size() const
         {
             return devices.size();
         }
 
-        bool isStandardProperty(const QString &name);
+        bool isStandardProperty(const QString &name) const;
 
     public slots:
 
@@ -69,12 +66,11 @@ class INDIListener : public QObject
         void processBLOB(IBLOB *bp);
         void processMessage(INDI::BaseDevice *dp, int messageID);
         void processUniversalMessage(const QString &message);
-        //void removeDevice(DeviceInfo *dv);
         void removeDevice(const QString &deviceName);
 
     private:
         explicit INDIListener(QObject *parent);
-        ~INDIListener();
+        ~INDIListener() override;
 
         static INDIListener *_INDIListener;
 

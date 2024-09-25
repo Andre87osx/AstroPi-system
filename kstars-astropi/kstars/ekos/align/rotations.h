@@ -1,11 +1,8 @@
-/*  Rotations class.
-    Copyright (C) 2021 Hy Murveit
+/*
+    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -56,6 +53,7 @@ double getAngle(const V3 &p1, const V3 &p2);
 // by degrees.
 V3 rotateAroundAxis(const V3 &point, const V3 &axis, double degrees);
 V3 rotateAroundY(const V3 &point, double degrees);
+V3 rotateAroundZ(const V3 &point, double degrees);
 
 // Converts the AzAlt (azimuth is in .x(), altitude in .y())
 // to an xyz point, and vica versa.

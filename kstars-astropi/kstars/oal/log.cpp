@@ -1,20 +1,8 @@
-/***************************************************************************
-                          log.cpp  -  description
+/*
+    SPDX-FileCopyrightText: 2009 Prakash Mohan <prakash.mohan@kdemail.net>
 
-                             -------------------
-    begin                : Friday June 19, 2009
-    copyright            : (C) 2009 by Prakash Mohan
-    email                : prakash.mohan@kdemail.net
- ***************************************************************************/
-
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "log.h"
 
@@ -692,11 +680,11 @@ void OAL::Log::readTarget()
                 }
             }
             //   else  if( reader->name() == "datasource" )
-            //         qDebug() << reader->readElementText();
+            //         qDebug() << Q_FUNC_INFO << reader->readElementText();
             //     else if( reader->name() == "position" )
             //         readPosition();
             //     else if( reader->name() == "constellation" )
-            //         qDebug() << reader->readElementText();
+            //         qDebug() << Q_FUNC_INFO << reader->readElementText();
             else
                 readUnknownElement();
         }
@@ -799,7 +787,7 @@ SkyPoint OAL::Log::readPosition(bool &OK)
         {
             if (reader->name() == "ra")
             {
-                qDebug() << reader->readElementText() << reader->attributes().value("unit");
+                qDebug() << Q_FUNC_INFO << reader->readElementText() << reader->attributes().value("unit");
                 dms ra;
                 if (reader->attributes().value("unit") == "rad")
                     ra.setRadians(reader->readElementText().toDouble(&RAOK));
@@ -810,7 +798,7 @@ SkyPoint OAL::Log::readPosition(bool &OK)
             }
             else if (reader->name() == "dec")
             {
-                qDebug() << reader->readElementText() << reader->attributes().value("unit");
+                qDebug() << Q_FUNC_INFO << reader->readElementText() << reader->attributes().value("unit");
                 dms de;
                 if (reader->attributes().value("unit") == "rad")
                     de.setRadians(reader->readElementText().toDouble(&DEOK));

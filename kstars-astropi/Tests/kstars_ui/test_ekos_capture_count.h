@@ -1,14 +1,10 @@
 /*
     KStars UI tests for verifying correct counting of the capture module
 
-    Copyright (C) 2020
-    Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
+    SPDX-FileCopyrightText: 2020 Wolfgang Reissenberger <sterne-jaeger@openfuture.de>
 
-    This application is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 2 of the License, or (at your option) any later version.
- */
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -31,10 +27,6 @@ public:
 
 protected:
 
-    // destination where images will be located
-    QTemporaryDir *destination;
-    QDir *imageLocation = nullptr;
-
     /**
      * @brief Setup capturing
      * @return true iff preparation was successful
@@ -56,9 +48,11 @@ protected:
      * @param completionCondition completion condition for the scheduler
      * @param iterations number of iterations to be executed (only relevant if completionCondition == FINISH_REPEAT)
      * @param rememberJobProgress should the scheduler use the option "Remember job progress"
+     * @param exptime exposure time (identical for all frames)
      * @return true iff preparation was successful
      */
-    bool setupScheduler(QString sequenceFile, QString sequence, QString capturedFramesMap, SchedulerJob::CompletionCondition completionCondition, int iterations, bool rememberJobProgress);
+    bool setupScheduler(QString sequenceFile, QString sequence, QString capturedFramesMap, SchedulerJob::CompletionCondition completionCondition,
+                        int iterations, bool rememberJobProgress, double exptime);
 
     /**
      * @brief Verify the counts that the scheduler displays in the job table
@@ -67,14 +61,11 @@ protected:
      * @param completionCondition completion condition for the scheduler
      * @param iterations number of iterations to be executed (only relevant if completionCondition == FINISH_REPEAT)
      * @param rememberJobProgress should the scheduler use the option "Remember job progress"
+     * @param exptime exposure time (identical for all frames)
      * @return true iff the displayed counts match the specification
      */
-    bool verifySchedulerCounting(QString sequence, QString capturedFramesMap, SchedulerJob::CompletionCondition completionCondition, int iterations, bool rememberJobProgress);
-
-    /**
-     * @brief Stop and clean up scheduler
-     */
-    void cleanupScheduler();
+    bool verifySchedulerCounting(QString sequence, QString capturedFramesMap, SchedulerJob::CompletionCondition completionCondition,
+                                 int iterations, bool rememberJobProgress, double exptime);
 
     /**
      * @brief Execute capturing
@@ -97,7 +88,7 @@ protected:
     /**
      * @brief Register that a new image has been captured
      */
-    void captureComplete(const QString &filename, double exposureSeconds, const QString &filter, double hfr);
+    void captureComplete(const QVariantMap &metadata);
 
     // sequence of scheduler states that are expected
     QQueue<Ekos::SchedulerState> expectedSchedulerStates;
@@ -133,15 +124,6 @@ private:
     QString target = "test";
 
     /**
-     * @brief Fill the capture sequences in the Capture GUI
-     * @param expectedFrames comma separated list of <filter>:<count>
-     * @param exptime exposure time
-     * @param fitsDirectory directory where the captures will be placed
-     * @return true if everything was successful
-     */
-    bool fillCaptureSequences(QString sequence, double exptime, QString fitsDirectory);
-
-    /**
      * @brief Fill the map of frames that have already been captured
      * @param expectedFrames comma separated list of <filter>:<count>
      * @return true if everything was successful
@@ -174,15 +156,6 @@ private:
      * @return true if yes
      */
     bool checkCapturedFrames();
-
-    /**
-     * @brief calculateSignature Calculate the signature of a given filter
-     * @param filter filter name
-     * @return signature
-     */
-    QString calculateSignature(QString filter);
-
-    QDir *getImageLocation();
 
 private slots:
     /**

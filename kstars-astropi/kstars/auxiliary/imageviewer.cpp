@@ -1,19 +1,8 @@
-/***************************************************************************
-                          imageviewer.cpp  -  An ImageViewer for KStars
-                             -------------------
-    begin                : Mon Aug 27 2001
-    copyright            : (C) 2001 by Thomas Kabelmann
-    email                : tk78@gmx.de
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2001 Thomas Kabelmann <tk78@gmx.de>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #include "imageviewer.h"
 #include "Options.h"
@@ -102,7 +91,7 @@ ImageViewer::ImageViewer(const QUrl &url, const QString &capText, QWidget *paren
 
     // check URL
     if (!m_ImageUrl.isValid())
-        qDebug() << "URL is malformed: " << m_ImageUrl;
+        qDebug() << Q_FUNC_INFO << "URL is malformed: " << m_ImageUrl;
 
     if (m_ImageUrl.isLocalFile())
     {
@@ -125,7 +114,7 @@ void ImageViewer::init(QString caption, QString capText)
 #ifndef KSTARS_LITE
     setAttribute(Qt::WA_DeleteOnClose, true);
     setModal(false);
-    setWindowTitle(i18n("KStars image viewer: %1", caption));
+    setWindowTitle(i18nc("@title:window", "KStars image viewer: %1", caption));
 
     // Create widget
     QFrame *page = new QFrame(this);
@@ -320,7 +309,7 @@ void ImageViewer::saveFileToDisc()
     QFileDialog dialog;
 
     QUrl newURL =
-        dialog.getSaveFileUrl(KStars::Instance(), i18n("Save Image"), lastURL); // save-dialog with default filename
+        dialog.getSaveFileUrl(KStars::Instance(), i18nc("@title:window", "Save Image"), lastURL); // save-dialog with default filename
     if (!newURL.isEmpty())
     {
         //QFile f (newURL.adjusted(QUrl::RemoveFilename|QUrl::StripTrailingSlash).toLocalFile() + '/' +  newURL.fileName());
@@ -359,7 +348,7 @@ void ImageViewer::saveFile(QUrl &url)
 #ifndef KSTARS_LITE
         KSNotification::error(text);
 #else
-        qDebug() << text;
+        qDebug() << Q_FUNC_INFO << text;
 #endif
     }
 #ifndef KSTARS_LITE

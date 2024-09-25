@@ -1,22 +1,10 @@
-/***************************************************************************
-                          notifyupdatesui.h  -  K Desktop Planetarium
-                             -------------------
-    begin                : 2012/05/03
-    copyright            : (C) 2012 by Samikshan Bairagya
-    email                : samikshan@gmail.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2012 Samikshan Bairagya <samikshan@gmail.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
-#ifndef NOTIFYUPDATESUI_H
-#define NOTIFYUPDATESUI_H
+#pragma once
 
 #include "skyobjects/skyobject.h"
 
@@ -29,18 +17,17 @@ class NotifyUpdatesUI;
 
 class NotifyUpdatesUI : public QDialog
 {
-    Q_OBJECT
+        Q_OBJECT
 
-  public:
-    explicit NotifyUpdatesUI(QWidget *parent = 0);
-    ~NotifyUpdatesUI();
-    void addItems(QList<SkyObject *> updatesList);
+    public:
+        explicit NotifyUpdatesUI(QWidget *parent = 0);
+        ~NotifyUpdatesUI();
+        void addItems(QList<SkyObject *> updatesList);
 
-  private slots:
-    void slotCenter();
+    private slots:
+        void slotCenter();
 
-  private:
-    Ui::NotifyUpdatesUI *ui;
+    private:
+        Ui::NotifyUpdatesUI *ui;
 };
 
-#endif // NOTIFYUPDATESUI_H

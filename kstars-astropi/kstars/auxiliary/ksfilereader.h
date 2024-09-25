@@ -1,19 +1,8 @@
-/***************************************************************************
-                          ksfilereader.h  -  description
-                             -------------------
-    begin                : 2007-07-16
-    copyright            : (C) 2007 James B. Bowlin
-    email                : bowlin@mindspring.com
- ***************************************************************************/
+/*
+    SPDX-FileCopyrightText: 2007 James B. Bowlin <bowlin@mindspring.com>
 
-/***************************************************************************
- *                                                                         *
- *   This program is free software; you can redistribute it and/or modify  *
- *   it under the terms of the GNU General Public License as published by  *
- *   the Free Software Foundation; either version 2 of the License, or     *
- *   (at your option) any later version.                                   *
- *                                                                         *
- ***************************************************************************/
+    SPDX-License-Identifier: GPL-2.0-or-later
+*/
 
 #pragma once
 
@@ -82,7 +71,7 @@ class KSFileReader : public QObject, public QTextStream
     explicit KSFileReader(QFile &file, qint64 maxLen = 1024);
 
     /**
-     * @short opens the file fname from the QStandardPaths::GenericDataLocation directory and uses that
+     * @short opens the file fname from the QStandardPaths::AppLocalDataLocation directory and uses that
      * file for the QTextStream.
      *
      * @param fname the name of the file to open
@@ -93,9 +82,9 @@ class KSFileReader : public QObject, public QTextStream
 
     /**
      * @short opens the file with full path fname and uses that
-     * file for the QTextStream. open() locates QStandardPaths::GenericDataLocation behind the scenes,
+     * file for the QTextStream. open() locates QStandardPaths::AppLocalDataLocation behind the scenes,
      * so passing fname such that
-     * QString fname = KSPaths::locate(QStandardPaths::GenericDataLocation, "file_name" );
+     * QString fname = KSPaths::locate(QStandardPaths::AppLocalDataLocation, "file_name" );
      * is equivalent
      *
      * @param fname full path to directory + name of the file to open

@@ -74,8 +74,9 @@
   <summary xml:lang="zh-TW">桌面星象儀</summary>
   <description>
     <p>KStars is freely licensed, open source, cross-platform Astronomy Software by KDE.</p>
+    <p xml:lang="ar">«نجوم‌ك» هي برمجيّة مجّانيّة ومفتوحة المصدر مختصّة بعلوم الفلك، وتتوفّر على مختلف المنصّات.</p>
     <p xml:lang="ca">El KStars és un programari d'astronomia de llicència lliure, codi obert i multiplataforma, creat per la comunitat KDE.</p>
-    <p xml:lang="ca-valencia">El KStars és un programari d'astronomia de llicència lliure, codi obert i multiplataforma, creat per la comunitat KDE.</p>
+    <p xml:lang="ca-valencia">KStars és un programari d'astronomia de llicència lliure, codi obert i multiplataforma, creat per la comunitat KDE.</p>
     <p xml:lang="de">KStars ist eine frei lizenzierte, quelloffene, plattformübergreifende Astronomiesoftware von KDE.</p>
     <p xml:lang="en-GB">KStars is freely licensed, open source, cross-platform Astronomy Software by KDE.</p>
     <p xml:lang="es">KStars es un software astronómico de licencia libre, de código abierto y multiplataforma, creado por KDE.</p>
@@ -99,7 +100,7 @@
     <p>It provides an accurate graphical simulation of the night sky, from any location on Earth, at any date and time. The display includes up to 100 million stars, 13,000 deep-sky objects,all 8 planets, the Sun and Moon, and thousands of comets, asteroids, supernovae, and satellites.</p>
     <p xml:lang="ar">توفّر البرمجيّة محاكاةً رسوميّة دقيقة لسماء الليل، من أيّ نقطة على سطح الأرض وفي أيّ وقت. يعرض «نجوم‌ك» حوالي ١٠٠ مليون نجم، و١٣٬٠٠٠ جرم سماويّ عميق، والكواكب الثّمانية، والشّمس والقمر وآلاف المذنّبات والكويكبات، والمستعرات العظمى والأقمار الصّناعيّة.</p>
     <p xml:lang="ca">Proporciona una simulació gràfica precisa del cel nocturn, des de qualsevol emplaçament a la Terra, en qualsevol data i hora. La visualització inclou fins a 100 milions d'estrelles, 13.000 objectes del cel profund, tots els 8 planetes, el Sol i la Lluna, milers de cometes, asteroides, supernoves i satèl·lits.</p>
-    <p xml:lang="ca-valencia">Proporciona una simulació gràfica precisa del cel nocturn, des de qualsevol emplaçament a la Terra, en qualsevol data i hora. La visualització inclou fins a 100 milions d'estrelles, 13.000 objectes del cel profund, tots els 8 planetes, el Sol i la Lluna, milers de cometes, asteroides, supernoves i satèl·lits.</p>
+    <p xml:lang="ca-valencia">Proporciona una simulació gràfica precisa del cel nocturn, des de qualsevol emplaçament a la Terra, en qualsevol data i hora. La visualització inclou fins a 100 milions d'estreles, 13.000 objectes del cel profund, tots els 8 planetes, el Sol i la Lluna, milers de cometes, asteroides, supernoves i satèl·lits.</p>
     <p xml:lang="de">KStars simuliert präzise den Blick in den nächtlichen Himmel von jedem Punkt der Erde aus, zu jedem beliebigen Datum und Uhrzeit. Derzeit gibt es im Planetarium bis zu 100 Millionen Sterne, 13000 Deep-Sky-Objekte, alle acht Planeten, die Sonne und den Mond, sowie tausende Kometen, Asteroiden, Supernovae und Satelliten.</p>
     <p xml:lang="en-GB">It provides an accurate graphical simulation of the night sky, from any location on Earth, at any date and time. The display includes up to 100 million stars, 13,000 deep-sky objects,all 8 planets, the Sun and Moon, and thousands of comets, asteroids, supernovae, and satellites.</p>
     <p xml:lang="es">Proporciona una precisa simulación gráfica del cielo nocturno vista desde cualquier punto de la Tierra y para cualquier fecha y hora. La pantalla muestra unos 100 millones de estrellas, 13.000 objetos del espacio profundo, los 8 planetas, el Sol y la Luna, así como miles de cometas, asteroides, supernovas y satélites.</p>
@@ -124,7 +125,7 @@
     <p>For students and teachers, it supports adjustable simulation speeds in order to view phenomena that happen over long timescales, the KStars Astrocalculator to predict conjunctions, and many common astronomical calculations.</p>
     <p xml:lang="ar">إن كنت طالبًا أو أستاذًا، فستجد أنّ البرمجيّة تدعم ضبط سرعة المحاكاة الذي يتيح عرض الظّواهر التي تحدث على فترات زمنيّة طويلة، وتدعم الكثير من الحسابات الفلكيّة المعروفة، وتوفّر حاسبة فلكيّة لتوقّع الاقترانات.</p>
     <p xml:lang="ca">Per a estudiants i professors, permet velocitats de simulació ajustables per tal de veure fenòmens que transcorren en escales de temps llargues, la calculadora astronòmica del KStars per a predir conjuncions i molts càlculs astronòmics habituals.</p>
-    <p xml:lang="ca-valencia">Per a estudiants i professors, permet velocitats de simulació ajustables per tal de veure fenòmens que transcorren en escales de temps llargues, la calculadora astronòmica del KStars per a predir conjuncions i molts càlculs astronòmics habituals.</p>
+    <p xml:lang="ca-valencia">Per a estudiants i professors, permet velocitats de simulació ajustables per tal de veure fenòmens que transcorren en escales de temps llargues, la calculadora astronòmica de KStars per a predir conjuncions i molts càlculs astronòmics habituals.</p>
     <p xml:lang="de">Für Schüler und Lehrer unterstützt es einstellbare Simulationsgeschwindigkeiten, um Phänomene zu betrachten, die auf langen Zeitskalen ablaufen, den KStars-Astrorechner zur Vorhersage von Konjunktionen und viele allgemeine astronomische Berechnungen.</p>
     <p xml:lang="en-GB">For students and teachers, it supports adjustable simulation speeds in order to view phenomena that happen over long timescales, the KStars Astrocalculator to predict conjunctions, and many common astronomical calculations.</p>
     <p xml:lang="es">Para estudiantes y profesores, permite ajustar la velocidad de simulación para poder ver fenómenos que ocurren a lo largo de mucho tiempo; la calculadora astronómica de KStars permite predecir conjunciones y realizar cálculos astronómicos comunes.</p>
@@ -149,7 +150,7 @@
     <p>For the amateur astronomer, it provides an observation planner, a sky calendar tool, and an FOV editor to calculate field of view of equipment and display them. Find out interesting objects in the "What's up Tonight" tool, plot altitude vs. time graphs for any object, print high-quality sky charts, and gain access to lots of information and resources to help you explore the universe!</p>
     <p xml:lang="ar">توفّر البرمجيّة لهواة الفلك مخطِّطًا للرّؤية، وأداة لتقويم الطّقس، ومحرّرًا لمجال الرّؤية لحساب مجال رؤية العتاد وعرضها. اطّلع على أجرام شيّقة في أداة ”السّماء هذه الليلة“، وارسم رسومًا بيانيّة لخطّ ارتفاع أيّ جرم مقابل وقته، واطبع رسومًا بيانيّة للسّماء بجودة عالية، واقرأ الكثير من المعلومات والموارد لتساعدك في اكتشاف العالم!</p>
     <p xml:lang="ca">Per a l'astrònom aficionat, proporciona un planificador de l'observació, una eina de calendari del cel i un editor del CDV per a calcular el camp de visió de l'equip i mostrar-lo. Descobreix objectes interessants amb l'eina «Què passa aquesta nit», dibuixa gràfics d'altitud en funció del temps per a qualsevol objecte, imprimeix diagrames del cel en alta qualitat i obté accés a molta informació i recursos per a ajudar-vos a explorar l'univers!</p>
-    <p xml:lang="ca-valencia">Per a l'astrònom aficionat, proporciona un planificador de l'observació, una eina de calendari del cel i un editor del CDV per a calcular el camp de visió de l'equip i mostrar-lo. Descobreix objectes interessants amb l'eina «Què passa aquesta nit», dibuixa gràfics d'altitud en funció del temps per a qualsevol objecte, imprimeix diagrames del cel en alta qualitat i obté accés a molta informació i recursos per a ajudar-vos a explorar l'univers!</p>
+    <p xml:lang="ca-valencia">Per a l'astrònom aficionat, proporciona un planificador de l'observació, una eina de calendari del cel i un editor de CDV per a calcular el camp de visió de l'equip i mostrar-lo. Descobrix objectes interessants amb l'eina «Què passa esta nit», dibuixa gràfics d'altitud en funció del temps per a qualsevol objecte, imprimix diagrames del cel en alta qualitat i obté accés a molta informació i recursos per a ajudar-vos a explorar l'univers!</p>
     <p xml:lang="de">Für den Amateur-Astronomen bietet es einen Beobachtungsplaner, einen Himmelskalender und einen STF-Editor, um Sichtfelder von Geräten zu berechnen und anzuzeigen. Finden Sie interessante Objekte mit „Was ist los heute Nacht“, zeichnen Sie Höhen-Zeit-Diagramme für jedes Objekt, drucken Sie hochwertige Himmelskarten und erhalten Sie Zugang zu vielen Informationen und Ressourcen, die Ihnen bei der Erkundung des Universums helfen.</p>
     <p xml:lang="en-GB">For the amateur astronomer, it provides an observation planner, a sky calendar tool, and an FOV editor to calculate field of view of equipment and display them. Find out interesting objects in the "What's up Tonight" tool, plot altitude vs. time graphs for any object, print high-quality sky charts, and gain access to lots of information and resources to help you explore the universe!</p>
     <p xml:lang="es">Para el astrónomo aficionado, proporciona un planificador de observaciones, una herramienta de calendario celeste y un editor de campo visual para calcular el campo visual de su equipo y poder mostrarlo. Descubra interesantes objetos con la herramienta «¿Qué ocurre esta noche?», muestre gráficos de altitud frente a hora para cualquier objeto, imprima mapas del cielo de gran calidad y obtenga acceso a gran cantidad de información y recursos que le ayudarán a explorar el universo.</p>
@@ -174,7 +175,7 @@
     <p>Included with KStars is Ekos astrophotography suite, a complete astrophotography solution that can control all INDI devices including numerous telescopes, CCDs, DSLRs, focusers, filters, and a lot more. Ekos supports highly accurate tracking using online and offline astrometry solver, autofocus and autoguiding capabilities, and capture of single or multiple images using the powerful built in sequence manager.</p>
     <p xml:lang="ar">تأتي مع «نجوم‌ك» مجموعة «إيكوس» للتّصوير الفلكيّ، وهي حلّ كامل للتّصوير الفلكيّ والذي يتحكّم بكلّ أجهزة INDI بما في ذلك التّلسكوبات بأنواعها، ومجسّات CCD، وكمرات DSLR، والمُركِّزات، والمرشّحات وغيرها الكثير. يدعم «إيكوس» التّعقّب بدقّة عالية وذلك باستخدام الحلّال الفلكيّ (بتوفّر الشّابكة أو بدونها) وإمكانيّات التّركيز الآليّ والتّوجيه الآليّ، ويلتقط أيضًا الصّور (مفردةً وبمجموعات) باستخدام مدير التّسلسل القويّ المضمّن في البرمجيّة.</p>
     <p xml:lang="ca">Inclòs amb el KStars hi ha el paquet astrofotogràfic Ekos, una solució completa d'astrofotografia que pot controlar tots els dispositius INDI, inclosos nombrosos telescopis, CCD, DSLR, enfocadors, filtres i molt més. L'Ekos admet el seguiment d'alta precisió emprant el solucionador d'astrometria en línia i fora de línia, té capacitats d'enfocament automàtic i de guiatge automàtic, i permet capturar una o múltiples imatges emprant el potent gestor de seqüències integrat.</p>
-    <p xml:lang="ca-valencia">Inclòs amb el KStars hi ha el paquet astrofotogràfic Ekos, una solució completa d'astrofotografia que pot controlar tots els dispositius INDI, inclosos nombrosos telescopis, CCD, DSLR, enfocadors, filtres i molt més. L'Ekos admet el seguiment d'alta precisió emprant el solucionador d'astrometria en línia i fora de línia, té capacitats d'enfocament automàtic i de guiatge automàtic, i permet capturar una o múltiples imatges emprant el potent gestor de seqüències integrat.</p>
+    <p xml:lang="ca-valencia">Inclòs amb KStars hi ha el paquet astrofotogràfic Ekos, una solució completa d'astrofotografia que pot controlar tots els dispositius INDI, inclosos nombrosos telescopis, CCD, DSLR, enfocadors, filtres i molt més. Ekos admet el seguiment d'alta precisió emprant el solucionador d'astrometria en línia i fora de línia, té capacitats d'enfocament automàtic i de guiatge automàtic, i permet capturar una o múltiples imatges emprant el potent gestor de seqüències integrat.</p>
     <p xml:lang="de">Im Lieferumfang von KStars ist das Astrofotografie-Programm Ekos enthalten, eine komplette Astrofotografie-Lösung, die alle INDI-Geräte steuern kann, darunter zahlreiche Teleskope, CCDs, DSLRs, Fokussierer, Filter und vieles mehr. Ekos unterstützt hochpräzise Nachführung mit Online- und Offline-Astrometrie-Lösung, automatischer Fokussierung und Automatischer Nachführung sowie die Aufnahme von Einzel- oder Mehrfachbildern mit dem leistungsstarken eingebauten Verwaltung von Aufnahmesequenzen.</p>
     <p xml:lang="en-GB">Included with KStars is Ekos astrophotography suite, a complete astrophotography solution that can control all INDI devices including numerous telescopes, CCDs, DSLRs, focusers, filters, and a lot more. Ekos supports highly accurate tracking using online and offline astrometry solver, autofocus and autoguiding capabilities, and capture of single or multiple images using the powerful built in sequence manager.</p>
     <p xml:lang="es">KStars incluye la suite de astrofotografía Ekos, una completa solución de fotografía astronómica que puede controlar cualquier dispositivo INDI, como telescopios, cámaras CCD y DSLR, sistemas de enfoque y filtros, entre otros. Ekos permite un seguimiento de alta precisión mediante el uso de sistemas de identificación con y sin conexión, funciones de enfoque y de guiado automáticos, así como la captura de una o múltiples imágenes mediante el uso de potente gestor de secuencias que integra.</p>
@@ -194,7 +195,7 @@
     <p xml:lang="tr">KStars ile birlikte Ekos gökyüzü fotoğrafçılığı programı, sayısız teleskop, CCD, DSLR, odaklayıcı, filtre ve çok daha fazlasını içeren tüm INDI cihazlarını kontrol edebilen eksiksiz bir gökyüzü fotoğrafçılığı çözümü de dahildir. Ekos, çevrimiçi ve çevrimdışı astrometri çözücüsünü, otomatik netleme ve otomatik götürme özelliklerini kullanarak ve güçlü, yerleşik sıralama yöneticisini kullanarak tek veya birden çok görüntüyü yakalamak suretiyle son derece hassas izleme özelliğini destekler.</p>
     <p xml:lang="uk">До складу пакунків з KStars включено астрометричний розв’язувач Ekos — повноцінне астрографічне рішення, яке може керувати усіма пристроями INDI, зокрема багатьма телескопами, ПЗЗ, цифровими дзеркальними фотокамерами, засобам фокусування, фільтрами та іншими інструментами. У Ekos передбачено підтримку високоточного стеження за допомогою засобів інтерактивної та авторомної астрометрії, автофокусування та автонаведення, можливості захоплення одного або декількох зображень на основі потужного вбудованого засобу керування зйомкою.</p>
     <p xml:lang="x-test">xxIncluded with KStars is Ekos astrophotography suite, a complete astrophotography solution that can control all INDI devices including numerous telescopes, CCDs, DSLRs, focusers, filters, and a lot more. Ekos supports highly accurate tracking using online and offline astrometry solver, autofocus and autoguiding capabilities, and capture of single or multiple images using the powerful built in sequence manager.xx</p>
-    <p xml:lang="zh-CN">KStars 还内建了 Ekos 天文摄影套件。Ekos 是一套完整的天体摄影解决方案，能够控制所有 INDI 设备，包括各种望远镜、CCD、DSLR、电调、滤镜和更多其他设备。Ekos 支持使用在线和离线天体测量解析器进行高度准确的跟踪、自动聚焦和自动导星功能，以及使用内建的序列管理器拍摄单个或多个图像。</p>
+    <p xml:lang="zh-CN">KStars 还内建了 Ekos 天文摄影套件。Ekos 是一套完整的天体摄影解决方案，能够控制所有 INDI 设备，包括各种望远镜、CCD、DSLR、电调、滤镜和更多其他设备。Ekos 支持使用在线和离线天体测量解析器进行高精确度跟踪、自动聚焦和自动导星功能，以及使用内建的序列管理器拍摄单个或多个图像。</p>
     <p xml:lang="zh-TW">包含在 KStars 中的是 Ekos 天文攝影套裝軟體，這是一套可以控制所有 INDI 裝置的完整解決方案，其中包含了眾多望遠鏡、CCS、DSLR、聚焦器、濾光片與許多其他東西。Ekos 使用線上與離線的天體測量計算程式、自動對焦與自動導航功能進行高精度追蹤，並使用功能強大的序列管理程式來照出一張或多張照片。</p>
     <p>Astronomical Catalogs:</p>
     <p xml:lang="ar">الفهارس الفلكيّة:</p>
@@ -234,7 +235,7 @@
       <li xml:lang="ar">الفهرس المبدئيّ والذي يحتوي النّجوم حتّى القدْر ٨</li>
       <li xml:lang="bs">Uobičajeni Katalog se sastoji od zvijezda do magnitude 8</li>
       <li xml:lang="ca">Catàleg predeterminat consistent en estrelles fins a magnitud 8</li>
-      <li xml:lang="ca-valencia">Catàleg predeterminat consistent en estrelles fins a magnitud 8</li>
+      <li xml:lang="ca-valencia">Catàleg predeterminat consistent en estreles fins a magnitud 8</li>
       <li xml:lang="de">Standardkatalog mit Sternen bis zur Magnitude 8</li>
       <li xml:lang="en-GB">Default catalogue consisting of stars to magnitude 8</li>
       <li xml:lang="es">El catálogo por omisión contiene estrellas hasta la magnitud 8</li>
@@ -263,7 +264,7 @@
       <li xml:lang="ar">فهارس أخرى فيها ما يقارب ١٠٠ مليون نجم حتّى القدْر ١٦</li>
       <li xml:lang="bs">Prošireni katalozi koji se sastoji od 100 milijuna zvijezda u veličini 16</li>
       <li xml:lang="ca">Catàlegs addicionals consistents en 100 milions d'estrelles fins a magnitud 16</li>
-      <li xml:lang="ca-valencia">Catàlegs addicionals consistents en 100 milions d'estrelles fins a magnitud 16</li>
+      <li xml:lang="ca-valencia">Catàlegs addicionals consistents en 100 milions d'estreles fins a magnitud 16</li>
       <li xml:lang="de">Zusätzliche Kataloge mit 100 Millionen Sternen bis zur Magnitude 16</li>
       <li xml:lang="en-GB">Extra catalogues consisting of 100 million stars to magnitude 16</li>
       <li xml:lang="es">Los catálogos adicionales contienen 100 millones de estrellas hasta la magnitud 16</li>
@@ -380,8 +381,9 @@
   <screenshots>
     <screenshot type="default">
       <caption>KStars main window</caption>
+      <caption xml:lang="ar">النافذة الرئسية لنجومك</caption>
       <caption xml:lang="ca">Finestra principal del KStars</caption>
-      <caption xml:lang="ca-valencia">Finestra principal del KStars</caption>
+      <caption xml:lang="ca-valencia">Finestra principal de KStars</caption>
       <caption xml:lang="cs">Hlavní okno KStars</caption>
       <caption xml:lang="de">Hauptfenster von KStars</caption>
       <caption xml:lang="en-GB">KStars main window</caption>
@@ -409,8 +411,9 @@
     </screenshot>
     <screenshot>
       <caption>"What's interesting" tool in KStars</caption>
+      <caption xml:lang="ar">أداة "ما المثير؟" في نجومك</caption>
       <caption xml:lang="ca">Eina «Què hi ha d'interessant» al KStars</caption>
-      <caption xml:lang="ca-valencia">Eina «Què hi ha d'interessant» al KStars</caption>
+      <caption xml:lang="ca-valencia">Eina «Què hi ha d'interessant» a KStars</caption>
       <caption xml:lang="cs">Nástroj "Co je zajímavé! v KStars</caption>
       <caption xml:lang="de">„Was ist interessant“ in KStars</caption>
       <caption xml:lang="en-GB">"What's interesting" tool in KStars</caption>
@@ -435,8 +438,10 @@
     </screenshot>
     <screenshot>
       <caption>Ekos tool in KStars</caption>
+      <caption xml:lang="ar">أداة ايكوس في نجومك</caption>
       <caption xml:lang="ca">Eina Ekos al KStars</caption>
-      <caption xml:lang="ca-valencia">Eina Ekos al KStars</caption>
+      <caption xml:lang="ca-valencia">Eina Ekos a KStars</caption>
+      <caption xml:lang="cs">Nástroj Ekos v KStars</caption>
       <caption xml:lang="de">Ekos in KStars</caption>
       <caption xml:lang="en-GB">Ekos tool in KStars</caption>
       <caption xml:lang="es">Herramienta Ekos en KStars</caption>
@@ -461,8 +466,9 @@
     </screenshot>
     <screenshot>
       <caption>Observation Planner of KStars</caption>
+      <caption xml:lang="ar">مخطط رصد لنجومك</caption>
       <caption xml:lang="ca">Planificador de l'observació del KStars</caption>
-      <caption xml:lang="ca-valencia">Planificador de l'observació del KStars</caption>
+      <caption xml:lang="ca-valencia">Planificador de l'observació de KStars</caption>
       <caption xml:lang="cs">Plánovač pozorování KStars</caption>
       <caption xml:lang="de">Beobachtungsliste von KStars</caption>
       <caption xml:lang="en-GB">Observation Planner of KStars</caption>
@@ -495,4 +501,10 @@
     <value key="KDE::google_play">https://play.google.com/store/apps/details?id=org.kde.kstars.lite</value>
   </custom>
   <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="3.5.7" date="2022-01-16"/>
+    <release version="3.5.6" date="2021-11-10"/>
+    <release version="3.5.5" date="2021-09-14"/>
+    <release version="3.5.4" date="2021-07-03"/>
+  </releases>
 </component>
