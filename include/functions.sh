@@ -662,7 +662,7 @@ function chkINDI()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Building and Installing StellarSolver" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>Stellar Solver</b>
 	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
@@ -704,7 +704,7 @@ function chkKStars()
 
     	echo "100"
     	echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing StellarSolver v1.9" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>KStars AstroPi</b>
