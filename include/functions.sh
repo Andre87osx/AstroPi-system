@@ -478,28 +478,28 @@ function chkINDI()
 	# =================================================================
 	# Dowload pakage from git
 	(
-    	wget -c "https://github.com/indilib/indi/archive/refs/tags/v${Indi_v}.tar.gz" -O - | \
-    	tar -xz -C "${WorkDir}" 2>&1 | \
-    	while IFS= read -r line; do
-        	echo "# $line"
-    	done
+    		wget -c "https://github.com/indilib/indi/archive/refs/tags/v${Indi_v}.tar.gz" -O - | \
+    		tar -xz -C "${WorkDir}" 2>&1 | \
+    		while IFS= read -r line; do
+        		echo "# $line"
+    		done
 
-    	echo "33"  # Update progress to 33%
-    	echo "# Downloading INDI 3rd-party libraries..."
+    		echo "33"  # Update progress to 33%
+    		echo "# Downloading INDI 3rd-party libraries..."
     
-    	wget -c "https://github.com/indilib/indi-3rdparty/archive/refs/tags/v${Indi_v}.tar.gz" -O - | \
-    	tar -xz -C "${WorkDir}" 2>&1 | \
-    	while IFS= read -r line; do
-        	echo "# $line"
-    	done
+    		wget -c "https://github.com/indilib/indi-3rdparty/archive/refs/tags/v${Indi_v}.tar.gz" -O - | \
+    		tar -xz -C "${WorkDir}" 2>&1 | \
+    		while IFS= read -r line; do
+        		echo "# $line"
+    		done
 
    		echo "66"  # Update progress to 66%
-    	echo "# Downloading StellarSolver..."
+    		echo "# Downloading StellarSolver..."
     
-    	git clone -b "${StellarSolver_v}" https://github.com/rlancaste/stellarsolver.git "${WorkDir}/stellarsolver" 2>&1 | \
-    	while IFS= read -r line; do
-        	echo "# $line"
-    	done
+    		git clone -b "${StellarSolver_v}" https://github.com/rlancaste/stellarsolver.git "${WorkDir}/stellarsolver" 2>&1 | \
+    		while IFS= read -r line; do
+        		echo "# $line"
+    		done
 	) | zenity --progress --title="Downloading and Extracting INDI ${Indi_v}, INDI 3rd-party ${Indi_v}, and StellarSolver" \
 		--text="Starting..." --percentage=0 --auto-close --width="${Wprogress}"
 
@@ -509,18 +509,18 @@ function chkINDI()
 	# =================================================================
 	# Update dependencies and library for INDI
 	(
-    	steps=("Updating package list" "Installing first set of packages" "Installing second set of packages" "Installing third set of packages")
-    	percentages=(10 20 50 80 100)
-    	commands=(
-        "sudo apt-get update -y"
-        "sudo apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev libusb-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev"
-        "sudo apt-get -y install libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev"
-        "sudo apt-get -y install ffmpeg libavcodec-dev libavdevice-dev libfftw3-dev libev-dev"
-		"sudo apt-get -y install libeigen3-dev libkf5doctools-dev libqt5datavisualization5-dev qml-module-qtquick-controls"
-    	"sudo apt-get -y install extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev"
-        "sudo apt-get -y install libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libkf5notifyconfig-dev wcslib-dev"
-        "sudo apt-get -y install libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme"
-    	)
+    		steps=("Updating package list" "Installing first set of packages" "Installing second set of packages" "Installing third set of packages")
+    		percentages=(10 20 50 80 100)
+    		commands=(
+      			"sudo apt-get update -y"
+        		"sudo apt-get -y install libnova-dev libcfitsio-dev libusb-1.0-0-dev libusb-dev zlib1g-dev libgsl-dev build-essential cmake git libjpeg-dev libcurl4-gnutls-dev libtiff-dev"
+        		"sudo apt-get -y install libftdi-dev libgps-dev libraw-dev libdc1394-22-dev libgphoto2-dev libboost-dev libboost-regex-dev librtlsdr-dev liblimesuite-dev libftdi1-dev"
+        		"sudo apt-get -y install ffmpeg libavcodec-dev libavdevice-dev libfftw3-dev libev-dev"
+			"sudo apt-get -y install libeigen3-dev libkf5doctools-dev libqt5datavisualization5-dev qml-module-qtquick-controls"
+    			"sudo apt-get -y install extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev"
+        		"sudo apt-get -y install libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libkf5notifyconfig-dev wcslib-dev"
+        		"sudo apt-get -y install libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme"
+    			)
 
     	for i in "${!steps[@]}"; do
         	echo "${percentages[$i]}"
@@ -543,29 +543,27 @@ function chkINDI()
 	cd "${WorkDir}"/indi-cmake || exit 1
 
 	commands=(
-
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ${WorkDir}/indi-${Indi_v}"
-    	"make -j $(expr $(nproc) + 2)"
-    	"sudo make install"
-	)
+    		"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ${WorkDir}/indi-${Indi_v}"
+    		"make -j $(expr $(nproc) + 2)"
+    		"sudo make install"
+		)
 
 	steps=("Running cmake" "Running make" "Running make install")
 	percentages=(30 60 90)
 
 	(
-    	echo "10"
-    	echo "# Preparing to run cmake..."
+    		echo "10"
+    		echo "# Preparing to run cmake..."
 
-    	for i in "${!commands[@]}"; do
-        	echo "${percentages[$i]}"
-        	echo "# ${steps[$i]}..."
-        	${commands[$i]} 2>&1 | while IFS= read -r line; do
-            	echo "# $line"
-        	done
-    	done
+    		for i in "${!commands[@]}"; do
+        		echo "${percentages[$i]}"
+        		echo "# ${steps[$i]}..."
+        		${commands[$i]}
+        		done
+    		done
 
-    	echo "100"
-    	echo "# Installation complete!"
+    		echo "100"
+    		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing INDI ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI Core</b>
@@ -576,28 +574,27 @@ function chkINDI()
 	if [ ! -d "${WorkDir}"/indi3rd_lib-cmake ]; then mkdir "${WorkDir}"/indi3rd_lib-cmake; fi
 	cd "${WorkDir}"/indi3rd_lib-cmake || exit 1
 	commands=(
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
-    	"make -j $(expr $(nproc) + 2)"
-    	"sudo make install"
-	)
+    		"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
+    		"make -j $(expr $(nproc) + 2)"
+    		"sudo make install"
+		)
 
 	steps=("Running cmake" "Running make" "Running make install")
 	percentages=(30 60 90)
 
 	(
-    	echo "10"
-    	echo "# Preparing to run cmake..."
+    		echo "10"
+    		echo "# Preparing to run cmake..."
 
-    	for i in "${!commands[@]}"; do
-        	echo "${percentages[$i]}"
-        	echo "# ${steps[$i]}..."
-        	${commands[$i]} 2>&1 | while IFS= read -r line; do
-            	echo "# $line"
-        	done
-    	done
+    		for i in "${!commands[@]}"; do
+        		echo "${percentages[$i]}"
+        		echo "# ${steps[$i]}..."
+        		${commands[$i]}
+        		done
+    		done
 
-    	echo "100"
-    	echo "# Installation complete!"
+    		echo "100"
+    		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing INDI 3rd party LIB ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party LIB</b>
@@ -608,28 +605,27 @@ function chkINDI()
 	if [ ! -d "${WorkDir}"/indi3rd_driver-cmake ]; then mkdir "${WorkDir}"/indi3rd_driver-cmake; fi
 	cd "${WorkDir}"/indi3rd_driver-cmake || exit 1
 	commands=(
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
-    	"make -j $(expr $(nproc) + 2)"
-    	"sudo make install"
-	)
+    		"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 ${WorkDir}/indi-3rdparty-${Indi_v}"
+    		"make -j $(expr $(nproc) + 2)"
+    		"sudo make install"
+		)
 
 	steps=("Running cmake" "Running make" "Running make install")
 	percentages=(30 60 90)
 
 	(
-    	echo "10"
-    	echo "# Preparing to run cmake..."
+    		echo "10"
+    		echo "# Preparing to run cmake..."
 
-    	for i in "${!commands[@]}"; do
-        	echo "${percentages[$i]}"
-        	echo "# ${steps[$i]}..."
-        	${commands[$i]} 2>&1 | while IFS= read -r line; do
-            	echo "# $line"
-        	done
-    	done
+    		for i in "${!commands[@]}"; do
+        		echo "${percentages[$i]}"
+        		echo "# ${steps[$i]}..."
+        		${commands[$i]}
+        		done
+    		done
 
-    	echo "100"
-    	echo "# Installation complete!"
+    		echo "100"
+    		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing INDI 3rd party DRIVER ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party DRIVER</b>
@@ -640,28 +636,28 @@ function chkINDI()
 	if [ ! -d "${WorkDir}"/solver-cmake ]; then mkdir "${WorkDir}"/solver-cmake; fi
 	cd "${WorkDir}"/solver-cmake || exit 1
 	commands=(
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=Off  ${WorkDir}/stellarsolver"
-    	"make -j $(expr $(nproc) + 2)"
-    	"sudo make install"
-	)
+    		"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=Off  ${WorkDir}/stellarsolver"
+    		"make -j $(expr $(nproc) + 2)"
+    		"sudo make install"
+		)
 
 	steps=("Running cmake" "Running make" "Running make install")
 	percentages=(30 60 90)
 
 	(
-    	echo "10"
-    	echo "# Preparing to run cmake..."
+    		echo "10"
+    		echo "# Preparing to run cmake..."
 
-    	for i in "${!commands[@]}"; do
-        	echo "${percentages[$i]}"
-        	echo "# ${steps[$i]}..."
-        	${commands[$i]} 2>&1 | while IFS= read -r line; do
-            	echo "# $line"
-        	done
-    	done
+    		for i in "${!commands[@]}"; do
+        		echo "${percentages[$i]}"
+        		echo "# ${steps[$i]}..."
+        		${commands[$i]} 2>&1 | while IFS= read -r line; do
+            		echo "# $line"
+        		done
+    		done
 
-    	echo "100"
-    	echo "# Installation complete!"
+    		echo "100"
+    		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing StellarSolver" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>Stellar Solver</b>
@@ -682,28 +678,28 @@ function chkKStars()
 	# =================================================================
 	# Build KStar AstroPi
 	commands=(
-    	"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off ${appDir}/kstars-astropi"
-    	"make -j $(expr $(nproc) + 2)"
-    	"sudo make install"
+    		"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off ${appDir}/kstars-astropi"
+    		"make -j $(expr $(nproc) + 2)"
+    		"sudo make install"
 		)
 
 	steps=("Running cmake" "Running make" "Running make install")
 	percentages=(30 60 90)
 
 	(
-    	echo "10"
-    	echo "# Preparing to run cmake..."
+    		echo "10"
+    		echo "# Preparing to run cmake..."
 
-    	for i in "${!commands[@]}"; do
-        	echo "${percentages[$i]}"
-        	echo "# ${steps[$i]}..."
-        	${commands[$i]} 2>&1 | while IFS= read -r line; do
-            	echo "# $line"
-        	done
-    	done
+    		for i in "${!commands[@]}"; do
+        		echo "${percentages[$i]}"
+        		echo "# ${steps[$i]}..."
+        		${commands[$i]} 2>&1 | while IFS= read -r line; do
+            		echo "# $line"
+        		done
+   	 	done
 
-    	echo "100"
-    	echo "# Installation complete!"
+    		echo "100"
+    		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 
