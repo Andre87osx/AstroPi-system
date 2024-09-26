@@ -559,7 +559,6 @@ function chkINDI()
         		echo "${percentages[$i]}"
         		echo "# ${steps[$i]}..."
         		${commands[$i]}
-        		done
     		done
 
     		echo "100"
@@ -590,7 +589,6 @@ function chkINDI()
         		echo "${percentages[$i]}"
         		echo "# ${steps[$i]}..."
         		${commands[$i]}
-        		done
     		done
 
     		echo "100"
@@ -621,7 +619,6 @@ function chkINDI()
         		echo "${percentages[$i]}"
         		echo "# ${steps[$i]}..."
         		${commands[$i]}
-        		done
     		done
 
     		echo "100"
