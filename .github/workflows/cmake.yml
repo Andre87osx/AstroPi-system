@@ -46,7 +46,7 @@ jobs:
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       # StellarSolver 2.0 have issue with KStars AstroPi 3.5.4 v1.5. Use GIT for build tag 1.9
-      run: git clone -b 2.3 https://github.com/rlancaste/stellarsolver.git
+      run: git clone -b 1.9 https://github.com/rlancaste/stellarsolver.git
       
     - name: Configure StellarSolver
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DBUILD_TESTING=Off ${{github.workspace}}/stellarsolver
