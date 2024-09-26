@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
+/*  GuideLog class.
+    Copyright (C) 2020 Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "guidelog.h"
 
@@ -104,10 +107,11 @@ void GuideLog::appendToLog(const QString &lines)
 //   KStars version 3.4.0. PHD2 log version 2.5. Log enabled at 2019-11-21 00:00:48
 void GuideLog::startLog()
 {
-    QDir dir = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("guidelogs");
-    dir.mkpath(".");
+    QString  dir = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "guidelogs/";
+    if (QDir(dir).exists() == false)
+        QDir().mkpath(dir);
 
-    logFileName = dir.filePath("guide_log-" + QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss") + ".txt");
+    logFileName = dir + "guide_log-" + QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss") + ".txt";
     logFile.setFileName(logFileName);
     logFile.open(QIODevice::WriteOnly | QIODevice::Text);
 
@@ -175,7 +179,7 @@ void GuideLog::startGuiding(const GuideInfo &info)
 
 // Prints a line that looks something like this:
 //   55,467.914,"Mount",-1.347,-2.160,2.319,-1.451,1.404,-0.987,303,W,218,N,,,2173,26.91,0
-// See the log analysis section in https://openphdguiding.org/PHD2_User_Guide.pdf for definitions of the fields.
+// See page 56-57 in https://openphdguiding.org/PHD2_User_Guide.pdf for definitions of the fields.
 void GuideLog::addGuideData(const GuideData &data)
 {
     QString mountString = data.type == GuideData::MOUNT ? "\"Mount\"" : "\"DROP\"";

@@ -1,8 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2021 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  FITS Histogram View
+    Copyright (C) 2021 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+ */
 
 #include "fitshistogramview.h"
 
@@ -292,17 +296,14 @@ void FITSHistogramView::createNonLinearHistogram()
                 m_HistogramFrequency[0][scanLine[w]] += sampleBy;
         }
     }
-    else
+    for (int h = 0; h < height; h += sampleBy)
     {
-        for (int h = 0; h < height; h += sampleBy)
+        auto * scanLine = reinterpret_cast<const QRgb *>((rawImage.scanLine(h)));
+        for (int w = 0; w < width; w += sampleBy)
         {
-            auto * scanLine = reinterpret_cast<const QRgb *>((rawImage.scanLine(h)));
-            for (int w = 0; w < width; w += sampleBy)
-            {
-                m_HistogramFrequency[0][qRed(scanLine[w])] += sampleBy;
-                m_HistogramFrequency[1][qGreen(scanLine[w])] += sampleBy;
-                m_HistogramFrequency[2][qBlue(scanLine[w])] += sampleBy;
-            }
+            m_HistogramFrequency[0][qRed(scanLine[w])] += sampleBy;
+            m_HistogramFrequency[1][qGreen(scanLine[w])] += sampleBy;
+            m_HistogramFrequency[2][qBlue(scanLine[w])] += sampleBy;
         }
     }
 

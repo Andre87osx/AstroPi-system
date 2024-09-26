@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Thomas Kabelmann <thomas.kabelmann@gmx.de>
+/***************************************************************************
+                          starcomponent.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2005/14/08
+    copyright            : (C) 2005 by Thomas Kabelmann
+    email                : thomas.kabelmann@gmx.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "starcomponent.h"
 
@@ -39,9 +50,6 @@
 #else
 #include "byteorder.h"
 #endif
-
-// Qt version calming
-#include <qtskipemptyparts.h>
 
 StarComponent *StarComponent::pinstance = nullptr;
 
@@ -586,7 +594,7 @@ SkyObject *StarComponent::findStarByGenetiveName(const QString name)
 {
     if (name.startsWith(QLatin1String("HD")))
     {
-        QStringList fields = name.split(' ', Qt::SkipEmptyParts);
+        QStringList fields = name.split(' ', QString::SkipEmptyParts);
         bool Ok            = false;
         unsigned int HDNum = fields[1].toInt(&Ok);
         if (Ok)
@@ -818,15 +826,15 @@ bool StarComponent::verifySBLIntegrity() {
                 faintMag = block->getBrightMag();
             // NOTE: Assumes 2 decimal places in magnitude field. TODO: Change if it ever does change
             if( block->getBrightMag() != faintMag && ( block->getBrightMag() - faintMag ) > 0.016) {
-                qDebug() << Q_FUNC_INFO << "Trixel " << trixel << ": ERROR: faintMag of prev block = " << faintMag
+                qDebug() << "Trixel " << trixel << ": ERROR: faintMag of prev block = " << faintMag
                          << ", brightMag of block #" << i << " = " << block->getBrightMag();
                 integrity = false;
             }
             if( i > 1 && ( !block->prev ) )
-                qDebug() << Q_FUNC_INFO << "Trixel " << trixel << ": ERROR: Block" << i << "is unlinked in LRU Cache";
+                qDebug() << "Trixel " << trixel << ": ERROR: Block" << i << "is unlinked in LRU Cache";
             if( block->prev && block->prev->parent == m_starBlockList[ trixel ]
                 && block->prev != m_starBlockList[ trixel ]->block( i - 1 ) ) {
-                qDebug() << Q_FUNC_INFO << "Trixel " << trixel << ": ERROR: SBF LRU Cache linked list seems to be broken at before block " << i;
+                qDebug() << "Trixel " << trixel << ": ERROR: SBF LRU Cache linked list seems to be broken at before block " << i;
                 integrity = false;
             }
             faintMag = block->getFaintMag();

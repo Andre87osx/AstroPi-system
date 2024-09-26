@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2004 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          kswizard.cpp  -  description
+                             -------------------
+    begin                : Wed 28 Jan 2004
+    copyright            : (C) 2004 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "kswizard.h"
 
@@ -62,7 +73,7 @@ KSWizard::KSWizard(QWidget *parent) : QDialog(parent)
     wizardStack = new QStackedWidget(this);
     adjustSize();
 
-    setWindowTitle(i18nc("@title:window", "Startup Wizard"));
+    setWindowTitle(i18n("Startup Wizard"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(wizardStack);
@@ -99,23 +110,23 @@ KSWizard::KSWizard(QWidget *parent) : QDialog(parent)
 
     //Load images into banner frames.
     QPixmap im;
-    if (im.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "wzstars.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzstars.png")))
         welcome->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzstars.png"))
         welcome->Banner->setPixmap(im);
-    if (im.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "wzgeo.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzgeo.png")))
         location->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() + "/wzgeo.png"))
         location->Banner->setPixmap(im);
-    if (im.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "wzdownload.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzdownload.png")))
         download->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzdownload.png"))
         download->Banner->setPixmap(im);
 
 #ifdef Q_OS_OSX
-    if (im.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "wzdownload.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzdownload.png")))
         data->Banner->setPixmap(im);
     else if (im.load(QDir(QCoreApplication::applicationDirPath() + "/../Resources/kstars").absolutePath() +
                      "/wzdownload.png"))
@@ -222,8 +233,8 @@ void KSWizard::slotChangeCity()
                 break;
             }
         }
-        location->LongBox->show(Geo->lng());
-        location->LatBox->show(Geo->lat());
+        location->LongBox->showInDegrees(Geo->lng());
+        location->LatBox->showInDegrees(Geo->lat());
     }
 }
 
@@ -268,8 +279,8 @@ void KSWizard::slotOpenOrCopyKStarsDataDirectory()
             KSNotification::sorry(i18n("There was no default data directory found in the app bundle."));
             return;
         }
-        QDir writableDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
-        writableDir.mkpath(".");
+        QDir writableDir;
+        writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation));
         dataLocation =
             QStandardPaths::locate(QStandardPaths::GenericDataLocation, "kstars", QStandardPaths::LocateDirectory);
         if (dataLocation.isEmpty()) //If there *still* is not a kstars data directory
@@ -325,7 +336,7 @@ void KSWizard::slotInstallGSC()
     *cancelConnection = connect(data->gscInstallCancel, &QPushButton::clicked,
                                 [ = ]()
     {
-        qDebug() << Q_FUNC_INFO << "Download Cancelled.";
+        qDebug() << "Download Cancelled.";
 
         if(cancelConnection)
             disconnect(*cancelConnection);

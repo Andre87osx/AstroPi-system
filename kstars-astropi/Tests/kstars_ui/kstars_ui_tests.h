@@ -1,17 +1,23 @@
-/*
-    SPDX-FileCopyrightText: 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
+/*  KStars UI tests
+    Copyright (C) 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #pragma once
 
-#include "../testhelpers.h"
+#include "config-kstars.h"
+#include "kstars.h"
 #include "kstarsdata.h"
 
 #include <QMutex>
+#include <QObject>
 #include <QTimer>
 #include <QApplication>
+#include <QtTest>
 #include <QSystemTrayIcon>
 
 class KStars;
@@ -46,7 +52,6 @@ extern void execute_tests();
             if (!strcmp("-functions", argv[i])) \
                 return QTest::qExec(&tc, argc, argv); \
         QApplication* app = new QApplication(argc, argv); \
-        KTEST_BEGIN(); \
         prepare_tests(); \
         int failure = 0; \
         QTimer::singleShot(1000, app, [&] { \
@@ -61,44 +66,7 @@ extern void execute_tests();
             app->quit(); \
         }); \
         execute_tests(); \
-        KTEST_END(); \
         return failure; }
-
-// on top of QTEST_KSTARS_MAIN, this macro offers a guider selection
-// The option "-guider <name>" selects the guider name from the test
-// arguments and hands the name (as QString) over to the test case constructor
-
-#define QTEST_KSTARS_WITH_GUIDER_MAIN(klass) \
-    int main(int argc, char *argv[]) { \
-        QString guider = "Internal"; \
-        std::vector<char *> testargv; \
-        bool showfunctions = false; \
-        for (int i = 0; i < argc; i++) { \
-            if (!strcmp("-functions", argv[i])) \
-            {testargv.push_back(argv[i]); showfunctions = true;} \
-            else if (!strcmp("-guider", argv[i]) && i+1 < argc) \
-            { guider = argv[i+1]; i++; } \
-            else testargv.push_back(argv[i]); } \
-        klass tc(guider); \
-        if (showfunctions) return QTest::qExec(&tc, static_cast<int>(testargv.size()), testargv.data()); \
-        QApplication* app = new QApplication(argc, argv); \
-        KTEST_BEGIN(); \
-        prepare_tests(); \
-        int failure = 0; \
-        QTimer::singleShot(1000, app, [&] { \
-            qDebug("Starting tests..."); \
-            failure |= run_wizards(static_cast<int>(testargv.size()), testargv.data()); \
-            if (!failure) { \
-                KTELL_BEGIN(); \
-                failure |= QTest::qExec(&tc, static_cast<int>(testargv.size()), testargv.data()); \
-                KTELL_END(); \
-            } \
-            qDebug("Tests are done."); \
-            app->quit(); }); \
-        execute_tests(); \
-        KTEST_END(); \
-        return failure; }
-
 
 // All QTest features are macros returning with no error code.
 // Therefore, in order to bail out at first failure, tests cannot use functions to run sub-tests and are required to use grouping macros too.

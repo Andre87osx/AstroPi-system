@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2011 Rafał Kułaga <rl.kulaga@gmail.com>
+/***************************************************************************
+                          exportimagedialog.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Mon Jun 13 2011
+    copyright            : (C) 2011 by Rafał Kułaga
+    email                : rl.kulaga@gmail.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "exportimagedialog.h"
 
@@ -54,7 +65,7 @@ ExportImageDialog::ExportImageDialog(const QString &url, const QSize &size, Imag
 
     m_ImageExporter = ((imgExporter) ? imgExporter : new ImageExporter(this));
 
-    setWindowTitle(i18nc("@title:window", "Export sky image"));
+    setWindowTitle(i18n("Export sky image"));
 
     setupWidgets();
 }
@@ -118,7 +129,7 @@ void ExportImageDialog::updateLegendSettings()
 
 void ExportImageDialog::exportImage()
 {
-    qDebug() << Q_FUNC_INFO << "Exporting sky image";
+    qDebug() << "Exporting sky image";
     updateLegendSettings();
     m_ImageExporter->includeLegend(m_DialogUI->addLegendCheckBox->isChecked());
     if (!m_ImageExporter->exportImage(m_Url))

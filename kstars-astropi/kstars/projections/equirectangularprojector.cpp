@@ -1,7 +1,20 @@
 /*
-    SPDX-FileCopyrightText: 2010 Henry de Valence <hdevalence@gmail.com>
+    Copyright (C) 2010 Henry de Valence <hdevalence@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
 */
 
 #include "equirectangularprojector.h"
@@ -25,10 +38,10 @@ double EquirectangularProjector::radius() const
     return 1.0;
 }
 
-Eigen::Vector2f EquirectangularProjector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibleHemisphere) const
+Vector2f EquirectangularProjector::toScreenVec(const SkyPoint *o, bool oRefract, bool *onVisibleHemisphere) const
 {
     double Y, dX;
-    Eigen::Vector2f p;
+    Vector2f p;
 
     oRefract &= m_vp.useRefraction;
     if (m_vp.useAltAz)
@@ -97,7 +110,7 @@ bool EquirectangularProjector::unusablePoint(const QPointF &p) const
     return (dx * dx > M_PI * M_PI / 4.0) || (dy * dy > M_PI * M_PI / 4.0);
 }
 
-QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) const
+QVector<Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoint, bool *drawLabel) const
 {
     float x0 = m_vp.width / 2.;
     float y0 = m_vp.width / 2.;
@@ -109,7 +122,7 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
         belowFocus.setAz(m_vp.focus->az().Degrees());
         belowFocus.setAlt(0.0);
 
-        Eigen::Vector2f obf = toScreenVec(&belowFocus, false);
+        Vector2f obf = toScreenVec(&belowFocus, false);
 
         //If the horizon is off the bottom edge of the screen,
         //we can return immediately
@@ -117,7 +130,7 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
         {
             if (drawLabel)
                 *drawLabel = false;
-            return QVector<Eigen::Vector2f>();
+            return QVector<Vector2f>();
         }
 
         //We can also return if the horizon is off the top edge,
@@ -126,13 +139,13 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
         {
             if (drawLabel)
                 *drawLabel = false;
-            return QVector<Eigen::Vector2f>();
+            return QVector<Vector2f>();
         }
 
-        QVector<Eigen::Vector2f> ground;
+        QVector<Vector2f> ground;
         //Construct the ground polygon, which is a simple rectangle in this case
-        ground << Eigen::Vector2f(x0 - dX, obf.y()) << Eigen::Vector2f(x0 + dX, obf.y()) << Eigen::Vector2f(x0 + dX, y0 + dY)
-               << Eigen::Vector2f(x0 - dX, y0 + dY);
+        ground << Vector2f(x0 - dX, obf.y()) << Vector2f(x0 + dX, obf.y()) << Vector2f(x0 + dX, y0 + dY)
+               << Vector2f(x0 - dX, y0 + dY);
 
         if (labelpoint)
         {
@@ -149,7 +162,7 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
     {
         float dX = m_vp.zoomFactor * M_PI / 2;
         float dY = m_vp.zoomFactor * M_PI / 2;
-        QVector<Eigen::Vector2f> ground;
+        QVector<Vector2f> ground;
 
         static const QString horizonLabel = i18n("Horizon");
         float marginLeft, marginRight, marginTop, marginBot;
@@ -168,7 +181,7 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
         {
             SkyPoint p   = pointAt(az);
             bool visible = false;
-            Eigen::Vector2f o   = toScreenVec(&p, false, &visible);
+            Vector2f o   = toScreenVec(&p, false, &visible);
             if (visible)
             {
                 ground.append(o);
@@ -187,16 +200,16 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
         {
             if (drawLabel)
                 *drawLabel = false;
-            return QVector<Eigen::Vector2f>();
+            return QVector<Vector2f>();
         }
 
         if (allGround)
         {
             ground.clear();
-            ground.append(Eigen::Vector2f(x0 - dX, y0 - dY));
-            ground.append(Eigen::Vector2f(x0 + dX, y0 - dY));
-            ground.append(Eigen::Vector2f(x0 + dX, y0 + dY));
-            ground.append(Eigen::Vector2f(x0 - dX, y0 + dY));
+            ground.append(Vector2f(x0 - dX, y0 - dY));
+            ground.append(Vector2f(x0 + dX, y0 - dY));
+            ground.append(Vector2f(x0 + dX, y0 + dY));
+            ground.append(Vector2f(x0 - dX, y0 + dY));
             if (drawLabel)
                 *drawLabel = false;
             return ground;
@@ -212,10 +225,10 @@ QVector<Eigen::Vector2f> EquirectangularProjector::groundPoly(SkyPoint *labelpoi
             *drawLabel = true;
 
         //Now add points along the ground
-        ground.append(Eigen::Vector2f(x0 + dX, ground.last().y()));
-        ground.append(Eigen::Vector2f(x0 + dX, y0 + dY));
-        ground.append(Eigen::Vector2f(x0 - dX, y0 + dY));
-        ground.append(Eigen::Vector2f(x0 - dX, ground.first().y()));
+        ground.append(Vector2f(x0 + dX, ground.last().y()));
+        ground.append(Vector2f(x0 + dX, y0 + dY));
+        ground.append(Vector2f(x0 - dX, y0 + dY));
+        ground.append(Vector2f(x0 - dX, ground.first().y()));
         return ground;
     }
 }

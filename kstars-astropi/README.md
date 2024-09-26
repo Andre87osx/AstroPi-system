@@ -89,7 +89,7 @@ Debian/Ubuntu
 The apt-add-respository command is needed for the apt-get's libstellarsolver-dev. Alternatively, you can skip the apt-add-repository, remove the libstellarsolver-dev from the apt-get, and build & install stellarsolver from https://github.com/rlancaste/stellarsolver.
 ```
 sudo apt-add-repository ppa:mutlaqja/ppa
-sudo apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev|libkf5doctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme
+sudo apt-get -y install build-essential cmake git libstellarsolver-dev libeigen3-dev libcfitsio-dev zlib1g-dev libindi-dev extra-cmake-modules libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev kinit-dev libkf5newstuff-dev kdoctools-dev libkf5notifications-dev qtdeclarative5-dev libkf5crash-dev gettext libnova-dev libgsl-dev libraw-dev libkf5notifyconfig-dev wcslib-dev libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev libsecret-1-dev breeze-icon-theme
 ```
 
 Fedora
@@ -101,12 +101,12 @@ yum install cfitsio-devel eigen3-devel stellarsolver-devel cmake extra-cmake-mod
 
 Open a console and run in the following commands:
 ```
-mkdir -p ~/Projects/build/kstars
-cd ~/Projects
+mkdir -p ~/Projects
 git clone https://invent.kde.org/education/kstars.git
-cd build/kstars
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo ~/Projects/kstars
-make -j16
+mkdir -p kstars-build
+cd kstars-build
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo ../kstars
+make -j8
 sudo make install
 ```
 
@@ -218,9 +218,6 @@ Rebasing is updating your version of KStars and your particular changes to make 
 e.g. reflect changes to the codebase made after you cloned or updated your own KStars copy. This is a significant topic
 you can Google, but the following instructions work most of the time.
 
-Note that this is done before you create your merge request, when you are the only one seeing your code changes. 
-Once you have started your merge request, your code is "public" and instead of rebasing, you should follow the merge procedure below.
-
 ```
 cd ~/Projects/kstars
 git checkout master
@@ -232,28 +229,6 @@ git push origin YOUR_BRANCH_NAME -f
 ```
 
 If there are complications with the rebase, git will make suggestions on how to correct the issues.
-
-**Merging others' changes.** Once you submit a merge request, your code can be seen (and edited) by
-others. At this point, though you still may need to update to the latest KStars version, rebasing destroys
-change information and can overwrite what others are doing. Instead it is best to 'merge' in the current 
-version of KStars into your code.
-
-```
-cd ~/Projects/kstars
-git checkout master
-git pull upstream master  # Get the master from the main KStars repo onto your local clone
-git push origin master    # Then push your updated local clone into your forked repo
-git checkout YOUR_BRANCH_NAME
-git merge master
-git push origin YOUR_BRANCH_NAME 
-```
-
-The differences from the rebase section are the last 2 commands: 'git merge master' is used instead of 'git rebase master'.
-Also the 'git push' doesn't use the -f option. The first time you run the 'git push',
-you may be asked by git to add 'set-upstream origin' to the command. In that case, follow those instructions.
-
-If you follow this procedure, you will find a new 'merge commit' added to your branch's git log.
-
 
 **Your next change**. Once your Merge Request is complete (and possibly integrated into KStars), you may wish to move on and develop again.
 The next change will use another (new) feature branch, and the first feature branch could be deleted.
@@ -415,7 +390,8 @@ Jasem Mutlaq <mutlaqja@ikarustech.com>
  http://adc.gsfc.nasa.gov/
 
  NGC/IC data is compiled by Christian Dersch from OpenNGC database.
- https://github.com/mattiaverga/OpenNGC (CC-BY-SA-4.0 license)
+ https://github.com/mattiaverga/OpenNGC
+ Check LICENSE_OpenNGC for license details (CC-BY-SA-4.0)
 
  Supernovae data is from the Open Supernova Catalog project at https://sne.space
  Please refer to the published paper here: http://adsabs.harvard.edu/abs/2016arXiv160501054G

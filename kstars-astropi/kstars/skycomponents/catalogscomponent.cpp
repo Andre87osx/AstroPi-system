@@ -1,10 +1,21 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                catalogscomponent.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Jun 2021
+    copyright            : (C) 2021 by Valentin Boettcher, Jason Harris
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
+#include <cmath>
 #include "catalogscomponent.h"
 #include "skypainter.h"
 #include "skymap.h"
@@ -17,27 +28,17 @@
 #include "kstars.h"
 #include "skymapcomposite.h"
 #include "kspaths.h"
-#include "import_skycomp.h"
-
-#include <QtConcurrent>
-
-#include <cmath>
-
-constexpr std::size_t expectedKnownMagObjectsPerTrixel = 500;
-constexpr std::size_t expectedUnknownMagObjectsPerTrixel = 1500;
 
 CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_filename,
                                      bool load_default)
-    : SkyComponent(parent)
-    , m_db_manager(db_filename)
-    , m_skyMesh{ SkyMesh::Create(m_db_manager.htmesh_level()) }
-    , m_mainCache(m_skyMesh->size(), calculateCacheSize(Options::dSOCachePercentage()))
-    , m_unknownMagCache(m_skyMesh->size(), calculateCacheSize(Options::dSOCachePercentage()))
+    : SkyComponent(parent), m_db_manager(db_filename), m_skyMesh{ SkyMesh::Create(
+                                                           m_db_manager.htmesh_level()) },
+      m_cache(m_skyMesh->size(), calculateCacheSize(Options::dSOCachePercentage()))
 {
     if (load_default)
     {
-        const auto &default_file = KSPaths::locate(QStandardPaths::AppLocalDataLocation,
-                                   Options::dSODefaultCatalogFilename());
+        const auto &default_file = KSPaths::locate(QStandardPaths::GenericDataLocation,
+                                                   Options::dSODefaultCatalogFilename());
 
         if (QFile(default_file).exists())
         {
@@ -45,8 +46,6 @@ CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_fil
         }
     }
 
-    m_catalog_colors = m_db_manager.get_catalog_colors();
-    tryImportSkyComponents();
     qCInfo(KSTARS) << "Loaded DSO catalogs.";
 }
 
@@ -82,7 +81,6 @@ void CatalogsComponent::draw(SkyPainter *skyp)
     auto &labeler = *SkyLabeler::Instance();
     labeler.setPen(
         QColor(KStarsData::Instance()->colorScheme()->colorNamed("DSNameColor")));
-    const auto &color_scheme = KStarsData::Instance()->colorSchemeFileName();
 
     auto &map       = *SkyMap::Instance();
     auto hideLabels = (map.isSlewing() && Options::hideOnSlew()) ||
@@ -93,53 +91,21 @@ void CatalogsComponent::draw(SkyPainter *skyp)
 
     updateSkyMesh(map);
 
+    MeshIterator region(m_skyMesh, DRAW_BUF);
+
     size_t num_trixels{ 0 };
-    const auto zoomFactor = Options::zoomFactor();
-    const double sizeScale = dms::PI * zoomFactor / 10800.0; // FIXME: magic number 10800
 
-    // Note: This function handles objects of known and unknown
-    // magnitudes differently. This is mostly because objects in the
-    // PGC catalog do not have magnitude information, which leads to
-    // hundreds of thousands of objects of unknown magnitude. This
-    // means we must find some way to:
-    // (a) Prevent PGC objects from flooding the screen at low zoom
-    //     levels
-    // (b) Prevent PGC labels from crowding out more common NGC/M
-    //     labels
-    // (c) Process the large number of PGC objects efficiently at low
-    //     zoom levels (even when they are not actually displayed)
+    while (region.hasNext())
+    {
+        Trixel trixel = region.next();
+        num_trixels++;
 
-    // The problem is that normally, we have relied on magnitude as a
-    // proxy to prioritize object labels, as well as to short-circuit
-    // filtering decisions by having our objects sorted by
-    // magnitude. We can no longer do that.
-
-    // Therefore, we first handle objects of known magnitude, given
-    // them priority in SkyLabeler label-space, solving (b). Then, we
-    // place aggressive filters on objects of unknown magnitude and
-    // size, by explicitly special-casing galaxies: generally
-    // speaking, large nebulae and small galaxies don't have known
-    // magnitudes; so we allow objects of unknown size and unknown
-    // magnitudes to be displayed at lower zoom levels provided they
-    // are not galaxies. With these series of tricks, lest we say
-    // hacks, we solve (a). Finally, we make the unknown mag loop
-    // concurrent since we are unable to bail-out when its time like
-    // we can with the objects of known magnitude, addressing
-    // (c). Thus, the user experience with the PGC flood of 1 million
-    // galaxies of unknown magnitude, and many of them also of unknown
-    // size, remains smooth.
-
-    // Helper lambda to fill the appropriate cache for a given trixel
-    auto fillCache = [&](
-        TrixelCache<ObjectList>::element& cacheElement,
-        ObjectList (CatalogsDB::DBManager::*fillFunction)(const int),
-        Trixel trixel
-        ) -> void {
-        if (!cacheElement.is_set())
+        auto &objects = m_cache[trixel];
+        if (!objects.is_set())
         {
             try
             {
-                cacheElement = (m_db_manager.*fillFunction)(trixel);
+                objects = m_db_manager.get_objects_in_trixel(trixel);
             }
             catch (const CatalogsDB::DatabaseError &e)
             {
@@ -154,134 +120,53 @@ void CatalogsComponent::draw(SkyPainter *skyp)
                 throw; // do not silently fail
             }
         }
-    };
 
-    // Helper lambda to JIT update and draw
-    auto drawObjects = [&](std::vector<CatalogObject*>& objects) {
-        // TODO: If we are sure that JITupdate has no side effects
-        // that may cause races etc, it will be worth parallelizing
-
-        for (CatalogObject *object : objects) {
-            object->JITupdate();
-            auto &color = m_catalog_colors[object->catalogId()][color_scheme];
-            if (!color.isValid())
-            {
-                color = m_catalog_colors[object->catalogId()]["default"];
-
-                if (!color.isValid())
-                {
-                    color = default_color;
-                }
-            }
-
-            skyp->setPen(color);
-
-            if (Options::showInlineImages())
-                object->load_image();
-
-            if (skyp->drawCatalogObject(*object) && !hideLabels)
-            {
-                labeler.drawNameLabel(object, proj.toScreen(object), label_padding);
-            }
-        }
-    };
-
-    std::vector<CatalogObject*> drawListKnownMag;
-    drawListKnownMag.reserve(expectedKnownMagObjectsPerTrixel);
-
-    // Handle the objects of known magnitude
-    MeshIterator region(m_skyMesh, DRAW_BUF);
-    while (region.hasNext())
-    {
-        Trixel trixel = region.next();
-        num_trixels++;
-
-        // Fill the cache for this trixel
-        auto &objectsKnownMag = m_mainCache[trixel];
-        fillCache(objectsKnownMag, &CatalogsDB::DBManager::get_objects_in_trixel_no_nulls, trixel);
-        drawListKnownMag.clear();
-
-        // Filter based on magnitude and size
-        for (const auto &object : objectsKnownMag.data())
+        for (auto &object : objects.data())
         {
-            const auto mag          = object.mag();
-            const auto a            = object.a(); // major axis
-            const double size       = a * sizeScale;
-            const bool magCriterion = (mag < maglim);
+            auto mag          = object.mag();
+            bool mag_unknown  = std::isnan(mag) || (mag > 36.0);
+            bool magCriterion = (mag_unknown && showUnknownMagObjects) || (mag < maglim);
 
+            if (!magCriterion && !mag_unknown)
+                break; // the objects are strictly sorted by magnitude
+                       // unknown magnitude first
             if (!magCriterion)
-            {
-                break; // the known-mag objects are strictly sorted by
-                       // magnitude, unknown magnitude first
-            }
+                continue;
+
+            float size = object.a() * dms::PI * Options::zoomFactor() / 10800.0;
 
             bool sizeCriterion =
-                (size > 1.0 || size == 0 || zoomFactor > 2000.);
+                (size > 1.0 || size == 0 || Options::zoomFactor() > 2000.);
 
-            if (!sizeCriterion)
-                break;
-
-            drawListKnownMag.push_back(const_cast<CatalogObject*>(&object));
-        }
-
-        // JIT update and draw
-        drawObjects(drawListKnownMag);
-    }
-
-    // Handle the objects of unknown magnitude
-    if (showUnknownMagObjects)
-    {
-        std::vector<CatalogObject*> drawListUnknownMag;
-        drawListUnknownMag.reserve(expectedUnknownMagObjectsPerTrixel);
-        QMutex drawListUnknownMagLock;
-
-        MeshIterator region(m_skyMesh, DRAW_BUF);
-        while (region.hasNext())
-        {
-            Trixel trixel = region.next();
-            drawListUnknownMag.clear();
-
-            // Fill cache
-            auto &objectsUnknownMag = m_unknownMagCache[trixel];
-            fillCache(objectsUnknownMag, &CatalogsDB::DBManager::get_objects_in_trixel_null_mag, trixel);
-
-            // Filter
-            QtConcurrent::blockingMap(
-                objectsUnknownMag.data(),
-                [&](const auto &object)
+            if (sizeCriterion)
+            {
+                object.JITupdate();
+                auto &color = m_catalog_colors[object.catalogId()];
+                if (!color.isValid())
                 {
-                    auto a            = object.a(); // major axis
-                    double size = a * sizeScale;
+                    const auto &catalog_color = object.getCatalog().color;
+                    if (catalog_color == "")
+                        color = default_color;
+                    else
+                        color = QColor(catalog_color);
+                }
 
-                    // For objects of unknown mag but known size, adjust
-                    // display behavior as if it were 22 mags/arcsec² =
-                    // 13.1 mag/arcmin² surface brightness, comparing it
-                    // to the magnitude limit.
-                    bool magCriterion = (a <= 0.0 || (13.1 - 5*log10(a)) < maglim);
+                skyp->setPen(color);
 
-                    if (!magCriterion)
-                        return;
+                if (Options::showInlineImages())
+                    object.load_image();
 
-                    bool sizeCriterion =
-                        (size > 1.0 || (size == 0 && object.type() != SkyObject::GALAXY) || zoomFactor > 10000.);
-
-                    if (!sizeCriterion)
-                        return;
-
-                    QMutexLocker _{&drawListUnknownMagLock};
-                    drawListUnknownMag.push_back(const_cast<CatalogObject*>(&object));
-                });
-
-            // JIT update and draw
-            drawObjects(drawListUnknownMag);
+                if (skyp->drawCatalogObject(object) && !hideLabels)
+                {
+                    labeler.drawNameLabel(&object, proj.toScreen(&object), label_padding);
+                }
+            }
         }
-
     }
 
     // prune only if the to-be-pruned trixels are likely not visible
     // and we are not zooming
-    m_mainCache.prune(num_trixels * 1.2);
-    m_unknownMagCache.prune(num_trixels * 1.2);
+    m_cache.prune(num_trixels * 1.2);
 };
 
 void CatalogsComponent::updateSkyMesh(SkyMap &map, MeshBufNum_t buf)
@@ -328,10 +213,9 @@ CatalogObject &CatalogsComponent::insertStaticObject(const CatalogObject &obj)
     return inserted;
 }
 
-SkyObject *CatalogsComponent::findByName(const QString &name, bool exact)
+SkyObject *CatalogsComponent::findByName(const QString &name)
 {
-    auto objects = exact ? m_db_manager.find_objects_by_name(name, 1, true)
-                   : m_db_manager.find_objects_by_name(name);
+    auto objects = m_db_manager.find_objects_by_name(name, 1);
 
     if (objects.size() == 0)
         return nullptr;
@@ -345,7 +229,7 @@ void CatalogsComponent::objectsInArea(QList<SkyObject *> &list, const SkyRegion 
         return;
 
     for (SkyRegion::const_iterator it = region.constBegin(); it != region.constEnd();
-            ++it)
+         ++it)
     {
         try
         {
@@ -416,49 +300,3 @@ SkyObject *CatalogsComponent::objectNearest(SkyPoint *p, double &maxrad)
 
     return &insertStaticObject(nearest);
 }
-
-void CatalogsComponent::tryImportSkyComponents()
-{
-    auto skycom_db = SkyComponentsImport::get_skycomp_db();
-    if (!skycom_db.first)
-        return;
-
-    const auto move_skycompdb = [&]()
-    {
-        const auto &path = skycom_db.second.databaseName();
-        const auto &new_path =
-            QString("%1.%2.backup").arg(path).arg(QDateTime::currentMSecsSinceEpoch());
-
-        QFile::rename(path, new_path);
-    };
-
-    const auto resp = KMessageBox::questionYesNoCancel(
-                          nullptr, i18n("Import custom and internet resolved objects "
-                                        "from the old DSO database into the new one?"));
-
-    if (resp != KMessageBox::Yes)
-    {
-        move_skycompdb();
-        return;
-    }
-
-    const auto &success = SkyComponentsImport::get_objects(skycom_db.second);
-    if (!std::get<0>(success))
-        KMessageBox::detailedError(nullptr, i18n("Could not import the objects."),
-                                   std::get<1>(success));
-
-    const auto &add_success =
-        m_db_manager.add_objects(CatalogsDB::user_catalog_id, std::get<2>(success));
-
-    if (!add_success.first)
-        KMessageBox::detailedError(nullptr, i18n("Could not import the objects."),
-                                   add_success.second);
-    else
-    {
-        KMessageBox::information(
-            nullptr, i18np("Successfully added %1 object to the user catalog.",
-                           "Successfully added %1 objects to the user catalog.",
-                           std::get<2>(success).size()));
-        move_skycompdb();
-    }
-};

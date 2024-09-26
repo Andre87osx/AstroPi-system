@@ -61,13 +61,8 @@
       <arg name="de" type="d" direction="in"/>
       <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
-    <method name="getTargetCoords">
-      <arg type="ad" direction="out"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QList&lt;double&gt;"/>
-      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;double&gt;"/>
-    </method>
-    <method name="setTargetPositionAngle">
-      <arg name="value" type="d" direction="in"/>
+    <method name="setTargetRotation">
+      <arg name="rotation" type="d" direction="in"/>
       <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
     </method>
     <signal name="newStatus">
@@ -76,7 +71,7 @@
         <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::AlignState"/>
     </signal>
     <signal name="newSolution">
-        <arg name="solution" type="a{sv}" direction="out"/>
+        <arg name="solution" type="(i)" direction="out"/>
         <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
         <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </signal>

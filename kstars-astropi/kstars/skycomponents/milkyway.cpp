@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          milkyway.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 12 Nov. 2005
+    copyright            : (C) 2005 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "milkyway.h"
 
@@ -98,7 +109,7 @@ void MilkyWay::loadContours(QString fname, QString greeting)
 
         if (!okRA || !okDec)
         {
-            qDebug() << Q_FUNC_INFO << QString("%1: conversion error on line: %2\n").arg(fname).arg(fileReader.lineNumber());
+            qDebug() << QString("%1: conversion error on line: %2\n").arg(fname).arg(fileReader.lineNumber());
             continue;
         }
 

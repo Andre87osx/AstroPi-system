@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Artificial Horizon Manager
+    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "horizonmanager.h"
@@ -54,7 +57,7 @@ HorizonManager::HorizonManager(QWidget *w) : QDialog(w)
     ui->regionValidation->setToolTip(i18n("Region is invalid."));
     ui->regionValidation->hide();
 
-    setWindowTitle(i18nc("@title:window", "Artificial Horizon Manager"));
+    setWindowTitle(i18n("Artificial Horizon Manager"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ui);
@@ -300,11 +303,7 @@ void HorizonManager::slotToggleCeiling()
 {
     int regionID = ui->regionsList->currentIndex().row();
     QStandardItem *regionItem = m_RegionsModel->item(regionID, 0);
-    if(!regionItem)
-        return;
 
-    if(!regionItem)
-        return;
     bool turnCeilingOn = !regionItem->data(Qt::UserRole).toBool();
     if (turnCeilingOn)
     {

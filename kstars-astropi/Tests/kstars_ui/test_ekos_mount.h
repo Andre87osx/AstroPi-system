@@ -1,9 +1,13 @@
 /*  KStars UI tests
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    Copyright (C) 2020
+    Eric Dejouhanet <eric.dejouhanet@gmail.com>
     Fabrizio Pollastri <mxgbot@gmail.com> 2020-08-30
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #ifndef TESTEKOSMOUNT_H
 #define TESTEKOSMOUNT_H
@@ -12,7 +16,6 @@
 #include "test_ekos.h"
 
 #if defined(HAVE_INDI)
-#include "indicom.h"
 
 #include <QObject>
 #include <QPushButton>
@@ -87,8 +90,7 @@
     QTRY_VERIFY_WITH_TIMEOUT(Ekos::Manager::Instance()->mountModule() != nullptr, 5000); \
     Ekos::Manager::Instance()->mountModule()->setMeridianFlipValues(true, 0); \
     QTRY_VERIFY_WITH_TIMEOUT(Ekos::Manager::Instance()->mountModule()->unpark(), 5000); \
-    QVERIFY(Ekos::Manager::Instance()->mountModule()->sync(range24(LST.Hours()+(ha_ofs+0.002)), (alt))); \
-    QVERIFY(Ekos::Manager::Instance()->mountModule()->slew(range24(LST.Hours()+(ha_ofs)), (alt))); \
+    QVERIFY(Ekos::Manager::Instance()->mountModule()->sync(LST.Hours()+(ha_ofs), (alt))); \
     if (!track) \
         QTimer::singleShot(1000, [&]{ \
         QDialog * const dialog = qobject_cast <QDialog*> (QApplication::activeModalWidget()); \

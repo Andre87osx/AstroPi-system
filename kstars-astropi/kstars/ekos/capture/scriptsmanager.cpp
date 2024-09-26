@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2020 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Script Manager
+    Copyright (C) 2020 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include <QFileDialog>
@@ -39,13 +42,13 @@ void ScriptsManager::handleSelectScripts()
 
     QString title;
     if (button == ui->preJobB)
-        title = i18nc("@title:window", "Pre Job Script");
+        title = i18n("Pre Job Script");
     else if (button == ui->postJobB)
-        title = i18nc("@title:window", "Post Job Script");
+        title = i18n("Post Job Script");
     else if (button == ui->postCaptureB)
-        title = i18nc("@title:window", "Post Capture Script");
+        title = i18n("Post Capture Script");
     else if (button == ui->preCaptureB)
-        title = i18nc("@title:window", "Pre Capture Script");
+        title = i18n("Pre Capture Script");
 
     QUrl url = QFileDialog::getOpenFileUrl(this, title);
     if (!url.isValid())

@@ -1,10 +1,14 @@
 /*  KStars UI tests
-    SPDX-FileCopyrightText: 2018, 2020 Csaba Kertesz <csaba.kertesz@gmail.com>
-    SPDX-FileCopyrightText: Jasem Mutlaq <knro@ikarustech.com>
-    SPDX-FileCopyrightText: Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    Copyright (C) 2018, 2020
+    Csaba Kertesz <csaba.kertesz@gmail.com>
+    Jasem Mutlaq <knro@ikarustech.com>
+    Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "test_ekos.h"
 
@@ -46,7 +50,6 @@ void TestEkos::cleanupTestCase()
 
 void TestEkos::init()
 {
-    KTEST_BEGIN();
     KTRY_OPEN_EKOS();
     KVERIFY_EKOS_IS_OPENED();
 }
@@ -59,7 +62,6 @@ void TestEkos::cleanup()
 
     KTRY_CLOSE_EKOS();
     KVERIFY_EKOS_IS_HIDDEN();
-    KTEST_END();
 }
 
 void TestEkos::testOpenClose()

@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          skymapevents.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sat Feb 10 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 //This file contains Event handlers for the SkyMap class.
 
@@ -19,10 +30,6 @@
 #include "skycomponents/skylabeler.h"
 #include "skycomponents/skymapcomposite.h"
 #include "skycomponents/starcomponent.h"
-#include "skycomponents/mosaiccomponent.h"
-#ifdef HAVE_INDI
-#include "skyobjects/mosaictiles.h"
-#endif
 #include "widgets/infoboxwidget.h"
 
 #include <QGestureEvent>
@@ -343,14 +350,14 @@ void SkyMap::keyPressEvent(QKeyEvent *e)
         {
             // Toggle relativistic corrections
             Options::setUseRelativistic(!Options::useRelativistic());
-            qDebug() << Q_FUNC_INFO << "Relativistic corrections: " << Options::useRelativistic();
+            qDebug() << "Relativistic corrections: " << Options::useRelativistic();
             forceUpdate();
             break;
         }
 
         case Qt::Key_A:
             Options::setUseAntialias(!Options::useAntialias());
-            qDebug() << Q_FUNC_INFO << "Use Antialiasing: " << Options::useAntialias();
+            qDebug() << "Use Antialiasing: " << Options::useAntialias();
             forceUpdate();
             break;
 
@@ -561,45 +568,6 @@ void SkyMap::mouseMoveEvent(QMouseEvent *e)
 
     if (mouseButtonDown)
     {
-#ifdef HAVE_INDI
-        if (Options::showMosaicPanel())
-        {
-            auto tiles = KStarsData::Instance()->skyComposite()->mosaicComponent()->tiles();
-
-            if (tiles->operationMode() == MosaicTiles::MODE_PLANNING)
-            {
-                // Check if mouse point within Mosaic FOV bounds.
-                auto mosaicFOV = tiles->mosaicFOV();
-                auto upperRA = tiles->ra0().Degrees() + mosaicFOV.width() / 60;
-                auto lowerRA = tiles->ra0().Degrees() - mosaicFOV.width() / 60;
-                auto upperDE = tiles->dec0().Degrees() + mosaicFOV.height() / 60;
-                auto lowerDE = tiles->dec0().Degrees() - mosaicFOV.height() / 60;
-
-                auto mouseRA = m_MousePoint.ra().Degrees();
-                auto mouseDE = m_MousePoint.dec().Degrees();
-
-                // If mouse point is within, then behave like drag and drop
-                if (mouseRA > lowerRA && mouseRA < upperRA && mouseDE > lowerDE && mouseDE < upperDE)
-                {
-                    if (!mouseDragCursor)
-                        setMouseDragCursor();
-
-                    dms dRA  = m_MousePoint.ra() - clickedPoint()->ra();
-                    dms dDec = m_MousePoint.dec() - clickedPoint()->dec();
-
-                    // Emit difference between mouse point and clicked point.
-                    emit mosaicCenterChanged(dRA, dDec);
-
-                    // Update mouse and clicked points.
-                    m_MousePoint = projector()->fromScreen(e->pos(), data->lst(), data->geo()->lat());
-                    setClickedPoint(&m_MousePoint);
-                    update();
-                    return;
-                }
-            }
-        }
-#endif
-
         // set the mouseMoveCursor and set slewing=true, if they are not set yet
         if (!mouseMoveCursor)
             setMouseMoveCursor();
@@ -635,6 +603,7 @@ void SkyMap::mouseMoveEvent(QMouseEvent *e)
         //redetermine RA, Dec of mouse pointer, using new focus
         m_MousePoint = projector()->fromScreen(e->pos(), data->lst(), data->geo()->lat());
         setClickedPoint(&m_MousePoint);
+
         forceUpdate(); // must be new computed
     }
     else //mouse button not down
@@ -647,9 +616,9 @@ void SkyMap::mouseMoveEvent(QMouseEvent *e)
 
 void SkyMap::wheelEvent(QWheelEvent *e)
 {
-    if (e->angleDelta().y() > 0)
+    if (e->delta() > 0)
         zoomInOrMagStep(e->modifiers());
-    else if (e->angleDelta().y() < 0)
+    else if (e->delta() < 0)
         zoomOutOrMagStep(e->modifiers());
 }
 
@@ -719,7 +688,7 @@ void SkyMap::mousePressEvent(QMouseEvent *e)
     }
 
     // if button is down and cursor is not moved set the move cursor after 500 ms
-    //QTimer::singleShot(500, this, SLOT(setMouseMoveCursor()));
+    QTimer::singleShot(500, this, SLOT(setMouseMoveCursor()));
 
     // break if point is unusable
     if (projector()->unusablePoint(e->pos()))
@@ -743,7 +712,7 @@ void SkyMap::mousePressEvent(QMouseEvent *e)
         setClickedPoint(&m_MousePoint);
 
         //Find object nearest to clickedPoint()
-        double maxrad  = 5000.0 / Options::zoomFactor();
+        double maxrad  = 1000.0 / Options::zoomFactor();
         SkyObject *obj = data->skyComposite()->objectNearest(clickedPoint(), maxrad);
         setClickedObject(obj);
         if (obj)

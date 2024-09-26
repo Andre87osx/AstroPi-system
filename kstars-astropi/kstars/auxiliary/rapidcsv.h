@@ -1,7 +1,15 @@
 /*
-    SPDX-FileCopyrightText: 2017-2021 Kristofer Berggren <https://github.com/d99kris/rapidcsv>
-    SPDX-License-Identifier: BSD-3-Clause
-*/
+ * rapidcsv.h
+ *
+ * URL:      https://github.com/d99kris/rapidcsv
+ * Version:  8.51
+ *
+ * Copyright (C) 2017-2021 Kristofer Berggren
+ * All rights reserved.
+ *
+ * rapidcsv is distributed under the BSD 3-Clause license, see LICENSE for details.
+ *
+ */
 
 #pragma once
 
@@ -83,7 +91,7 @@ class no_converter : public std::exception
      * @brief   Provides details about the exception
      * @returns an explanatory string
      */
-    virtual const char *what() const throw() override { return "unsupported conversion datatype"; }
+    virtual const char *what() const throw() { return "unsupported conversion datatype"; }
 };
 
 /**

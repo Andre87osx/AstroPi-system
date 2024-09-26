@@ -1,8 +1,20 @@
-/*
-    SPDX-FileCopyrightText: 2008 Akarsh Simha <akarshsimha@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                   binfilehelper.cpp - K Desktop Planetarium
+                             -------------------
+    begin                : Sat May 31 2008
+    copyright            : (C) 2008 by Akarsh Simha
+    email                : akarshsimha@gmail.com
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "binfilehelper.h"
 
@@ -56,7 +68,7 @@ void BinFileHelper::clearFields()
 
 bool BinFileHelper::testFileExists(const QString &fileName)
 {
-    QString FilePath     = KSPaths::locate(QStandardPaths::AppLocalDataLocation, fileName);
+    QString FilePath     = KSPaths::locate(QStandardPaths::GenericDataLocation, fileName);
     QByteArray b         = FilePath.toLatin1();
     const char *filepath = b.data();
     FILE *f              = fopen(filepath, "rb");
@@ -71,7 +83,7 @@ bool BinFileHelper::testFileExists(const QString &fileName)
 
 FILE *BinFileHelper::openFile(const QString &fileName)
 {
-    QString FilePath = KSPaths::locate(QStandardPaths::AppLocalDataLocation, fileName);
+    QString FilePath = KSPaths::locate(QStandardPaths::GenericDataLocation, fileName);
     init();
     QByteArray b         = FilePath.toLatin1();
     const char *filepath = b.data();
@@ -227,8 +239,8 @@ enum BinFileHelper::Errors BinFileHelper::__readHeader()
         if (prev_offset != 0 && prev_nrecs != (offset - prev_offset) / recordSize)
         {
             errorMessage = QString::asprintf("Expected %u  = (%X - %x) / %x records, but found %u, in index entry %u",
-                                             (offset - prev_offset) / recordSize, offset, prev_offset, recordSize, prev_nrecs,
-                                             j - 1);
+                                 (offset - prev_offset) / recordSize, offset, prev_offset, recordSize, prev_nrecs,
+                                 j - 1);
             return ERR_INDEX_BADOFFSET;
         }
 

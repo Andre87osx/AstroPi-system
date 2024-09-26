@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Driver Alias
+    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "customdrivers.h"
@@ -15,8 +18,7 @@
 #include "ksnotification.h"
 
 
-CustomDrivers::CustomDrivers(QWidget *parent, const QList<DriverInfo *> &driversList) : QDialog(parent),
-    m_DriversList(driversList)
+CustomDrivers::CustomDrivers(QWidget *parent, const QList<DriverInfo *> &driversList) : QDialog(parent), m_DriversList(driversList)
 {
     setupUi(this);
 
@@ -35,13 +37,11 @@ CustomDrivers::CustomDrivers(QWidget *parent, const QList<DriverInfo *> &drivers
 
     familyCombo->addItems(DeviceFamilyLabels.values());
 
-    for (const auto &oneDriver : driversList)
+    for (const DriverInfo *oneDriver : driversList)
     {
         // MDPD drivers CANNOT have aliases.
-        // JM 2021.10.31 While usually MDPD drivers cannot have aliases
-        // We should add the ability to do so in case only a single device is connected.
-        //        if (oneDriver->getAuxInfo().value("mdpd", false).toBool() == true)
-        //            continue;
+        if (oneDriver->getAuxInfo().value("mdpd", false).toBool() == true)
+            continue;
 
         QString label = oneDriver->getLabel();
         if (label.isEmpty())
@@ -55,13 +55,11 @@ CustomDrivers::CustomDrivers(QWidget *parent, const QList<DriverInfo *> &drivers
     connect(driverCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated),
             this, &CustomDrivers::syncDriver);
 
-    connect(labelIN, &QLineEdit::textChanged, [&]()
-    {
+    connect(labelIN, &QLineEdit::textChanged, [&]() {
         addDriverB->setEnabled(labelIN->text().isEmpty() == false);
     });
 
-    connect(driversView, &QTableView::pressed, [&]()
-    {
+    connect(driversView, &QTableView::pressed, [&]() {
         removeDriverB->setEnabled(true);
     });
 

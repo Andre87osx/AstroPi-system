@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2003 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          scriptbuilder.cpp  -  description
+                             -------------------
+    begin                : Thu Apr 17 2003
+    copyright            : (C) 2003 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "scriptbuilder.h"
 
@@ -49,7 +60,7 @@ OptionsTreeView::OptionsTreeView(QWidget *p) : QDialog(p)
     mainLayout->addWidget(otvw.get());
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Options"));
+    setWindowTitle(i18n("Options"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -100,7 +111,7 @@ void OptionsTreeView::resizeColumns()
     for (int icol = 0; icol < 3; ++icol)
     {
         //DEBUG
-        qDebug() << Q_FUNC_INFO << QString("max width of column %1: %2").arg(icol).arg(maxwidth[icol]);
+        qDebug() << QString("max width of column %1: %2").arg(icol).arg(maxwidth[icol]);
 
         optionsList()->setColumnWidth(icol, maxwidth[icol]);
     }
@@ -123,7 +134,7 @@ ScriptNameDialog::ScriptNameDialog(QWidget *p) : QDialog(p)
     mainLayout->addWidget(snw);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Script Data"));
+    setWindowTitle(i18n("Script Data"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);
@@ -164,7 +175,7 @@ ScriptBuilder::ScriptBuilder(QWidget *parent)
     mainLayout->addWidget(sb);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Script Builder"));
+    setWindowTitle(i18n("Script Builder"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
     mainLayout->addWidget(buttonBox);
@@ -747,8 +758,8 @@ void ScriptBuilder::initViewOptions()
 
     QFile file;
     QString line;
-    //determine filename in local user KDE directory tree.
-    file.setFileName(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "colors.dat"));
+    file.setFileName(KSPaths::locate(QStandardPaths::GenericDataLocation,
+                                     "colors.dat")); //determine filename in local user KDE directory tree.
     if (file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);
@@ -1003,11 +1014,10 @@ void ScriptBuilder::slotRunScript()
     env.insert("PATH", "/usr/local/bin:" + QCoreApplication::applicationDirPath() + ':' + path);
     p.setProcessEnvironment(env);
 #endif
-    QStringList arguments;
-    p.start(f.fileName(), arguments);
+    p.start(f.fileName());
 
     if (!p.waitForStarted())
-        qDebug() << Q_FUNC_INFO << "Process did not start.";
+        qDebug() << "Process did not start.";
 
     while (!p.waitForFinished(10))
     {
@@ -1439,7 +1449,7 @@ void ScriptBuilder::slotArgWidget()
             if (ok)
             {
                 ra.setH(r);
-                argSetRaDec->RABox->show(ra);
+                argSetRaDec->RABox->showInHours(ra);
             }
 
             ok = !sf->argVal(1).isEmpty();
@@ -1448,7 +1458,7 @@ void ScriptBuilder::slotArgWidget()
             else
                 argSetRaDec->DecBox->clear();
             if (ok)
-                argSetRaDec->DecBox->show(dms(d));
+                argSetRaDec->DecBox->showInDegrees(dms(d));
         }
         else if (sf->name() == "setAltAz")
         {
@@ -1463,14 +1473,14 @@ void ScriptBuilder::slotArgWidget()
             else
                 argSetAltAz->AzBox->clear();
             if (ok)
-                argSetAltAz->AltBox->show(dms(y));
+                argSetAltAz->AltBox->showInDegrees(dms(y));
             else
                 argSetAltAz->AltBox->clear();
 
             ok = !sf->argVal(1).isEmpty();
             x  = sf->argVal(1).toDouble(&ok);
             if (ok)
-                argSetAltAz->AzBox->show(dms(x));
+                argSetAltAz->AzBox->showInDegrees(dms(x));
         }
         else if (sf->name() == "zoomIn")
         {
@@ -1780,7 +1790,7 @@ void ScriptBuilder::slotRa()
             return;
 
         bool ok(false);
-        dms ra = argSetRaDec->RABox->createDms(&ok);
+        dms ra = argSetRaDec->RABox->createDms(false, &ok);
         if (ok)
         {
             setUnsavedChanges(true);
@@ -1812,7 +1822,7 @@ void ScriptBuilder::slotDec()
             return;
 
         bool ok(false);
-        dms dec = argSetRaDec->DecBox->createDms(&ok);
+        dms dec = argSetRaDec->DecBox->createDms(true, &ok);
         if (ok)
         {
             setUnsavedChanges(true);
@@ -1844,7 +1854,7 @@ void ScriptBuilder::slotAz()
             return;
 
         bool ok(false);
-        dms az = argSetAltAz->AzBox->createDms(&ok);
+        dms az = argSetAltAz->AzBox->createDms(true, &ok);
         if (ok)
         {
             setUnsavedChanges(true);
@@ -1875,7 +1885,7 @@ void ScriptBuilder::slotAlt()
             return;
 
         bool ok(false);
-        dms alt = argSetAltAz->AltBox->createDms(&ok);
+        dms alt = argSetAltAz->AltBox->createDms(true, &ok);
         if (ok)
         {
             setUnsavedChanges(true);
@@ -2414,7 +2424,7 @@ void ScriptBuilder::slotINDISetTargetCoordDeviceRA()
         }
 
         bool ok(false);
-        dms ra = argSetTargetCoordINDI->RABox->createDms(&ok);
+        dms ra = argSetTargetCoordINDI->RABox->createDms(false, &ok);
         if ( ok )
         {
 
@@ -2455,7 +2465,7 @@ void ScriptBuilder::slotINDISetTargetCoordDeviceDEC()
         }
 
         bool ok(false);
-        dms dec = argSetTargetCoordINDI->DecBox->createDms(&ok);
+        dms dec = argSetTargetCoordINDI->DecBox->createDms(true, &ok);
         if ( ok )
         {
 
@@ -2482,23 +2492,23 @@ void ScriptBuilder::slotINDISetTargetCoordDeviceDEC()
 
 }
 
-void ScriptBuilder::slotINDIsetCoreProperty(SequenceJob::SJ_TargetName,TargetName()
+void ScriptBuilder::slotINDISetTargetNameTargetName()
 {
 
     ScriptFunction * sf = ScriptList[ sb->ScriptListBox->currentRow() ];
 
     if ( sf->name() == "setINDITargetName" )
     {
-        if (argsetCoreProperty(SequenceJob::SJ_TargetName,INDI->targetName->text().isEmpty())
+        if (argSetTargetNameINDI->targetName->text().isEmpty())
         {
             sf->setValid(false);
             return;
         }
 
-        if (sf->argVal(0) != argsetCoreProperty(SequenceJob::SJ_TargetName,INDI->targetName->text())
+        if (sf->argVal(0) != argSetTargetNameINDI->targetName->text())
             setUnsavedChanges( true );
 
-        sf->setArg(0, argsetCoreProperty(SequenceJob::SJ_TargetName,INDI->targetName->text());
+        sf->setArg(0, argSetTargetNameINDI->targetName->text());
         sf->setValid(true);
     }
     else
@@ -2630,7 +2640,7 @@ void ScriptBuilder::slotINDISetGeoLocationDeviceLong()
         }
 
         bool ok(false);
-        dms longitude = argSetGeoLocationINDI->longBox->createDms(&ok);
+        dms longitude = argSetGeoLocationINDI->longBox->createDms(true, &ok);
         if ( ok )
         {
 
@@ -2671,7 +2681,7 @@ void ScriptBuilder::slotINDISetGeoLocationDeviceLat()
         }
 
         bool ok(false);
-        dms latitude = argSetGeoLocationINDI->latBox->createDms(&ok);
+        dms latitude = argSetGeoLocationINDI->latBox->createDms(true, &ok);
         if ( ok )
         {
 

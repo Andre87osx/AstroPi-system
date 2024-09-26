@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos Mosaic Tool
+    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #pragma once
 
@@ -22,8 +25,7 @@ class mosaicDialog;
 namespace Ekos
 {
 class Scheduler;
-class MosaicTilesManager;
-class MosaicTilesScene;
+class MosaicTile;
 
 class Mosaic : public QDialog
 {
@@ -55,7 +57,7 @@ class Mosaic : public QDialog
 
     protected:
         virtual void showEvent(QShowEvent *) override;
-        virtual void resizeEvent(QResizeEvent *) override;        
+        virtual void resizeEvent(QResizeEvent *) override;
 
         /// @brief Camera information validity checker.
         bool isScopeInfoValid() const;
@@ -88,22 +90,22 @@ class Mosaic : public QDialog
         virtual void accept() override;
 
     private:
-        SkyPoint m_CenterPoint;
+        SkyPoint center;
         QImage *m_skyChart { nullptr };
 
         QPixmap targetPix;
-        QGraphicsPixmapItem *m_SkyPixmapItem { nullptr };
+        QGraphicsPixmapItem *skyMapItem { nullptr };
 
-        MosaicTilesManager *m_MosaicTilesManager { nullptr };
+        MosaicTile *mosaicTileItem { nullptr };
 
         double pixelsPerArcminRA { 0 }, pixelsPerArcminDE { 0 };
         double renderedWFOV { 0 }, renderedHFOV { 0 };
         double premosaicZoomFactor { 0 };
 
         QPointF screenPoint;
-        QGraphicsScene m_TilesScene;
+        QGraphicsScene scene;
 
-        bool m_RememberAltAzOption {false}, m_RememberShowGround {false};
+        bool rememberAltAzOption;
 
         QTimer *updateTimer { nullptr };
 };

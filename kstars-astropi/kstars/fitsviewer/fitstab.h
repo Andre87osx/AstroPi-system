@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/***************************************************************************
+                          FITS Tab
+                             -------------------
+    copyright            : (C) 2012 by Jasem Mutlaq
+    email                : mutlaqja@ikarustech.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -57,7 +67,7 @@ class FITSTab : public QWidget
 
         void clearRecentFITS();
         void selectRecentFITS(int i);
-        void loadFile(const QUrl &imageURL, FITSMode mode = FITS_NORMAL, FITSScale filter = FITS_NONE);
+        void loadFile(const QUrl &imageURL, FITSMode mode = FITS_NORMAL, FITSScale filter = FITS_NONE, bool silent = true);
         bool loadData(const QSharedPointer<FITSData> &data, FITSMode mode = FITS_NORMAL, FITSScale filter = FITS_NONE);
 
         bool saveImage(const QString &filename);
@@ -70,9 +80,9 @@ class FITSTab : public QWidget
         {
             return &currentURL;
         }
-        inline const QSharedPointer<FITSView> &getView()
+        inline FITSView *getView()
         {
-            return m_View;
+            return m_View.get();
         }
         inline QPointer<FITSHistogramEditor> getHistogram()
         {
@@ -89,6 +99,7 @@ class FITSTab : public QWidget
         void loadFITSHeader();
         void headerFITS();
         void histoFITS();
+        void evaluateStats();
         void statFITS();
 
         void setUID(int newID)
@@ -113,7 +124,7 @@ class FITSTab : public QWidget
         void ZoomIn();
         void ZoomOut();
         void ZoomDefault();
-        void evaluateStats();
+
     protected:
         virtual void closeEvent(QCloseEvent *ev) override;
 
@@ -146,7 +157,7 @@ class FITSTab : public QWidget
         QPointer<QListWidget> recentImages;
 
         /// FITS image object
-        QSharedPointer<FITSView> m_View;
+        std::unique_ptr<FITSView> m_View;
 
         /// History for undo/redo
         QUndoStack *undoStack { nullptr };
@@ -171,5 +182,5 @@ class FITSTab : public QWidget
         void newStatus(const QString &msg, FITSBar id);
         void changeStatus(bool clean, const QUrl &imageUrl);
         void loaded();
-        void failed(const QString &errorMessage);
+        void failed();
 };

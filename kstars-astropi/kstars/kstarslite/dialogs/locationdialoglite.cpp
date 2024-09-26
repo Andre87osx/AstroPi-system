@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2016 Artem Fedoskin <afedoskin3@gmail.com>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          locationialoglite.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Aug 21 2016
+    copyright            : (C) 2016 by Artem Fedoskin
+    email                : afedoskin3@gmail.com
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "locationdialoglite.h"
 
@@ -425,7 +435,7 @@ bool LocationDialogLite::isReadOnly(const QString &fullName)
 QSqlDatabase LocationDialogLite::getDB()
 {
     QSqlDatabase mycitydb = QSqlDatabase::database("mycitydb");
-    QString dbfile        = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("mycitydb.sqlite");
+    QString dbfile        = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "mycitydb.sqlite";
 
     // If it doesn't exist, create it
     if (QFile::exists(dbfile) == false)

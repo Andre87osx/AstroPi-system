@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Rotator Settings
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 
 #pragma once
@@ -17,6 +20,8 @@ class RotatorSettings : public QDialog, public Ui::RotatorDialog
     Q_OBJECT
 public:
     explicit RotatorSettings(QWidget *parent);
+
+    void setRotator(ISD::GDInterface *rotator);
 
     void setTicksMinMaxStep(int32_t min, int32_t max, int32_t step);
 
@@ -36,7 +41,11 @@ public:
     void refresh();
 
 protected slots:
+    void gotoAngle();
     void updatePA();
+    void setPA();
     void syncPA(double PA);
 
+private:
+    ISD::GDInterface *currentRotator { nullptr };    
 };

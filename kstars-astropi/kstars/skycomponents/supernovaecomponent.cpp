@@ -1,10 +1,13 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Supernova Component
+    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Based on Samikshan Bairagya GSoC work.
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "supernovaecomponent.h"
 
@@ -66,7 +69,7 @@ void SupernovaeComponent::loadData()
     QString name, type, host, date, ra, de;
     float z, mag;
 
-    QString sFileName = KSPaths::locate(QStandardPaths::AppLocalDataLocation, QString("catalog.min.json"));
+    QString sFileName = KSPaths::locate(QStandardPaths::GenericDataLocation, QString("catalog.min.json"));
 
     QFile sNovaFile(sFileName);
 
@@ -242,7 +245,7 @@ void SupernovaeComponent::slotTriggerDataFileUpdate()
     QObject::connect(downloadJob, SIGNAL(downloaded()), this, SLOT(downloadReady()));
     QObject::connect(downloadJob, SIGNAL(error(QString)), this, SLOT(downloadError(QString)));
 
-    QString output = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("catalog.min.json");
+    QString output = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "catalog.min.json";
 
     downloadJob->setDownloadedFileURL(QUrl::fromLocalFile(output));
 

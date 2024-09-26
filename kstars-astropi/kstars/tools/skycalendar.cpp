@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2008 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          skycalendar.cpp  -  description
+                             -------------------
+    begin                : Wed Jul 16 2008
+    copyright            : (C) 2008 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "skycalendar.h"
 
@@ -42,7 +53,7 @@ SkyCalendar::SkyCalendar(QWidget *parent) : QDialog(parent)
 
     geo = KStarsData::Instance()->geo();
 
-    setWindowTitle(i18nc("@title:window", "Sky Calendar"));
+    setWindowTitle(i18n("Sky Calendar"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close);
     mainLayout->addWidget(buttonBox);
@@ -69,10 +80,10 @@ SkyCalendar::SkyCalendar(QWidget *parent) : QDialog(parent)
     scUI->CalendarView->setHorizon();
 
     plotButtonText = scUI->CreateButton->text();
-    connect(scUI->CreateButton, &QPushButton::clicked, this, [this]()
+    connect(scUI->CreateButton, &QPushButton::clicked, [this]()
     {
         scUI->CreateButton->setText(i18n("Please Wait") + "...");
-        slotFillCalendar();
+        QtConcurrent::run(this, &SkyCalendar::slotFillCalendar);
     });
 
     connect(scUI->LocationButton, SIGNAL(clicked()), this, SLOT(slotLocation()));
@@ -91,22 +102,35 @@ void SkyCalendar::slotFillCalendar()
     scUI->CalendarView->setHorizon();
 
     if (scUI->checkBox_Mercury->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::MERCURY);
+        addPlanetEvents(KSPlanetBase::MERCURY);
     if (scUI->checkBox_Venus->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::VENUS);
+        addPlanetEvents(KSPlanetBase::VENUS);
     if (scUI->checkBox_Mars->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::MARS);
+        addPlanetEvents(KSPlanetBase::MARS);
     if (scUI->checkBox_Jupiter->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::JUPITER);
+        addPlanetEvents(KSPlanetBase::JUPITER);
     if (scUI->checkBox_Saturn->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::SATURN);
+        addPlanetEvents(KSPlanetBase::SATURN);
     if (scUI->checkBox_Uranus->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::URANUS);
+        addPlanetEvents(KSPlanetBase::URANUS);
     if (scUI->checkBox_Neptune->isChecked())
-        QtConcurrent::run(this, &SkyCalendar::addPlanetEvents, KSPlanetBase::NEPTUNE);
+        addPlanetEvents(KSPlanetBase::NEPTUNE);
 
     scUI->CreateButton->setText(i18n("Plot Planetary Almanac"));
     scUI->CreateButton->setEnabled(true);
+
+    //if ( scUI->checkBox_Pluto->isChecked() )
+    //addPlanetEvents( KSPlanetBase::PLUTO );
+
+    /*
+      {
+        QMutexLocker locker(&calculationMutex);
+
+        calculating = false;
+        scUI->CreateButton->setEnabled(true);
+        scUI->CalendarView->update();
+      }
+      */
 }
 
 #if 0
@@ -403,7 +427,7 @@ void SkyCalendar::slotPrint()
     //NOTE Changed from pointer to statically allocated object, what effect will it have?
     //QPointer<QPrintDialog> dialog( KdePrint::createPrintDialog( &printer, this ) );
     QPrintDialog dialog(&printer, this);
-    dialog.setWindowTitle(i18nc("@title:window", "Print sky calendar"));
+    dialog.setWindowTitle(i18n("Print sky calendar"));
     if (dialog.exec() == QDialog::Accepted)
     {
         // Change mouse cursor

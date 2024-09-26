@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2010 Akarsh Simha <akarsh.simha@kdemail.net>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                  skymapqdraw.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue Dec 21 2010 08:36 AM UTC-6
+    copyright            : (C) 2010 Akarsh Simha
+    email                : akarsh.simha@kdemail.net
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "skymapqdraw.h"
 #include "skymapcomposite.h"
@@ -16,7 +26,6 @@
 SkyMapQDraw::SkyMapQDraw(SkyMap *sm) : QWidget(sm), SkyMapDrawAbstract(sm)
 {
     m_SkyPixmap = new QPixmap(width(), height());
-    m_SkyPainter.reset(new SkyQPainter(this, m_SkyPixmap));
 }
 
 SkyMapQDraw::~SkyMapQDraw()
@@ -57,27 +66,27 @@ void SkyMapQDraw::paintEvent(QPaintEvent *event)
         return; // exit because the pixmap is repainted and that's all what we want
     }
 
-    m_SkyMap->updateInfoBoxes();
+    // FIXME: used to notify infobox about possible change of object coordinates
+    // Not elegant at all. Should find better option
+    m_SkyMap->showFocusCoords();
     m_SkyMap->setupProjector();
 
-    m_SkyPixmap->fill(Qt::black);
-    m_SkyPainter->setPaintDevice(m_SkyPixmap);
-
+    SkyQPainter psky(this, m_SkyPixmap);
     //FIXME: we may want to move this into the components.
-    m_SkyPainter->begin();
+    psky.begin();
 
     //Draw all sky elements
-    m_SkyPainter->drawSkyBackground();
+    psky.drawSkyBackground();
 
     // Set Clipping
     QPainterPath path;
     path.addPolygon(m_SkyMap->projector()->clipPoly());
-    m_SkyPainter->setClipPath(path);
-    m_SkyPainter->setClipping(true);
+    psky.setClipPath(path);
+    psky.setClipping(true);
 
-    m_KStarsData->skyComposite()->draw(m_SkyPainter.data());
+    m_KStarsData->skyComposite()->draw(&psky);
     //Finish up
-    m_SkyPainter->end();
+    psky.end();
 
     QPainter psky2;
     psky2.begin(this);

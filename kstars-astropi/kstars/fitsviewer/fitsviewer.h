@@ -1,11 +1,21 @@
-/*
-    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/***************************************************************************
+                          FITSViewer.cpp  -  A FITSViewer for KStars
+                             -------------------
+    begin                : Thu Jan 22 2004
+    copyright            : (C) 2004 by Jasem Mutlaq
+    email                : mutlaqja@ikarustech.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-
-    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
-    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
+ *   See http://members.aol.com/pkirchg for more details.                  *
+ ***************************************************************************/
 
 #pragma once
 
@@ -13,7 +23,6 @@
 
 #include <KLed>
 #include <KXmlGui/KXmlGuiWindow>
-#include <KActionMenu>
 
 #include <QLabel>
 #include <QList>
@@ -52,18 +61,18 @@ class FITSViewer : public KXmlGuiWindow
     public:
         /** Constructor. */
         explicit FITSViewer(QWidget *parent);
-        ~FITSViewer() override;
+        ~FITSViewer();
 
         void loadFile(const QUrl &imageName, FITSMode mode = FITS_NORMAL, FITSScale filter = FITS_NONE,
-                      const QString &previewText = QString());
+                      const QString &previewText = QString(), bool silent = true);
 
         bool loadData(const QSharedPointer<FITSData> &data, const QUrl &imageName, int *tab_uid,
                       FITSMode mode = FITS_NORMAL, FITSScale filter = FITS_NONE,
                       const QString &previewText = QString());
 
-        void updateFile(const QUrl &imageName, int fitsUID, FITSScale filter = FITS_NONE);
+        void updateFile(const QUrl &imageName, int fitsUID, FITSScale filter = FITS_NONE, bool silent = true);
         bool updateData(const QSharedPointer<FITSData> &data, const QUrl &imageName, int fitsUID, int *tab_uid,
-                        FITSScale filter = FITS_NONE, FITSMode mode = FITS_UNKNOWN);
+                        FITSScale filter = FITS_NONE);
         bool removeFITS(int fitsUID);
 
         bool isStarsMarked()
@@ -79,8 +88,8 @@ class FITSViewer : public KXmlGuiWindow
         {
             return fitsTabs;
         }
-        bool getView(int fitsUID, QSharedPointer<FITSView> &view);
-        bool getCurrentView(QSharedPointer<FITSView> &view);
+        FITSView *getView(int fitsUID);
+        FITSView *getCurrentView();
 
         static QStringList filterTypes;
 
@@ -96,7 +105,6 @@ class FITSViewer : public KXmlGuiWindow
         void saveFileAs();
         void copyFITS();
         void statFITS();
-        void toggleSelectionMode();
         void headerFITS();
         void debayerFITS();
         void histoFITS();
@@ -126,9 +134,6 @@ class FITSViewer : public KXmlGuiWindow
         void flipVertical();
         void setDebayerAction(bool);
         void updateScopeButton();
-        void ROIFixedSize(int s);
-        void customROIInputWindow();
-
 
     private:
         void updateButtonStatus(const QString &action, const QString &item, bool showing);
@@ -141,7 +146,7 @@ class FITSViewer : public KXmlGuiWindow
         QUndoGroup *undoGroup { nullptr };
         FITSDebayer *debayerDialog { nullptr };
         KLed led;
-        QLabel fitsPosition, fitsValue, fitsResolution, fitsZoom, fitsWCS, fitsHFR, fitsClip;
+        QLabel fitsPosition, fitsValue, fitsResolution, fitsZoom, fitsWCS, fitsHFR;
         QAction *saveFileAction { nullptr };
         QAction *saveFileAsAction { nullptr };
         QList<FITSTab *> fitsTabs;
@@ -149,12 +154,11 @@ class FITSViewer : public KXmlGuiWindow
         bool markStars { false };
         QMap<int, FITSTab *> fitsMap;
         QUrl lastURL;
-        KActionMenu *roiActionMenu { nullptr };
-        KActionMenu* roiMenu { nullptr };
 
     signals:
         void trackingStarSelected(int x, int y);
         void loaded(int tabUID);
         void closed(int tabUID);
-        void failed(const QString &errorMessage);
+        //void terminated();
+        void failed();
 };

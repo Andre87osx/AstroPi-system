@@ -1,19 +1,24 @@
-/*
-    SPDX-FileCopyrightText: 2012 Andrew Stepanenko
+/*  Ekos guide tool
+    Copyright (C) 2012 Andrew Stepanenko
 
-    Modified by Jasem Mutlaq <mutlaqja@ikarustech.com> for KStars:
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Modified by Jasem Mutlaq <mutlaqja@ikarustech.com> for KStars.
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
+//---------------------------------------------------------------------------
 #include "matr.h"
 
 #include "vect.h"
 
 #include <cmath>
 
-namespace GuiderUtils
+//---------------------------------------------------------------------------
+
+namespace Ekos
 {
 Matrix ::Matrix(double v)
 {
@@ -180,9 +185,9 @@ Matrix operator*(const Matrix &A, double v)
     return res;
 }
 
-GuiderUtils::Vector operator*(const GuiderUtils::Vector &v, const Matrix &M)
+Vector operator*(const Vector &v, const Matrix &M)
 {
-    GuiderUtils::Vector res;
+    Vector res;
 
     res.x = v.x * M.x[0][0] + v.y * M.x[0][1] + v.z * M.x[0][2] + M.x[0][3];
     res.y = v.x * M.x[1][0] + v.y * M.x[1][1] + v.z * M.x[1][2] + M.x[1][3];
@@ -211,7 +216,7 @@ GuiderUtils::Vector operator*(const GuiderUtils::Vector &v, const Matrix &M)
     return res;
 }
 
-Matrix Translate(const GuiderUtils::Vector &Loc)
+Matrix Translate(const Vector &Loc)
 {
     Matrix res(1);
     res.x[0][3] = Loc.x;
@@ -225,7 +230,7 @@ Matrix Translate(const GuiderUtils::Vector &Loc)
     return res;
 }
 
-Matrix Scale(const GuiderUtils::Vector &v)
+Matrix Scale(const Vector &v)
 {
     Matrix res(1);
     res.x[0][0] = v.x;
@@ -284,7 +289,7 @@ Matrix RotateZ(double Angle)
     return res;
 }
 
-Matrix Rotate(const GuiderUtils::Vector &axis, double angle)
+Matrix Rotate(const Vector &axis, double angle)
 {
     Matrix res(1);
     double Cosine = cos(angle);
@@ -313,7 +318,7 @@ Matrix Rotate(const GuiderUtils::Vector &axis, double angle)
     return res;
 }
 // Transforms V into coord sys. v1, v2, v3
-Matrix Transform(const GuiderUtils::Vector &v1, const GuiderUtils::Vector &v2, const GuiderUtils::Vector &v3)
+Matrix Transform(const Vector &v1, const Vector &v2, const Vector &v3)
 {
     Matrix res(1);
 
@@ -361,4 +366,4 @@ Matrix MirrorZ()
     res.x[2][2] = -1;
     return res;
 }
-}  // namespace GuiderUtils
+}

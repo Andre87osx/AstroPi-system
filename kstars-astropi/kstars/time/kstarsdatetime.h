@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          kstarsdatetime.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue 05 May 2004
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -57,7 +68,7 @@ class KStarsDateTime : public QDateTime
              */
         /** @{ */
         KStarsDateTime(const KStarsDateTime &kdt);
-        KStarsDateTime &operator=(const KStarsDateTime &kdt) noexcept;
+        KStarsDateTime& operator=(const KStarsDateTime &kdt) noexcept;
         /** @} */
 
         /**
@@ -109,9 +120,7 @@ class KStarsDateTime : public QDateTime
              */
         inline KStarsDateTime addDays(int nd) const
         {
-            KStarsDateTime kdt(djd() + static_cast<long double>(nd));
-            kdt.setTimeSpec(timeSpec());
-            return kdt;
+            return KStarsDateTime(djd() + static_cast<long double>(nd));
         }
 
         inline bool operator==(const KStarsDateTime &d) const

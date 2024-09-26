@@ -1,7 +1,19 @@
 /*
-    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
+  Copyright (C) 2021, Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+  This program is free software; you can redistribute it and/or
+  modify it under the terms of the GNU General Public License
+  as published by the Free Software Foundation; either version 2
+  of the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #include "terrainrenderer.h"
@@ -11,7 +23,6 @@
 #include "skymap.h"
 #include "skyqpainter.h"
 #include "projections/projector.h"
-#include "projections/equirectangularprojector.h"
 #include "skypoint.h"
 #include "kstars.h"
 
@@ -213,10 +224,9 @@ double rationalizeAz(double degrees)
 // Checks that degrees in the range of -90 -> 90.
 double rationalizeAlt(double degrees)
 {
-    if (degrees > 90.0)
-        return 90.0;
-    if (degrees < -90)
-        return -90;
+    if (degrees < -90.0 || degrees > 90.0)
+        return 0.0;
+
     return degrees;
 }
 
@@ -226,9 +236,6 @@ double rationalizeAlt(double degrees)
 QRgb TerrainRenderer::getPixel(double az, double alt) const
 {
     az = rationalizeAz(az + Options::terrainSourceCorrectAz());
-    // This may make alt > 90 (due to a negative sourceCorrectAlt).
-    // If so, it returns 0, which is a transparent pixel.
-    alt = alt - Options::terrainSourceCorrectAlt();
     if (az < 0 || az >= 360 || alt < -90 || alt > 90)
         return(0);
 
@@ -253,7 +260,7 @@ QRgb TerrainRenderer::getPixel(double az, double alt) const
         return sourceImage.pixel(pixX, pixY);
     }
 
-    // Get floating point pixel positions so we can interpolate.
+    // Get floating point pixel postions so we can interpolate.
     float pixX = width / 2 + (az / 360.0) * width;
     if (pixX > width - 1)
         pixX = width - 1;
@@ -379,8 +386,7 @@ bool TerrainRenderer::render(uint16_t w, uint16_t h, QImage *terrainImage, const
             (terrainSmoothPixels != Options::terrainSmoothPixels()) ||
             (terrainSkipSpeedup != Options::terrainSkipSpeedup()) ||
             (terrainTransparencySpeedup != Options::terrainTransparencySpeedup()) ||
-            (terrainSourceCorrectAz != Options::terrainSourceCorrectAz()) ||
-            (terrainSourceCorrectAlt != Options::terrainSourceCorrectAlt()))
+            (terrainSourceCorrectAz = Options::terrainSourceCorrectAz()))
         dirty = true;
 
     terrainDownsampling = Options::terrainDownsampling();
@@ -388,7 +394,6 @@ bool TerrainRenderer::render(uint16_t w, uint16_t h, QImage *terrainImage, const
     terrainSkipSpeedup = Options::terrainSkipSpeedup();
     terrainTransparencySpeedup = Options::terrainTransparencySpeedup();
     terrainSourceCorrectAz = Options::terrainSourceCorrectAz();
-    terrainSourceCorrectAlt = Options::terrainSourceCorrectAlt();
 
     if (sameView(proj, dirty))
     {
@@ -397,7 +402,7 @@ bool TerrainRenderer::render(uint16_t w, uint16_t h, QImage *terrainImage, const
         return true;
     }
 
-    QElapsedTimer timer;
+    QTime timer;
     timer.start();
 
     // Only compute the pixel's az and alt values for every Nth pixel.
@@ -405,13 +410,13 @@ bool TerrainRenderer::render(uint16_t w, uint16_t h, QImage *terrainImage, const
     // This saves a lot of time.
     const int sampling = Options::terrainDownsampling();
     InterpArray interp(w, h, sampling);
-    QElapsedTimer setupTimer;
+    QTime setupTimer;
     setupTimer.start();
     setupLookup(w, h, sampling, proj, interp.azimuthLookup(), interp.altitudeLookup());
 
     const double setupTime = setupTimer.elapsed() / 1000.0; ///////////////////
 
-    // Another speedup. If true, our calculations are downsampled by 2 in each dimension.
+    // Another speedup. If true, out calculations are downsampled by 2 in each dimension.
     const bool skip = Options::terrainSkipSpeedup() || SkyMap::IsSlewing();
     int increment = skip ? 2 : 1;
 
@@ -435,10 +440,7 @@ bool TerrainRenderer::render(uint16_t w, uint16_t h, QImage *terrainImage, const
             }
 
             const QPointF imgPoint(i, j);
-            bool equiRectangular = (proj->type() == Projector::Equirectangular);
-            bool usable = equiRectangular ? !dynamic_cast<const EquirectangularProjector*>(proj)->unusablePoint(imgPoint)
-                          : !proj->unusablePoint(imgPoint);
-            if (usable)
+            if (!proj->unusablePoint(imgPoint))
             {
                 float az, alt;
                 interp.get(i, j, &az, &alt);
@@ -462,7 +464,8 @@ bool TerrainRenderer::render(uint16_t w, uint16_t h, QImage *terrainImage, const
             // so i,j will be transparent.
         }
     }
-
+    QTime copyTimer;
+    copyTimer.start();
     savedImage = terrainImage->copy();
 
     QFile f(sourceFilename);
@@ -498,14 +501,9 @@ void TerrainRenderer::setupLookup(uint16_t w, uint16_t h, int sampling, const Pr
         for (int i = 0, is = 0; i < w; i += sampling, is++)
         {
             const QPointF imgPoint(i, j);
-            bool equiRectangular = (proj->type() == Projector::Equirectangular);
-            bool usable = equiRectangular ? !dynamic_cast<const EquirectangularProjector*>(proj)->unusablePoint(imgPoint)
-                          : !proj->unusablePoint(imgPoint);
-            if (usable)
+            if (!proj->unusablePoint(imgPoint))
             {
-                SkyPoint point = equiRectangular ?
-                                 dynamic_cast<const EquirectangularProjector*>(proj)->fromScreen(imgPoint, lst, lat, true)
-                                 : proj->fromScreen(imgPoint, lst, lat, true);
+                SkyPoint point = proj->fromScreen(imgPoint, lst, lat, true);
                 const double az = rationalizeAz(point.az().Degrees());
                 const double alt = rationalizeAlt(point.alt().Degrees());
                 azLookup->set(is, js, az);

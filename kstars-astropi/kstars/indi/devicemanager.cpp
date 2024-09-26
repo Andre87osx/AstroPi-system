@@ -1,8 +1,15 @@
-/*
-    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Device Manager
+    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    JM Changelog
+    2004-16-1:	Start
+
+ */
 
 #include "devicemanager.h"
 
@@ -81,7 +88,7 @@ void DeviceManager::startServer()
     }
 #ifdef Q_OS_OSX
     if (Options::indiServerIsInternal())
-        *serverProcess << QCoreApplication::applicationDirPath() + "/indiserver";
+        *serverProcess << QCoreApplication::applicationDirPath() + "/indi/indiserver";
     else
 #endif
         *serverProcess << Options::indiServer();

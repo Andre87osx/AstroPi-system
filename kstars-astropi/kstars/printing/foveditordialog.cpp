@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2011 Rafał Kułaga <rl.kulaga@gmail.com>
+/***************************************************************************
+                          foveditordialog.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Fri Aug 12 2011
+    copyright            : (C) 2011 by Rafał Kułaga
+    email                : rl.kulaga@gmail.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "foveditordialog.h"
 
@@ -25,7 +36,7 @@ FovEditorDialogUI::FovEditorDialogUI(QWidget *parent) : QFrame(parent)
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
 #endif
 
-    setWindowTitle(i18nc("@title:window", "Field of View Snapshot Browser"));
+    setWindowTitle(i18n("Field of View Snapshot Browser"));
 }
 
 FovEditorDialog::FovEditorDialog(PrintingWizard *wizard, QWidget *parent)
@@ -116,7 +127,7 @@ void FovEditorDialog::slotSaveImage()
 
     //If the filename string contains no "/" separators, assume the
     //user wanted to place a file in their home directory.
-    QString url = QFileDialog::getSaveFileUrl(KStars::Instance(), i18nc("@title:window", "Save Image"), QUrl(QDir::homePath()),
+    QString url = QFileDialog::getSaveFileUrl(KStars::Instance(), i18n("Save Image"), QUrl(QDir::homePath()),
                   "image/png image/jpeg image/gif image/x-portable-pixmap image/bmp")
                   .url();
     QUrl fileUrl;
@@ -178,12 +189,12 @@ void FovEditorDialog::slotSaveImage()
 
         if (!m_ParentWizard->getFovSnapshotList()->at(m_CurrentIndex)->getPixmap().save(fname, format))
         {
-            qDebug() << Q_FUNC_INFO << "Error: Unable to save image: " << fname;
+            qDebug() << "Error: Unable to save image: " << fname;
         }
 
         else
         {
-            qDebug() << Q_FUNC_INFO << "Image saved to file: " << fname;
+            qDebug() << "Image saved to file: " << fname;
         }
     }
 

@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          mapcanvas.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue Apr 10 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #ifndef MAPCANVAS_H
 #define MAPCANVAS_H
@@ -11,7 +22,6 @@
 #include <QPixmap>
 #include <QMouseEvent>
 #include <QPaintEvent>
-#include <geolocation.h>
 
 /** @class MapCanvas
 	*Used in LocationDialog for displaying a map of the Earth.
@@ -79,21 +89,11 @@ class MapCanvas : public QFrame
          */
     void mousePressEvent(QMouseEvent *e) override;
 
-    /**Convert geo co-ordinates to a scaled position on the map*/
-    void convertAndScale(QPoint &o, GeoLocation &g);
-
   private:
     LocationDialog *ld;
     QPixmap *bgImage;
     QString BGColor;
     QPoint origin;
-    double xsize;
-    double ysize;
-    double ximage;
-    double yimage;
-    double ratio;
-    double xscale;
-    double yscale;
 };
 
 #endif

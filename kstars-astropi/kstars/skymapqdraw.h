@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2010 Akarsh Simha <akarsh.simha@kdemail.net>
+/***************************************************************************
+                   skymapqdraw.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue Dec 21 2010 07:10 AM UTC-6
+    copyright            : (C) 2010 Akarsh Simha
+    email                : akarsh.simha@kdemail.net
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #ifndef SKYMAPQDRAW_H_
 #define SKYMAPQDRAW_H_
@@ -39,8 +50,6 @@ class SkyMapQDraw : public QWidget, public SkyMapDrawAbstract
     void resizeEvent(QResizeEvent *e) override;
 
     QPixmap *m_SkyPixmap;
-
-    QScopedPointer<SkyQPainter> m_SkyPainter;
 };
 
 #endif

@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          kscomet.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Wed 19 Feb 2003
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "kscomet.h"
 
@@ -47,24 +58,21 @@ KSComet::KSComet(const QString &_s, const QString &imfile, double _q, double _e,
 
     //Find the Julian Day of Perihelion from Tp
     //Tp is a double which encodes a date like: YYYYMMDD.DDDDD (e.g., 19730521.33333
-    //    int year    = int(Tp / 10000.0);
-    //    int month   = int((int(Tp) % 10000) / 100.0);
-    //    int day     = int(int(Tp) % 100);
-    //    double Hour = 24.0 * (Tp - int(Tp));
-    //    int h       = int(Hour);
-    //    int m       = int(60.0 * (Hour - h));
-    //    int s       = int(60.0 * (60.0 * (Hour - h) - m));
+    int year    = int(Tp / 10000.0);
+    int month   = int((int(Tp) % 10000) / 100.0);
+    int day     = int(int(Tp) % 100);
+    double Hour = 24.0 * (Tp - int(Tp));
+    int h       = int(Hour);
+    int m       = int(60.0 * (Hour - h));
+    int s       = int(60.0 * (60.0 * (Hour - h) - m));
 
-    //JDp   = KStarsDateTime(QDate(year, month, day), QTime(h, m, s)).djd();
-
-    // JM 2021.10.21: In the new JPL format, it's already in JD
-    JDp = Tp;
+    JDp   = KStarsDateTime(QDate(year, month, day), QTime(h, m, s)).djd();
 
     //compute the semi-major axis, a:
     if (e == 1)
         a = 0;
     else
-        a = q / (1.0 - e);
+        a = q / (1.0-e);
 
 
     //Compute the orbital Period from Kepler's 3rd law:
@@ -124,7 +132,7 @@ KSComet::KSComet(const QString &_s, const QString &imfile, double _q, double _e,
                   fragment;                // Bits 0-15  (16)
         return;
     }
-    // qDebug() << Q_FUNC_INFO << "Didn't get it: " << _s;
+    // qDebug() << "Didn't get it: " << _s;
 }
 
 KSComet *KSComet::clone() const
@@ -159,6 +167,8 @@ bool KSComet::findGeocentricPosition(const KSNumbers *num, const KSPlanetBase *E
 
     // Different between lastJD and Tp (Time of periapsis (Julian Day Number))
     long double deltaJDP = lastPrecessJD - JDp;
+    // Limit it to last orbit
+    //while (deltaJDP > P) deltaJDP -= P;
 
     if (e > 0.98)
     {
@@ -202,9 +212,8 @@ bool KSComet::findGeocentricPosition(const KSNumbers *num, const KSPlanetBase *E
                 E0 = E;
                 iter++;
                 E = E0 - (E0 - e * 180.0 / dms::PI * sin(E0 * dms::DegToRad) - m.Degrees()) /
-                    (1 - e * cos(E0 * dms::DegToRad));
-            }
-            while (fabs(E - E0) > 0.001 && iter < 1000);
+                             (1 - e * cos(E0 * dms::DegToRad));
+            } while (fabs(E - E0) > 0.001 && iter < 1000);
         }
 
         // Assert that the solution of the Kepler equation E = M + e sin E is accurate to about 0.1 arcsecond
@@ -287,15 +296,19 @@ bool KSComet::findGeocentricPosition(const KSNumbers *num, const KSPlanetBase *E
     setRA0(ra());
     setDec0(dec());
     apparentCoord(J2000, lastPrecessJD);
+
+    //nutate(num);
+    //aberrate(num);
+
     findPhysicalParameters();
 
     return true;
 }
 
-// m = M1 + 2.5 * K1 * log10(rsun) + 5 * log10(rearth)
+//T-mag =  M1 + 5*log10(delta) + k1*log10(r)
 void KSComet::findMagnitude(const KSNumbers *)
 {
-    setMag(M1 + 2.5 * K1 * log10(rsun()) +  5 * log10(rearth()));
+    setMag(M1 + 5.0 * log10(rearth()) + K1 * log10(rsun()));
 }
 
 void KSComet::setEarthMOID(double earth_moid)

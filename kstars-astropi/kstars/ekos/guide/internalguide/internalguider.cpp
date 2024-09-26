@@ -1,9 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>.
+/*  Ekos Internal Guider Class
+    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>.
 
     Based on lin_guider
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "internalguider.h"
@@ -14,7 +17,6 @@
 #include "auxiliary/kspaths.h"
 #include "fitsviewer/fitsdata.h"
 #include "fitsviewer/fitsview.h"
-#include "guidealgorithms.h"
 #include "ksnotification.h"
 #include "ekos/auxiliary/stellarsolverprofileeditor.h"
 
@@ -23,7 +25,6 @@
 #include <random>
 #include <chrono>
 #include <QTimer>
-#include <QString>
 
 #define MAX_GUIDE_STARS           10
 
@@ -39,30 +40,31 @@ InternalGuider::InternalGuider()
     // Do this so that stored calibration will be visible on the
     // guide options menu. Calibration will get restored again when needed.
     pmath->getMutableCalibration()->restore(
-        pierSide, Options::reverseDecOnPierSideChange(), subBinX, subBinY, nullptr);
+        pierSide, Options::reverseDecOnPierSideChange(), nullptr);
 
     state = GUIDE_IDLE;
-    m_DitherOrigin = QVector3D(0, 0, 0);
 }
 
 bool InternalGuider::guide()
 {
     if (state >= GUIDE_GUIDING)
     {
-        return processGuiding();
+        if (m_ImageGuideEnabled)
+            return processImageGuiding();
+        else
+            return processGuiding();
     }
 
     if (state == GUIDE_SUSPENDED)
     {
         return true;
     }
-    m_GuideFrame->disconnect(this);
+    guideFrame->disconnect(this);
 
     pmath->start();
 
     m_starLostCounter = 0;
     m_highRMSCounter = 0;
-    m_DitherOrigin = QVector3D(0, 0, 0);
 
     m_isFirstFrame = true;
 
@@ -92,7 +94,7 @@ bool InternalGuider::guide()
  */
 bool InternalGuider::abort()
 {
-    // calibrationStage = CAL_IDLE; remove totally when understand trackingStarSelected
+    calibrationStage = CAL_IDLE;
 
     logFile.close();
     guideLog.endGuiding();
@@ -120,8 +122,7 @@ bool InternalGuider::abort()
     m_ProgressiveDither.clear();
     m_starLostCounter = 0;
     m_highRMSCounter = 0;
-
-    m_DitherOrigin = QVector3D(0, 0, 0);
+    accumulator.first = accumulator.second = 0;
 
     pmath->suspend(false);
     state = GUIDE_IDLE;
@@ -158,7 +159,7 @@ bool InternalGuider::ditherXY(double x, double y)
     m_ProgressiveDither.clear();
     m_DitherRetries = 0;
     double cur_x, cur_y;
-    pmath->getTargetPosition(&cur_x, &cur_y);
+    pmath->getReticleParameters(&cur_x, &cur_y);
 
     // Find out how many "jumps" we need to perform in order to get to target.
     // The current limit is now 1/4 of the box size to make sure the star stays within detection
@@ -180,13 +181,13 @@ bool InternalGuider::ditherXY(double x, double y)
         else if (fabs(targetY - y) < oneJump)
             targetY = y;
 
-        m_ProgressiveDither.enqueue(GuiderUtils::Vector(targetX, targetY, -1));
+        m_ProgressiveDither.enqueue(Vector(targetX, targetY, -1));
 
     }
     while (targetX != x || targetY != y);
 
     m_DitherTargetPosition = m_ProgressiveDither.dequeue();
-    pmath->setTargetPosition(m_DitherTargetPosition.x, m_DitherTargetPosition.y);
+    pmath->setReticleParameters(m_DitherTargetPosition.x, m_DitherTargetPosition.y);
     guideLog.ditherInfo(x, y, m_DitherTargetPosition.x, m_DitherTargetPosition.y);
 
     state = GUIDE_MANUAL_DITHERING;
@@ -200,14 +201,14 @@ bool InternalGuider::ditherXY(double x, double y)
 bool InternalGuider::dither(double pixels)
 {
     double ret_x, ret_y;
-    pmath->getTargetPosition(&ret_x, &ret_y);
+    pmath->getReticleParameters(&ret_x, &ret_y);
 
     // Just calling getStarScreenPosition() will get the position at the last time the guide star
     // was found, which is likely before the most recent guide pulse.
     // Instead we call findLocalStarPosition() which does the analysis from the image.
     // Unfortunately, processGuiding() will repeat that computation.
     // We currently don't cache it.
-    GuiderUtils::Vector star_position = pmath->findLocalStarPosition(m_ImageData, m_GuideFrame, false);
+    Vector star_position = pmath->findLocalStarPosition();
     if (pmath->isStarLost() || (star_position.x == -1) || (star_position.y == -1))
     {
         // If the star position is lost, just lose this iteration.
@@ -240,30 +241,20 @@ bool InternalGuider::dither(double pixels)
         if (pmath->getCalibration().declinationSwapEnabled())
             diff_y *= -1;
 
-        if (m_DitherOrigin.x() == 0 && m_DitherOrigin.y() == 0)
-        {
-            m_DitherOrigin = QVector3D(ret_x, ret_y, 0);
-        }
-        double totalXOffset = ret_x - m_DitherOrigin.x();
-        double totalYOffset = ret_y - m_DitherOrigin.y();
-
-        if (fabs(diff_x + totalXOffset) > MAX_DITHER_TRAVEL)
+        if (fabs(diff_x + accumulator.first) > MAX_DITHER_TRAVEL)
             diff_x *= -1.5;
-        if (fabs(diff_y + totalYOffset) > MAX_DITHER_TRAVEL)
+        accumulator.first += diff_x;
+        if (fabs(diff_y + accumulator.second) > MAX_DITHER_TRAVEL)
             diff_y *= -1.5;
+        accumulator.second += diff_y;
 
-        m_DitherTargetPosition = GuiderUtils::Vector(ret_x, ret_y, 0) + GuiderUtils::Vector(diff_x, diff_y, 0);
+        m_DitherTargetPosition = Vector(ret_x, ret_y, 0) + Vector(diff_x, diff_y, 0);
 
-        qCDebug(KSTARS_EKOS_GUIDE)
-                << QString("Dithering by %1 pixels. Target:  %2,%3 Current: %4,%5 Move: %6,%7 Wander: %8,%9")
-                .arg(pixels, 3, 'f', 1)
-                .arg(m_DitherTargetPosition.x, 5, 'f', 1).arg(m_DitherTargetPosition.y, 5, 'f', 1)
-                .arg(ret_x, 5, 'f', 1).arg(ret_y, 5, 'f', 1)
-                .arg(diff_x, 4, 'f', 1).arg(diff_y, 4, 'f', 1)
-                .arg(totalXOffset + diff_x, 5, 'f', 1).arg(totalYOffset + diff_y, 5, 'f', 1);
+        qCDebug(KSTARS_EKOS_GUIDE) << "Dithering process started.. Reticle Target Pos X " << m_DitherTargetPosition.x << " Y " <<
+                                   m_DitherTargetPosition.y;
         guideLog.ditherInfo(diff_x, diff_y, m_DitherTargetPosition.x, m_DitherTargetPosition.y);
 
-        pmath->setTargetPosition(m_DitherTargetPosition.x, m_DitherTargetPosition.y);
+        pmath->setReticleParameters(m_DitherTargetPosition.x, m_DitherTargetPosition.y);
 
         if (Options::gPGEnabled())
             // This is the offset in image coordinates, but needs to be converted to RA.
@@ -281,30 +272,16 @@ bool InternalGuider::dither(double pixels)
     double driftRA, driftDEC;
     pmath->getCalibration().computeDrift(
         star_position,
-        GuiderUtils::Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
+        Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
         &driftRA, &driftDEC);
 
-    double pixelOffsetX = m_DitherTargetPosition.x - star_position.x;
-    double pixelOffsetY = m_DitherTargetPosition.y - star_position.y;
+    qCDebug(KSTARS_EKOS_GUIDE) << "Dithering in progress. Current" << star_position.x << star_position.y << "Target" <<
+                               m_DitherTargetPosition.x <<
+                               m_DitherTargetPosition.y << "Diff star X:" << driftRA << "Y:" << driftDEC;
 
-    qCDebug(KSTARS_EKOS_GUIDE)
-            << QString("Dithering in progress.   Current: %1,%2 Target:  %3,%4 Diff: %5,%6 Wander: %8,%9")
-            .arg(star_position.x, 5, 'f', 1).arg(star_position.y, 5, 'f', 1)
-            .arg(m_DitherTargetPosition.x, 5, 'f', 1).arg(m_DitherTargetPosition.y, 5, 'f', 1)
-            .arg(pixelOffsetX, 4, 'f', 1).arg(pixelOffsetY, 4, 'f', 1)
-            .arg(star_position.x - m_DitherOrigin.x(), 5, 'f', 1)
-            .arg(star_position.y - m_DitherOrigin.y(), 5, 'f', 1);
-
-    if (Options::ditherWithOnePulse() || (fabs(driftRA) < 1 && fabs(driftDEC) < 1))
+    if (fabs(driftRA) < 1 && fabs(driftDEC) < 1)
     {
-        pmath->setTargetPosition(star_position.x, star_position.y);
-
-        // In one-pulse dithering we want the target to be whereever we end up
-        // after the pulse. So, the first guide frame should not send any pulses
-        // and should reset the reticle to the position it finds.
-        if (Options::ditherWithOnePulse())
-            m_isFirstFrame = true;
-
+        pmath->setReticleParameters(star_position.x, star_position.y);
         qCDebug(KSTARS_EKOS_GUIDE) << "Dither complete.";
 
         if (Options::ditherSettle() > 0)
@@ -361,14 +338,14 @@ bool InternalGuider::abortDither()
 bool InternalGuider::processManualDithering()
 {
     double cur_x, cur_y;
-    pmath->getTargetPosition(&cur_x, &cur_y);
+    pmath->getReticleParameters(&cur_x, &cur_y);
     pmath->getStarScreenPosition(&cur_x, &cur_y);
 
     // These will be the RA & DEC drifts of the current star position from the reticle position in pixels.
     double driftRA, driftDEC;
     pmath->getCalibration().computeDrift(
-        GuiderUtils::Vector(cur_x, cur_y, 0),
-        GuiderUtils::Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
+        Vector(cur_x, cur_y, 0),
+        Vector(m_DitherTargetPosition.x, m_DitherTargetPosition.y, 0),
         &driftRA, &driftDEC);
 
     qCDebug(KSTARS_EKOS_GUIDE) << "Manual Dithering in progress. Diff star X:" << driftRA << "Y:" << driftDEC;
@@ -378,7 +355,7 @@ bool InternalGuider::processManualDithering()
         if (m_ProgressiveDither.empty() == false)
         {
             m_DitherTargetPosition = m_ProgressiveDither.dequeue();
-            pmath->setTargetPosition(m_DitherTargetPosition.x, m_DitherTargetPosition.y);
+            pmath->setReticleParameters(m_DitherTargetPosition.x, m_DitherTargetPosition.y);
             qCDebug(KSTARS_EKOS_GUIDE) << "Next Dither Jump X:" << m_DitherTargetPosition.x << "Jump Y:" << m_DitherTargetPosition.y;
             m_DitherRetries = 0;
 
@@ -389,7 +366,7 @@ bool InternalGuider::processManualDithering()
 
         if (fabs(driftRA) < 1 && fabs(driftDEC) < 1)
         {
-            pmath->setTargetPosition(cur_x, cur_y);
+            pmath->setReticleParameters(cur_x, cur_y);
             qCDebug(KSTARS_EKOS_GUIDE) << "Manual Dither complete.";
 
             if (Options::ditherSettle() > 0)
@@ -467,24 +444,21 @@ bool InternalGuider::calibrate()
 
     if (state != GUIDE_CALIBRATING)
     {
-        pmath->getTargetPosition(&calibrationStartX, &calibrationStartY);
-        calibrationProcess.reset(
-            new CalibrationProcess(calibrationStartX, calibrationStartY,
-                                   !Options::twoAxisEnabled()));
-        state = GUIDE_CALIBRATING;
+        calibrationStage = CAL_IDLE;
+        state            = GUIDE_CALIBRATING;
         emit newStatus(GUIDE_CALIBRATING);
     }
 
-    if (calibrationProcess->inProgress())
+    if (calibrationStage > CAL_START)
     {
-        iterateCalibration();
+        processCalibration();
         return true;
     }
 
     if (restoreCalibration())
     {
-        calibrationProcess.reset();
-        emit newStatus(Ekos::GUIDE_CALIBRATION_SUCCESS);
+        calibrationStage = CAL_IDLE;
+        emit newStatus(Ekos::GUIDE_CALIBRATION_SUCESS);
         KSNotification::event(QLatin1String("CalibrationRestored"),
                               i18n("Guiding calibration restored"));
         reset();
@@ -497,112 +471,80 @@ bool InternalGuider::calibrate()
         ccdPixelSizeX / 1000.0, ccdPixelSizeY / 1000.0, mountFocalLength,
         subBinX, subBinY, pierSide, mountRA, mountDEC);
 
-    calibrationProcess->useCalibration(pmath->getMutableCalibration());
+    // Also setup the temporary calibration used in calibrateRADECReticle().
+    // In truth, these values won't be used, as conversions from pixels to arcseconds
+    // aren't needed.
+    m_CalibrationParams.tempCalibration.setParameters(
+        ccdPixelSizeX / 1000.0, ccdPixelSizeY / 1000.0, mountFocalLength,
+        subBinX, subBinY, pierSide, mountRA, mountDEC);
 
-    m_GuideFrame->disconnect(this);
+    guideFrame->disconnect(this);
 
     // Must reset dec swap before we run any calibration procedure!
     emit DESwapChanged(false);
     pmath->setLostStar(false);
 
+    calibrationStage = CAL_START;
     if (Options::saveGuideLog())
         guideLog.enable();
     GuideLog::GuideInfo info;
     fillGuideInfo(&info);
     guideLog.startCalibration(info);
 
-    calibrationProcess->startup();
-    calibrationProcess->setGuideLog(&guideLog);
-    iterateCalibration();
+    // automatic
+    // If two axies (RA/DEC) are required
+    if (Options::twoAxisEnabled())
+        calibrateRADECRecticle(false);
+    else
+        // Just RA
+        calibrateRADECRecticle(true);
 
     return true;
 }
 
-void InternalGuider::iterateCalibration()
+void InternalGuider::processCalibration()
 {
-    if (calibrationProcess->inProgress())
+    pmath->performProcessing(GUIDE_CALIBRATING);
+
+    if (pmath->isStarLost())
     {
-        pmath->performProcessing(GUIDE_CALIBRATING, m_ImageData, m_GuideFrame);
-        if (pmath->isStarLost())
-        {
-            emit newLog(i18n("Lost track of the guide star. Try increasing the square size or reducing pulse duration."));
-            emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
-            emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY,
-                                   i18n("Guide Star lost."));
-            reset();
-            return;
-        }
-    }
-    double starX, starY;
-    pmath->getStarScreenPosition(&starX, &starY);
-    calibrationProcess->iterate(starX, starY);
-
-    auto status = calibrationProcess->getStatus();
-    if (status != GUIDE_CALIBRATING)
-        emit newStatus(status);
-
-    QString logStatus = calibrationProcess->getLogStatus();
-    if (logStatus.length())
-        emit newLog(logStatus);
-
-    QString updateMessage;
-    double x, y;
-    GuideInterface::CalibrationUpdateType type;
-    calibrationProcess->getCalibrationUpdate(&type, &updateMessage, &x, &y);
-    if (updateMessage.length())
-        emit calibrationUpdate(type, updateMessage, x, y);
-
-    GuideDirection pulseDirection;
-    int pulseMsecs;
-    calibrationProcess->getPulse(&pulseDirection, &pulseMsecs);
-    if (pulseDirection != NO_DIR)
-        emit newPulse(pulseDirection, pulseMsecs);
-
-    if (status == GUIDE_CALIBRATION_ERROR)
-    {
-        KSNotification::event(QLatin1String("CalibrationFailed"), i18n("Guiding calibration failed"),
-                              KSNotification::EVENT_ALERT);
+        emit newLog(i18n("Lost track of the guide star. Try increasing the square size or reducing pulse duration."));
         reset();
+
+        calibrationStage = CAL_ERROR;
+        emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+        emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: Lost guide star."));
+        return;
     }
-    else if (status == GUIDE_CALIBRATION_SUCCESS)
+
+    switch (calibrationType)
     {
-        KSNotification::event(QLatin1String("CalibrationSuccessful"),
-                              i18n("Guiding calibration completed successfully"));
-        emit DESwapChanged(pmath->getCalibration().declinationSwapEnabled());
-        pmath->setTargetPosition(calibrationStartX, calibrationStartY);
-        reset();
+        case CAL_NONE:
+            break;
+
+        case CAL_RA_AUTO:
+            calibrateRADECRecticle(true);
+            break;
+
+        case CAL_RA_DEC_AUTO:
+            calibrateRADECRecticle(false);
+            break;
     }
 }
 
-void InternalGuider::setGuideView(const QSharedPointer<GuideView> &guideView)
+void InternalGuider::setGuideView(GuideView *guideView)
 {
-    m_GuideFrame = guideView;
-}
+    guideFrame = guideView;
 
-void InternalGuider::setImageData(const QSharedPointer<FITSData> &data)
-{
-    m_ImageData = data;
-    if (Options::saveGuideImages())
-    {
-        QDateTime now(QDateTime::currentDateTime());
-        QString path = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("guide/" +
-                       now.toString("yyyy-MM-dd"));
-        QDir dir;
-        dir.mkpath(path);
-        // IS8601 contains colons but they are illegal under Windows OS, so replacing them with '-'
-        // The timestamp is no longer ISO8601 but it should solve interoperality issues between different OS hosts
-        QString name     = "guide_frame_" + now.toString("HH-mm-ss") + ".fits";
-        QString filename = path + QStringLiteral("/") + name;
-        m_ImageData->saveImage(filename);
-    }
+    pmath->setGuideView(guideFrame);
 }
 
 void InternalGuider::reset()
 {
     state = GUIDE_IDLE;
-
-    connect(m_GuideFrame.get(), &FITSView::trackingStarSelected, this, &InternalGuider::trackingStarSelected, Qt::UniqueConnection);
-    calibrationProcess.reset();
+    //calibrationStage = CAL_IDLE;
+    connect(guideFrame, SIGNAL(trackingStarSelected(int, int)), this, SLOT(trackingStarSelected(int, int)),
+            Qt::UniqueConnection);
 }
 
 bool InternalGuider::clearCalibration()
@@ -616,34 +558,588 @@ bool InternalGuider::restoreCalibration()
 {
     bool success = Options::reuseGuideCalibration() &&
                    pmath->getMutableCalibration()->restore(
-                       pierSide, Options::reverseDecOnPierSideChange(),
-                       subBinX, subBinY, &mountDEC);
+                       pierSide, Options::reverseDecOnPierSideChange(), &mountDEC);
     if (success)
         emit DESwapChanged(pmath->getCalibration().declinationSwapEnabled());
     return success;
 }
 
+void InternalGuider::calibrateRADECRecticle(bool ra_only)
+{
+    bool axis_calibration_complete = false;
+
+    Q_ASSERT(pmath);
+
+    //int totalPulse    = pulseDuration * Options::autoModeIterations();
+
+    if (ra_only)
+        calibrationType = CAL_RA_AUTO;
+    else
+        calibrationType = CAL_RA_DEC_AUTO;
+
+    switch (calibrationStage)
+    {
+        case CAL_START:
+            //----- automatic mode -----
+            m_CalibrationParams.auto_drift_time = Options::autoModeIterations();
+            m_CalibrationParams.turn_back_time = m_CalibrationParams.auto_drift_time * 7;
+
+            m_CalibrationParams.ra_iterations = 0;
+            m_CalibrationParams.dec_iterations = 0;
+            m_CalibrationParams.backlash_iterations = 0;
+            m_CalibrationParams.ra_total_pulse = m_CalibrationParams.de_total_pulse = 0;
+
+            emit newLog(i18n("RA drifting forward..."));
+
+            pmath->getReticleParameters(&m_CalibrationCoords.start_x1, &m_CalibrationCoords.start_y1);
+
+            m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+
+            emit calibrationUpdate(GuideInterface::RA_OUT, i18n("Guide Star found."), 0, 0);
+            qCDebug(KSTARS_EKOS_GUIDE) << "Auto Iteration #" << m_CalibrationParams.auto_drift_time << "Default pulse:" <<
+                                       m_CalibrationParams.last_pulse;
+            qCDebug(KSTARS_EKOS_GUIDE) << "Start X1 " << m_CalibrationCoords.start_x1 << " Start Y1 " << m_CalibrationCoords.start_y1;
+
+            axis_calibration_complete = false;
+
+            m_CalibrationCoords.last_x = m_CalibrationCoords.start_x1;
+            m_CalibrationCoords.last_y = m_CalibrationCoords.start_x2;
+
+            emit newPulse(RA_INC_DIR, m_CalibrationParams.last_pulse);
+
+            m_CalibrationParams.ra_iterations++;
+
+            calibrationStage = CAL_RA_INC;
+            guideLog.addCalibrationData(
+                RA_INC_DIR,
+                m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1,
+                m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1);
+
+            break;
+
+        case CAL_RA_INC:
+        {
+            // Star position resulting from LAST guiding pulse to mount
+            double cur_x, cur_y;
+            pmath->getStarScreenPosition(&cur_x, &cur_y);
+
+            emit calibrationUpdate(GuideInterface::RA_OUT, i18n("Calibrating RA Out"),
+                                   cur_x - m_CalibrationCoords.start_x1, cur_y - m_CalibrationCoords.start_y1);
+
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration #" << m_CalibrationParams.ra_iterations << ": STAR " << cur_x << "," << cur_y;
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration " << m_CalibrationParams.ra_iterations << " Direction: RA_INC_DIR" << " Duration: "
+                                       << m_CalibrationParams.last_pulse << " ms.";
+
+            guideLog.addCalibrationData(RA_INC_DIR, cur_x, cur_y,
+                                        m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1);
+
+            // Must pass at least 1.5 pixels to move on to the next stage.
+            // If we've moved 15 pixels, we can cut short the requested number of iterations.
+            const double xDrift = cur_x - m_CalibrationCoords.start_x1;
+            const double yDrift = cur_y - m_CalibrationCoords.start_y1;
+            constexpr double SUFFICIENT_RA_MOVE_PIXELS = 15.0;
+            if (((m_CalibrationParams.ra_iterations >= m_CalibrationParams.auto_drift_time) ||
+                    (std::hypot(xDrift, yDrift) > SUFFICIENT_RA_MOVE_PIXELS))
+                    && (fabs(xDrift) > 1.5 || fabs(yDrift) > 1.5))
+            {
+                m_CalibrationParams.ra_total_pulse += m_CalibrationParams.last_pulse;
+
+                calibrationStage = CAL_RA_DEC;
+
+                m_CalibrationCoords.end_x1 = cur_x;
+                m_CalibrationCoords.end_y1 = cur_y;
+
+                m_CalibrationCoords.last_x = cur_x;
+                m_CalibrationCoords.last_y = cur_y;
+
+                qCDebug(KSTARS_EKOS_GUIDE) << "End X1 " << m_CalibrationCoords.end_x1 << " End Y1 " << m_CalibrationCoords.end_y1;
+
+                // This temporary calibration is just used to help find our way back to the origin.
+                // total_pulse is not used, but valid.
+                m_CalibrationParams.tempCalibration.calculate1D(m_CalibrationCoords.end_x1 - m_CalibrationCoords.start_x1,
+                        m_CalibrationCoords.end_y1 - m_CalibrationCoords.start_y1,
+                        m_CalibrationParams.ra_total_pulse);
+
+                m_CalibrationCoords.ra_distance = 0;
+                m_CalibrationParams.backlash = 0;
+
+                emit newPulse(RA_DEC_DIR, m_CalibrationParams.last_pulse);
+                m_CalibrationParams.ra_iterations++;
+
+                emit newLog(i18n("RA drifting reverse..."));
+                guideLog.endCalibrationSection(RA_INC_DIR, m_CalibrationParams.tempCalibration.getAngle());
+            }
+            else if (m_CalibrationParams.ra_iterations > m_CalibrationParams.turn_back_time)
+            {
+                emit newLog(i18n("Calibration rejected. Star drift is too short. Check for mount, cable, or backlash problems."));
+
+                calibrationStage = CAL_ERROR;
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: Drift too short."));
+                KSNotification::event(QLatin1String("CalibrationFailed"), i18n("Guiding calibration failed"),
+                                      KSNotification::EVENT_ALERT);
+                guideLog.endCalibration(0, 0);
+
+                reset();
+            }
+            else
+            {
+                // Aggressive pulse in case we're going slow
+                if (fabs(cur_x - m_CalibrationCoords.last_x) < 0.5 && fabs(cur_y - m_CalibrationCoords.last_y) < 0.5)
+                {
+                    // 200%
+                    m_CalibrationParams.last_pulse = Options::calibrationPulseDuration() * 2;
+                }
+                else
+                {
+                    m_CalibrationParams.ra_total_pulse += m_CalibrationParams.last_pulse;
+                    m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+                }
+
+                m_CalibrationCoords.last_x = cur_x;
+                m_CalibrationCoords.last_y = cur_y;
+
+                emit newPulse(RA_INC_DIR, m_CalibrationParams.last_pulse);
+
+                m_CalibrationParams.ra_iterations++;
+            }
+        }
+        break;
+
+        case CAL_RA_DEC:
+        {
+            //----- Z-check (new!) -----
+            double cur_x, cur_y;
+            pmath->getStarScreenPosition(&cur_x, &cur_y);
+
+            emit calibrationUpdate(GuideInterface::RA_IN, i18n("Calibrating RA In"),
+                                   cur_x - m_CalibrationCoords.start_x1, cur_y - m_CalibrationCoords.start_y1);
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration #" << m_CalibrationParams.ra_iterations << ": STAR " << cur_x << "," << cur_y;
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration " << m_CalibrationParams.ra_iterations << " Direction: RA_DEC_DIR" << " Duration: "
+                                       << m_CalibrationParams.last_pulse << " ms.";
+
+            double driftRA, driftDEC;
+            m_CalibrationParams.tempCalibration.computeDrift(
+                Vector(cur_x, cur_y, 0),
+                Vector(m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1, 0),
+                &driftRA, &driftDEC);
+
+            qCDebug(KSTARS_EKOS_GUIDE) << "Star x pos is " << driftRA << " from original point.";
+
+            if (m_CalibrationCoords.ra_distance == 0.0)
+                m_CalibrationCoords.ra_distance = driftRA;
+
+            guideLog.addCalibrationData(RA_DEC_DIR, cur_x, cur_y,
+                                        m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1);
+
+            // start point reached... so exit
+            if (driftRA < 1.5)
+            {
+                pmath->performProcessing(GUIDE_CALIBRATING);
+
+                //m_CalibrationParams.ra_total_pulse += m_CalibrationParams.last_pulse;
+                m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+                axis_calibration_complete = true;
+            }
+            // If we'not moving much, try increasing pulse to 200% to clear any backlash
+            // Also increase pulse width if we are going FARTHER and not back to our original position
+            else if ( (fabs(cur_x - m_CalibrationCoords.last_x) < 0.5 && fabs(cur_y - m_CalibrationCoords.last_y) < 0.5)
+                      || driftRA > m_CalibrationCoords.ra_distance)
+            {
+                m_CalibrationParams.backlash++;
+
+                // Increase pulse to 200% after we tried to fight against backlash 2 times at least
+                if (m_CalibrationParams.backlash > 2)
+                    m_CalibrationParams.last_pulse = Options::calibrationPulseDuration() * 2;
+                else
+                    m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+            }
+            else
+            {
+                //m_CalibrationParams.ra_total_pulse += m_CalibrationParams.last_pulse;
+                m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+                m_CalibrationParams.backlash = 0;
+            }
+            m_CalibrationCoords.last_x = cur_x;
+            m_CalibrationCoords.last_y = cur_y;
+
+            //----- Z-check end -----
+
+            if (axis_calibration_complete == false)
+            {
+                if (m_CalibrationParams.ra_iterations < m_CalibrationParams.turn_back_time)
+                {
+                    emit newPulse(RA_DEC_DIR, m_CalibrationParams.last_pulse);
+                    m_CalibrationParams.ra_iterations++;
+                    break;
+                }
+
+                calibrationStage = CAL_ERROR;
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: couldn't reach start."));
+                emit newLog(i18np("Guide RA: Scope cannot reach the start point after %1 iteration. Possible mount or "
+                                  "backlash problems...",
+                                  "GUIDE_RA: Scope cannot reach the start point after %1 iterations. Possible mount or "
+                                  "backlash problems...",
+                                  m_CalibrationParams.ra_iterations));
+
+                KSNotification::event(QLatin1String("CalibrationFailed"), i18n("Guiding calibration failed"),
+                                      KSNotification::EVENT_ALERT);
+                reset();
+                break;
+            }
+
+            if (ra_only == false)
+            {
+                if (Options::guideCalibrationBacklash())
+                {
+                    calibrationStage = CAL_BACKLASH;
+                    m_CalibrationCoords.last_x = cur_x;
+                    m_CalibrationCoords.last_y = cur_y;
+                    m_CalibrationCoords.start_backlash_x = cur_x;
+                    m_CalibrationCoords.start_backlash_y = cur_y;
+                    emit newPulse(DEC_INC_DIR, Options::calibrationPulseDuration());
+                    m_CalibrationParams.backlash_iterations++;
+                    emit newLog(i18n("DEC backlash..."));
+                }
+                else
+                {
+                    // Copy of the section that ends CAL_BACKLASH
+                    double cur_x, cur_y;
+                    pmath->getStarScreenPosition(&cur_x, &cur_y);
+
+                    calibrationStage = CAL_DEC_INC;
+                    m_CalibrationCoords.start_x2         = cur_x;
+                    m_CalibrationCoords.start_y2         = cur_y;
+                    m_CalibrationCoords.last_x = cur_x;
+                    m_CalibrationCoords.last_y = cur_y;
+
+                    qCDebug(KSTARS_EKOS_GUIDE) << "Start X2 " << m_CalibrationCoords.start_x2 << " start Y2 " << m_CalibrationCoords.start_y2;
+                    emit newPulse(DEC_INC_DIR, Options::calibrationPulseDuration());
+                    m_CalibrationParams.dec_iterations++;
+                    emit newLog(i18n("DEC drifting forward..."));
+                }
+                break;
+            }
+            // calc orientation
+            if (pmath->calculateAndSetReticle1D(m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1, m_CalibrationCoords.end_x1,
+                                                m_CalibrationCoords.end_y1, m_CalibrationParams.ra_total_pulse))
+            {
+                calibrationStage = CAL_IDLE;
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_SUCESS);
+
+                KSNotification::event(QLatin1String("CalibrationSuccessful"),
+                                      i18n("Guiding calibration completed successfully"));
+            }
+            else
+            {
+                emit newLog(i18n("Calibration rejected. Star drift is too short. Check for mount, cable, or backlash problems."));
+
+                calibrationStage = CAL_ERROR;
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: drift too short."));
+                KSNotification::event(QLatin1String("CalibrationFailed"),
+                                      i18n("Guiding calibration failed with errors"), KSNotification::EVENT_ALERT);
+            }
+
+            reset();
+            break;
+        }
+
+        case CAL_BACKLASH:
+        {
+            double cur_x, cur_y;
+            pmath->getStarScreenPosition(&cur_x, &cur_y);
+
+            double driftRA, driftDEC;
+            m_CalibrationParams.tempCalibration.computeDrift(
+                Vector(cur_x, cur_y, 0),
+                Vector(m_CalibrationCoords.start_backlash_x, m_CalibrationCoords.start_backlash_y, 0),
+                &driftRA, &driftDEC);
+
+            // Exit the backlash phase either after 5 pulses, or after we've moved sufficiently in the
+            // DEC direction.
+            constexpr int MIN_DEC_BACKLASH_MOVE_PIXELS = 3;
+            if ((++m_CalibrationParams.backlash_iterations >= 5) ||
+                    (fabs(driftDEC) > MIN_DEC_BACKLASH_MOVE_PIXELS))
+            {
+                // Copy of the section that ends CAL_RA_DEC when backlash is turned off.
+                double cur_x, cur_y;
+                pmath->getStarScreenPosition(&cur_x, &cur_y);
+                emit calibrationUpdate(GuideInterface::BACKLASH, i18n("Calibrating DEC Backlash"),
+                                       cur_x - m_CalibrationCoords.start_x1, cur_y - m_CalibrationCoords.start_y1);
+                qCDebug(KSTARS_EKOS_GUIDE) << QString("Stopping dec backlash caibration after %1 iterations, offset %2")
+                                           .arg(m_CalibrationParams.backlash_iterations - 1)
+                                           .arg(driftDEC, 4, 'f', 2);
+                calibrationStage = CAL_DEC_INC;
+                m_CalibrationCoords.start_x2         = cur_x;
+                m_CalibrationCoords.start_y2         = cur_y;
+                m_CalibrationCoords.last_x = cur_x;
+                m_CalibrationCoords.last_y = cur_y;
+
+                qCDebug(KSTARS_EKOS_GUIDE) << "Start X2 " << m_CalibrationCoords.start_x2 << " start Y2 " << m_CalibrationCoords.start_y2;
+                emit newPulse(DEC_INC_DIR, Options::calibrationPulseDuration());
+                m_CalibrationParams.dec_iterations++;
+                emit newLog(i18n("DEC drifting forward..."));
+                break;
+            }
+            emit calibrationUpdate(GuideInterface::BACKLASH, i18n("Calibrating DEC Backlash"),
+                                   cur_x - m_CalibrationCoords.start_x1, cur_y - m_CalibrationCoords.start_y1);
+            qCDebug(KSTARS_EKOS_GUIDE) << "Backlash iter" << m_CalibrationParams.backlash_iterations << "position" << cur_x << cur_y;
+            emit newPulse(DEC_INC_DIR, Options::calibrationPulseDuration());
+            break;
+        }
+        case CAL_DEC_INC:
+        {
+            // Star position resulting from LAST guiding pulse to mount
+            double cur_x, cur_y;
+            pmath->getStarScreenPosition(&cur_x, &cur_y);
+
+            emit calibrationUpdate(GuideInterface::DEC_OUT, i18n("Calibrating DEC Out"),
+                                   cur_x - m_CalibrationCoords.start_x1, cur_y - m_CalibrationCoords.start_y1);
+
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration #" << m_CalibrationParams.dec_iterations << ": STAR " << cur_x << "," << cur_y;
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration " << m_CalibrationParams.dec_iterations << " Direction: DEC_INC_DIR" <<
+                                       " Duration: " << m_CalibrationParams.last_pulse << " ms.";
+
+            // Don't yet know how to tell NORTH vs SOUTH
+            guideLog.addCalibrationData(DEC_INC_DIR, cur_x, cur_y,
+                                        m_CalibrationCoords.start_x2, m_CalibrationCoords.start_y2);
+            const double xDrift = cur_x - m_CalibrationCoords.start_x2;
+            const double yDrift = cur_y - m_CalibrationCoords.start_y2;
+            constexpr double SUFFICIENT_DEC_MOVE_PIXELS = 15.0;
+            if (((m_CalibrationParams.dec_iterations >= m_CalibrationParams.auto_drift_time) ||
+                    (std::hypot(xDrift, yDrift) > SUFFICIENT_DEC_MOVE_PIXELS))
+                    && (fabs(xDrift) > 1.5 || fabs(yDrift) > 1.5))
+            {
+                calibrationStage = CAL_DEC_DEC;
+
+                m_CalibrationParams.de_total_pulse += m_CalibrationParams.last_pulse;
+
+                m_CalibrationCoords.end_x2 = cur_x;
+                m_CalibrationCoords.end_y2 = cur_y;
+
+                m_CalibrationCoords.last_x = cur_x;
+                m_CalibrationCoords.last_y = cur_y;
+
+                axis_calibration_complete = false;
+
+                qCDebug(KSTARS_EKOS_GUIDE) << "End X2 " << m_CalibrationCoords.end_x2 << " End Y2 " << m_CalibrationCoords.end_y2;
+
+                m_CalibrationParams.tempCalibration.calculate1D(m_CalibrationCoords.end_x2 - m_CalibrationCoords.start_x2,
+                        m_CalibrationCoords.end_y2 - m_CalibrationCoords.start_y2,
+                        m_CalibrationParams.de_total_pulse);
+
+                m_CalibrationCoords.de_distance = 0;
+
+                emit newPulse(DEC_DEC_DIR, m_CalibrationParams.last_pulse);
+                emit newLog(i18n("DEC drifting reverse..."));
+                m_CalibrationParams.dec_iterations++;
+                guideLog.endCalibrationSection(DEC_INC_DIR, m_CalibrationParams.tempCalibration.getAngle());
+            }
+            else if (m_CalibrationParams.dec_iterations > m_CalibrationParams.turn_back_time)
+            {
+                calibrationStage = CAL_ERROR;
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: couldn't reach start point."));
+                emit newLog(i18np("Guide DEC: Scope cannot reach the start point after %1 iteration.\nPossible mount "
+                                  "or backlash problems...",
+                                  "GUIDE DEC: Scope cannot reach the start point after %1 iterations.\nPossible mount "
+                                  "or backlash problems...",
+                                  m_CalibrationParams.dec_iterations));
+
+                KSNotification::event(QLatin1String("CalibrationFailed"),
+                                      i18n("Guiding calibration failed with errors"), KSNotification::EVENT_ALERT);
+                guideLog.endCalibration(0, 0);
+                reset();
+            }
+            else
+            {
+                if (fabs(cur_x - m_CalibrationCoords.last_x) < 0.5 && fabs(cur_y - m_CalibrationCoords.last_y) < 0.5)
+                {
+                    // Increase pulse by 200%
+                    m_CalibrationParams.last_pulse = Options::calibrationPulseDuration() * 2;
+                }
+                else
+                {
+                    m_CalibrationParams.de_total_pulse += m_CalibrationParams.last_pulse;
+                    m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+                }
+                m_CalibrationCoords.last_x = cur_x;
+                m_CalibrationCoords.last_y = cur_y;
+
+                emit newPulse(DEC_INC_DIR, m_CalibrationParams.last_pulse);
+
+                m_CalibrationParams.dec_iterations++;
+            }
+        }
+        break;
+
+        case CAL_DEC_DEC:
+        {
+            //----- Z-check (new!) -----
+            double cur_x, cur_y;
+            pmath->getStarScreenPosition(&cur_x, &cur_y);
+
+            emit calibrationUpdate(GuideInterface::DEC_IN, i18n("Calibrating DEC In"),
+                                   cur_x - m_CalibrationCoords.start_x1, cur_y - m_CalibrationCoords.start_y1);
+
+            // Star position resulting from LAST guiding pulse to mount
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration #" << m_CalibrationParams.dec_iterations << ": STAR " << cur_x << "," << cur_y;
+            qCDebug(KSTARS_EKOS_GUIDE) << "Iteration " << m_CalibrationParams.dec_iterations << " Direction: DEC_DEC_DIR" <<
+                                       " Duration: " << m_CalibrationParams.last_pulse << " ms.";
+
+            // Note: the way this temp calibration was set up above, with the DEC drifts, the ra axis is really dec.
+            // This will help the dec find its way home. Could convert to a full RA/DEC calibration.
+            double driftRA, driftDEC;
+            m_CalibrationParams.tempCalibration.computeDrift(
+                Vector(cur_x, cur_y, 0),
+                Vector(m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1, 0),
+                &driftRA, &driftDEC);
+
+            qCDebug(KSTARS_EKOS_GUIDE) << "Currently " << driftRA << driftDEC << " from original point.";
+
+            // Keep track of distance
+            if (m_CalibrationCoords.de_distance == 0.0)
+                m_CalibrationCoords.de_distance = driftRA;
+
+            // South?
+            guideLog.addCalibrationData(DEC_DEC_DIR, cur_x, cur_y,
+                                        m_CalibrationCoords.start_x2, m_CalibrationCoords.start_y2);
+
+            // start point reached... so exit
+            if (driftRA < 1.5)
+            {
+                pmath->performProcessing(GUIDE_CALIBRATING);
+                m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+                axis_calibration_complete = true;
+            }
+            // Increase pulse if we're not moving much or if we are moving _away_ from target.
+            else if ( (fabs(cur_x - m_CalibrationCoords.last_x) < 0.5 && fabs(cur_y - m_CalibrationCoords.last_y) < 0.5)
+                      || driftRA > m_CalibrationCoords.de_distance)
+            {
+                // Increase pulse by 200%
+                m_CalibrationParams.last_pulse = Options::calibrationPulseDuration() * 2;
+            }
+            else
+            {
+                m_CalibrationParams.last_pulse = Options::calibrationPulseDuration();
+            }
+
+            if (axis_calibration_complete == false)
+            {
+                if (m_CalibrationParams.dec_iterations < m_CalibrationParams.turn_back_time)
+                {
+                    emit newPulse(DEC_DEC_DIR, m_CalibrationParams.last_pulse);
+                    m_CalibrationParams.dec_iterations++;
+                    break;
+                }
+
+                calibrationStage = CAL_ERROR;
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: couldn't reach start point."));
+
+                emit newLog(i18np("Guide DEC: Scope cannot reach the start point after %1 iteration.\nPossible mount "
+                                  "or backlash problems...",
+                                  "Guide DEC: Scope cannot reach the start point after %1 iterations.\nPossible mount "
+                                  "or backlash problems...",
+                                  m_CalibrationParams.dec_iterations));
+
+                KSNotification::event(QLatin1String("CalibrationFailed"),
+                                      i18n("Guiding calibration failed with errors"), KSNotification::EVENT_ALERT);
+                reset();
+                break;
+            }
+
+            bool swap_dec = false;
+            // calc orientation
+            if (pmath->calculateAndSetReticle2D(m_CalibrationCoords.start_x1, m_CalibrationCoords.start_y1, m_CalibrationCoords.end_x1,
+                                                m_CalibrationCoords.end_y1, m_CalibrationCoords.start_x2, m_CalibrationCoords.start_y2, m_CalibrationCoords.end_x2,
+                                                m_CalibrationCoords.end_y2,
+                                                &swap_dec, m_CalibrationParams.ra_total_pulse, m_CalibrationParams.de_total_pulse))
+            {
+                calibrationStage = CAL_IDLE;
+                //fillInterface();
+                if (swap_dec)
+                    emit newLog(i18n("DEC swap enabled."));
+                else
+                    emit newLog(i18n("DEC swap disabled."));
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_SUCESS);
+
+                emit DESwapChanged(swap_dec);
+
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Successful"));
+                KSNotification::event(QLatin1String("CalibrationSuccessful"),
+                                      i18n("Guiding calibration completed successfully"));
+
+                // Fill in mount
+                // These rates are in ms/pixel. Convert to pixels/second
+                guideLog.endCalibration(
+                    1000.0 / pmath->getCalibration().raPulseMillisecondsPerPixel(),
+                    1000.0 / pmath->getCalibration().decPulseMillisecondsPerPixel());
+            }
+            else
+            {
+                emit newLog(i18n("Calibration rejected. Star drift is too short. Check for mount, cable, or backlash problems."));
+                emit calibrationUpdate(GuideInterface::CALIBRATION_MESSAGE_ONLY, i18n("Calibration Failed: drift too short."));
+
+                emit newStatus(Ekos::GUIDE_CALIBRATION_ERROR);
+
+                //ui.startCalibrationLED->setColor(alertColor);
+                calibrationStage = CAL_ERROR;
+                KSNotification::event(QLatin1String("CalibrationFailed"),
+                                      i18n("Guiding calibration failed with errors"), KSNotification::EVENT_ALERT);
+                guideLog.endCalibration(0, 0);
+            }
+
+            reset();
+
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
 void InternalGuider::setStarPosition(QVector3D &starCenter)
 {
-    pmath->setTargetPosition(starCenter.x(), starCenter.y());
+    pmath->setReticleParameters(starCenter.x(), starCenter.y());
 }
 
 void InternalGuider::trackingStarSelected(int x, int y)
 {
-    Q_UNUSED(x);
-    Q_UNUSED(y);
-    /*
-
-      Not sure what's going on here--manual star selection for calibration?
-      Don't really see how the logic works.
-
     if (calibrationStage == CAL_IDLE)
         return;
 
-    pmath->setTargetPosition(x, y);
+    //int square_size = guide_squares[pmath->getSquareIndex()].size;
+
+    pmath->setReticleParameters(x, y);
+    //pmath->moveSquare(x-square_size/(2*pmath->getBinX()), y-square_size/(2*pmath->getBinY()));
+
+    //update_reticle_pos(x, y);
+
+    //ui.selectStarLED->setColor(okColor);
 
     calibrationStage = CAL_START;
-    */
+
+    //ui.pushButton_StartCalibration->setEnabled(true);
+
+    /*QVector3D starCenter;
+    starCenter.setX(x);
+    starCenter.setY(y);
+    emit newStarPosition(starCenter, true);*/
+
+    //if (ui.autoStarCheck->isChecked())
+    //if (Options::autoStarEnabled())
+    //calibrate();
 }
 
 void InternalGuider::setDECSwap(bool enable)
@@ -653,14 +1149,19 @@ void InternalGuider::setDECSwap(bool enable)
 
 void InternalGuider::setSquareAlgorithm(int index)
 {
-    if (index == SEP_MULTISTAR && !pmath->usingSEPMultiStar())
+    if (index == SEP_MULTISTAR && pmath->getSquareAlgorithmIndex() != SEP_MULTISTAR)
         m_isFirstFrame = true;
-    pmath->setAlgorithmIndex(index);
+    pmath->setSquareAlgorithm(index);
+}
+
+void InternalGuider::setReticleParameters(double x, double y)
+{
+    pmath->setReticleParameters(x, y);
 }
 
 bool InternalGuider::getReticleParameters(double *x, double *y)
 {
-    return pmath->getTargetPosition(x, y);
+    return pmath->getReticleParameters(x, y);
 }
 
 bool InternalGuider::setGuiderParams(double ccdPixelSizeX, double ccdPixelSizeY, double mountAperture,
@@ -694,29 +1195,21 @@ bool InternalGuider::setFrameParams(uint16_t x, uint16_t y, uint16_t w, uint16_t
 bool InternalGuider::processGuiding()
 {
     const cproc_out_params *out;
+    uint32_t tick = 0;
 
     // On first frame, center the box (reticle) around the star so we do not start with an offset the results in
     // unnecessary guiding pulses.
-    bool process = true;
     if (m_isFirstFrame)
     {
-        m_isFirstFrame = false;
         if (state == GUIDE_GUIDING)
         {
-            GuiderUtils::Vector star_pos = pmath->findLocalStarPosition(m_ImageData, m_GuideFrame, true);
-            if (star_pos.x != -1 && star_pos.y != -1)
-                pmath->setTargetPosition(star_pos.x, star_pos.y);
-            else
-            {
-                // We were not able to get started.
-                process = false;
-                m_isFirstFrame = true;
-            }
+            Vector star_pos = pmath->findLocalStarPosition();
+            pmath->setReticleParameters(star_pos.x, star_pos.y);
         }
+        m_isFirstFrame = false;
     }
-
-    if (process)
-        pmath->performProcessing(state, m_ImageData, m_GuideFrame, &guideLog);
+    // calc math. it tracks square
+    pmath->performProcessing(state, &guideLog);
 
     if (state == GUIDE_SUSPENDED)
     {
@@ -733,7 +1226,20 @@ bool InternalGuider::processGuiding()
     // do pulse
     out = pmath->getOutputParameters();
 
-    bool sendPulses = !pmath->isStarLost();
+    bool sendPulses = true;
+
+    // If within 95% of max pulse repeatedly, let's abort
+    //    if (out->pulse_length[GUIDE_RA] >= (0.95 * Options::rAMaximumPulse()) ||
+    //        out->pulse_length[GUIDE_DEC] >= (0.95 * Options::dECMaximumPulse()))
+    //    {
+    //        // Stop sending pulses in case we are guiding and we already sent one high pulse before
+    //        // since we do not want to stray too much off the target to purse the guiding star
+    //        if (state == GUIDE_GUIDING && m_highPulseCounter > 0)
+    //            sendPulses = false;
+    //        m_highPulseCounter++;
+    //    }
+    //    else
+    //        m_highPulseCounter=0;
 
     double delta_rms = std::hypot(out->delta[GUIDE_RA], out->delta[GUIDE_DEC]);
     if (delta_rms > Options::guideMaxDeltaRMS())
@@ -787,13 +1293,9 @@ bool InternalGuider::processGuiding()
     if (state == GUIDE_DITHERING || state == GUIDE_MANUAL_DITHERING)
         return true;
 
-    // Hy 9/13/21: Check above just looks for GUIDE_DITHERING or GUIDE_MANUAL_DITHERING
-    // but not the other dithering possibilities (error, success, settle).
-    // Not sure if they should be included above, so conservatively not changing the
-    // code, but don't think they should broadcast the newAxisDelta which might
-    // interrup a capture.
-    if (state < GUIDE_DITHERING)
-        emit newAxisDelta(out->delta[GUIDE_RA], out->delta[GUIDE_DEC]);
+    tick = pmath->getTicks();
+
+    emit newAxisDelta(out->delta[GUIDE_RA], out->delta[GUIDE_DEC]);
 
     double raPulse = out->pulse_length[GUIDE_RA];
     double dePulse = out->pulse_length[GUIDE_DEC];
@@ -820,11 +1322,91 @@ bool InternalGuider::processGuiding()
     return true;
 }
 
+bool InternalGuider::processImageGuiding()
+{
+    static int maxPulseCounter = 0;
+    const cproc_out_params *out;
+    uint32_t tick = 0;
+
+    // calc math. it tracks square
+    pmath->performProcessing(GUIDE_GUIDING);
+
+    if (pmath->isStarLost() && ++m_starLostCounter > 2)
+    {
+        emit newLog(i18n("Lost track of phase shift."));
+        abort();
+        return false;
+    }
+    else
+        m_starLostCounter = 0;
+
+    // do pulse
+    out = pmath->getOutputParameters();
+
+    // If within 90% of max pulse repeatedly, let's abort
+    if (out->pulse_length[GUIDE_RA] >= (0.9 * Options::rAMaximumPulse()) ||
+            out->pulse_length[GUIDE_DEC] >= (0.9 * Options::dECMaximumPulse()))
+        maxPulseCounter++;
+    else
+        maxPulseCounter = 0;
+
+    if (maxPulseCounter >= 3)
+    {
+        emit newLog(i18n("Lost track of phase shift. Aborting guiding..."));
+        abort();
+        maxPulseCounter = 0;
+        return false;
+    }
+
+    emit newPulse(out->pulse_dir[GUIDE_RA], out->pulse_length[GUIDE_RA], out->pulse_dir[GUIDE_DEC],
+                  out->pulse_length[GUIDE_DEC]);
+
+    emit frameCaptureRequested();
+
+    if (state == GUIDE_DITHERING || state == GUIDE_MANUAL_DITHERING)
+        return true;
+
+    tick = pmath->getTicks();
+
+    if (tick & 1)
+    {
+        // draw some params in window
+        emit newAxisDelta(out->delta[GUIDE_RA], out->delta[GUIDE_DEC]);
+
+        emit newAxisPulse(out->pulse_length[GUIDE_RA], out->pulse_length[GUIDE_DEC]);
+
+        emit newAxisSigma(out->sigma[GUIDE_RA], out->sigma[GUIDE_DEC]);
+    }
+
+    return true;
+}
+
+bool InternalGuider::isImageGuideEnabled() const
+{
+    return m_ImageGuideEnabled;
+}
+
+void InternalGuider::setImageGuideEnabled(bool value)
+{
+    m_ImageGuideEnabled = value;
+
+    pmath->setImageGuideEnabled(value);
+}
+
+void InternalGuider::setRegionAxis(uint32_t value)
+{
+    pmath->setRegionAxis(value);
+}
+
+QList<Edge *> InternalGuider::getGuideStars()
+{
+    return pmath->PSFAutoFind();
+}
+
 bool InternalGuider::selectAutoStarSEPMultistar()
 {
-    m_GuideFrame->updateFrame();
-    m_DitherOrigin = QVector3D(0, 0, 0);
-    QVector3D newStarCenter = pmath->selectGuideStar(m_ImageData);
+    guideFrame->updateFrame();
+    QVector3D newStarCenter = pmath->selectGuideStar();
     if (newStarCenter.x() >= 0)
     {
         emit newStarPosition(newStarCenter, true);
@@ -840,16 +1422,20 @@ bool InternalGuider::SEPMultiStarEnabled()
 
 bool InternalGuider::selectAutoStar()
 {
-    m_DitherOrigin = QVector3D(0, 0, 0);
     if (Options::guideAlgorithm() == SEP_MULTISTAR)
         return selectAutoStarSEPMultistar();
+
+    const QSharedPointer<FITSData> &imageData = guideFrame->imageData();
+
+    if (imageData == nullptr)
+        return false;
 
     bool useNativeDetection = false;
 
     QList<Edge *> starCenters;
 
     if (Options::guideAlgorithm() != SEP_THRESHOLD)
-        starCenters = GuideAlgorithms::detectStars(m_ImageData, m_GuideFrame->getTrackingBox());
+        starCenters = pmath->PSFAutoFind();
 
     if (starCenters.empty())
     {
@@ -857,14 +1443,14 @@ bool InternalGuider::selectAutoStar()
         settings["maxStarsCount"] = 50;
         settings["optionsProfileIndex"] = Options::guideOptionsProfile();
         settings["optionsProfileGroup"] = static_cast<int>(Ekos::GuideProfiles);
-        m_ImageData->setSourceExtractorSettings(settings);
+        imageData->setSourceExtractorSettings(settings);
 
         if (Options::guideAlgorithm() == SEP_THRESHOLD)
-            m_ImageData->findStars(ALGORITHM_SEP).waitForFinished();
+            imageData->findStars(ALGORITHM_SEP).waitForFinished();
         else
-            m_ImageData->findStars().waitForFinished();
+            imageData->findStars().waitForFinished();
 
-        starCenters = m_ImageData->getStarCenters();
+        starCenters = imageData->getStarCenters();
         if (starCenters.empty())
             return false;
 
@@ -881,12 +1467,12 @@ bool InternalGuider::selectAutoStar()
             return a->width > b->width;
         });
 
-        m_GuideFrame->setStarsEnabled(true);
-        m_GuideFrame->updateFrame();
+        guideFrame->setStarsEnabled(true);
+        guideFrame->updateFrame();
     }
 
-    int maxX = m_ImageData->width();
-    int maxY = m_ImageData->height();
+    int maxX = imageData->width();
+    int maxY = imageData->height();
 
     int scores[MAX_GUIDE_STARS];
 
@@ -955,6 +1541,17 @@ bool InternalGuider::selectAutoStar()
         return false;
     }
 
+    /*if (ui.autoSquareSizeCheck->isEnabled() && ui.autoSquareSizeCheck->isChecked())
+    {
+        // Select appropriate square size
+        int idealSize = ceil(starCenters[maxScoreIndex]->width * 1.5);
+
+        if (Options::guideLogging())
+            qDebug() << "Guide: Ideal calibration box size for star width: " << starCenters[maxScoreIndex]->width << " is " << idealSize << " pixels";
+
+        // TODO Set square size in GuideModule
+    }*/
+
     QVector3D newStarCenter(starCenters[maxScoreIndex]->x, starCenters[maxScoreIndex]->y, 0);
 
     if (useNativeDetection == false)
@@ -1019,8 +1616,8 @@ void InternalGuider::fillGuideInfo(GuideLog::GuideInfo *info)
     info->xangle = pmath->getCalibration().getRAAngle();
     info->yangle = pmath->getCalibration().getDECAngle();
     // Calibration values in ms/pixel, xrate is in pixels/second.
-    info->xrate = 1000.0 / pmath->getCalibration().raPulseMillisecondsPerArcsecond();
-    info->yrate = 1000.0 / pmath->getCalibration().decPulseMillisecondsPerArcsecond();
+    info->xrate = 1000.0 / pmath->getCalibration().raPulseMillisecondsPerPixel();
+    info->yrate = 1000.0 / pmath->getCalibration().decPulseMillisecondsPerPixel();
 }
 
 void InternalGuider::updateGPGParameters()

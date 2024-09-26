@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jasem Mutlaq <mutlaqja@ikarustech.com>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          INDI Driver
+                             -------------------
+    begin                : Wed May 7th 2003
+    copyright            : (C) 2001 by Jasem Mutlaq
+    email                : mutlaqja@ikarustech.com
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "indidriver.h"
 
@@ -479,12 +489,12 @@ bool INDIDriver::readXMLDrivers()
     QString driversDir = Options::indiDriversDir();
 #ifdef Q_OS_OSX
     if (Options::indiDriversAreInternal())
-        QCoreApplication::applicationDirPath() + "/../Resources/DriverSupport";
+        driversDir = QCoreApplication::applicationDirPath() + "/indi";
 #endif
 
     if (indiDir.cd(driversDir) == false)
     {
-        KMessageBox::error(0, xi18n("Unable to find INDI drivers directory: %1\nPlease make sure to set the correct "
+        KMessageBox::error(0, xi18n("Unable to find INDI Drivers directory: %1\nPlease make sure to set the correct "
                                     "path in KStars configuration",
                                     driversDir));
         return false;
@@ -503,7 +513,8 @@ bool INDIDriver::readXMLDrivers()
         if (fileInfo.fileName() == "drivers.xml")
         {
             // Let first attempt to load the local version of drivers.xml
-            driverName = QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("drivers.xml");
+            driverName =
+                KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1Char('/') + "drivers.xml";
 
             // If found, we continue, otherwise, we load the system file
             if (driverName.isEmpty() == false && QFile(driverName).exists())
@@ -911,8 +922,8 @@ void INDIDriver::saveHosts()
     QFile file;
     QString hostData;
 
-    //determine filename in local user KDE directory tree.
-    file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("indihosts.xml"));
+    file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1Char('/') +
+                     "indihosts.xml"); //determine filename in local user KDE directory tree.
 
     if (!file.open(QIODevice::WriteOnly))
     {

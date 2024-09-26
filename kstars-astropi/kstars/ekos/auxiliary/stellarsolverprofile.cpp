@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    SPDX-FileCopyrightText: 2017 Robert Lancaster <rlancaste@gmail.com>
+/*  StellarSolver Profile
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2017 Robert Lancaster <rlancaste@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "stellarsolverprofile.h"
@@ -24,8 +27,7 @@ QList<Parameters> getDefaultFocusOptionsProfiles()
     focusDefault.keepNum = 100;
     focusDefault.minarea = 20;
     focusDefault.maxEllipse = 1.5;
-    focusDefault.convFilterType = SSolver::CONV_GAUSSIAN;
-    focusDefault.fwhm = 1;
+    StellarSolver::createConvFilterFromFWHM(&focusDefault, 2);
     focusDefault.r_min = 5;
     focusDefault.maxSize = 10;
     focusDefault.removeBrightest = 10;
@@ -37,8 +39,7 @@ QList<Parameters> getDefaultFocusOptionsProfiles()
     stars.listName = "2-AllStars";
     stars.description = i18n("Profile for the source extraction of all the stars in an image.");
     stars.maxEllipse = 1.5;
-    stars.convFilterType = SSolver::CONV_GAUSSIAN;
-    stars.fwhm = 1;
+    StellarSolver::createConvFilterFromFWHM(&stars, 1);
     stars.r_min = 2;
     profileList.append(stars);
 
@@ -46,8 +47,7 @@ QList<Parameters> getDefaultFocusOptionsProfiles()
     smallStars.listName = "3-SmallSizedStars";
     smallStars.description = i18n("Profile optimized for source extraction of smaller stars.");
     smallStars.maxEllipse = 1.5;
-    smallStars.convFilterType = SSolver::CONV_GAUSSIAN;
-    smallStars.fwhm = 1;
+    StellarSolver::createConvFilterFromFWHM(&smallStars, 1);
     smallStars.r_min = 2;
     smallStars.maxSize = 5;
     smallStars.initialKeep = 500;
@@ -59,8 +59,7 @@ QList<Parameters> getDefaultFocusOptionsProfiles()
     mid.description = i18n("Profile optimized for source extraction of medium sized stars.");
     mid.maxEllipse = 1.5;
     mid.minarea = 20;
-    mid.convFilterType = SSolver::CONV_GAUSSIAN;
-    mid.fwhm = 4;
+    StellarSolver::createConvFilterFromFWHM(&mid, 4);
     mid.r_min = 5;
     mid.removeDimmest = 20;
     mid.minSize = 2;
@@ -74,8 +73,7 @@ QList<Parameters> getDefaultFocusOptionsProfiles()
     big.description = i18n("Profile optimized for source extraction of larger stars.");
     big.maxEllipse = 1.5;
     big.minarea = 40;
-    big.convFilterType = SSolver::CONV_GAUSSIAN;
-    big.fwhm = 8;
+    StellarSolver::createConvFilterFromFWHM(&big, 8);
     big.r_min = 20;
     big.minSize = 5;
     big.initialKeep = 500;
@@ -105,8 +103,7 @@ QList<SSolver::Parameters> getDefaultGuideOptionsProfiles()
     stars.listName = "2-AllStars";
     stars.description = i18n("Profile for the source extraction of all the stars in an image.");
     stars.maxEllipse = 1.5;
-    stars.convFilterType = SSolver::CONV_GAUSSIAN;
-    stars.fwhm = 1;
+    StellarSolver::createConvFilterFromFWHM(&stars, 1);
     stars.r_min = 2;
     profileList.append(stars);
 
@@ -114,8 +111,7 @@ QList<SSolver::Parameters> getDefaultGuideOptionsProfiles()
     smallStars.listName = "3-SmallSizedStars";
     smallStars.description = i18n("Profile optimized for source extraction of smaller stars.");
     smallStars.maxEllipse = 1.5;
-    smallStars.convFilterType = SSolver::CONV_GAUSSIAN;
-    smallStars.fwhm = 1;
+    StellarSolver::createConvFilterFromFWHM(&smallStars, 1);
     smallStars.r_min = 2;
     smallStars.maxSize = 5;
     smallStars.initialKeep = 500;
@@ -127,8 +123,7 @@ QList<SSolver::Parameters> getDefaultGuideOptionsProfiles()
     mid.description = i18n("Profile optimized for source extraction of medium sized stars.");
     mid.maxEllipse = 1.5;
     mid.minarea = 20;
-    mid.convFilterType = SSolver::CONV_GAUSSIAN;
-    mid.fwhm = 4;
+    StellarSolver::createConvFilterFromFWHM(&mid, 4);
     mid.r_min = 5;
     mid.removeDimmest = 20;
     mid.minSize = 2;
@@ -142,8 +137,7 @@ QList<SSolver::Parameters> getDefaultGuideOptionsProfiles()
     big.description = i18n("Profile optimized for source extraction of larger stars.");
     big.maxEllipse = 1.5;
     big.minarea = 40;
-    big.convFilterType = SSolver::CONV_GAUSSIAN;
-    big.fwhm = 8;
+    StellarSolver::createConvFilterFromFWHM(&big, 8);
     big.r_min = 20;
     big.minSize = 5;
     big.initialKeep = 500;
@@ -160,8 +154,6 @@ QList<SSolver::Parameters> getDefaultAlignOptionsProfiles()
     SSolver::Parameters defaultProfile;
     defaultProfile.listName = "1-Default";
     defaultProfile.description = i18n("Default profile. Generic and not optimized for any specific purpose.");
-    defaultProfile.convFilterType = SSolver::CONV_GAUSSIAN;
-    defaultProfile.fwhm = 1;
     profileList.append(defaultProfile);
 
     SSolver::Parameters fastSolving;
@@ -173,8 +165,7 @@ QList<SSolver::Parameters> getDefaultAlignOptionsProfiles()
     fastSolving.keepNum = 50;
     fastSolving.initialKeep = 500;
     fastSolving.maxEllipse = 1.5;
-    fastSolving.convFilterType = SSolver::CONV_GAUSSIAN;
-    fastSolving.fwhm = 4;
+    StellarSolver::createConvFilterFromFWHM(&fastSolving, 4);
     profileList.append(fastSolving);
 
     SSolver::Parameters parLargeSolving;
@@ -185,8 +176,7 @@ QList<SSolver::Parameters> getDefaultAlignOptionsProfiles()
     parLargeSolving.keepNum = 50;
     parLargeSolving.initialKeep = 500;
     parLargeSolving.maxEllipse = 1.5;
-    parLargeSolving.convFilterType = SSolver::CONV_GAUSSIAN;
-    parLargeSolving.fwhm = 4;
+    StellarSolver::createConvFilterFromFWHM(&parLargeSolving, 4);
     profileList.append(parLargeSolving);
 
     SSolver::Parameters fastSmallSolving;
@@ -197,8 +187,7 @@ QList<SSolver::Parameters> getDefaultAlignOptionsProfiles()
     fastSmallSolving.keepNum = 50;
     fastSmallSolving.initialKeep = 500;
     fastSmallSolving.maxEllipse = 1.5;
-    fastSmallSolving.convFilterType = SSolver::CONV_GAUSSIAN;
-    fastSmallSolving.fwhm = 4;
+    StellarSolver::createConvFilterFromFWHM(&fastSmallSolving, 4);
     profileList.append(fastSmallSolving);
 
     return profileList;
@@ -216,8 +205,7 @@ QList<Parameters> getDefaultHFROptionsProfiles()
 
     hfrDefault.minarea = 20;
     hfrDefault.maxEllipse = 1.5;
-    hfrDefault.convFilterType = SSolver::CONV_GAUSSIAN;
-    hfrDefault.fwhm = 2;
+    StellarSolver::createConvFilterFromFWHM(&hfrDefault, 2);
     hfrDefault.r_min = 5;
     hfrDefault.maxSize = 10;
 
@@ -236,8 +224,7 @@ QList<Parameters> getDefaultHFROptionsProfiles()
 
     big.minarea = 40;
     big.maxEllipse = 1.5;
-    big.convFilterType = SSolver::CONV_GAUSSIAN;
-    big.fwhm = 8;
+    StellarSolver::createConvFilterFromFWHM(&big, 8);
     big.r_min = 20;
     big.maxSize = 0;
 
@@ -255,8 +242,7 @@ QList<Parameters> getDefaultHFROptionsProfiles()
 
     most.minarea = 10;
     most.maxEllipse = 0;
-    most.convFilterType = SSolver::CONV_GAUSSIAN;
-    most.fwhm = 1;
+    StellarSolver::createConvFilterFromFWHM(&most, 1);
     most.r_min = 3.5;
     most.minSize = 0;
     most.maxSize = 0;

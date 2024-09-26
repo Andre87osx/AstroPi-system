@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos Dark Library Handler
+    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "darklibrary.h"
 #include "auxiliary/ksmessagebox.h"
@@ -18,6 +21,7 @@
 #include "kstarsdata.h"
 #include "fitsviewer/fitsdata.h"
 #include "fitsviewer/fitsview.h"
+#include "fitsviewer/fitshistogramview.h"
 
 #include "ekos_debug.h"
 
@@ -25,6 +29,7 @@
 #include <QSqlRecord>
 #include <QSqlTableModel>
 #include <QStatusBar>
+#include <QtConcurrent>
 #include <algorithm>
 #include <array>
 
@@ -53,9 +58,12 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     m_StatusBar->insertPermanentWidget(1, m_FileLabel, 1);
     mainLayout->addWidget(m_StatusBar);
 
-    QDir writableDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
-    writableDir.mkpath("darks");
-    writableDir.mkpath("defectmaps");
+    histogramView->setProperty("axesLabelEnabled", false);
+    //histogramView->setProperty("linear", true);
+
+    QDir writableDir;
+    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks");
+    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "defectmaps");
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Dark Generation Connections
@@ -65,13 +73,7 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     m_DarkCameras = Options::darkCameras();
     m_DefectCameras = Options::defectCameras();
 
-#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
-    connect(darkHandlingButtonGroup, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::buttonToggled),
-            this, [this]()
-#else
-    connect(darkHandlingButtonGroup, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::idToggled),
-            this, [this]()
-#endif
+    connect(darkHandlingButtonGroup, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::buttonToggled), [this]()
     {
         const QString device = m_CurrentCamera->getDeviceName();
         if (preferDarksRadio->isChecked())
@@ -91,34 +93,40 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
         Options::setDefectCameras(m_DefectCameras);
     });
 
-    connect(darkTableView,  &QAbstractItemView::doubleClicked, this, [this](QModelIndex index)
-    {
-        loadIndexInView(index.row());
-    });
+    connect(darkTableView,  &QAbstractItemView::doubleClicked, this, &DarkLibrary::loadDarkFITS);
     connect(openDarksFolderB, &QPushButton::clicked, this, &DarkLibrary::openDarksFolder);
     connect(clearAllB, &QPushButton::clicked, this, &DarkLibrary::clearAll);
     connect(clearRowB, &QPushButton::clicked, this, &DarkLibrary::clearRow);
     connect(clearExpiredB, &QPushButton::clicked, this, &DarkLibrary::clearExpired);
     connect(refreshB, &QPushButton::clicked, this, &DarkLibrary::reloadDarksFromDatabase);
 
-    connect(cameraS, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [this]()
+    connect(cameraS, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), [this]()
     {
         checkCamera();
         reloadDarksFromDatabase();
     });
 
-    connect(&m_DarkFrameFutureWatcher, &QFutureWatcher<bool>::finished, this, [this]()
+    connect(&m_DarkFrameFutureWatcher, &QFutureWatcher<bool>::finished, [this]()
     {
         // If loading is successful, then set it in current dark view
         if (m_DarkFrameFutureWatcher.result())
         {
             m_DarkView->loadData(m_CurrentDarkFrame);
             loadCurrentMasterDefectMap();
+            histogramView->setImageData(m_CurrentDarkFrame);
+            if (!Options::nonLinearHistogram() && !m_CurrentDarkFrame->isHistogramConstructed())
+                m_CurrentDarkFrame->constructHistogram();
             populateMasterMetedata();
         }
         else
             m_FileLabel->setText(i18n("Failed to load %1: %2",  m_MasterDarkFrameFilename, m_CurrentDarkFrame->getLastError()));
 
+    });
+    connect(m_CurrentDarkFrame.data(), &FITSData::histogramReady, [this]()
+    {
+        histogramView->setEnabled(true);
+        histogramView->reset();
+        histogramView->syncGUI();
     });
 
     connect(masterDarksCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged), [this](int index)
@@ -131,17 +139,17 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     connect(maxExposureSpin, &QDoubleSpinBox::editingFinished, this, &DarkLibrary::countDarkTotalTime);
     connect(exposureStepSin, &QDoubleSpinBox::editingFinished, this, &DarkLibrary::countDarkTotalTime);
 
-    connect(minTemperatureSpin, &QDoubleSpinBox::editingFinished, this, [this]()
+    connect(minTemperatureSpin, &QDoubleSpinBox::editingFinished, [this]()
     {
         maxTemperatureSpin->setMinimum(minTemperatureSpin->value());
         countDarkTotalTime();
     });
-    connect(maxTemperatureSpin, &QDoubleSpinBox::editingFinished, this, [this]()
+    connect(maxTemperatureSpin, &QDoubleSpinBox::editingFinished, [this]()
     {
         minTemperatureSpin->setMaximum(maxTemperatureSpin->value());
         countDarkTotalTime();
     });
-    connect(temperatureStepSpin, &QDoubleSpinBox::editingFinished, this, [this]()
+    connect(temperatureStepSpin, &QDoubleSpinBox::editingFinished, [this]()
     {
         maxTemperatureSpin->setMinimum(minTemperatureSpin->value());
         minTemperatureSpin->setMaximum(maxTemperatureSpin->value());
@@ -149,19 +157,20 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     });
 
     connect(countSpin, &QDoubleSpinBox::editingFinished, this, &DarkLibrary::countDarkTotalTime);
-#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
-    connect(binningButtonGroup, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::buttonToggled),
-            this, [this](int, bool)
-#else
-    connect(binningButtonGroup, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::idToggled),
-            this, [this](int, bool)
-#endif
+
+    connect(binningButtonGroup, static_cast<void (QButtonGroup::*)(int, bool)>(&QButtonGroup::buttonToggled), this, [this](int,
+            bool)
     {
         countDarkTotalTime();
     });
 
-    connect(startB, &QPushButton::clicked, this, &DarkLibrary::start);
-    connect(stopB, &QPushButton::clicked, this, &DarkLibrary::stop);
+    connect(startB, &QPushButton::clicked, [this]()
+    {
+        generateDarkJobs();
+        executeDarkJobs();
+    });
+
+    connect(stopB, &QPushButton::clicked, this, &DarkLibrary::stopDarkJobs);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Master Darks Database Connections
@@ -182,33 +191,32 @@ DarkLibrary::DarkLibrary(QWidget *parent) : QDialog(parent)
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Defect Map Connections
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    connect(darkTabsWidget, &QTabWidget::currentChanged, this, [this](int index)
+    connect(darkTabsWidget, &QTabWidget::currentChanged, [this](int index)
     {
         m_DarkView->setDefectMapEnabled(index == 1 && m_CurrentDefectMap);
     });
     connect(aggresivenessHotSlider, &QSlider::valueChanged, aggresivenessHotSpin, &QSpinBox::setValue);
     connect(aggresivenessColdSlider, &QSlider::valueChanged, aggresivenessColdSpin, &QSpinBox::setValue);
-    connect(hotPixelsEnabled, &QCheckBox::toggled, this, [this](bool toggled)
+    connect(hotPixelsEnabled, &QCheckBox::toggled, [this](bool toggled)
     {
         if (m_CurrentDefectMap)
             m_CurrentDefectMap->setProperty("HotEnabled", toggled);
     });
-    connect(coldPixelsEnabled, &QCheckBox::toggled, this, [this](bool toggled)
+    connect(coldPixelsEnabled, &QCheckBox::toggled, [this](bool toggled)
     {
         if (m_CurrentDefectMap)
             m_CurrentDefectMap->setProperty("ColdEnabled", toggled);
     });
-    connect(generateMapB, &QPushButton::clicked, this, [this]()
+    connect(generateMapB, &QPushButton::clicked, [this]()
     {
         if (m_CurrentDefectMap)
         {
             m_CurrentDefectMap->setProperty("HotPixelAggressiveness", aggresivenessHotSpin->value());
             m_CurrentDefectMap->setProperty("ColdPixelAggressiveness", aggresivenessColdSpin->value());
             m_CurrentDefectMap->filterPixels();
-            emit newFrame(m_DarkView);
         }
     });
-    connect(resetMapParametersB, &QPushButton::clicked, this, [this]()
+    connect(resetMapParametersB, &QPushButton::clicked, [this]()
     {
         if (m_CurrentDefectMap)
         {
@@ -252,85 +260,61 @@ bool DarkLibrary::findDarkFrame(ISD::CCDChip *m_TargetChip, double duration, QSh
         if (map["ccd"].toString() == m_TargetChip->getCCD()->getDeviceName() &&
                 map["chip"].toInt() == static_cast<int>(m_TargetChip->getType()))
         {
-            // Match Gain
-            int gain = getGain();
-            if (gain >= 0 && map["gain"].toInt() != gain)
-                continue;
-
-            // Match ISO
-            QString isoValue;
-            if (m_TargetChip->getISOValue(isoValue) && map["iso"].toString() != isoValue)
-                continue;
-
-            // Match binning
-            int binX = 1, binY = 1;
+            int binX, binY;
             m_TargetChip->getBinning(&binX, &binY);
 
             // Then check if binning is the same
-            if (map["binX"].toInt() != binX || map["binY"].toInt() != binY)
-                continue;
-
-            // If camera has an active cooler, then we check temperature against the absolute threshold.
-            if (m_TargetChip->getCCD()->hasCoolerControl())
+            if (map["binX"].toInt() == binX && map["binY"].toInt() == binY)
             {
-                double temperature = 0;
-                m_TargetChip->getCCD()->getTemperature(&temperature);
-                double darkTemperature = map["temperature"].toDouble();
-                // If different is above threshold, it is completely rejected.
-                if (darkTemperature != INVALID_VALUE && fabs(darkTemperature - temperature) > Options::maxDarkTemperatureDiff())
+                // If camera has an active cooler, then we check temperature against the absolute threshold.
+                if (m_TargetChip->getCCD()->hasCoolerControl())
+                {
+                    double temperature = 0;
+                    m_TargetChip->getCCD()->getTemperature(&temperature);
+                    double darkTemperature = map["temperature"].toDouble();
+                    // If different is above threshold, it is completely rejected.
+                    if (darkTemperature != INVALID_VALUE && fabs(darkTemperature - temperature) > Options::maxDarkTemperatureDiff())
+                        continue;
+                }
+
+                if (bestCandidate.isEmpty())
+                {
+                    bestCandidate = map;
                     continue;
-            }
+                }
 
-            if (bestCandidate.isEmpty())
-            {
-                bestCandidate = map;
-                continue;
-            }
+                // We try to find the best frame
+                // Frame closest in exposure duration wins
+                // Frame with temperature closest to stored temperature wins (if temperature is reported)
+                uint32_t thisMapScore = 0;
+                uint32_t bestCandidateScore = 0;
 
-            // We try to find the best frame
-            // Frame closest in exposure duration wins
-            // Frame with temperature closest to stored temperature wins (if temperature is reported)
-            uint32_t thisMapScore = 0;
-            uint32_t bestCandidateScore = 0;
+                // Else we check for the closest passive temperature
+                if (m_TargetChip->getCCD()->hasCooler())
+                {
+                    double temperature = 0;
+                    m_TargetChip->getCCD()->getTemperature(&temperature);
+                    double diffMap = std::fabs(temperature - map["temperature"].toDouble());
+                    double diffBest = std::fabs(temperature - bestCandidate["temperature"].toDouble());
+                    // Prefer temperatures closest to target
+                    if (diffMap < diffBest)
+                        thisMapScore++;
+                    else if (diffBest < diffMap)
+                        bestCandidateScore++;
+                }
 
-            // Else we check for the closest passive temperature
-            if (m_TargetChip->getCCD()->hasCooler())
-            {
-                double temperature = 0;
-                m_TargetChip->getCCD()->getTemperature(&temperature);
-                double diffMap = std::fabs(temperature - map["temperature"].toDouble());
-                double diffBest = std::fabs(temperature - bestCandidate["temperature"].toDouble());
-                // Prefer temperatures closest to target
-                if (diffMap < diffBest)
-                    thisMapScore++;
-                else if (diffBest < diffMap)
-                    bestCandidateScore++;
-            }
-
-            // Duration has a higher score priority over temperature
-            {
+                // Duration has a higher score priority over temperature
                 double diffMap = std::fabs(map["duration"].toDouble() - duration);
                 double diffBest = std::fabs(bestCandidate["duration"].toDouble() - duration);
                 if (diffMap < diffBest)
                     thisMapScore += 2;
                 else if (diffBest < diffMap)
                     bestCandidateScore += 2;
-            }
 
-            // More recent has a higher score than older.
-            {
-                const QDateTime now = QDateTime::currentDateTime();
-                int64_t diffMap  = map["timestamp"].toDateTime().secsTo(now);
-                int64_t diffBest = bestCandidate["timestamp"].toDateTime().secsTo(now);
-                if (diffMap < diffBest)
-                    thisMapScore += 2;
-                else if (diffBest < diffMap)
-                    bestCandidateScore += 2;
+                // Find candidate with closest time in case we have multiple defect maps
+                if (thisMapScore > bestCandidateScore)
+                    bestCandidate = map;
             }
-
-            // Find candidate with closest time in case we have multiple defect maps
-            if (thisMapScore > bestCandidateScore)
-                bestCandidate = map;
         }
     }
 
@@ -342,26 +326,18 @@ bool DarkLibrary::findDarkFrame(ISD::CCDChip *m_TargetChip, double duration, QSh
                   QString::number(bestCandidate["duration"].toDouble(), 'f', 1),
                   QString::number(duration, 'f', 1));
 
-    QString filename = bestCandidate["filename"].toString();
-
     // Finally check if the duration is acceptable
-    QDateTime frameTime = bestCandidate["timestamp"].toDateTime();
+    QDateTime frameTime = QDateTime::fromString(bestCandidate["timestamp"].toString(), Qt::ISODate);
     if (frameTime.daysTo(QDateTime::currentDateTime()) > Options::darkLibraryDuration())
-    {
-        emit i18n("Dark frame %s is expired. Please create new master dark.", filename);
         return false;
-    }
+
+    QString filename = bestCandidate["filename"].toString();
 
     if (m_CachedDarkFrames.contains(filename))
     {
         darkData = m_CachedDarkFrames[filename];
         return true;
     }
-
-    // Before adding to cache, clear the cache if memory drops too low.
-    auto memoryMB = KSUtils::getAvailableRAM() / 1e6;
-    if (memoryMB < CACHE_MEMORY_LIMIT)
-        m_CachedDarkFrames.clear();
 
     // Finally we made it, let's put it in the hash
     if (cacheDarkFrameFromFile(filename))
@@ -445,7 +421,6 @@ bool DarkLibrary::findDefectMap(ISD::CCDChip *m_TargetChip, double duration, QSh
     if (bestCandidate.isEmpty())
         return false;
 
-
     QString darkFilename = bestCandidate["filename"].toString();
     QString defectFilename = bestCandidate["defectmap"].toString();
 
@@ -512,42 +487,270 @@ bool DarkLibrary::cacheDarkFrameFromFile(const QString &filename)
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
+void DarkLibrary::normalizeDefects(const QSharedPointer<DefectMap> &defectMap, const QSharedPointer<FITSData> &lightData,
+                                   FITSScale filter, uint16_t offsetX, uint16_t offsetY)
+{
+    switch (lightData->dataType())
+    {
+        case TBYTE:
+            normalizeDefectsInternal<uint8_t>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TSHORT:
+            normalizeDefectsInternal<int16_t>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TUSHORT:
+            normalizeDefectsInternal<uint16_t>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TLONG:
+            normalizeDefectsInternal<int32_t>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TULONG:
+            normalizeDefectsInternal<uint32_t>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TFLOAT:
+            normalizeDefectsInternal<float>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TLONGLONG:
+            normalizeDefectsInternal<int64_t>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TDOUBLE:
+            normalizeDefectsInternal<double>(defectMap, lightData, filter, offsetX, offsetY);
+            break;
+
+        default:
+            break;
+    }
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+void DarkLibrary::normalizeDefectsInternal(const QSharedPointer<DefectMap> &defectMap,
+        const QSharedPointer<FITSData> &lightData, FITSScale filter, uint16_t offsetX, uint16_t offsetY)
+{
+
+    Q_UNUSED(filter);
+    T *lightBuffer = reinterpret_cast<T *>(lightData->getWritableImageBuffer());
+    const uint32_t width = lightData->width();
+
+    // Account for offset X and Y
+    // e.g. if we send a subframed light frame 100x100 pixels wide
+    // but the source defect map covers 1000x1000 pixels array, then we need to only compensate
+    // for the 100x100 region.
+    for (BadPixelSet::const_iterator onePixel = defectMap->hotThreshold();
+            onePixel != defectMap->hotPixels().cend(); ++onePixel)
+    {
+        const uint16_t x = (*onePixel).x;
+        const uint16_t y = (*onePixel).y;
+
+        if (x <= offsetX || y <= offsetY)
+            continue;
+
+        uint32_t offset = (x - offsetX) + (y - offsetY) * width;
+
+        lightBuffer[offset] = median3x3Filter(x - offsetX, y - offsetY, width, lightBuffer);
+    }
+
+    for (BadPixelSet::const_iterator onePixel = defectMap->coldPixels().cbegin();
+            onePixel != defectMap->coldThreshold(); ++onePixel)
+    {
+        const uint16_t x = (*onePixel).x;
+        const uint16_t y = (*onePixel).y;
+
+        if (x <= offsetX || y <= offsetY)
+            continue;
+
+        uint32_t offset = (x - offsetX) + (y - offsetY) * width;
+
+        lightBuffer[offset] = median3x3Filter(x - offsetX, y - offsetY, width, lightBuffer);
+    }
+
+    lightData->calculateStats(true);
+    emit darkFrameCompleted(true);
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+T DarkLibrary::median3x3Filter(uint16_t x, uint16_t y, uint32_t width, T *buffer)
+{
+    T *top = buffer + (y - 1) * width + (x - 1);
+    T *mid = buffer + (y - 0) * width + (x - 1);
+    T *bot = buffer + (y + 1) * width + (x - 1);
+
+    std::array<T, 8> elements;
+
+    // Top
+    elements[0] = *(top + 0);
+    elements[1] = *(top + 1);
+    elements[2] = *(top + 2);
+    // Mid
+    elements[3] = *(mid + 0);
+    // Mid+1 is the defective value, so we skip and go for + 2
+    elements[4] = *(mid + 2);
+    // Bottom
+    elements[5] = *(bot + 0);
+    elements[6] = *(bot + 1);
+    elements[7] = *(bot + 2);
+
+    std::sort(elements.begin(), elements.end());
+    auto median = (elements[3] + elements[4]) / 2;
+    return median;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////////////
+void DarkLibrary::subtractDarkData(const QSharedPointer<FITSData> &darkData, const QSharedPointer<FITSData> &lightData,
+                                   FITSScale filter, uint16_t offsetX, uint16_t offsetY)
+{
+    switch (darkData->dataType())
+    {
+        case TBYTE:
+            subtractInternal<uint8_t>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TSHORT:
+            subtractInternal<int16_t>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TUSHORT:
+            subtractInternal<uint16_t>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TLONG:
+            subtractInternal<int32_t>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TULONG:
+            subtractInternal<uint32_t>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TFLOAT:
+            subtractInternal<float>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TLONGLONG:
+            subtractInternal<int64_t>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        case TDOUBLE:
+            subtractInternal<double>(darkData, lightData, filter, offsetX, offsetY);
+            break;
+
+        default:
+            break;
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+void DarkLibrary::subtractInternal(const QSharedPointer<FITSData> &darkData, const QSharedPointer<FITSData> &lightData,
+                                   FITSScale filter, uint16_t offsetX, uint16_t offsetY)
+{
+    Q_UNUSED(filter);
+
+    const uint32_t width = lightData->width();
+    const uint32_t height = lightData->height();
+    T *lightBuffer = reinterpret_cast<T *>(lightData->getWritableImageBuffer());
+
+    const uint32_t darkStride = darkData->width();
+    const uint32_t darkoffset = offsetX + offsetY * darkStride;
+    T const *darkBuffer  = reinterpret_cast<T const*>(darkData->getImageBuffer()) + darkoffset;
+
+    for (uint32_t y = 0; y < height; y++)
+    {
+        for (uint32_t x = 0; x < width; x++)
+            lightBuffer[x] = (lightBuffer[x] > darkBuffer[x]) ? (lightBuffer[x] - darkBuffer[x]) : 0;
+
+        lightBuffer += width;
+        darkBuffer += darkStride;
+    }
+
+    lightData->calculateStats(true);
+    emit darkFrameCompleted(true);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////////////
+void DarkLibrary::denoise(ISD::CCDChip *m_TargetChip, const QSharedPointer<FITSData> &targetData,
+                          double duration, FITSScale filter, uint16_t offsetX, uint16_t offsetY)
+{
+    const QString device = m_TargetChip->getCCD()->getDeviceName();
+
+    // Check if we have preference for defect map
+    // If yes, check if defect map exists
+    // If not, we check if we have regular dark frame as backup.
+    if (m_DefectCameras.contains(device))
+    {
+        QSharedPointer<DefectMap> targetDefectMap;
+        if (findDefectMap(m_TargetChip, duration, targetDefectMap))
+        {
+            normalizeDefects(targetDefectMap, targetData, filter, offsetX, offsetY);
+            qCDebug(KSTARS_EKOS) << "Defect map denoising applied";
+            return;
+        }
+    }
+
+    // Check if we have valid dark data and then use it.
+    QSharedPointer<FITSData> darkData;
+    if (findDarkFrame(m_TargetChip, duration, darkData))
+    {
+        subtractDarkData(darkData, targetData, filter, offsetX, offsetY);
+        qCDebug(KSTARS_EKOS) << "Dark frame subtraction applied";
+        return;
+    }
+
+    emit newLog(i18n("No suitable dark frames or defect maps found. Please run the Dark Library wizard in Capture module."));
+    emit darkFrameCompleted(false);
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::processNewImage(SequenceJob *job, const QSharedPointer<FITSData> &data)
 {
-    Q_UNUSED(data)
-    if (job->getStatus() == JOB_IDLE)
+    Q_UNUSED(data);
+    if (job->getStatus() == SequenceJob::JOB_IDLE)
         return;
 
-    if (job->getCompleted() == job->getCoreProperty(SequenceJob::SJ_Count).toInt())
+    if (job->getCompleted() == job->getCount())
     {
         QJsonObject metadata
         {
             {"camera", m_CurrentCamera->getDeviceName()},
             {"chip", m_TargetChip->getType()},
-            {"binx", job->getCoreProperty(SequenceJob::SJ_Binning).toPoint().x()},
-            {"biny", job->getCoreProperty(SequenceJob::SJ_Binning).toPoint().y()},
-            {"duration", job->getCoreProperty(SequenceJob::SJ_Exposure).toDouble()}
+            {"binx", job->getXBin()},
+            {"biny", job->getYBin()},
+            {"duration", job->getExposure()}
         };
 
         // Record temperature
-        double value = 0;
-        bool success = m_CurrentCamera->getTemperature(&value);
-        if (success)
-            metadata["temperature"] = value;
+        if (m_CurrentCamera->hasCooler())
+            metadata["temperature"] = job->getCurrentTemperature();
 
-        success = m_CurrentCamera->hasGain() && m_CurrentCamera->getGain(&value);
-        if (success)
-            metadata["gain"] = value;
-
-        QString isoValue;
-        success = m_TargetChip->getISOValue(isoValue);
-        if (success)
-            metadata["iso"] = isoValue;
-
-        metadata["count"] = job->getCoreProperty(SequenceJob::SJ_Count).toInt();
+        metadata["count"] = job->getCount();
         generateMasterFrame(m_CurrentDarkFrame, metadata);
         reloadDarksFromDatabase();
         populateMasterMetedata();
+        histogramView->setImageData(m_CurrentDarkFrame);
+        if (!Options::nonLinearHistogram() && !m_CurrentDarkFrame->isHistogramConstructed())
+            m_CurrentDarkFrame->constructHistogram();
     }
 }
 
@@ -559,15 +762,11 @@ void DarkLibrary::processNewBLOB(IBLOB *bp)
     QByteArray buffer = QByteArray::fromRawData(reinterpret_cast<char *>(bp->blob), bp->size);
     if (!m_CurrentDarkFrame->loadFromBuffer(buffer, "fits"))
     {
-        m_FileLabel->setText(i18n("Failed to process dark data."));
+        m_FileLabel->setText(i18n("Failed to process data."));
         return;
     }
 
-    if (!m_DarkView->loadData(m_CurrentDarkFrame))
-    {
-        m_FileLabel->setText(i18n("Failed to load dark data."));
-        return;
-    }
+    m_DarkView->loadData(m_CurrentDarkFrame);
 
     uint32_t totalElements = m_CurrentDarkFrame->channels() * m_CurrentDarkFrame->samplesPerChannel();
     if (totalElements != m_DarkMasterBuffer.size())
@@ -581,14 +780,11 @@ void DarkLibrary::processNewBLOB(IBLOB *bp)
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::Release()
+void DarkLibrary::reset()
 {
-    delete (_DarkLibrary);
-    _DarkLibrary = nullptr;
-
-    //    m_Cameras.clear();
-    //    cameraS->clear();
-    //    m_CurrentCamera = nullptr;
+    m_Cameras.clear();
+    cameraS->clear();
+    m_CurrentCamera = nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -596,16 +792,9 @@ void DarkLibrary::Release()
 ///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::closeEvent(QCloseEvent *ev)
 {
-    Q_UNUSED(ev)
+    Q_UNUSED(ev);
     Options::setUseFITSViewer(m_RememberFITSViewer);
-    Options::setUseSummaryPreview(m_RememberSummaryView);
-    if (m_JobsGenerated)
-    {
-        m_JobsGenerated = false;
-        m_CaptureModule->clearSequenceQueue();
-        m_CaptureModule->setPresetSettings(m_PresetSettings);
-        m_CaptureModule->setFileSettings(m_FileSettings);
-    }
+    Options::setUseFITSViewer(m_RememberSummaryView);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -617,14 +806,7 @@ void DarkLibrary::setCompleted()
     stopB->setEnabled(false);
 
     Options::setUseFITSViewer(m_RememberFITSViewer);
-    Options::setUseSummaryPreview(m_RememberSummaryView);
-    if (m_JobsGenerated)
-    {
-        m_JobsGenerated = false;
-        m_CaptureModule->clearSequenceQueue();
-        m_CaptureModule->setPresetSettings(m_PresetSettings);
-        m_CaptureModule->setFileSettings(m_FileSettings);
-    }
+    Options::setUseFITSViewer(m_RememberSummaryView);
 
     m_CurrentCamera->disconnect(this);
     m_CaptureModule->disconnect(this);
@@ -681,6 +863,12 @@ void DarkLibrary::clearBuffers()
     m_CurrentDarkFrame.clear();
     // Should clear existing view
     m_CurrentDarkFrame.reset(new FITSData(), &QObject::deleteLater);
+    connect(m_CurrentDarkFrame.data(), &FITSData::histogramReady, [this]()
+    {
+        histogramView->setEnabled(true);
+        histogramView->reset();
+        histogramView->syncGUI();
+    });
     m_DarkView->clearData();
     m_CurrentDefectMap.clear();
 
@@ -730,13 +918,12 @@ void DarkLibrary::clearAll()
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::clearRow(int index)
+void DarkLibrary::clearRow()
 {
     QSqlDatabase userdb = QSqlDatabase::database("userdb");
-    if (index < 0)
-        index = darkTableView->currentIndex().row();
+    int row = darkTableView->currentIndex().row();
 
-    QSqlRecord record = darkFramesModel->record(index);
+    QSqlRecord record = darkFramesModel->record(row);
     QString filename = record.value("filename").toString();
     QString defectMap = record.value("defectmap").toString();
     QFile::remove(filename);
@@ -745,11 +932,11 @@ void DarkLibrary::clearRow(int index)
 
     userdb.open();
 
-    darkFramesModel->removeRow(index);
+    darkFramesModel->removeRow(row);
     darkFramesModel->submitAll();
     userdb.close();
 
-    darkTableView->selectionModel()->select(darkFramesModel->index(index - 1, 0), QItemSelectionModel::ClearAndSelect);
+    darkTableView->selectionModel()->select(darkFramesModel->index(row - 1, 0), QItemSelectionModel::ClearAndSelect);
 
     refreshFromDB();
     reloadDarksFromDatabase();
@@ -760,7 +947,7 @@ void DarkLibrary::clearRow(int index)
 ///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::openDarksFolder()
 {
-    QString darkFilesPath = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("darks");
+    QString darkFilesPath = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks";
 
     QDesktopServices::openUrl(QUrl::fromLocalFile(darkFilesPath));
 }
@@ -783,12 +970,10 @@ void DarkLibrary::refreshDefectMastersList(const QString &camera)
         if (record.value("ccd") != camera)
             continue;
 
-        auto binX = record.value("binX").toInt();
-        auto binY = record.value("binY").toInt();
-        auto temperature = record.value("temperature").toDouble();
-        auto duration = record.value("duration").toDouble();
-        auto gain = record.value("gain").toInt();
-        auto iso = record.value("iso").toString();
+        int binX = record.value("binX").toInt();
+        int binY = record.value("binY").toInt();
+        double temperature = record.value("temperature").toDouble();
+        double duration = record.value("duration").toDouble();
         QString ts = record.value("timestamp").toString();
 
         QString entry = QString("%1 secs %2x%3")
@@ -798,11 +983,6 @@ void DarkLibrary::refreshDefectMastersList(const QString &camera)
 
         if (temperature > INVALID_VALUE)
             entry.append(QString(" @ %1°").arg(QString::number(temperature, 'f', 1)));
-
-        if (gain >= 0)
-            entry.append(QString(" G %1").arg(gain));
-        if (!iso.isEmpty())
-            entry.append(QString(" ISO %1").arg(iso));
 
         masterDarksCombo->addItem(entry);
     }
@@ -907,7 +1087,7 @@ void DarkLibrary::loadCurrentMasterDefectMap()
     else
     {
         m_CurrentDefectMap.reset(new DefectMap());
-        connect(m_CurrentDefectMap.data(), &DefectMap::pixelsUpdated, this, [this](uint32_t hot, uint32_t cold)
+        connect(m_CurrentDefectMap.data(), &DefectMap::pixelsUpdated, [this](uint32_t hot, uint32_t cold)
         {
             hotPixelsCount->setValue(hot);
             coldPixelsCount->setValue(cold);
@@ -962,15 +1142,13 @@ void DarkLibrary::populateMasterMetedata()
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::loadIndexInView(int row)
+void DarkLibrary::loadDarkFITS(QModelIndex index)
 {
-    QSqlRecord record = darkFramesModel->record(row);
+    QSqlRecord record = darkFramesModel->record(index.row());
+
     QString filename = record.value("filename").toString();
-    // Avoid duplicate loads
-    if (m_DarkView->imageData().isNull() || m_DarkView->imageData()->filename() != filename)
+
+    if (filename.isEmpty() == false)
         m_DarkView->loadFile(filename);
 }
 
@@ -1069,51 +1247,6 @@ void DarkLibrary::checkCamera(int ccdNum)
             maxTemperatureSpin->setEnabled(false);
         }
 
-        QStringList isoList = m_TargetChip->getISOList();
-        captureISOS->blockSignals(true);
-        captureISOS->clear();
-
-        // No ISO range available
-        if (isoList.isEmpty())
-        {
-            captureISOS->setEnabled(false);
-        }
-        else
-        {
-            captureISOS->setEnabled(true);
-            captureISOS->addItems(isoList);
-            captureISOS->setCurrentIndex(m_TargetChip->getISOIndex());
-        }
-        captureISOS->blockSignals(false);
-
-        // Gain Check
-        if (m_CurrentCamera->hasGain())
-        {
-            double min, max, step, value, targetCustomGain;
-            m_CurrentCamera->getGainMinMaxStep(&min, &max, &step);
-
-            // Allow the possibility of no gain value at all.
-            GainSpinSpecialValue = min - step;
-            captureGainN->setRange(GainSpinSpecialValue, max);
-            captureGainN->setSpecialValueText(i18n("--"));
-            captureGainN->setEnabled(true);
-            captureGainN->setSingleStep(step);
-            m_CurrentCamera->getGain(&value);
-
-            targetCustomGain = getGain();
-
-            // Set the custom gain if we have one
-            // otherwise it will not have an effect.
-            if (targetCustomGain > 0)
-                captureGainN->setValue(targetCustomGain);
-            else
-                captureGainN->setValue(GainSpinSpecialValue);
-
-            captureGainN->setReadOnly(m_CurrentCamera->getGainPermission() == IP_RO);
-        }
-        else
-            captureGainN->setEnabled(false);
-
         countDarkTotalTime();
     }
 }
@@ -1126,8 +1259,8 @@ void DarkLibrary::countDarkTotalTime()
 
     //double exposureCount = (maxExposureSpin->value() - minExposureSpin->value()) / exposureStepSin->value();
     double temperatureCount = 1;
-    if (m_CurrentCamera->hasCoolerControl() && std::abs(maxTemperatureSpin->value() - minTemperatureSpin->value()) > 0)
-        temperatureCount = (std::abs((maxTemperatureSpin->value() - minTemperatureSpin->value())) / temperatureStepSpin->value()) +
+    if (m_CurrentCamera->hasCoolerControl() && std::fabs(maxTemperatureSpin->value() - minTemperatureSpin->value()) > 0)
+        temperatureCount = (std::fabs((maxTemperatureSpin->value() - minTemperatureSpin->value())) / temperatureStepSpin->value()) +
                            1;
     int binnings = 0;
     if (bin1Check->isChecked())
@@ -1159,13 +1292,6 @@ void DarkLibrary::generateDarkJobs()
 {
     // Always clear sequence queue before starting
     m_CaptureModule->clearSequenceQueue();
-
-    if (m_JobsGenerated == false)
-    {
-        m_JobsGenerated = true;
-        m_PresetSettings = m_CaptureModule->getPresetSettings();
-        m_FileSettings = m_CaptureModule->getFileSettings();
-    }
 
     QList<double> temperatures;
     if (m_CurrentCamera->hasCoolerControl() && std::fabs(maxTemperatureSpin->value() - minTemperatureSpin->value()) >= 0)
@@ -1221,11 +1347,7 @@ void DarkLibrary::generateDarkJobs()
                 settings["bin"] = oneBin;
                 settings["frameType"] = FRAME_DARK;
                 settings["temperature"] = oneTemperature;
-                if (captureGainN->isEnabled())
-                    settings["gain"] = captureGainN->value();
-                if (captureISOS->isEnabled())
-                    settings["iso"] = captureISOS->currentIndex();
-                settings["transferFormat"] = 0;
+                settings["format"] = 0;
 
                 QString directory = prefix + QString("sequence_%1").arg(sequence);
                 QJsonObject fileSettings;
@@ -1243,7 +1365,7 @@ void DarkLibrary::generateDarkJobs()
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::execute()
+void DarkLibrary::executeDarkJobs()
 {
     m_DarkImagesCounter = 0;
     darkProgress->setValue(0);
@@ -1265,7 +1387,7 @@ void DarkLibrary::execute()
 ///////////////////////////////////////////////////////////////////////////////////////
 ///
 ///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::stop()
+void DarkLibrary::stopDarkJobs()
 {
     m_CaptureModule->abort();
     darkProgress->setValue(0);
@@ -1277,17 +1399,14 @@ void DarkLibrary::stop()
 ///////////////////////////////////////////////////////////////////////////////////////
 void DarkLibrary::initView()
 {
-    m_DarkView.reset(new DarkView(darkWidget));
+    m_DarkView = new DarkView(darkWidget);
     m_DarkView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     m_DarkView->setBaseSize(darkWidget->size());
     m_DarkView->createFloatingToolBar();
     QVBoxLayout *vlayout = new QVBoxLayout();
-    vlayout->addWidget(m_DarkView.get());
+    vlayout->addWidget(m_DarkView);
     darkWidget->setLayout(vlayout);
-    connect(m_DarkView.get(), &DarkView::loaded, this, [this]()
-    {
-        emit newImage(m_DarkView->imageData());
-    });
+    //connect(m_DarkView, &FITSView::loaded, this, &DarkLibrary::loadCurrentMasterDefectMap);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -1388,10 +1507,8 @@ void DarkLibrary::generateMasterFrame(const QSharedPointer<FITSData> &data, cons
             break;
     }
 
-    emit newImage(data);
     // Reset Master Buffer
     m_DarkMasterBuffer.assign(m_DarkMasterBuffer.size(), 0);
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -1406,9 +1523,9 @@ template <typename T>  void DarkLibrary::generateMasterFrameInternal(const QShar
     for (uint32_t i = 0; i < m_DarkMasterBuffer.size(); i++)
         writableBuffer[i] = m_DarkMasterBuffer[i] / count;
 
+
     QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-    QString path = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("darks/darkframe_" + ts +
-                   ".fits");
+    QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "darks/darkframe_" + ts + ".fits";
 
     data->calculateStats(true);
     if (!data->saveImage(path))
@@ -1417,9 +1534,7 @@ template <typename T>  void DarkLibrary::generateMasterFrameInternal(const QShar
         return;
     }
 
-    auto memoryMB = KSUtils::getAvailableRAM() / 1e6;
-    if (memoryMB > CACHE_MEMORY_LIMIT)
-        m_CachedDarkFrames[path] = data;
+    m_CachedDarkFrames[path] = data;
 
     QVariantMap map;
     map["ccd"]         = metadata["camera"].toString();
@@ -1427,11 +1542,8 @@ template <typename T>  void DarkLibrary::generateMasterFrameInternal(const QShar
     map["binX"]        = metadata["binx"].toInt();
     map["binY"]        = metadata["biny"].toInt();
     map["temperature"] = metadata["temperature"].toDouble(INVALID_VALUE);
-    map["gain"] = metadata["gain"].toInt(-1);
-    map["iso"] = metadata["iso"].toString();
     map["duration"]    = metadata["duration"].toDouble();
     map["filename"]    = path;
-    map["timestamp"]   = QDateTime::currentDateTime().toString(Qt::ISODate);
 
     m_DarkFramesDatabaseList.append(map);
     m_FileLabel->setText(i18n("Master Dark saved to %1", path));
@@ -1479,8 +1591,7 @@ void DarkLibrary::saveDefectMap()
     if (filename.isEmpty())
     {
         QString ts = QDateTime::currentDateTime().toString("yyyy-MM-ddThh-mm-ss");
-        filename = QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("defectmaps/defectmap_" + ts +
-                   ".json");
+        filename = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "defectmaps/defectmap_" + ts + ".json";
         newFile = true;
     }
 
@@ -1499,7 +1610,6 @@ void DarkLibrary::saveDefectMap()
             if (currentMap != m_DarkFramesDatabaseList.end())
             {
                 (*currentMap)["defectmap"] = filename;
-                (*currentMap)["timestamp"] = QDateTime::currentDateTime().toString(Qt::ISODate);
                 KStarsData::Instance()->userdb()->UpdateDarkFrame(*currentMap);
             }
         }
@@ -1508,211 +1618,6 @@ void DarkLibrary::saveDefectMap()
     {
         m_FileLabel->setText(i18n("Failed to save defect map to %1", filename));
     }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////
-///
-///////////////////////////////////////////////////////////////////////////////////////
-void DarkLibrary::start()
-{
-    generateDarkJobs();
-    execute();
-}
-
-void DarkLibrary::setDarkSettings(const QJsonObject &settings)
-{
-    const auto camera = settings["camera"].toString();
-    const auto minExposure = settings["minExposure"].toDouble(minExposureSpin->value());
-    const auto maxExposure = settings["maxExposure"].toDouble(maxExposureSpin->value());
-    const auto minTemperature = settings["minTemperature"].toDouble(minTemperatureSpin->value());
-    const auto maxTemperature = settings["maxTemperature"].toDouble(maxTemperatureSpin->value());
-    const auto binOneCheck = settings["BinOne"].toBool(bin1Check->isChecked());
-    const auto binTwoCheck = settings["BinTwo"].toBool(bin2Check->isChecked());
-    const auto binFourCheck = settings["BinFour"].toBool(bin4Check->isChecked());
-    const auto count = settings["count"].toInt(countSpin->value());
-    const auto gain = settings["gain"].toInt(-1);
-    const auto iso = settings["iso"].toString();
-
-    cameraS->setCurrentText(camera);
-    bin1Check->setChecked(binOneCheck);
-    bin2Check->setChecked(binTwoCheck);
-    bin4Check->setChecked(binFourCheck);
-
-    minExposureSpin->setValue(minExposure);
-    maxExposureSpin->setValue(maxExposure);
-
-    if (captureGainN->isEnabled() && gain >= 0)
-        captureGainN->setValue(gain);
-    if (captureISOS->isEnabled() && !iso.isEmpty())
-        captureISOS->setCurrentText(iso);
-
-    if (minTemperatureSpin->isEnabled())
-        minTemperatureSpin->setValue(minTemperature);
-    if (maxTemperatureSpin->isEnabled())
-        maxTemperatureSpin->setValue(maxTemperature);
-    countSpin->setValue(count);
-
-}
-
-QJsonObject DarkLibrary::getDarkSettings()
-{
-    QJsonObject createDarks =
-    {
-        {"camera", cameraS->currentText()},
-        {"minExposureValue", minExposureSpin->value()},
-        {"maxExposureValue", maxExposureSpin->value()},
-        {"minTemperatureValue", minTemperatureSpin->value()},
-        {"maxTemperatureValue", maxTemperatureSpin->value()},
-        {"temperatureEnabled", minTemperatureSpin->isEnabled()},
-        {"bin1Check", bin1Check->isChecked()},
-        {"bin2Check", bin2Check->isChecked()},
-        {"bin4Check", bin4Check->isChecked()},
-        {"countSpin", countSpin->value()},
-        {"totalImages", totalImages->text()},
-        {"totalTime", totalTime->text()},
-        {"darkProgress", darkProgress->value()},
-        {"gain", captureGainN->value()},
-        {"iso", captureISOS->currentText()}
-    };
-
-    if (captureGainN->isEnabled())
-        createDarks["gain"] = captureGainN->value();
-    if (captureISOS->isEnabled())
-        createDarks["iso"] = captureISOS->currentText();
-
-    return createDarks;
-}
-
-void DarkLibrary::setCameraPresets(const QJsonObject &settings)
-{
-    const auto camera = settings["camera"].toString();
-    const auto isDarkPrefer = settings["isDarkPrefer"].toBool(preferDarksRadio->isChecked());
-    const auto isDefectPrefer = settings["isDefectPrefer"].toBool(preferDefectsRadio->isChecked());
-    cameraS->setCurrentText(camera);
-    preferDarksRadio->setChecked(isDarkPrefer);
-    preferDefectsRadio->setChecked(isDefectPrefer);
-    checkCamera();
-    reloadDarksFromDatabase();
-}
-
-QJsonObject DarkLibrary::getCameraPresets()
-{
-    QJsonObject cameraSettings =
-    {
-        {"camera", cameraS->currentText()},
-        {"preferDarksRadio", preferDarksRadio->isChecked()},
-        {"preferDefectsRadio", preferDefectsRadio->isChecked()},
-        {"fileName", m_FileLabel->text()}
-    };
-    return cameraSettings;
-}
-
-QJsonObject DarkLibrary::getDefectSettings()
-{
-    QJsonObject createDefectMaps =
-    {
-        {"masterTime", masterTime->text()},
-        {"masterExposure", masterExposure->text()},
-        {"masterTempreture", masterTemperature->text()},
-        {"masterMean", masterMean->text()},
-        {"masterMedian", masterMedian->text()},
-        {"masterDeviation", masterDeviation->text()},
-        {"hotPixelsCount", hotPixelsCount->value()},
-        {"coldPixelsCount", coldPixelsCount->value()},
-        {"aggresivenessHotSpin", aggresivenessHotSpin->value()},
-        {"aggresivenessColdSpin", aggresivenessColdSpin->value()},
-        {"hotPixelsEnabled", hotPixelsEnabled->isChecked()},
-        {"coldPixelsEnabled", coldPixelsEnabled->isChecked()},
-    };
-    return createDefectMaps;
-}
-
-QJsonArray DarkLibrary::getViewMasters()
-{
-    QJsonArray array;
-
-    for(int i = 0; i < darkFramesModel->rowCount(); i++)
-    {
-        QSqlRecord record = darkFramesModel->record(i);
-        auto camera = record.value("ccd").toString();
-        auto binX = record.value("binX").toInt();
-        auto binY = record.value("binY").toInt();
-        auto temperature = record.value("temperature").toDouble();
-        auto duration = record.value("duration").toDouble();
-        auto ts = record.value("timestamp").toString();
-        auto gain = record.value("gain").toInt();
-        auto iso = record.value("iso").toString();
-
-        QJsonObject filterRows =
-        {
-            {"camera", camera},
-            {"binX", binX},
-            {"binY", binY},
-            {"temperature", temperature},
-            {"duaration", duration},
-            {"ts", ts}
-        };
-
-        if (gain >= 0)
-            filterRows["gain"] = gain;
-        if (!iso.isEmpty())
-            filterRows["iso"] = iso;
-
-        array.append(filterRows);
-    }
-    return array;
-}
-
-void DarkLibrary::setDefectSettings(const QJsonObject payload)
-{
-    const auto index = payload["rowIndex"].toInt(0);
-    masterDarksCombo->setCurrentIndex(index);
-}
-
-void DarkLibrary::setDefectPixels(const QJsonObject &payload)
-{
-    const auto hotSpin = payload["hotSpin"].toInt();
-    const auto coldSpin = payload["coldSpin"].toInt();
-    const auto hotEnabled = payload["hotEnabled"].toBool(hotPixelsEnabled->isChecked());
-    const auto coldEnabled = payload["coldEnabled"].toBool(coldPixelsEnabled->isChecked());
-
-    hotPixelsEnabled->setChecked(hotEnabled);
-    coldPixelsEnabled->setChecked(coldEnabled);
-
-    aggresivenessHotSpin->setValue(hotSpin);
-    aggresivenessColdSpin->setValue(coldSpin);
-
-    m_DarkView->ZoomDefault();
-
-    setDefectMapEnabled(true);
-    generateMapB->click();
-}
-
-void DarkLibrary::setDefectMapEnabled(bool enabled)
-{
-    m_DarkView->setDefectMapEnabled(enabled);
-}
-
-double DarkLibrary::getGain()
-{
-    // Gain is manifested in two forms
-    // Property CCD_GAIN and
-    // Part of CCD_CONTROLS properties.
-    // Therefore, we have to find what the currently camera supports first.
-    auto gain = m_CurrentCamera->getProperty("CCD_GAIN");
-    if (gain)
-        return gain->getNumber()->at(0)->value;
-
-
-    auto controls = m_CurrentCamera->getProperty("CCD_CONTROLS");
-    if (controls)
-    {
-        auto oneGain = controls->getNumber()->findWidgetByName("Gain");
-        if (oneGain)
-            return oneGain->value;
-    }
-
-    return -1;
 }
 
 }

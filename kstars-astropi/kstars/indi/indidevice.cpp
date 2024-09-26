@@ -1,9 +1,14 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq (mutlaqja AT ikarustech DOT com)
+/*  GUI Device Manager
+    Copyright (C) 2012 Jasem Mutlaq (mutlaqja AT ikarustech DOT com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 
+ */
+
+#include <zlib.h>
 #include <indicom.h>
 #include <base64.h>
 #include <basedevice.h>
@@ -45,36 +50,34 @@
 
 const char *libindi_strings_context = "string from libindi, used in the config dialog";
 
-INDI_D::INDI_D(QWidget *parent, INDI::BaseDevice *in_dv, ClientManager *in_cm) : QWidget(parent)
+INDI_D::INDI_D(INDI::BaseDevice *in_dv, ClientManager *in_cm) : QDialog()
 {
 #ifdef Q_OS_OSX
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
 #endif
+
     m_BaseDevice = in_dv;
     m_ClientManager = in_cm;
 
     m_Name = m_BaseDevice->getDeviceName();
 
-    QHBoxLayout *layout = new QHBoxLayout(this);
+    deviceVBox = new QSplitter();
+    deviceVBox->setOrientation(Qt::Vertical);
 
-    deviceVBox = new QSplitter(Qt::Vertical, this);
+    groupContainer = new QTabWidget();
 
-    groupContainer = new QTabWidget(this);
-
-    msgST_w = new QTextEdit(this);
+    msgST_w = new QTextEdit();
     msgST_w->setReadOnly(true);
-    msgST_w->setSizeAdjustPolicy(QAbstractScrollArea::AdjustToContentsOnFirstShow);
 
     deviceVBox->addWidget(groupContainer);
     deviceVBox->addWidget(msgST_w);
-    deviceVBox->setStretchFactor(0, 2);
 
-    layout->addWidget(deviceVBox);
+    //parent->mainTabWidget->addTab(deviceVBox, label);
 }
 
 bool INDI_D::buildProperty(INDI::Property prop)
 {
-    if (!prop.isValid())
+    if (!prop.getRegistered())
         return false;
 
     QString groupName(prop.getGroupName());
@@ -88,7 +91,7 @@ bool INDI_D::buildProperty(INDI::Property prop)
     {
         pg = new INDI_G(this, groupName);
         groupsList.append(pg);
-        groupContainer->addTab(pg, i18nc(libindi_strings_context, groupName.toUtf8()));
+        groupContainer->addTab(pg->getScrollArea(), i18nc(libindi_strings_context, groupName.toUtf8()));
     }
 
     return pg->addProperty(prop);
@@ -104,12 +107,12 @@ bool INDI_D::removeProperty(INDI::Property prop)
 
     if (strcmp(prop->getDeviceName(), m_BaseDevice->getDeviceName()))
     {
-        // qDebug() << Q_FUNC_INFO << "Ignoring property " << prop->getName() << " for device " << prop->getgetDeviceName() << " because our device is "
-        //     << dv->getDeviceName() << Qt::endl;
+        // qDebug() << "Ignoring property " << prop->getName() << " for device " << prop->getgetDeviceName() << " because our device is "
+        //     << dv->getDeviceName() << endl;
         return false;
     }
 
-    // qDebug() << Q_FUNC_INFO << "Received new property " << prop->getName() << " for our device " << dv->getDeviceName() << Qt::endl;
+    // qDebug() << "Received new property " << prop->getName() << " for our device " << dv->getDeviceName() << endl;
 
     INDI_G *pg = getGroup(groupName);
 
@@ -120,7 +123,7 @@ bool INDI_D::removeProperty(INDI::Property prop)
 
     if (pg->size() == 0 && removeResult)
     {
-        //qDebug() << Q_FUNC_INFO << "Removing tab for group " << pg->getName() << " with an index of " << groupsList.indexOf(pg) << Qt::endl;
+        //qDebug() << "Removing tab for group " << pg->getName() << " with an index of " << groupsList.indexOf(pg) << endl;
         groupContainer->removeTab(groupsList.indexOf(pg));
         groupsList.removeOne(pg);
         delete (pg);
@@ -332,13 +335,13 @@ void INDI_D::updateMessageLog(INDI::BaseDevice *idv, int messageID)
     qCInfo(KSTARS_INDI) << idv->getDeviceName() << ": " << message.mid(21);
 }
 
-//INDI_D::~INDI_D()
-//{
-//    while (!groupsList.isEmpty())
-//        delete groupsList.takeFirst();
-//}
+INDI_D::~INDI_D()
+{
+    while (!groupsList.isEmpty())
+        delete groupsList.takeFirst();
+}
 
-INDI_G *INDI_D::getGroup(const QString &groupName) const
+INDI_G *INDI_D::getGroup(const QString &groupName)
 {
     for (const auto &pg : groupsList)
     {

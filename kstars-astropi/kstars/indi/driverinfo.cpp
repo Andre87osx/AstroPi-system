@@ -1,8 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Device
+    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+ */
 
 #include "driverinfo.h"
 
@@ -20,8 +24,8 @@ DriverInfo::DriverInfo(const QString &inName)
 
     m_Manufacturer = "Others";
     hostname = "localhost";
-    port     = -1;
-    userPort = -1;
+    port     = "-1";
+    userPort = "-1";
 }
 
 DriverInfo::DriverInfo(DriverInfo *di)
@@ -95,7 +99,7 @@ void DriverInfo::setServerState(bool inState)
 
 void DriverInfo::setClientState(bool inState)
 {
-    //qDebug() << Q_FUNC_INFO << "Request to change " << name << " client status to " << (inState ? "True" : "False") << Qt::endl;
+    //qDebug() << "Request to change " << name << " client status to " << (inState ? "True" : "False") << endl;
 
     if (inState == clientState)
         return;
@@ -105,9 +109,17 @@ void DriverInfo::setClientState(bool inState)
     if (clientState == false)
         clientManager = nullptr;
 
-    //qDebug() << Q_FUNC_INFO << "Client state for this device changed, calling device state changed signal " << Qt::endl;
+    //qDebug() << "Client state for this device changed, calling device state changed signal " << endl;
 
     emit deviceStateChanged(this);
+}
+
+void DriverInfo::setUserPort(const QString &inUserPort)
+{
+    if (inUserPort.isEmpty() == false)
+        userPort = inUserPort;
+    else
+        userPort = "-1";
 }
 
 void DriverInfo::addDevice(DeviceInfo *idv)
@@ -163,14 +175,4 @@ void DriverInfo::setUniqueLabel(const QString &inUniqueLabel)
         return;
 
     uniqueLabel = inUniqueLabel;
-}
-
-QJsonObject DriverInfo::startupRule() const
-{
-    return m_StartupRule;
-}
-
-void DriverInfo::setStartupRule(const QJsonObject &value)
-{
-    m_StartupRule = value;
 }

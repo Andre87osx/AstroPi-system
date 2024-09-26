@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2002 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          colorscheme.cpp  -  description
+                             -------------------
+    begin                : Wed May 8 2002
+    copyright            : (C) 2002 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "colorscheme.h"
 
@@ -154,7 +165,7 @@ bool ColorScheme::load(const QString &name)
 
         if (!ok)
         {
-            qDebug() << Q_FUNC_INFO << QString("Unable to load color scheme named %1. Also tried %2.").arg(name, filename);
+            qDebug() << QString("Unable to load color scheme named %1. Also tried %2.").arg(name, filename);
             return false;
         }
     }
@@ -259,8 +270,8 @@ bool ColorScheme::save(const QString &name)
                 filename.replace(i, 1, "-");
 
         filename = filename.append(".colors");
-        //determine filename in local user KDE directory tree.
-        file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(filename));
+        file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                         filename); //determine filename in local user KDE directory tree.
 
         //if (file.exists() || !file.open(QIODevice::ReadWrite | QIODevice::Append))
         if (!file.open(QIODevice::ReadWrite))
@@ -278,8 +289,8 @@ bool ColorScheme::save(const QString &name)
             file.close();
         }
 
-        //determine filename in local user KDE directory tree.
-        file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("colors.dat"));
+        file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                         "colors.dat"); //determine filename in local user KDE directory tree.
 
         if (!file.open(QIODevice::ReadWrite))
         {

@@ -1,10 +1,13 @@
-/*
-    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Element
+    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 
     2004-01-15	INDI element is the most basic unit of the INDI KStars client.
-*/
+ */
 
 #pragma once
 
@@ -38,11 +41,12 @@ class INDI_P;
  *
  * @author Jasem Mutlaq
  */
-class INDI_E : public QWidget
+class INDI_E : public QObject
 {
         Q_OBJECT
     public:
         INDI_E(INDI_P *gProp, INDI::Property dProp);
+        ~INDI_E();
 
         const QString &getLabel()
         {

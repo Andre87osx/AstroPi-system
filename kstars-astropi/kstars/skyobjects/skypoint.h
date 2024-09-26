@@ -1,9 +1,21 @@
-/*
-    SPDX-FileCopyrightText: 2001-2005 Jason Harris <jharris@30doradus.org>
-    SPDX-FileCopyrightText: 2004-2005 Pablo de Vicente <p.devicente@wanadoo.es>
+/***************************************************************************
+                          skypoint.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Feb 11 2001
+    copyright            : (C) 2001-2005 by Jason Harris
+    email                : jharris@30doradus.org
+    copyright            : (C) 2004-2005 by Pablo de Vicente
+    email                : p.devicente@wanadoo.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -735,7 +747,6 @@ class SkyPoint
         static double cpuTime_EqToHz;
         static long unsigned eqToHzCalls;
 #endif
-        static bool implementationIsLibnova;
 
     protected:
         /**

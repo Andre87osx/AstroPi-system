@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                  catalogsdbui.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2021-06-03
+    copyright            : (C) 2021 by Valentin Boettcher
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include <QCheckBox>
 #include <QMessageBox>
@@ -11,7 +22,6 @@
 #include "ui_catalogsdbui.h"
 #include "catalogeditform.h"
 #include "catalogdetails.h"
-#include "catalogcoloreditor.h"
 
 CatalogsDBUI::CatalogsDBUI(QWidget *parent, const QString &db_path)
     : QDialog(parent), ui{ new Ui::CatalogsDBUI }, m_manager{ db_path }, m_last_dir{
@@ -54,9 +64,6 @@ CatalogsDBUI::CatalogsDBUI(QWidget *parent, const QString &db_path)
 
     connect(ui->dublicateButton, &QPushButton::clicked, this,
             &CatalogsDBUI::dublicate_catalog);
-
-    connect(ui->colorButton, &QPushButton::clicked, this,
-            &CatalogsDBUI::show_color_editor);
 }
 
 CatalogsDBUI::~CatalogsDBUI()
@@ -124,7 +131,6 @@ void CatalogsDBUI::row_selected(int row, int)
     ui->removeButton->setEnabled(true);
     ui->exportButton->setEnabled(true);
     ui->dublicateButton->setEnabled(true);
-    ui->colorButton->setEnabled(true);
 }
 
 void CatalogsDBUI::disable_buttons()
@@ -172,7 +178,7 @@ void CatalogsDBUI::export_catalog()
     if (!cat.first)
         return;
 
-    QFileDialog dialog(this, i18nc("@title:window", "Export Catalog"), m_last_dir,
+    QFileDialog dialog(this, i18n("Export Catalog"), m_last_dir,
                        i18n("Catalog") +
                            QString(" (*.%1);;").arg(CatalogsDB::db_file_extension));
     dialog.setAcceptMode(QFileDialog::AcceptSave);
@@ -192,7 +198,7 @@ void CatalogsDBUI::export_catalog()
 
 void CatalogsDBUI::import_catalog(bool force)
 {
-    QFileDialog dialog(this, i18nc("@title:window", "Import Catalog"), m_last_dir,
+    QFileDialog dialog(this, i18n("Import Catalog"), m_last_dir,
                        i18n("Catalog") +
                            QString(" (*.%1);;").arg(CatalogsDB::db_file_extension));
     dialog.setAcceptMode(QFileDialog::AcceptOpen);
@@ -288,8 +294,8 @@ void CatalogsDBUI::dublicate_catalog()
         if (!remove_success.first)
             QMessageBox::critical(
                 this, i18n("Critical error"),
-                i18n("Could not clean up and remove the new catalog.<br>%1",
-                     remove_success.second));
+                i18n("Could not clean up and remove the new catalog.<br>%1")
+                    .arg(remove_success.second));
     };
 }
 
@@ -304,17 +310,5 @@ void CatalogsDBUI::show_more_dialog()
     connect(this, &QDialog::finished, dialog, &QDialog::done);
     connect(dialog, &QDialog::finished, this, &CatalogsDBUI::refresh_db_table);
 
-    dialog->show();
-}
-
-void CatalogsDBUI::show_color_editor()
-{
-    const auto &success = get_selected_catalog();
-    if (!success.first)
-        return;
-
-    auto *dialog = new CatalogColorEditor(success.second.id, this);
-
-    connect(this, &QDialog::finished, dialog, &QDialog::reject);
     dialog->show();
 }

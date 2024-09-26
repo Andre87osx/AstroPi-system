@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                 constellationboundarylines.cpp -  K Desktop Planetarium
+                             -------------------
+    begin                : 25 Oct. 2005
+    copyright            : (C) 2005 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "constellationboundarylines.h"
 
@@ -192,7 +203,7 @@ void ConstellationBoundaryLines::appendPoly(const std::shared_ptr<PolyList> &pol
         printf("PolyList: %3d: %d\n", ++m_polyIndexCnt, indexHash.size());
 }
 
-PolyList *ConstellationBoundaryLines::ContainingPoly(const SkyPoint *p) const
+PolyList *ConstellationBoundaryLines::ContainingPoly(SkyPoint *p)
 {
     //printf("called ContainingPoly(p)\n");
 
@@ -240,7 +251,7 @@ PolyList *ConstellationBoundaryLines::ContainingPoly(const SkyPoint *p) const
         PolyList *polyList = iter.key();
         iter++;
 
-        //qDebug() << Q_FUNC_INFO << QString("checking %1 boundary\n").arg( polyList->name() );
+        //qDebug() << QString("checking %1 boundary\n").arg( polyList->name() );
 
         const QPolygonF *poly = polyList->poly();
         if (wrapRA && polyList->wrapRA())
@@ -263,7 +274,7 @@ PolyList *ConstellationBoundaryLines::ContainingPoly(const SkyPoint *p) const
 // start here.  (Some of them may not be needed (or working)).
 //-------------------------------------------------------------------
 
-QString ConstellationBoundaryLines::constellationName(const SkyPoint *p) const
+QString ConstellationBoundaryLines::constellationName(SkyPoint *p)
 {
     PolyList *polyList = ContainingPoly(p);
     if (polyList)

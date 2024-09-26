@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2007 James B. Bowlin <bowlin@mindspring.com>
+/***************************************************************************
+                          typedef.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2007-07-03
+    copyright            : (C) 2007 by James B. Bowlin
+    email                : bowlin@mindspring.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 /* It is a bit cheesy/crappy to have somewhat unrelated typedefs gathered in a
  * single typedef.h file like this but it has been incredibly useful For

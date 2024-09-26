@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2011 Rafał Kułaga <rl.kulaga@gmail.com>
+/***************************************************************************
+                          pwizprint.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Wed Aug 3 2011
+    copyright            : (C) 2011 by Rafał Kułaga
+    email                : rl.kulaga@gmail.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "pwizprint.h"
 
@@ -62,7 +73,7 @@ void PWizPrintUI::printDocument(QPrinter *printer)
 void PWizPrintUI::slotExport()
 {
     QUrl url =
-        QFileDialog::getSaveFileUrl(KStars::Instance(), i18nc("@title:window", "Export"), QUrl(QDir::homePath()),
+        QFileDialog::getSaveFileUrl(KStars::Instance(), i18n("Export"), QUrl(QDir::homePath()),
                                     "application/pdf application/postscript application/vnd.oasis.opendocument.text");
     //User cancelled file selection dialog - abort image export
     if (url.isEmpty())

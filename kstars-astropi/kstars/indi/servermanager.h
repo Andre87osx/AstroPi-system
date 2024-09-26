@@ -1,8 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Server Manager
+    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+ */
 
 #pragma once
 
@@ -13,7 +17,6 @@
 #include <QProcess>
 #include <QTcpSocket>
 #include <QTemporaryFile>
-#include <QFuture>
 
 #include <memory>
 
@@ -30,43 +33,30 @@ class ServerManager : public QObject
         Q_OBJECT
 
     public:
-        ServerManager(const QString &inHost, int inPort);
-        ~ServerManager() override;
+        ServerManager(const QString &inHost, uint inPort);
+        ~ServerManager();
 
         bool start();
         void stop();
+        void terminate();
 
         QString getLogBuffer();
-        const QString &getHost() const
+        const QString &getHost()
         {
             return host;
         }
-        int getPort() const
+        const QString &getPort()
         {
             return port;
         }
 
-        void setPendingDrivers(QList<DriverInfo *> drivers)
-        {
-            m_PendingDrivers = drivers;
-        }
-        const QList<DriverInfo *> &pendingDrivers() const
-        {
-            return m_PendingDrivers;
-        }
-
-        void startDriver(DriverInfo *dv);
+        bool startDriver(DriverInfo *dv);
         void stopDriver(DriverInfo *dv);
         bool restartDriver(DriverInfo *dv);
-
-        const QList<DriverInfo *> &managedDrivers() const
-        {
-            return m_ManagedDrivers;
-        }
         bool contains(DriverInfo *dv)
         {
-            return m_ManagedDrivers.contains(dv);
-        }
+            return managedDrivers.contains(dv);
+        };
 
         void setMode(ServerMode inMode)
         {
@@ -81,42 +71,33 @@ class ServerManager : public QObject
 
         int size()
         {
-            return m_ManagedDrivers.size();
+            return managedDrivers.size();
         }
 
     public slots:
+        void connectionSuccess();
         void processServerError(QProcess::ProcessError);
         void processStandardError();
 
     private:
         QTcpSocket serverSocket;
         QString host;
-        int port;
+        QString port;
         QTemporaryFile serverBuffer;
         std::unique_ptr<QProcess> serverProcess;
 
-        void insertEnvironmentPath(QProcessEnvironment *env, const QString &variable, const QString &relativePath);
+        void insertEnvironmentPath(QProcessEnvironment *env, QString variable, QString relativePath);
 
         ServerMode mode { SERVER_CLIENT };
+        //bool driverCrashed { false };
 
-        QList<DriverInfo *> m_ManagedDrivers;
-
-        QList<DriverInfo *> m_PendingDrivers;
+        QList<DriverInfo *> managedDrivers;
 
         QFile indiFIFO;
 
     signals:
-        void started();
-        void stopped();
-        void failed(const QString &message);
-        void terminated(const QString &message);
-
-
+        void serverFailure(ServerManager *);
         void newServerLog();
-
-        // Driver Signals
-        void driverStarted(DriverInfo *driver);
-        void driverStopped(DriverInfo *driver);
-        void driverRestarted(DriverInfo *driver);
-        void driverFailed(DriverInfo *driver, const QString &message);
+        void started();
+        void finished(int exit_code, QProcess::ExitStatus exit_status);
 };

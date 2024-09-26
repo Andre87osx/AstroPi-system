@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2007 James B. Bowlin <bowlin@mindspring.com>
+/***************************************************************************
+                        highpmstarlist.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2007-08-06
+    copyright            : (C) 2007 by James B. Bowlin
+    email                : bowlin@mindspring.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "highpmstarlist.h"
 
@@ -36,7 +47,7 @@ bool HighPMStarList::append(Trixel trixel, StarObject *star, double pm)
         return false;
 
     if (trixel >= m_skyMesh->size())
-        qDebug() << Q_FUNC_INFO << "### Trixel ID out of range for the Mesh currently in use!" << trixel;
+        qDebug() << "### Trixel ID out of range for the Mesh currently in use!" << trixel;
 
     m_stars.append(new HighPMStar(trixel, star));
     if (m_maxPM >= pm)
@@ -75,7 +86,7 @@ bool HighPMStarList::reindex(KSNumbers *num, StarIndex *starIndex)
         // out with the old ...
         if (HPStar->trixel >= m_skyMesh->size())
         {
-            qDebug() << Q_FUNC_INFO << "### Expect an Index out-of-range error. star->trixel =" << HPStar->trixel;
+            qDebug() << "### Expect an Index out-of-range error. star->trixel =" << HPStar->trixel;
         }
 
         StarList *old = starIndex->at(HPStar->trixel);
@@ -87,7 +98,7 @@ bool HighPMStarList::reindex(KSNumbers *num, StarIndex *starIndex)
         // in with the new ...
         HPStar->trixel = trixel;
         if (trixel >= m_skyMesh->size())
-            qDebug() << Q_FUNC_INFO << "### Expect an Index out-of-range error. trixel =" << trixel;
+            qDebug() << "### Expect an Index out-of-range error. trixel =" << trixel;
 
         StarList *list = starIndex->at(trixel);
         int j;

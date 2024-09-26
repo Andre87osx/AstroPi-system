@@ -1,10 +1,13 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI STD
+    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 
     Handle INDI Standard properties.
-*/
+ */
 
 #include "indistd.h"
 
@@ -52,7 +55,7 @@ GenericDevice::GenericDevice(DeviceInfo &idv, ClientManager *cm)
     {
         if (Options::useTimeUpdate() && Options::useKStarsSource())
         {
-            if (dType != KSTARS_UNKNOWN && baseDevice != nullptr && isConnected())
+            if (dType != KSTARS_UNKNOWN && baseDevice != nullptr && baseDevice->isConnected())
             {
                 auto tvp = baseDevice->getText("TIME_UTC");
                 if (tvp && tvp->getPermission() != IP_RO)
@@ -151,7 +154,7 @@ void GenericDevice::registerProperty(INDI::Property prop)
         auto port = baseDevice->getText("DEVICE_PORT");
         if (svp && port)
         {
-            for (const auto &it : *svp)
+            for (const auto &it: *svp)
             {
                 if (it.isNameMatch(port->at(0)->getText()))
                 {
@@ -755,30 +758,6 @@ bool GenericDevice::runCommand(int command, void *ptr)
         }
         break;
 
-        case INDI_REVERSE_ROTATOR:
-        {
-            if (ptr == nullptr)
-                return false;
-
-            auto svp = baseDevice->getSwitch("ROTATOR_REVERSE");
-
-            if (!svp)
-                return false;
-
-            auto enabled = *(static_cast<bool *>(ptr));
-
-            if ( (enabled && svp->sp[0].s == ISS_ON) ||
-                    (!enabled && svp->sp[1].s == ISS_ON))
-                break;
-
-            svp->reset();
-            svp->at(0)->setState(enabled ? ISS_ON : ISS_OFF);
-            svp->at(1)->setState(enabled ? ISS_OFF : ISS_ON);
-
-            clientManager->sendNewSwitch(svp);
-        }
-        break;
-
     }
 
     return true;
@@ -788,7 +767,7 @@ bool GenericDevice::setProperty(QObject *setPropCommand)
 {
     GDSetCommand *indiCommand = static_cast<GDSetCommand *>(setPropCommand);
 
-    //qDebug() << Q_FUNC_INFO << "We are trying to set value for property " << indiCommand->indiProperty << " and element" << indiCommand->indiElement << " and value " << indiCommand->elementValue;
+    //qDebug() << "We are trying to set value for property " << indiCommand->indiProperty << " and element" << indiCommand->indiElement << " and value " << indiCommand->elementValue;
 
     auto pp = baseDevice->getProperty(indiCommand->indiProperty.toLatin1().constData());
 
@@ -814,7 +793,7 @@ bool GenericDevice::setProperty(QObject *setPropCommand)
 
             sp->setState(indiCommand->elementValue.toInt() == 0 ? ISS_OFF : ISS_ON);
 
-            //qDebug() << Q_FUNC_INFO << "Sending switch " << sp->name << " with status " << ((sp->s == ISS_ON) ? "On" : "Off");
+            //qDebug() << "Sending switch " << sp->name << " with status " << ((sp->s == ISS_ON) ? "On" : "Off");
             clientManager->sendNewSwitch(svp);
 
             return true;
@@ -839,7 +818,7 @@ bool GenericDevice::setProperty(QObject *setPropCommand)
 
             np->setValue(value);
 
-            //qDebug() << Q_FUNC_INFO << "Sending switch " << sp->name << " with status " << ((sp->s == ISS_ON) ? "On" : "Off");
+            //qDebug() << "Sending switch " << sp->name << " with status " << ((sp->s == ISS_ON) ? "On" : "Off");
             clientManager->sendNewNumber(nvp);
         }
         break;
@@ -1281,7 +1260,7 @@ bool ST4::doPulse(GuideDirection dir, int msecs)
 
     clientManager->sendNewNumber(npulse);
 
-    //qDebug() << Q_FUNC_INFO << "Sending pulse for " << npulse->getName() << " in direction " << dirPulse->getName() << " for " << msecs << " ms ";
+    //qDebug() << "Sending pulse for " << npulse->getName() << " in direction " << dirPulse->getName() << " for " << msecs << " ms ";
 
     return true;
 }

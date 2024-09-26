@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          timedialog.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Feb 11 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "timedialog.h"
 
@@ -36,9 +47,9 @@ TimeDialog::TimeDialog(const KStarsDateTime &now, GeoLocation *_geo, QWidget *pa
     setLayout(mainLayout);
 
     if (UTCNow)
-        setWindowTitle(i18nc("@title:window set clock to a new time", "Set UTC Time"));
+        setWindowTitle(i18nc("set clock to a new time", "Set UTC Time"));
     else
-        setWindowTitle(i18nc("@title:window set clock to a new time", "Set Time"));
+        setWindowTitle(i18nc("set clock to a new time", "Set Time"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLayout->addWidget(buttonBox);

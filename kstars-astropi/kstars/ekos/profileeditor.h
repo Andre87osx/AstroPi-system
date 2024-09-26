@@ -1,14 +1,17 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Profile Editor
+    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
 
 #include "oal/scope.h"
 #include "ui_profileeditor.h"
-#include "indi/indicommon.h"
+
 #include <QDialog>
 #include <QFrame>
 #include <QString>
@@ -62,11 +65,10 @@ class ProfileEditor : public QDialog
         void updateGuiderSelection(int id);
         void scanNetwork();
         void showINDIHub();
-        void executeScriptEditor();
 
     private:
         void populateManufacturerCombo(QStandardItemModel *model, QComboBox *combo, const QString &selectedDriver, bool isLocal,
-                                       const QList<DeviceFamily> &families);
+                                       int family);
         QString getTooltip(DriverInfo *dv);
         void scanIP(const QString &ip);
         void clearAllRequests();
@@ -78,7 +80,6 @@ class ProfileEditor : public QDialog
         QStandardItemModel *m_CameraModel { nullptr };
         QStandardItemModel *m_GuiderModel { nullptr };
         QStandardItemModel *m_FocuserModel { nullptr };
-        QStandardItemModel *m_Aux1Model { nullptr }, *m_Aux2Model { nullptr }, *m_Aux3Model { nullptr }, *m_Aux4Model { nullptr };
         uint8_t m_INDIHub { 0 };
 
         QPointer<QProgressDialog> m_ProgressDialog;

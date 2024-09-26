@@ -1,10 +1,13 @@
-/*
-    SPDX-FileCopyrightText: 2017 Robert Lancaster <rlancaste@gmail.com>
+/*  StarProfileViewer
+    Copyright (C) 2017 Robert Lancaster <rlancaste@gmail.com>
 
     Based on the QT Surface Example https://doc.qt.io/qt-5.9/qtdatavisualization-surface-example.html
     and the QT Bars Example https://doc-snapshots.qt.io/qt5-5.9/qtdatavisualization-bars-example.html
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "starprofileviewer.h"
@@ -57,7 +60,7 @@ StarProfileViewer::StarProfileViewer(QWidget *parent) : QDialog(parent)
     container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     container->setFocusPolicy(Qt::StrongFocus);
 
-    this->setWindowTitle(i18nc("@title:window", "View Star Profile"));
+    this->setWindowTitle(i18n("View Star Profile"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     QHBoxLayout *topLayout = new QHBoxLayout();

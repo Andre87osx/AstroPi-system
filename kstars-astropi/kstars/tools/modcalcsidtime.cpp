@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2002 Pablo de Vicente <vicente@oan.es>
+/***************************************************************************
+                          modcalcsidtime.cpp  -  description
+                             -------------------
+    begin                : Wed Jan 23 2002
+    copyright            : (C) 2002 by Pablo de Vicente
+    email                : vicente@oan.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "modcalcsidtime.h"
 
@@ -14,9 +25,6 @@
 #include <KLineEdit>
 
 #include <QTextStream>
-
-// Qt version calming
-#include <qtskipemptyparts.h>
 
 modCalcSidTime::modCalcSidTime(QWidget *parent) : QFrame(parent)
 {
@@ -242,7 +250,7 @@ void modCalcSidTime::processLines(QTextStream &istream)
         line = istream.readLine();
         line = line.trimmed();
 
-        QStringList fields = line.split(' ', Qt::SkipEmptyParts);
+        QStringList fields = line.split(' ', QString::SkipEmptyParts);
 
         //Find and parse the location string
         if (LocationCheckBatch->isChecked())
@@ -257,10 +265,10 @@ void modCalcSidTime::processLines(QTextStream &istream)
                 int iEnd               = line.indexOf(q, iStart + 1);
                 QString locationString = line.mid(iStart, iEnd - iStart + 1);
                 line.remove(locationString);
-                fields = line.split(' ', Qt::SkipEmptyParts);
+                fields = line.split(' ', QString::SkipEmptyParts);
                 locationString.remove(q);
 
-                QStringList locationFields = locationString.split(',', Qt::SkipEmptyParts);
+                QStringList locationFields = locationString.split(',', QString::SkipEmptyParts);
                 for (int i = 0; i < locationFields.size(); i++)
                     locationFields[i] = locationFields[i].trimmed();
 
@@ -270,7 +278,7 @@ void modCalcSidTime::processLines(QTextStream &istream)
                     locationFields.insert(1, "");
                 if (locationFields.size() != 3)
                 {
-                    qDebug() << Q_FUNC_INFO << "Error: could not parse location string: " << locationString;
+                    qDebug() << "Error: could not parse location string: " << locationString;
                     continue;
                 }
 
@@ -278,7 +286,7 @@ void modCalcSidTime::processLines(QTextStream &istream)
                            locationFields[2]);
                 if (geoBatch == nullptr)
                 {
-                    qDebug() << Q_FUNC_INFO << "Error: location not found in database: " << locationString;
+                    qDebug() << "Error: location not found in database: " << locationString;
                     continue;
                 }
             }
@@ -295,7 +303,7 @@ void modCalcSidTime::processLines(QTextStream &istream)
             }
             if (!dt.isValid())
             {
-                qDebug() << Q_FUNC_INFO << "Error: did not find a valid date string in: " << line;
+                qDebug() << "Error: did not find a valid date string in: " << line;
                 continue;
             }
         }
@@ -312,7 +320,7 @@ void modCalcSidTime::processLines(QTextStream &istream)
         }
         if (!inTime.isValid())
         {
-            qDebug() << Q_FUNC_INFO << "Error: did not find a valid time string in: " << line;
+            qDebug() << "Error: did not find a valid time string in: " << line;
             continue;
         }
 

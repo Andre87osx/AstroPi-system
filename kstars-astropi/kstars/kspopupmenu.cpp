@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          kspopupmenu.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sat Feb 27 2003
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "kspopupmenu.h"
 
@@ -85,15 +96,15 @@ QString riseSetTimeLabel(SkyObject *o, bool isRaise)
         //We can round to the nearest minute by simply adding 30 seconds to the time.
         QString time = QLocale().toString(t.addSecs(30), QLocale::ShortFormat);
         return isRaise ? i18n("Rise time: %1", time) :
-               i18nc("the time at which an object falls below the horizon",
-                     "Set time: %1", time);
+                         i18nc("the time at which an object falls below the horizon",
+                               "Set time: %1", time);
     }
     if (o->alt().Degrees() > 0)
         return isRaise ? i18n("No rise time: Circumpolar") :
-               i18n("No set time: Circumpolar");
+                         i18n("No set time: Circumpolar");
     else
         return isRaise ? i18n("No rise time: Never rises") :
-               i18n("No set time: Never rises");
+                         i18n("No set time: Never rises");
 }
 
 // String representation for transit time for object
@@ -231,15 +242,11 @@ void KSPopupMenu::createCatalogObjectMenu(CatalogObject *obj)
     QString typeName = obj->typeName();
 
     QString info = QString("%1<br>Catalog: %2")
-                   .arg(magToStr(obj->mag()))
-                   .arg(obj->getCatalog().name);
+                       .arg(magToStr(obj->mag()))
+                       .arg(obj->getCatalog().name);
 
     if (obj->a() > 0)
-    {
-        float a = obj->a();
-        float b = obj->b() > 0 ? obj->b() : obj->a(); // Assume circular if a != 0 but b == 0
-        info += QString("<br>%1′×%2′").arg(a).arg(b);
-    }
+        info += QString("<br>[a=%1′, b=%2′]").arg(obj->a()).arg(obj->b());
 
     initPopupMenu(obj, name, typeName, info);
     addLinksToMenu(obj);
@@ -274,9 +281,9 @@ void KSPopupMenu::createSatelliteMenu(Satellite *satellite)
     addFancyLabel(satellite->id());
     addFancyLabel(i18n("satellite"));
     addFancyLabel(KStarsData::Instance()
-                  ->skyComposite()
-                  ->constellationBoundary()
-                  ->constellationName(satellite));
+                      ->skyComposite()
+                      ->constellationBoundary()
+                      ->constellationName(satellite));
 
     addSeparator();
 
@@ -348,9 +355,9 @@ void KSPopupMenu::initPopupMenu(SkyObject *obj, const QString &name, const QStri
     addFancyLabel(type);
     addFancyLabel(info);
     addFancyLabel(KStarsData::Instance()
-                  ->skyComposite()
-                  ->constellationBoundary()
-                  ->constellationName(obj));
+                      ->skyComposite()
+                      ->constellationBoundary()
+                      ->constellationName(obj));
 
     //Insert Rise/Set/Transit labels
     SkyObject *o = obj->clone();
@@ -429,14 +436,14 @@ void KSPopupMenu::initPopupMenu(SkyObject *obj, const QString &name, const QStri
             addAction(i18n("Add Trail"), map, SLOT(slotAddPlanetTrail()));
     }
 
-    addAction(QIcon::fromTheme("redeyes"), i18n("Simulate Eyepiece View"), map,
+    addAction(QIcon::fromTheme("redeyes"), i18n("Simulate eyepiece view"), map,
               SLOT(slotEyepieceView()));
 
     addSeparator();
     if (obj->isSolarSystem() &&
-            obj->type() !=
+        obj->type() !=
             SkyObject::
-            COMET) // FIXME: We now have asteroids -- so should this not be isMajorPlanet() || Pluto?
+                COMET) // FIXME: We now have asteroids -- so should this not be isMajorPlanet() || Pluto?
     {
         addAction(i18n("View in XPlanet"), map, SLOT(slotStartXplanetViewer()));
     }
@@ -456,16 +463,16 @@ void KSPopupMenu::initFlagActions(SkyObject *obj)
     if (flags.isEmpty())
     {
         // There is no flag around clicked SkyObject
-        addAction(QIcon::fromTheme("flag"), i18n("Add Flag..."), ks->map(),
+        addAction(QIcon::fromTheme("flag"), i18n("Add flag..."), ks->map(),
                   SLOT(slotAddFlag()));
     }
 
     else if (flags.size() == 1)
     {
         // There is only one flag around clicked SkyObject
-        addAction(QIcon::fromTheme("document-edit"), i18n("Edit Flag"), this,
+        addAction(QIcon::fromTheme("document-edit"), i18n("Edit flag"), this,
                   SLOT(slotEditFlag()));
-        addAction(QIcon::fromTheme("delete"), i18n("Delete Flag"), this,
+        addAction(QIcon::fromTheme("delete"), i18n("Delete flag"), this,
                   SLOT(slotDeleteFlag()));
 
         m_CurrentFlagIdx = flags.first();
@@ -474,9 +481,9 @@ void KSPopupMenu::initFlagActions(SkyObject *obj)
     else
     {
         // There are more than one flags around clicked SkyObject - we need to create submenus
-        QMenu *editMenu = new QMenu(i18n("Edit Flag..."), KStars::Instance());
+        QMenu *editMenu = new QMenu(i18n("Edit flag..."), KStars::Instance());
         editMenu->setIcon(QIcon::fromTheme("document-edit"));
-        QMenu *deleteMenu = new QMenu(i18n("Delete Flag..."), KStars::Instance());
+        QMenu *deleteMenu = new QMenu(i18n("Delete flag..."), KStars::Instance());
         deleteMenu->setIcon(QIcon::fromTheme("delete"));
 
         connect(editMenu, SIGNAL(triggered(QAction *)), this,
@@ -532,12 +539,10 @@ void KSPopupMenu::addLinksToMenu(SkyObject *obj, bool showDSS)
     const auto &user_data    = KStarsData::Instance()->getUserData(obj->name());
     const auto &image_list   = user_data.images();
     const auto &website_list = user_data.websites();
-    for (const auto &res : std::list <
-            std::tuple<QString, SkyObjectUserdata::LinkList, SkyObjectUserdata::Type >>
-{
-    { i18n("Image Resources"), image_list, SkyObjectUserdata::Type::image },
-        { i18n("Web Links"), website_list, SkyObjectUserdata::Type::website }
-    })
+    for (const auto &res : std::list<
+             std::tuple<QString, SkyObjectUserdata::LinkList, SkyObjectUserdata::Type>>{
+             { i18n("Image Resources"), image_list, SkyObjectUserdata::Type::image },
+             { i18n("Web Links"), website_list, SkyObjectUserdata::Type::website } })
     {
         const auto &title = std::get<0>(res);
         const auto &list  = std::get<1>(res);
@@ -576,7 +581,7 @@ void KSPopupMenu::addLinksToMenu(SkyObject *obj, bool showDSS)
             CatalogsDB::DBManager manager{ CatalogsDB::dso_db_path() };
 
             if (object->getCatalog().mut &&
-                    manager.get_object(object->getObjectId()).first)
+                manager.get_object(object->getObjectId()).first)
             {
                 addAction(i18n("Remove From Local Catalog"), ks->map(),
                           SLOT(slotRemoveCustomObject()));
@@ -604,7 +609,7 @@ void KSPopupMenu::addINDI()
     if (INDIListener::Instance()->size() == 0)
         return;
 
-    for (auto oneDevice : INDIListener::Instance()->getDevices())
+    foreach (ISD::GDInterface *gd, INDIListener::Instance()->getDevices())
     {
         INDI::BaseDevice *bd = gd->getBaseDevice();
 
@@ -749,7 +754,7 @@ void KSPopupMenu::addINDI()
 
         const SkyObject *clickedObject = KStars::Instance()->map()->clickedObject();
         if (clickedObject && clickedObject->type() == SkyObject::SATELLITE &&
-                (mount->canTrackSatellite()))
+            (mount->canTrackSatellite()))
         {
             const Satellite *sat = dynamic_cast<const Satellite *>(clickedObject);
             const KStarsDateTime currentTime        = KStarsData::Instance()->ut();
@@ -758,11 +763,10 @@ void KSPopupMenu::addINDI()
                 mountMenu->addAction(QIcon::fromTheme("arrow"), i18n("Track satellite"));
             a->setEnabled(!mount->isParked());
             connect(a, &QAction::triggered,
-                    [mount, sat, currentTime, currentTimePlusOne]
-            {
-                mount->setSatelliteTLEandTrack(sat->tle(), currentTime,
-                                               currentTimePlusOne);
-            });
+                    [mount, sat, currentTime, currentTimePlusOne] {
+                        mount->setSatelliteTLEandTrack(sat->tle(), currentTime,
+                                                       currentTimePlusOne);
+                    });
             mountMenu->addSeparator();
         }
 

@@ -1,9 +1,13 @@
 /*  KStars UI tests
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
-    SPDX-FileCopyrightText: Fabrizio Pollastri <mxgbot@gmail.com>
+    Copyright (C) 2020
+    Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    Fabrizio Pollastri <mxgbot@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 /* FP2020830
  * For now, tests covers only my changes to Mount Control.
@@ -13,6 +17,7 @@
 
 #if defined(HAVE_INDI)
 
+#include "kstars.h"
 #include "kstars_ui_tests.h"
 #include "test_ekos.h"
 #include "test_ekos_simulator.h"
@@ -109,10 +114,7 @@ void TestEkosMount::cleanupTestCase()
 
 void TestEkosMount::init()
 {
-}
 
-void TestEkosMount::cleanup()
-{
 }
 
 void TestEkosMount::testMountCtrlCoordLabels()
@@ -462,6 +464,11 @@ void TestEkosMount::testMountCtrlSync()
     // close Mount Control
     KTRY_MOUNT_CLICK(mountToolBoxB);
 #endif
+}
+
+void TestEkosMount::cleanup()
+{
+
 }
 
 QTEST_KSTARS_MAIN(TestEkosMount)

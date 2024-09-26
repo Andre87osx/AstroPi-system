@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2008 Jerome SONRIER <jsid@emor3j.fr.eu.org>
+/***************************************************************************
+               culturelist.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 04 Nov. 2008
+    copyright            : (C) 2008 by Jerome SONRIER
+    email                : jsid@emor3j.fr.eu.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "culturelist.h"
 #include "ksfilereader.h"
@@ -25,15 +36,8 @@ CultureList::CultureList()
             m_CultureList << line.mid(2).trimmed();
     }
 
-    m_CurrentCulture = m_CultureList.at(0);
     m_CultureList.sort();
-    for (int i = 0; i < m_CultureList.size(); ++i)
-    {
-        if (m_CultureList.at(i) == Options::skyCulture())
-        {
-            m_CurrentCulture = m_CultureList.at(i);
-        }
-    }
+    m_CurrentCulture = m_CultureList.at(Options::skyCulture());
 }
 
 void CultureList::setCurrent(QString newName)

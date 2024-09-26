@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2002 Pablo de Vicente <vicente@oan.es>
+/***************************************************************************
+                          modcalcdaylength.cpp  -  description
+                             -------------------
+    begin                : wed jun 12 2002
+    copyright            : (C) 2002 by Pablo de Vicente
+    email                : vicente@oan.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "modcalcdaylength.h"
 
@@ -15,9 +26,6 @@
 #include "skyobjects/skyobject.h"
 
 #include <KLineEdit>
-
-// Qt version calming
-#include <qtendl.h>
 
 modCalcDayLength::modCalcDayLength(QWidget *parentSplit) : QFrame(parentSplit)
 {
@@ -281,26 +289,26 @@ void modCalcDayLength::processLines(QTextStream &istream)
     //Write header
     ostream << "# " << i18nc("%1 is a location on earth", "Almanac for %1", geoBatch->fullName())
             << QString("  [%1, %2]").arg(geoBatch->lng()->toDMSString(), geoBatch->lat()->toDMSString())
-            << "\n# " << i18n("computed by KStars")  << Qt::endl
-            << "# " << "SRise: Sun Rise"  << Qt::endl
-            << "# " << "STran: Sun Transit"  << Qt::endl
-            << "# " << "SSet: Sun Set"  << Qt::endl
-            << "# " << "SRiseAz: Azimuth of Sun Rise"  << Qt::endl
-            << "# " << "STranAlt: Altitude of Sun Transit"  << Qt::endl
-            << "# " << "SSetAz: Azimuth of Sun Set"  << Qt::endl
-            << "# " << "STranAlt: Altitude of Sun Transit"  << Qt::endl
-            << "# " << "DayLen: Day Duration in hours"  << Qt::endl
-            << "# " << "MRise: Moon Rise"  << Qt::endl
-            << "# " << "MTran: Moon Transit"  << Qt::endl
-            << "# " << "MSet: Moon Set"  << Qt::endl
-            << "# " << "MRiseAz: Azimuth of Moon Rise"  << Qt::endl
-            << "# " << "MTranAkt: Altitude of Moon Transit"  << Qt::endl
-            << "# " << "MSetAz: Azimuth of Moon Set"  << Qt::endl
-            << "# " << "LunarPhase: Lunar Phase and Illumination Percentage"  << Qt::endl
-            << "# "  << Qt::endl
+            << "\n# " << i18n("computed by KStars") << endl
+            << "# " << "SRise: Sun Rise" << endl
+            << "# " << "STran: Sun Transit" << endl
+            << "# " << "SSet: Sun Set" << endl
+            << "# " << "SRiseAz: Azimuth of Sun Rise" << endl
+            << "# " << "STranAlt: Altitude of Sun Transit" << endl
+            << "# " << "SSetAz: Azimuth of Sun Set" << endl
+            << "# " << "STranAlt: Altitude of Sun Transit" << endl
+            << "# " << "DayLen: Day Duration in hours" << endl
+            << "# " << "MRise: Moon Rise" << endl
+            << "# " << "MTran: Moon Transit" << endl
+            << "# " << "MSet: Moon Set" << endl
+            << "# " << "MRiseAz: Azimuth of Moon Rise" << endl
+            << "# " << "MTranAkt: Altitude of Moon Transit" << endl
+            << "# " << "MSetAz: Azimuth of Moon Set" << endl
+            << "# " << "LunarPhase: Lunar Phase and Illumination Percentage" << endl
+            << "# " << endl
             << "# Date,SRise,STran,SSet,SRiseAz,STranAlt,SSetAz,DayLen,MRise,MTran,MSet,"
-            << "MRiseAz,MTranAlt,MSetAz,LunarPhase"  << Qt::endl
-            << "#" << Qt::endl;
+            << "MRiseAz,MTranAlt,MSetAz,LunarPhase" << endl
+            << "#" << endl;
 
     QString line;
     QDate d;
@@ -329,7 +337,7 @@ void modCalcDayLength::processLines(QTextStream &istream)
                     mrAzString << "," <<
                     mtAltString << "," <<
                     msAzString << "," <<
-                    lunarphaseString << Qt::endl;
+                    lunarphaseString << endl;
         }
     }
 }

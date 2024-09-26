@@ -1,15 +1,18 @@
 /*  KStars UI tests
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    Copyright (C) 2020
+    Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 
 #include "test_ekos_capture.h"
 
 #if defined(HAVE_INDI)
 
-#include "Options.h"
 #include "kstars_ui_tests.h"
 #include "test_ekos.h"
 #include "test_ekos_simulator.h"
@@ -54,6 +57,18 @@ void TestEkosCapture::cleanup()
     QTRY_VERIFY_WITH_TIMEOUT(queueTable->rowCount() == 0, 2000);
 }
 
+QStringList TestEkosCapture::searchFITS(QDir const &dir) const
+{
+    QStringList list = dir.entryList(QDir::Files);
+
+    //foreach (auto &f, list)
+    //    QWARN(QString(dir.path()+'/'+f).toStdString().c_str());
+
+    foreach (auto &d, dir.entryList(QDir::NoDotAndDotDot | QDir::Dirs))
+        list.append(searchFITS(QDir(dir.path() + '/' + d)));
+
+    return list;
+}
 
 void TestEkosCapture::testAddCaptureJob()
 {
@@ -71,7 +86,7 @@ void TestEkosCapture::testAddCaptureJob()
 
     // Verify our assumption about those frame types is correct
     QTRY_COMPARE_WITH_TIMEOUT(captureTypeS->count(), frameTypeCount, 5000);
-    for (QString &frameType : frameTypes)
+    for (QString &frameType: frameTypes)
         if(captureTypeS->findText(frameType) < 0)
             QFAIL(qPrintable(QString("Frame '%1' expected by the test is not in the Capture frame list").arg(frameType)));
 
@@ -81,7 +96,7 @@ void TestEkosCapture::testAddCaptureJob()
 
     // Verify our assumption about those filters is correct - but wait for properties to be read from the device
     QTRY_COMPARE_WITH_TIMEOUT(captureFilterS->count(), filterTypeCount, 5000);
-    for (QString &filterType : filterTypes)
+    for (QString &filterType: filterTypes)
         if(captureFilterS->findText(filterType) < 0)
             QFAIL(qPrintable(QString("Filter '%1' expected by the test is not in the Capture filter list").arg(filterType)));
 
@@ -181,9 +196,9 @@ void TestEkosCapture::testCaptureSingle()
     QTRY_COMPARE_WITH_TIMEOUT(startB->icon().name(), QString("media-playback-start"), 2000);
 
     // Verify a FITS file was created
-    QTRY_VERIFY_WITH_TIMEOUT(m_CaptureHelper->searchFITS(QDir(destination.path())).count() == 1, 1000);
-    QVERIFY(m_CaptureHelper->searchFITS(QDir(destination.path()))[0].startsWith("Light_"));
-    QVERIFY(m_CaptureHelper->searchFITS(QDir(destination.path()))[0].endsWith("_001.fits"));
+    QTRY_VERIFY_WITH_TIMEOUT(searchFITS(QDir(destination.path())).count() == 1, 1000);
+    QVERIFY(searchFITS(QDir(destination.path()))[0].startsWith("Light_"));
+    QVERIFY(searchFITS(QDir(destination.path()))[0].endsWith("_001.fits"));
 
     // Reset sequence state - this makes a confirmation dialog appear
     volatile bool dialogValidated = false;
@@ -206,11 +221,11 @@ void TestEkosCapture::testCaptureSingle()
     QTRY_COMPARE_WITH_TIMEOUT(startB->icon().name(), QString("media-playback-start"), 2000);
 
     // Verify an additional FITS file was created - asynchronously eventually
-    QTRY_VERIFY_WITH_TIMEOUT(m_CaptureHelper->searchFITS(QDir(destination.path())).count() == 2, 2000);
-    QVERIFY(m_CaptureHelper->searchFITS(QDir(destination.path()))[0].startsWith("Light_"));
-    QVERIFY(m_CaptureHelper->searchFITS(QDir(destination.path()))[0].endsWith("_001.fits"));
-    QVERIFY(m_CaptureHelper->searchFITS(QDir(destination.path()))[1].startsWith("Light_"));
-    QVERIFY(m_CaptureHelper->searchFITS(QDir(destination.path()))[1].endsWith("_002.fits"));
+    QTRY_VERIFY_WITH_TIMEOUT(searchFITS(QDir(destination.path())).count() == 2, 2000);
+    QVERIFY(searchFITS(QDir(destination.path()))[0].startsWith("Light_"));
+    QVERIFY(searchFITS(QDir(destination.path()))[0].endsWith("_001.fits"));
+    QVERIFY(searchFITS(QDir(destination.path()))[1].startsWith("Light_"));
+    QVERIFY(searchFITS(QDir(destination.path()))[1].endsWith("_002.fits"));
 
     // TODO: test storage options
 }
@@ -241,7 +256,7 @@ void TestEkosCapture::testCaptureMultiple()
     QTRY_COMPARE_WITH_TIMEOUT(startB->icon().name(), QString("media-playback-start"), duration * 2);
 
     // Verify the proper number of FITS file were created
-    QTRY_VERIFY_WITH_TIMEOUT(m_CaptureHelper->searchFITS(QDir(destination.path())).count() == count, 1000);
+    QTRY_VERIFY_WITH_TIMEOUT(searchFITS(QDir(destination.path())).count() == count, 1000);
 
     // Reset sequence state - this makes a confirmation dialog appear
     volatile bool dialogValidated = false;
@@ -263,96 +278,9 @@ void TestEkosCapture::testCaptureMultiple()
     QTRY_VERIFY_WITH_TIMEOUT(!startB->icon().name().compare("media-playback-start"), duration * 2);
 
     // Verify the proper number of additional FITS file were created again
-    QTRY_VERIFY_WITH_TIMEOUT(m_CaptureHelper->searchFITS(QDir(destination.path())).count() == 2 * count, 1000);
+    QTRY_VERIFY_WITH_TIMEOUT(searchFITS(QDir(destination.path())).count() == 2 * count, 1000);
 
     // TODO: test storage options
-}
-
-void TestEkosCapture::testCaptureDarkFlats()
-{
-    // ensure that we know that the CCD has a shutter
-    m_CaptureHelper->ensureCCDShutter(true);
-    // We cannot use a system temporary due to what testCaptureToTemporary marks
-    QTemporaryDir destination(QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/test-XXXXXX");
-    QVERIFY(destination.isValid());
-    QVERIFY(destination.autoRemove());
-
-    KTRY_CAPTURE_GADGET(QTableWidget, queueTable);
-
-    // Set to flat first so that the flat calibration button is enabled
-    KTRY_CAPTURE_GADGET(QComboBox, captureTypeS);
-    KTRY_CAPTURE_COMBO_SET(captureTypeS, "Flat");
-
-    volatile bool dialogValidated = false;
-    QTimer::singleShot(200, [&]
-    {
-        QDialog * const dialog = qobject_cast <QDialog*> (QApplication::activeModalWidget());
-        if(dialog != nullptr)
-        {
-            // Set Flat duration to ADU
-            QRadioButton *ADUC = dialog->findChild<QRadioButton *>("ADUC");
-            QVERIFY(ADUC);
-            ADUC->setChecked(true);
-
-            // Set ADU to 4000
-            QSpinBox *ADUValue = dialog->findChild<QSpinBox *>("ADUValue");
-            QVERIFY(ADUValue);
-            ADUValue->setValue(4000);
-
-
-            QTest::mouseClick(dialog->findChild<QDialogButtonBox*>()->button(QDialogButtonBox::Ok), Qt::LeftButton);
-            dialogValidated = true;
-        }
-    });
-
-    // Toggle flat calibration dialog
-    KTRY_CAPTURE_CLICK(calibrationB);
-
-    QTRY_VERIFY_WITH_TIMEOUT(dialogValidated, 1000);
-
-    // Add flats
-    KTRY_CAPTURE_ADD_FLAT(1, 2, 0, "Red", destination.path());
-    KTRY_CAPTURE_ADD_FLAT(0.1, 3, 0, "Green", destination.path());
-
-    // Generate Dark Flats
-    KTRY_CAPTURE_CLICK(generateDarkFlatsB);
-
-    // We should have 4 jobs in total (2 flats and 2 dark flats)
-    QTRY_VERIFY2_WITH_TIMEOUT(queueTable->rowCount() == 4,
-                              QString("Row number wrong, %1 expected, %2 found!").arg(4).arg(queueTable->rowCount()).toStdString().c_str(), 1000);
-
-    // Start capturing and wait for procedure to end (visual icon changing) - leave enough time for frames to store
-    KTRY_CAPTURE_GADGET(QPushButton, startB);
-    QCOMPARE(startB->icon().name(), QString("media-playback-start"));
-    KTRY_CAPTURE_CLICK(startB);
-    QTRY_COMPARE_WITH_TIMEOUT(startB->icon().name(), QString("media-playback-stop"), 500);
-
-    // Accept any dialogs
-    QTimer::singleShot(5000, [&]
-    {
-        auto dialog = qobject_cast <QMessageBox*> (QApplication::activeModalWidget());
-        if(dialog)
-        {
-            dialog->accept();
-        }
-    });
-
-    QTRY_VERIFY_WITH_TIMEOUT(!startB->icon().name().compare("media-playback-start"), 120000);
-
-    // Verify the proper number of FITS file were created
-    QTRY_COMPARE_WITH_TIMEOUT(m_CaptureHelper->searchFITS(QDir(destination.path())).count(), 10, 1000);
-
-    // Verify dark flat job (3) matches flat job (1) time
-    queueTable->selectRow(0);
-    KTRY_CAPTURE_GADGET(NonLinearDoubleSpinBox, captureExposureN);
-    auto flatDuration = captureExposureN->value();
-
-    queueTable->selectRow(2);
-    auto darkDuration = captureExposureN->value();
-
-    QTRY_COMPARE(darkDuration, flatDuration);
-
-
 }
 
 QTEST_KSTARS_MAIN(TestEkosCapture)

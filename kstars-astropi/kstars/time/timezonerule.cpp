@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2002 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          timezonerule.cpp  -  description
+                             -------------------
+    begin                : Tue Apr 2 2002
+    copyright            : (C) 2002 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "timezonerule.h"
 #include "kstars_debug.h"
@@ -537,7 +548,7 @@ void TimeZoneRule::reset_with_ltime(KStarsDateTime &ltime, const double TZoffset
         }
     } // if ( active_with_houroffset != active_normal && ValidLTime.date().month() == StartMonth )
 
-    //	qDebug() << Q_FUNC_INFO << "Using Valid Local Time = " << ValidLTime.toString();
+    //	qDebug() << "Using Valid Local Time = " << ValidLTime.toString();
 
     if (time_runs_forward)
     {

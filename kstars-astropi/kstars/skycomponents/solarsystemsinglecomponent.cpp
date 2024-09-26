@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Thomas Kabelmann <thomas.kabelmann@gmx.de>
+/***************************************************************************
+                          solarsystemsinglecomponent.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2005/30/08
+    copyright            : (C) 2005 by Thomas Kabelmann
+    email                : thomas.kabelmann@gmx.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "solarsystemsinglecomponent.h"
 #include "solarsystemcomposite.h"
@@ -55,9 +66,8 @@ bool SolarSystemSingleComponent::selected()
     return visible();
 }
 
-SkyObject *SolarSystemSingleComponent::findByName(const QString &name, bool exact)
+SkyObject *SolarSystemSingleComponent::findByName(const QString &name)
 {
-    Q_UNUSED(exact)
     if (QString::compare(m_Planet->name(), name, Qt::CaseInsensitive) == 0 ||
             QString::compare(m_Planet->longname(), name, Qt::CaseInsensitive) == 0 ||
             QString::compare(m_Planet->name2(), name, Qt::CaseInsensitive) == 0)

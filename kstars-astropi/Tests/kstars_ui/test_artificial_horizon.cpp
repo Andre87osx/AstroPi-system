@@ -1,8 +1,12 @@
 /*  Artificial Horizon UI test
-    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
+    Copyright (C) 2021
+    Hy Murveit <hy@murveit.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "test_artificial_horizon.h"
 
@@ -91,7 +95,7 @@ bool clickView(QAbstractItemView *view, const QModelIndex &idx, int leftOffset)
         return false;
     QPoint itemPtLeft = itemPtCenter;
     itemPtLeft.setX(view->visualRect(idx).left() + leftOffset);
-    QTest::mouseClick(view->viewport(), Qt::LeftButton, Qt::NoModifier, itemPtLeft);
+    QTest::mouseClick(view->viewport(), Qt::LeftButton, 0, itemPtLeft);
     return true;
 }
 
@@ -124,7 +128,6 @@ bool clickSelectPoint(QAbstractItemView *view, int region, int point)
     return clickView(view, index, 50);
 }
 
-#if 0
 // Debugging printout. Prints the list of az/alt points in a region.
 bool printAzAlt(QStandardItemModel *model, int region)
 {
@@ -145,7 +148,6 @@ bool printAzAlt(QStandardItemModel *model, int region)
     }
     return true;
 }
-#endif
 
 }  // namespace
 

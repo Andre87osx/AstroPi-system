@@ -3,9 +3,12 @@
 
     The KStars HiPS compoenent is used to load and overlay progress surverys from various online catalogs.
 
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -21,19 +24,12 @@
  */
 class HIPSComponent : public SkyComponent
 {
-    public:
-        /** Constructor */
-        explicit HIPSComponent(SkyComposite *);
+  public:
+    /** Constructor */
+    explicit HIPSComponent(SkyComposite *);
 
-        virtual ~HIPSComponent() override = default;
+    virtual ~HIPSComponent() override = default;
 
-        bool selected() override;
-        void draw(SkyPainter *skyp) override;
-
-    private:
-        QElapsedTimer m_ElapsedTimer, m_RefreshTimer;
-        static constexpr uint32_t HIPS_REDRAW_PERIOD {5000};
-        static constexpr uint32_t HIPS_REFRESH_PERIOD {2000};
-        double m_LastZoom {1};
-        QString m_LastFocusedObjectName;
+    bool selected() override;
+    void draw(SkyPainter *skyp) override;
 };

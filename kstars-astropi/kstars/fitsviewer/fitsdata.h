@@ -1,11 +1,21 @@
-/*
-    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/***************************************************************************
+                          fitsimage.cpp  -  FITS Image
+                             -------------------
+    begin                : Tue Feb 24 2004
+    copyright            : (C) 2004 by Jasem Mutlaq
+    email                : mutlaqja@ikarustech.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-
-    Some code fragments were adapted from Peter Kirchgessner's FITS plugin
-    SPDX-FileCopyrightText: Peter Kirchgessner <http://members.aol.com/pkirchg>
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ *   Some code fragments were adapted from Peter Kirchgessner's FITS plugin*
+ *   See http://members.aol.com/pkirchg for more details.                  *
+ ***************************************************************************/
 
 #pragma once
 
@@ -73,12 +83,12 @@ class FITSData : public QObject
         // Does FITS have WSC header?
         Q_PROPERTY(bool hasWCS READ hasWCS)
         // Does FITS have bayer data?
-        Q_PROPERTY(bool hasDebayer READ hasDebayer)
+        Q_PROPERTY(bool hasDebyaer READ hasDebayer)
 
     public:
         explicit FITSData(FITSMode fitsMode = FITS_NORMAL);
         explicit FITSData(const QSharedPointer<FITSData> &other);
-        ~FITSData() override;
+        ~FITSData();
 
         /** Structure to hold FITS Header records */
         typedef struct
@@ -104,18 +114,21 @@ class FITSData : public QObject
         /**
          * @brief loadFITS Loading FITS file asynchronously.
          * @param inFilename Path to FITS file (or compressed fits.gz)
+         * @param silent If set, error messages are ignored. If set to false, the error message will get displayed in a popup.
          * @return A QFuture that can be watched until the async operation is complete.
          */
-        QFuture<bool> loadFromFile(const QString &inFilename);
+        QFuture<bool> loadFromFile(const QString &inFilename, bool silent = true);
 
         /**
          * @brief loadFITSFromMemory Loading FITS from memory buffer.
          * @param buffer The memory buffer containing the fits data.
          * @param extension file extension (e.g. "jpg", "fits", "cr2"...etc)
          * @param inFilename Set filename metadata, does not load from file.
+         * @param silent If set, error messages are ignored. If set to false, the error message will get displayed in a popup.
          * @return bool indicating success or failure.
          */
-        bool loadFromBuffer(const QByteArray &buffer, const QString &extension, const QString &inFilename = QString());
+        bool loadFromBuffer(const QByteArray &buffer, const QString &extension, const QString &inFilename = QString(),
+                            bool silent = true);
 
         /**
          * @brief parseSolution Parse the WCS solution information from the header into the given struct.
@@ -139,46 +152,45 @@ class FITSData : public QObject
         ////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////
         // Calculate stats
-        void calculateStats(bool refresh = false, bool roi = false);
+        void calculateStats(bool refresh = false);
         void saveStatistics(FITSImage::Statistic &other);
         void restoreStatistics(FITSImage::Statistic &other);
         FITSImage::Statistic const &getStatistics() const
         {
             return m_Statistics;
-        }
+        };
 
-        uint16_t width(bool roi = false) const
+        uint16_t width() const
         {
-            return roi ?  m_ROIStatistics.width : m_Statistics.width;
+            return m_Statistics.width;
         }
-        uint16_t height(bool roi = false) const
+        uint16_t height() const
         {
-            return roi ?  m_ROIStatistics.height : m_Statistics.height;
+            return m_Statistics.height;
         }
-        int64_t size(bool roi = false) const
+        int64_t size() const
         {
-            return roi ?  m_ROIStatistics.size : m_Statistics.size;
+            return m_Statistics.size;
         }
         int channels() const
         {
             return m_Statistics.channels;
         }
-        uint32_t samplesPerChannel(bool roi = false) const
+        uint32_t samplesPerChannel() const
         {
-            return roi ?  m_ROIStatistics.samples_per_channel : m_Statistics.samples_per_channel;
+            return m_Statistics.samples_per_channel;
         }
         uint32_t dataType() const
         {
             return m_Statistics.dataType;
         }
-        double getMin(uint8_t channel = 0, bool roi = false) const
+        double getMin(uint8_t channel = 0) const
         {
-            return roi ?  m_ROIStatistics.min[channel] : m_Statistics.min[channel];
+            return m_Statistics.min[channel];
         }
-        double getMax(uint8_t channel = 0, bool roi = false) const
+        double getMax(uint8_t channel = 0) const
         {
-            return roi ?  m_ROIStatistics.max[channel] : m_Statistics.max[channel];
-
+            return m_Statistics.max[channel];
         }
         void setMinMax(double newMin, double newMax, uint8_t channel = 0);
         void getMinMax(double *min, double *max, uint8_t channel = 0) const
@@ -190,32 +202,32 @@ class FITSData : public QObject
         {
             m_Statistics.stddev[channel] = value;
         }
-        double getStdDev(uint8_t channel = 0, bool roi = false ) const
+        double getStdDev(uint8_t channel = 0) const
         {
-            return roi ? m_ROIStatistics.stddev[channel] :  m_Statistics.stddev[channel];
+            return m_Statistics.stddev[channel];
         }
-        double getAverageStdDev(bool roi = false) const;
+        double getAverageStdDev() const;
         void setMean(double value, uint8_t channel = 0)
         {
             m_Statistics.mean[channel] = value;
         }
-        double getMean(uint8_t channel = 0, bool roi = false) const
+        double getMean(uint8_t channel = 0) const
         {
-            return roi ? m_ROIStatistics.mean[channel] :  m_Statistics.mean[channel];
+            return m_Statistics.mean[channel];
         }
         // for single channel, just return the mean for channel zero
         // for color, return the average
-        double getAverageMean(bool roi = false) const;
+        double getAverageMean() const;
         void setMedian(double val, uint8_t channel = 0)
         {
             m_Statistics.median[channel] = val;
         }
         // for single channel, just return the median for channel zero
         // for color, return the average
-        double getAverageMedian(bool roi = false) const;
-        double getMedian(uint8_t channel = 0, bool roi = false) const
+        double getAverageMedian() const;
+        double getMedian(uint8_t channel = 0) const
         {
-            return roi ? m_ROIStatistics.median[channel] :  m_Statistics.median[channel];
+            return m_Statistics.median[channel];
         }
 
         int getBytesPerPixel() const
@@ -236,16 +248,20 @@ class FITSData : public QObject
             {
                 case TBYTE:
                     return 8;
+                    break;
                 case TSHORT:
                 case TUSHORT:
                     return 16;
+                    break;
                 case TLONG:
                 case TULONG:
                 case TFLOAT:
                     return 32;
+                    break;
                 case TLONGLONG:
                 case TDOUBLE:
                     return 64;
+                    break;
                 default:
                     return 8;
             }
@@ -294,7 +310,6 @@ class FITSData : public QObject
 
         void setStarCenters(const QList<Edge*> &centers)
         {
-            qDeleteAll(starCenters);
             starCenters = centers;
         }
         QFuture<bool> findStars(StarAlgorithm algorithm = ALGORITHM_CENTROID, const QRect &trackingBox = QRect());
@@ -318,13 +333,13 @@ class FITSData : public QObject
         // Use SEP (Sextractor Library) to find stars
         template <typename T>
         void getFloatBuffer(float *buffer, int x, int y, int w, int h) const;
-        //int findSEPStars(QList<Edge*> &, const int8_t &boundary = int8_t()) const;
+        //int findSEPStars(QList<Edge*> &, const QRect &boundary = QRect()) const;
 
         // Apply ring filter to searched stars
         int filterStars(const float innerRadius, const float outerRadius);
 
         // Half Flux Radius
-        const Edge &getSelectedHFRStar() const
+        Edge *getSelectedHFRStar() const
         {
             return m_SelectedHFRStar;
         }
@@ -350,16 +365,6 @@ class FITSData : public QObject
         void setDateTime(const KStarsDateTime &t)
         {
             m_DateTime = t;
-        }
-
-        const QPoint getRoiCenter() const
-        {
-            return roiCenter;
-        }
-
-        void setRoiCenter(QPoint c)
-        {
-            roiCenter = c;
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////
@@ -389,6 +394,11 @@ class FITSData : public QObject
         {
             return m_WCSState;
         }
+        // Get WCS Coordinates
+        FITSImage::wcs_point *getWCSCoord() const
+        {
+            return m_WCSCoordinates;
+        }
 
         /**
              * @brief wcsToPixel Given J2000 (RA0,DE0) coordinates. Find in the image the corresponding pixel coordinates.
@@ -408,14 +418,15 @@ class FITSData : public QObject
         bool pixelToWCS(const QPointF &wcsPixelPoint, SkyPoint &wcsCoord);
 
         /**
-             * @brief injectWCS Add WCS keywords
+             * @brief injectWCS Add WCS keywords to file
              * @param orientation Solver orientation, degrees E of N.
              * @param ra J2000 Right Ascension
              * @param dec J2000 Declination
              * @param pixscale Pixel scale in arcsecs per pixel
              * @param eastToTheRight if true, then when the image is rotated so that north is up, then east would be to the right on the image.
+             * @return  True if file is successfully updated with WCS info.
              */
-        void injectWCS(double orientation, double ra, double dec, double pixscale, bool eastToTheRight);
+        bool injectWCS(double orientation, double ra, double dec, double pixscale, bool eastToTheRight);
 
         ////////////////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////////////////
@@ -458,7 +469,7 @@ class FITSData : public QObject
         const QVector<uint32_t> &getCumulativeFrequency(uint8_t channel = 0) const
         {
             return m_CumulativeFrequency[channel];
-        }
+        };
         const QVector<double> &getHistogramIntensity(uint8_t channel = 0) const
         {
             return m_HistogramIntensity[channel];
@@ -475,7 +486,7 @@ class FITSData : public QObject
         double getJMIndex() const
         {
             return m_JMIndex;
-        }
+        };
 
         bool isHistogramConstructed()
         {
@@ -525,9 +536,7 @@ class FITSData : public QObject
         ////////////////////////////////////////////////////////////////////////////////////////
 #ifndef KSTARS_LITE
 #ifdef HAVE_WCSLIB
-        bool searchObjects();
-        bool findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint);
-        bool findWCSBounds(double &minRA, double &maxRA, double &minDec, double &maxDec);
+        void findObjectsInImage(SkyPoint startPoint, SkyPoint endPoint);
 #endif
 #endif
         const QList<FITSSkyObject *> &getSkyObjects() const
@@ -566,34 +575,32 @@ class FITSData : public QObject
          * @brief dataChanged Send signal when undelying raw data buffer data changed.
          */
         void dataChanged();
-    public slots:
-        void makeRoiBuffer(QRect roi);
 
     private:
         void loadCommon(const QString &inFilename);
         /**
          * @brief privateLoad Load an image (FITS, RAW, or images supported by Qt like jpeg, png).
          * @param Buffer pointer to image data. If buffer is emtpy, read from disk (m_Filename).
+         * @param silent If true, suppress any messages.
          * @return true if successfully loaded, false otherwise.
          */
-        bool privateLoad(const QByteArray &buffer, const QString &extension);
+        bool privateLoad(const QByteArray &buffer, const QString &extension, bool silent);
 
         // Load Qt-supported images.
-        bool loadCanonicalImage(const QByteArray &buffer, const QString &extension);
+        bool loadCanonicalImage(const QByteArray &buffer, const QString &extension, bool silent);
         // Load FITS images.
-        bool loadFITSImage(const QByteArray &buffer, const QString &extension);
+        bool loadFITSImage(const QByteArray &buffer, const QString &extension, bool silent);
         // Load RAW images.
-        bool loadRAWImage(const QByteArray &buffer, const QString &extension);
+        bool loadRAWImage(const QByteArray &buffer, const QString &extension, bool silent);
 
         void rotWCSFITS(int angle, int mirror);
-        void calculateMinMax(bool refresh = false, bool roi = false);
-        void calculateMedian(bool refresh = false, bool roi = false);
+        void calculateMinMax(bool refresh = false);
+        void calculateMedian(bool refresh = false);
         bool checkDebayer();
         void readWCSKeys();
 
         // Record last FITS error
         void recordLastError(int errorCode);
-        void logOOMError(uint32_t requiredMemory = 0);
 
         // FITS Record
         bool parseHeader();
@@ -611,12 +618,12 @@ class FITSData : public QObject
         void applyFilter(FITSScale type, uint8_t *targetImage, QVector<double> * min = nullptr, QVector<double> * max = nullptr);
 
         template <typename T>
-        void calculateMinMax(bool roi = false);
+        void calculateMinMax();
         template <typename T>
-        void calculateMedian(bool roi = false);
+        void calculateMedian();
 
         template <typename T>
-        QPair<T, T> getParitionMinMax(uint32_t start, uint32_t stride, bool roi);
+        QPair<T, T> getParitionMinMax(uint32_t start, uint32_t stride);
 
         /* Calculate the Gaussian blur matrix and apply it to the image using the convolution filter */
         QVector<double> createGaussianKernel(int size, double sigma);
@@ -627,9 +634,9 @@ class FITSData : public QObject
 
         /* Calculate running average & standard deviation using Welford’s method for computing variance */
         template <typename T>
-        void runningAverageStdDev( bool roi = false );
+        void runningAverageStdDev();
         template <typename T>
-        QPair<double, double> getSquaredSumAndMean(uint32_t start, uint32_t stride, bool roi = false);
+        QPair<double, double> getSquaredSumAndMean(uint32_t start, uint32_t stride);
 
         template <typename T>
         void convertToQImage(double dataMin, double dataMax, double scale, double zero, QImage &image);
@@ -647,10 +654,6 @@ class FITSData : public QObject
         uint8_t *m_ImageBuffer { nullptr };
         /// Above buffer size in bytes
         uint32_t m_ImageBufferSize { 0 };
-        /// Image Buffer if Selection is to be done
-        uint8_t *m_ImageRoiBuffer { nullptr };
-        /// Above buffer size in bytes
-        uint32_t m_ImageRoiBufferSize { 0 };
         /// Is this a temporary file or one loaded from disk?
         bool m_isTemporary { false };
         /// is this file compress (.fits.fz)?
@@ -665,8 +668,6 @@ class FITSData : public QObject
         bool FullWCS { false };
         /// Is the image debayarable?
         bool HasDebayer { false };
-        /// Buffer to hold fpack uncompressed data
-        uint8_t *m_PackBuffer {nullptr};
 
         /// Our very own file name
         QString m_Filename, m_compressedFilename;
@@ -682,6 +683,8 @@ class FITSData : public QObject
         /// How many times the image was flipped vertically?
         int flipVCounter { 0 };
 
+        /// Pointer to WCS coordinate data, if any.
+        FITSImage::wcs_point *m_WCSCoordinates { nullptr };
         /// WCS Struct
         struct wcsprm *m_WCSHandle
         {
@@ -694,7 +697,7 @@ class FITSData : public QObject
         QList<Edge *> starCenters;
         QList<Edge *> localStarCenters;
         /// The biggest fattest star in the image.
-        Edge m_SelectedHFRStar;
+        Edge *m_SelectedHFRStar { nullptr };
 
         /// Bayer parameters
         BayerParams debayerParams;
@@ -705,13 +708,19 @@ class FITSData : public QObject
         /// 16bit can be either SHORT_IMG or USHORT_IMG, so m_FITSBITPIX specifies which is
         int m_FITSBITPIX {USHORT_IMG};
         FITSImage::Statistic m_Statistics;
-        FITSImage::Statistic m_ROIStatistics;
 
         // A list of header records
         QList<Record> m_HeaderRecords;
 
+        // Sky Background
+        SkyBackground m_SkyBackground;
+
+        // Detector Settings
+        QVariantMap m_SourceExtractorSettings;
+
+        QFuture<bool> m_StarFindFuture;
+
         QList<FITSSkyObject *> m_SkyObjects;
-        bool m_ObjectsSearched {false};
 
         QString m_LastError;
 
@@ -728,21 +737,5 @@ class FITSData : public QObject
         double m_JMIndex { 1 };
         bool m_HistogramConstructed { false };
 
-        ////////////////////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////////////////////
-        /// Star Detector
-        ////////////////////////////////////////////////////////////////////////////////////////
-        ////////////////////////////////////////////////////////////////////////////////////////
-        // Sky Background
-        SkyBackground m_SkyBackground;
-        // Detector Settings
-        QVariantMap m_SourceExtractorSettings;
-        QFuture<bool> m_StarFindFuture;
-        QScopedPointer<FITSStarDetector, QScopedPointerDeleteLater> m_StarDetector;
-
-        // Cached values for hfr and eccentricity computations
-        double cacheHFR { -1 };
-        HFRType cacheHFRType { HFR_AVERAGE };
-        double cacheEccentricity { -1 };
-        QPoint roiCenter;
+        static const QString m_TemporaryPath;
 };

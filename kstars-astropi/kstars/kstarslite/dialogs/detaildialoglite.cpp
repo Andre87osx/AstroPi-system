@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2016 Artem Fedoskin <afedoskin3@gmail.com>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          finddialoglite.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Wed Jul 29 2016
+    copyright            : (C) 2016 by Artem Fedoskin
+    email                : afedoskin3@gmail.com
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "detaildialoglite.h"
 
@@ -611,13 +621,13 @@ void DetailDialogLite::updateLocalDatabase(int type, const QString &search_line,
         // Info Links
         case 0:
             // Get name for our local info_url file
-            URLFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("info_url.dat"));
+            URLFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "info_url.dat");
             break;
 
         // Image Links
         case 1:
             // Get name for our local info_url file
-            URLFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("image_url.dat"));
+            URLFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "image_url.dat");
             break;
     }
 
@@ -677,8 +687,8 @@ void DetailDialogLite::addLink(const QString &url, const QString &desc, bool isI
 
         //Also, update the user's custom image links database
         //check for user's image-links database.  If it doesn't exist, create it.
-        //determine filename in local user KDE directory tree.
-        file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("image_url.dat"));
+        file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                         "image_url.dat"); //determine filename in local user KDE directory tree.
 
         if (!file.open(QIODevice::ReadWrite | QIODevice::Append))
         {
@@ -702,8 +712,8 @@ void DetailDialogLite::addLink(const QString &url, const QString &desc, bool isI
         selectedObject->InfoTitle().append(desc);
 
         //check for user's image-links database.  If it doesn't exist, create it.
-        //determine filename in local user KDE directory tree.
-        file.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("info_url.dat"));
+        file.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                         "info_url.dat"); //determine filename in local user KDE directory tree.
 
         if (!file.open(QIODevice::ReadWrite | QIODevice::Append))
         {

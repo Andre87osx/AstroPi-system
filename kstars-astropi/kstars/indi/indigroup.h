@@ -1,8 +1,15 @@
-/*
-    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Group
+    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    JM Changelog
+    2004-16-1:	Start
+
+ */
 
 #pragma once
 
@@ -10,7 +17,6 @@
 
 #include <QString>
 #include <QList>
-#include <QScrollArea>
 #include <QPointer>
 
 class INDI_P;
@@ -27,10 +33,11 @@ class QScrollArea;
  *
  * @author Jasem Mutlaq
  */
-class INDI_G: public QScrollArea
+class INDI_G
 {
     public:
         INDI_G(INDI_D *idv, const QString &inName);
+        ~INDI_G();
 
         bool addProperty(const INDI::Property newProperty);
 
@@ -39,6 +46,10 @@ class INDI_G: public QScrollArea
         QFrame *getContainer() const
         {
             return m_PropertiesContainer;
+        }
+        QScrollArea *getScrollArea() const
+        {
+            return m_ScrollArea;
         }
         const QString &getName() const
         {
@@ -61,6 +72,8 @@ class INDI_G: public QScrollArea
         }
 
     private:
+        void resetLayout();
+
         // Group name
         QString name;
         // Parent device
@@ -71,6 +84,7 @@ class INDI_G: public QScrollArea
         QPointer<QVBoxLayout> m_PropertiesLayout;
         // Vertical spacer
         QSpacerItem *m_VerticalSpacer {nullptr};
+        QScrollArea *m_ScrollArea {nullptr};
         QList<INDI_P *> m_PropertiesList;
         bool m_Dirty { false };
 };

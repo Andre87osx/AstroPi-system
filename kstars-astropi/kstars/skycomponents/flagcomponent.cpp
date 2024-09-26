@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2009 Jerome SONRIER <jsid@emor3j.fr.eu.org>
+/***************************************************************************
+                          flagcomponent.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Fri 16 Jan 2009
+    copyright            : (C) 2009 by Jerome SONRIER
+    email                : jsid@emor3j.fr.eu.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "flagcomponent.h"
 
@@ -31,9 +42,9 @@ FlagComponent::FlagComponent(SkyComposite *parent) : PointListComponent(parent)
     m_Names.append(i18n("No icon"));
     m_Images.append(QImage());
     m_Names.append(i18n("Default"));
-    m_Images.append(QImage(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "defaultflag.gif")));
+    m_Images.append(QImage(KSPaths::locate(QStandardPaths::GenericDataLocation, "defaultflag.gif")));
 
-    QDir appDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
+    QDir appDir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation));
     appDir.setNameFilters(QStringList() << "flag*");
     // Add all other images found in user appdata directory
     for (auto &item : appDir.entryList())

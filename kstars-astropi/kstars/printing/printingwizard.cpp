@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2011 Rafał Kułaga <rl.kulaga@gmail.com>
+/***************************************************************************
+                          printingwizard.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue Aug 2 2011
+    copyright            : (C) 2011 by Rafał Kułaga
+    email                : rl.kulaga@gmail.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "printingwizard.h"
 
@@ -400,7 +411,7 @@ void PrintingWizard::setupWidgets()
 #endif
     m_WizardStack = new QStackedWidget(this);
 
-    setWindowTitle(i18nc("@title:window", "Printing Wizard"));
+    setWindowTitle(i18n("Printing Wizard"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(m_WizardStack);
@@ -449,7 +460,7 @@ void PrintingWizard::setupWidgets()
 
     // Set banner images for steps
     QPixmap bannerImg;
-    if (bannerImg.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "wzstars.png")))
+    if (bannerImg.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzstars.png")))
     {
         m_WizWelcomeUI->banner->setPixmap(bannerImg);
         m_WizObjectSelectionUI->banner->setPixmap(bannerImg);

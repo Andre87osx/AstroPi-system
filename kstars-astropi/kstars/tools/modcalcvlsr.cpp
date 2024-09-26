@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Pablo de Vicente <p.devicente@wanadoo.es>
+/***************************************************************************
+                          modcalcvlsr.cpp  -  description
+                             -------------------
+    begin                : sun mar 13 2005
+    copyright            : (C) 2005 by Pablo de Vicente
+    email                : p.devicente@wanadoo.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "modcalcvlsr.h"
 
@@ -26,7 +37,7 @@
 modCalcVlsr::modCalcVlsr(QWidget *parentSplit) : QFrame(parentSplit), velocityFlag(0)
 {
     setupUi(this);
-    RA->setUnits(dmsBox::HOURS);
+    RA->setDegType(false);
 
     Date->setDateTime(KStarsDateTime::currentDateTime());
     initGeo();
@@ -70,8 +81,8 @@ void modCalcVlsr::slotFindObject()
     if (FindDialog::Instance()->exec() == QDialog::Accepted)
     {
         SkyObject *o = FindDialog::Instance()->targetObject();
-        RA->show(o->ra0());
-        Dec->show(o->dec0());
+        RA->showInHours(o->ra0());
+        Dec->showInDegrees(o->dec0());
     }
 }
 
@@ -96,7 +107,7 @@ void modCalcVlsr::slotLocation()
 void modCalcVlsr::slotCompute()
 {
     bool ok1(false), ok2(false);
-    SkyPoint sp(RA->createDms(&ok1), Dec->createDms(&ok2));
+    SkyPoint sp(RA->createDms(false, &ok1), Dec->createDms(true, &ok2));
     if (!ok1 || !ok2)
         return;
 
@@ -166,7 +177,7 @@ void modCalcVlsr::slotCompute()
         }
 
         default: //oops
-            qDebug() << Q_FUNC_INFO << "Error: do not know which velocity to use for input.";
+            qDebug() << "Error: do not know which velocity to use for input.";
             break;
     }
 }
@@ -376,7 +387,7 @@ void modCalcVlsr::processLines(QTextStream &istream)
             i++;
         }
         else
-            raB = RABoxBatch->createDms();
+            raB = RABoxBatch->createDms(false);
 
         if (AllRadioBatch->isChecked())
             ostream << raB.toHMSString() << space;
@@ -436,7 +447,7 @@ void modCalcVlsr::processLines(QTextStream &istream)
             i++;
         }
         else
-            longB = LongitudeBoxBatch->createDms();
+            longB = LongitudeBoxBatch->createDms(true);
 
         if (AllRadioBatch->isChecked())
             ostream << longB.toDMSString() << space;
@@ -451,7 +462,7 @@ void modCalcVlsr::processLines(QTextStream &istream)
             i++;
         }
         else
-            latB = LatitudeBoxBatch->createDms();
+            latB = LatitudeBoxBatch->createDms(true);
         if (AllRadioBatch->isChecked())
             ostream << latB.toDMSString() << space;
         else if (LatCheckBatch->isChecked())

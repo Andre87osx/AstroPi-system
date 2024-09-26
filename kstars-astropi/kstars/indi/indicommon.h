@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Common Defs
+    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #ifndef INDICOMMON_H
 #define INDICOMMON_H
@@ -211,8 +214,7 @@ typedef enum
     INDI_SET_FILTER_NAMES,
     INDI_CONFIRM_FILTER,
     INDI_SET_ROTATOR_TICKS,
-    INDI_SET_ROTATOR_ANGLE,
-    INDI_REVERSE_ROTATOR
+    INDI_SET_ROTATOR_ANGLE
 } DeviceCommand;
 
 typedef enum { SOURCE_MANUAL, SOURCE_FLATCAP, SOURCE_WALL, SOURCE_DAWN_DUSK, SOURCE_DARKCAP } FlatFieldSource;

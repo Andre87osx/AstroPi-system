@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2007 James B. Bowlin <bowlin@mindspring.com>
-    SPDX-License-Identifier: BSD-3-Clause AND GPL-2.0-or-later
-*/
+/***************************************************************************
+               MeshIterator.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2007-07-13
+    copyright            : (C) 2007 James B. Bowlin
+    email                : bowlin@mindspring.com
+***************************************************************************/
 
 #pragma once
 

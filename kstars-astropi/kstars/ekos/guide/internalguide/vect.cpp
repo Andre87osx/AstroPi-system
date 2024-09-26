@@ -1,19 +1,21 @@
-/*
-    SPDX-FileCopyrightText: 2012 Andrew Stepanenko
+/*  Ekos guide tool
+    Copyright (C) 2012 Andrew Stepanenko
 
-    Modified by Jasem Mutlaq <mutlaqja@ikarustech.com> for KStars:
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Modified by Jasem Mutlaq <mutlaqja@ikarustech.com> for KStars.
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
+//---------------------------------------------------------------------------
 #include "vect.h"
 
 #include <cmath>
 #include <cstdlib>
 
-namespace GuiderUtils
-{
+//---------------------------------------------------------------------------
 
 Vector operator^(const Vector &u, const Vector &v)
 {
@@ -43,4 +45,3 @@ Vector &Clip(Vector &v)
 
     return v;
 }
-}  // namespace GuiderUtils

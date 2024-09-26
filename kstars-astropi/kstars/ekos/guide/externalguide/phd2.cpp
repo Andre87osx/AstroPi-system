@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos PHD2 Handler
+    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "phd2.h"
@@ -103,6 +106,9 @@ PHD2::PHD2()
     //set_profile
     //shutdown
     methodResults["stop_capture"]           = STOP_CAPTURE_COMMAND_RECEIVED;
+
+    QDir writableDir;
+    writableDir.mkdir(KSPaths::writableLocation(QStandardPaths::TempLocation));
 
     abortTimer = new QTimer(this);
     connect(abortTimer, &QTimer::timeout, this, [ = ]
@@ -334,7 +340,7 @@ void PHD2::processPHD2Event(const QJsonObject &jsonEvent, const QByteArray &line
 
         case CalibrationComplete:
             emit newLog(i18n("PHD2: Calibration Complete."));
-            emit newStatus(Ekos::GUIDE_CALIBRATION_SUCCESS);
+            emit newStatus(Ekos::GUIDE_CALIBRATION_SUCESS);
             break;
 
         case StartGuiding:
@@ -390,10 +396,6 @@ void PHD2::processPHD2Event(const QJsonObject &jsonEvent, const QByteArray &line
 
         case SettleDone:
         {
-            // guiding stopped during dithering
-            if (state == PHD2::STOPPED)
-                return;
-
             bool error = false;
 
             if (jsonEvent["Status"].toInt() != 0)
@@ -629,9 +631,6 @@ void PHD2::handlePHD2AppState(PHD2State newstate)
                         emit newStatus(Ekos::GUIDE_CALIBRATING);
                     }
                     break;
-                case DITHERING:
-                    // do nothing, this is the initial step in PHD2 for dithering
-                    break;
                 default:
                     emit newLog(i18n("PHD2: Star Selected."));
                     emit newStatus(GUIDE_STAR_SELECT);
@@ -642,7 +641,6 @@ void PHD2::handlePHD2AppState(PHD2State newstate)
             switch (state)
             {
                 case PAUSED:
-                case DITHERING:
                     emit newLog(i18n("PHD2: Guiding resumed."));
                     abortTimer->stop();
                     emit newStatus(Ekos::GUIDE_GUIDING);
@@ -700,10 +698,6 @@ void PHD2::handlePHD2AppState(PHD2State newstate)
                     break;
             }
             break;
-        case DITHERING:
-            emit newLog(i18n("PHD2: Dithering started."));
-            emit newStatus(GUIDE_DITHERING);
-            break;
     }
 
     state = newstate;
@@ -733,7 +727,7 @@ void PHD2::processPHD2Result(const QJsonObject &jsonObj, const QByteArray &line)
             break;
 
         case DITHER_COMMAND_RECEIVED:               //dither
-            handlePHD2AppState(DITHERING);
+            emit newStatus(Ekos::GUIDE_DITHERING);
             break;
 
         //find_star
@@ -863,7 +857,7 @@ void PHD2::processPHD2Result(const QJsonObject &jsonObj, const QByteArray &line)
 
                 //This is needed so that PHD2 sends the new star pixmap when
                 //remote images are enabled.
-                emit newStarPixmap(m_GuideFrame->getTrackingBoxPixmap());
+                emit newStarPixmap(guideFrame->getTrackingBoxPixmap());
             }
             break;
         }
@@ -1001,9 +995,9 @@ void PHD2::processPHD2Error(const QJsonObject &jsonError, const QByteArray &line
 
 //These methods process the Star Images the PHD2 provides
 
-void PHD2::setGuideView(const QSharedPointer<FITSView> &guideView)
+void PHD2::setGuideView(FITSView *guideView)
 {
-    m_GuideFrame = guideView;
+    guideFrame = guideView;
 }
 
 void PHD2::processStarImage(const QJsonObject &jsonStarFrame)
@@ -1082,11 +1076,11 @@ void PHD2::processStarImage(const QJsonObject &jsonStarFrame)
     fdata.reset(new FITSData(), &QObject::deleteLater);
     fdata->loadFromBuffer(buffer, "fits");
     free(fits_buffer);
-    m_GuideFrame->loadData(fdata);
+    guideFrame->loadData(fdata);
 
-    m_GuideFrame->updateFrame();
-    m_GuideFrame->setTrackingBox(QRect(0, 0, width, height));
-    emit newStarPixmap(m_GuideFrame->getTrackingBoxPixmap());
+    guideFrame->updateFrame();
+    guideFrame->setTrackingBox(QRect(0, 0, width, height));
+    emit newStarPixmap(guideFrame->getTrackingBoxPixmap());
 }
 
 void PHD2::setEquipmentConnected()
@@ -1154,7 +1148,7 @@ bool PHD2::dither(double pixels)
         {
             // act like we just dithered so we get the appropriate
             // effects after the settling completes
-            handlePHD2AppState(DITHERING);
+            emit newStatus(Ekos::GUIDE_DITHERING);
             isDitherActive = true;
         }
         return true;
@@ -1191,7 +1185,7 @@ bool PHD2::dither(double pixels)
 
     sendPHD2Request("dither", args);
 
-    handlePHD2AppState(DITHERING);
+    emit newStatus(Ekos::GUIDE_DITHERING);
 
     return true;
 }
@@ -1312,6 +1306,8 @@ bool PHD2::guide()
     errorLog.clear();
 
     isSettling = true;
+    emit newStatus(GUIDE_CALIBRATING);
+
     sendPHD2Request("guide", args);
 
     return true;
@@ -1480,7 +1476,7 @@ bool PHD2::abort()
 bool PHD2::calibrate()
 {
     // We don't explicitly do calibration since it is done in the guide step by PHD2 anyway
-    //emit newStatus(Ekos::GUIDE_CALIBRATION_SUCCESS);
+    //emit newStatus(Ekos::GUIDE_CALIBRATION_SUCESS);
     return true;
 }
 

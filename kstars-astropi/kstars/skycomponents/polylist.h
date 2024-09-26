@@ -1,10 +1,22 @@
-/*
-    SPDX-FileCopyrightText: 2007 James B. Bowlin <bowlin@mindspring.com>
+/***************************************************************************
+                          polylist.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2007-07-10
+    copyright            : (C) 2007 by James B. Bowlin
+    email                : bowlin@mindspring.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
-#pragma once
+#ifndef POLYLIST_H
+#define POLYLIST_H
 
 #include <QHash>
 #include <QPolygonF>
@@ -18,47 +30,31 @@
  */
 class PolyList
 {
-    public:
-        /* @short trivial constructor that also sets the name.   It was
-             * convenient to specify the name at construction time.
-             */
-        explicit PolyList(const QString &name) : m_wrapRA(false)
-        {
-            m_name = name;
-        };
+  public:
+    /* @short trivial constructor that also sets the name.   It was
+         * convenient to specify the name at construction time.
+         */
+    explicit PolyList(const QString& name) : m_wrapRA(false) { m_name = name; };
 
-        /* @short returns the QPolygonF that holds the points. */
-        const QPolygonF *poly()
-        {
-            return &m_poly;
-        }
+    /* @short returns the QPolygonF that holds the points. */
+    const QPolygonF *poly() { return &m_poly; }
 
-        /* @short we need a new append() method to append QPointF's
-             * instead of SkyPoints.
-             */
-        void append(const QPointF &p)
-        {
-            m_poly.append(p);
-        }
+    /* @short we need a new append() method to append QPointF's
+         * instead of SkyPoints.
+         */
+    void append(const QPointF &p) { m_poly.append(p); }
 
-        /* @short returns the name. */
-        const QString &name()
-        {
-            return m_name;
-        }
+    /* @short returns the name. */
+    const QString &name() { return m_name; }
 
-        bool wrapRA()
-        {
-            return m_wrapRA;
-        }
+    bool wrapRA() { return m_wrapRA; }
 
-        void setWrapRA(bool wrap)
-        {
-            m_wrapRA = wrap;
-        }
+    void setWrapRA(bool wrap) { m_wrapRA = wrap; }
 
-    private:
-        QPolygonF m_poly;
-        QString m_name;
-        bool m_wrapRA;
+  private:
+    QPolygonF m_poly;
+    QString m_name;
+    bool m_wrapRA;
 };
+
+#endif

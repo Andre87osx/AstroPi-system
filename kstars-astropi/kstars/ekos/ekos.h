@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -10,6 +13,7 @@
 
 #include <QMetaType>
 #include <QDBusArgument>
+#include <QStringList>
 #include <QString>
 
 #include <vector>
@@ -17,27 +21,27 @@
 namespace Ekos
 {
 // Guide States
-static const QList<const char *> guideStates = { I18N_NOOP("Idle"),
-                                                 I18N_NOOP("Aborted"),
-                                                 I18N_NOOP("Connected"),
-                                                 I18N_NOOP("Disconnected"),
-                                                 I18N_NOOP("Capturing"),
-                                                 I18N_NOOP("Looping"),
-                                                 I18N_NOOP("Subtracting"),
-                                                 I18N_NOOP("Subframing"),
-                                                 I18N_NOOP("Selecting star"),
-                                                 I18N_NOOP("Calibrating"),
-                                                 I18N_NOOP("Calibration error"),
-                                                 I18N_NOOP("Calibrated"),
-                                                 I18N_NOOP("Guiding"),
-                                                 I18N_NOOP("Suspended"),
-                                                 I18N_NOOP("Reacquiring"),
-                                                 I18N_NOOP("Dithering"),
-                                                 I18N_NOOP("Manual Dithering"),
-                                                 I18N_NOOP("Dithering error"),
-                                                 I18N_NOOP("Dithering successful"),
-                                                 I18N_NOOP("Settling")
-                                               };
+static const QStringList guideStates = { I18N_NOOP("Idle"),
+                                         I18N_NOOP("Aborted"),
+                                         I18N_NOOP("Connected"),
+                                         I18N_NOOP("Disconnected"),
+                                         I18N_NOOP("Capturing"),
+                                         I18N_NOOP("Looping"),
+                                         I18N_NOOP("Subtracting"),
+                                         I18N_NOOP("Subframing"),
+                                         I18N_NOOP("Selecting star"),
+                                         I18N_NOOP("Calibrating"),
+                                         I18N_NOOP("Calibration error"),
+                                         I18N_NOOP("Calibrated"),
+                                         I18N_NOOP("Guiding"),
+                                         I18N_NOOP("Suspended"),
+                                         I18N_NOOP("Reacquiring"),
+                                         I18N_NOOP("Dithering"),
+                                         I18N_NOOP("Manual Dithering"),
+                                         I18N_NOOP("Dithering error"),
+                                         I18N_NOOP("Dithering successful"),
+                                         I18N_NOOP("Settling")
+                                       };
 
 typedef enum
 {
@@ -52,7 +56,7 @@ typedef enum
     GUIDE_STAR_SELECT,
     GUIDE_CALIBRATING,
     GUIDE_CALIBRATION_ERROR,
-    GUIDE_CALIBRATION_SUCCESS,
+    GUIDE_CALIBRATION_SUCESS,
     GUIDE_GUIDING,
     GUIDE_SUSPENDED,
     GUIDE_REACQUIRE,
@@ -63,10 +67,10 @@ typedef enum
     GUIDE_DITHERING_SETTLE
 } GuideState;
 
-const QString getGuideStatusString(GuideState state, bool translated = true);
+const QString &getGuideStatusString(GuideState state);
 
 // Capture States
-static const QList<const char *> captureStates =
+static const QStringList captureStates =
 {
     I18N_NOOP("Idle"), I18N_NOOP("In Progress"), I18N_NOOP("Capturing"), I18N_NOOP("Pause Planned"), I18N_NOOP("Paused"),
     I18N_NOOP("Suspended"), I18N_NOOP("Aborted"), I18N_NOOP("Waiting"), I18N_NOOP("Image Received"),
@@ -112,13 +116,13 @@ typedef enum
     CAPTURE_COMPLETE             /*!< capture job sequence completed successfully */
 } CaptureState;
 
-const QString getCaptureStatusString(CaptureState state, bool translated = true);
+const QString &getCaptureStatusString(CaptureState state);
 
 // Focus States
-static const QList<const char *> focusStates = { I18N_NOOP("Idle"),    I18N_NOOP("Complete"),       I18N_NOOP("Failed"),
-                                                 I18N_NOOP("Aborted"), I18N_NOOP("User Input"),     I18N_NOOP("In Progress"),
-                                                 I18N_NOOP("Framing"), I18N_NOOP("Changing Filter")
-                                               };
+static const QStringList focusStates = { I18N_NOOP("Idle"),    I18N_NOOP("Complete"),       I18N_NOOP("Failed"),
+                                         I18N_NOOP("Aborted"), I18N_NOOP("User Input"),     I18N_NOOP("In Progress"),
+                                         I18N_NOOP("Framing"), I18N_NOOP("Changing Filter")
+                                       };
 
 typedef enum
 {
@@ -132,13 +136,13 @@ typedef enum
     FOCUS_CHANGING_FILTER
 } FocusState;
 
-const QString getFocusStatusString(FocusState state, bool translated = true);
+const QString &getFocusStatusString(FocusState state);
 
 // Align States
-static const QList<const char *> alignStates = { I18N_NOOP("Idle"),    I18N_NOOP("Complete"),  I18N_NOOP("Failed"),
-                                                 I18N_NOOP("Aborted"), I18N_NOOP("In Progress"), I18N_NOOP("Syncing"),
-                                                 I18N_NOOP("Slewing"), I18N_NOOP("Suspended")
-                                               };
+static const QStringList alignStates = { I18N_NOOP("Idle"),    I18N_NOOP("Complete"),  I18N_NOOP("Failed"),
+                                         I18N_NOOP("Aborted"), I18N_NOOP("In Progress"), I18N_NOOP("Syncing"),
+                                         I18N_NOOP("Slewing"), I18N_NOOP("Suspended")
+                                       };
 
 typedef enum
 {
@@ -152,12 +156,12 @@ typedef enum
     ALIGN_SUSPENDED
 } AlignState;
 
-const QString getAlignStatusString(AlignState state, bool translated = true);
+const QString &getAlignStatusString(AlignState state);
 
 // Filter Manager States
-static const QList<const char *> filterStates = { I18N_NOOP("Idle"), I18N_NOOP("Changing Filter"), I18N_NOOP("Focus Offset"),
-                                                  I18N_NOOP("Auto Focus")
-                                                };
+static const QStringList filterStates = { I18N_NOOP("Idle"), I18N_NOOP("Changing Filter"), I18N_NOOP("Focus Offset"),
+                                          I18N_NOOP("Auto Focus")
+                                        };
 typedef enum
 {
     FILTER_IDLE,
@@ -175,16 +179,15 @@ typedef enum
     SCRIPT_N
 } ScriptTypes;
 
-const QString getFilterStatusString(FilterState state, bool translated = true);
+const QString &getFilterStatusString(FilterState state);
 
 // Scheduler states
 
-const QString getSchedulerStatusString(AlignState state, bool translated = true);
+const QString &getSchedulerStatusString(AlignState state);
 
-static const QList<const char *> schedulerStates = { I18N_NOOP("Idle"), I18N_NOOP("Startup"), I18N_NOOP("Running"),
-                                                     I18N_NOOP("Paused"), I18N_NOOP("Shutdown"), I18N_NOOP("Aborted"),
-                                                     I18N_NOOP("Loading")
-                                                   };
+static const QStringList schedulerStates = { I18N_NOOP("Idle"), I18N_NOOP("Startup"), I18N_NOOP("Running"),
+                                             I18N_NOOP("Paused"), I18N_NOOP("Shutdown"), I18N_NOOP("Aborted")
+                                           };
 
 typedef enum
 {

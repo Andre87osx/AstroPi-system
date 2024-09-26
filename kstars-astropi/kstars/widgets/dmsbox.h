@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001-2002 Pablo de Vicente <vicente@oan.es>
+/***************************************************************************
+                          dmsbox.h  -  description
+                             -------------------
+    begin                : Wed Dec 19 2002
+    copyright            : (C) 2001-2002 by Pablo de Vicente
+    email                : vicente@oan.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -32,96 +43,123 @@
  */
 class dmsBox : public QLineEdit
 {
-        Q_OBJECT
-        Q_PROPERTY(Unit units READ getUnits WRITE setUnits)
+    Q_OBJECT
+    Q_PROPERTY(bool degType READ degType WRITE setDegType)
 
-    public:
+  public:
+    /**
+     * Constructor for the dmsBox object.
+     *
+     * @param parent Pointer to the parent QWidget
+     * @param deg If true use deg/arcmin/arcsec otherwise use hours/min/sec.
+     */
+    explicit dmsBox(QWidget *parent, bool deg = true);
 
-        typedef enum
-        {
-            HOURS,
-            DEGREES
-        } Unit;
-        /**
-         * Constructor for the dmsBox object.
-         *
-         * @param parent Pointer to the parent QWidget
-         * @param unit Units to use (Degree/Arcmin/Arcsec or Hour/Min/Sec)
-         */
-        explicit dmsBox(QWidget *parent, Unit unit);
+    virtual ~dmsBox() override = default;
 
-        /**
-         * Deprecated delegating constructor for backwards compatibility
-         *
-         * @param parent Pointer to the parent QWidget
-         * @param isDegree If true, use Unit::DEGREES; if false, use Unit::HOURS
-         */
-        explicit dmsBox(QWidget *parent, bool isDegree = true)
-            : dmsBox(parent, isDegree ? Unit::DEGREES : Unit::HOURS) {}
+    /**
+     * Display an angle using Hours/Min/Sec.
+     *
+     * @p t the dms object which is to be displayed
+     */
+    void showInHours(dms t);
 
-        virtual ~dmsBox() override = default;
+    /**
+     * Display an angle using Hours/Min/Sec. This behaves just
+     * like the above function. It differs only in the data type of
+     * the argument.
+     *
+     * @p t pointer to the dms object which is to be displayed
+     */
+    void showInHours(const dms *t);
 
-        /**
-         * Display an angle.
-         *
-         * @param d the dms object which is to be displayed.
-         */
-        void show(const dms &d);
+    /**
+     * Display an angle using Deg/Arcmin/Arcsec.
+     *
+     * @p t the dms object which is to be displayed
+     */
+    void showInDegrees(dms t);
 
-        /**
-         * Display an angle.This behaves essentially like the above
-         * function.  It differs only in the data type of its argument.
-         *
-         * @param t the dms object which is to be displayed.
-         */
-        inline void show(const dms *t)
-        {
-            show(*t);
-        }
+    /**
+     * Display an angle using Deg/Arcmin/Arcsec.  This behaves just
+     * like the above function.  It differs only in the data type of
+     * the argument.
+     *
+     * @p t pointer to the dms object which is to be displayed
+     */
+    void showInDegrees(const dms *t);
 
-        /**
-         * Parse the text in the dmsBox as an angle. The text may be an integer
-         * or double value, or it may be a triplet of integer values (separated by spaces
-         * or colons) representing deg/hrs, min, sec.  It is also possible to have two
-         * fields.  In this case, if the second field is a double, it is converted
-         * to decimal min and double sec.
-         *
-         * @param ok set to true if a dms object was successfully created.
-         * @return a dms object constructed from the fields of the dmsbox
-         */
-        dms createDms(bool *ok = nullptr);
+    /**
+     * Display an angle.  Simply calls showInDegrees(t) or
+     * showInHours(t) depending on the value of deg.
+     *
+     * @param t the dms object which is to be displayed.
+     * @param deg if true, display Deg/Arcmin/Arcsec; otherwise
+     * display Hours/Min/Sec.
+     */
+    void show(dms t, bool deg = true);
 
-        /**
-         * @return the unit being used (DEGREES or HOURS)
-         */
-        inline Unit getUnits() const
-        {
-            return m_unit;
-        }
+    /**
+     * Display an angle.  Simply calls showInDegrees(t) or
+     * showInHours(t) depending on the value of deg.
+     * This behaves essentially like the above function.  It
+     * differs only in the data type of its argument.
+     *
+     * @param t the dms object which is to be displayed.
+     * @param deg if true, display Deg/Arcmin/Arcsec; otherwise
+     * display Hours/Min/Sec.
+     */
+    void show(const dms *t, bool deg = true);
 
-        /**
-         * @short set the dmsBox to Degrees or Hours
-         *
-         * @param unit If Unit::DEGREES, then the display and
-         * interpretation of text is in degrees, if Unit::HOURS then in
-         * hours.
-         */
-        void setUnits(Unit unit);
+    /**
+     * Simply display a string.
+     *
+     * @note JH: Why don't we just use QLineEdit::setText() instead?
+     * @param s the string to display (it need not be a valid angle value).
+     */
+    void setDMS(const QString &s) { setText(s); }
 
-        /** Clears the QLineEdit */
-        inline void clearFields(void)
-        {
-            setText(QString());
-        }
+    /**
+     * Parse the text in the dmsBox as an angle.  The text may be an integer
+     * or double value, or it may be a triplet of integer values (separated by spaces
+     * or colons) representing deg/hrs, min, sec.  It is also possible to have two
+     * fields.  In this case, if the second field is a double, it is converted
+     * to decimal min and double sec.
+     *
+     * @param deg if true use deg/arcmin/arcsec; otherwise
+     *           use hours/min/sec.
+     * @param ok set to true if a dms object was successfully created.
+     * @return a dms object constructed from the fields of the dmsbox
+     */
+    dms createDms(bool deg = true, bool *ok = nullptr);
 
-        inline bool isEmpty() const
-        {
-            return text().isEmpty();
-        }
+    /** @return a boolean indicating if object contains degrees or hours */
+    bool degType(void) const { return deg; }
 
-    private:
+    /**
+     * @short set the dmsBox to Degrees or Hours
+     *
+     * @param t if true, the box expects angle values in degrees; otherwise
+     * it expects values in hours
+     */
+    void setDegType(bool t);
 
-        void setPlaceholderText();
+    /** Clears the QLineEdit */
+    void clearFields(void) { setDMS(QString()); }
 
-        Unit m_unit;
+    inline bool isEmpty() { return EmptyFlag; }
+
+  protected:
+    void focusInEvent(QFocusEvent *e) override;
+    void focusOutEvent(QFocusEvent *e) override;
+
+  private slots:
+    void slotTextChanged(const QString &t);
+
+  private:
+    void setEmptyText();
+
+    bool deg { false };
+    bool EmptyFlag { false };
+    dms degValue;
 };

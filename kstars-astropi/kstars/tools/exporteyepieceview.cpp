@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2016 Akarsh Simha <akarsh@kde.org>
+/***************************************************************************
+              exporteyepieceview.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun 17 Jan 2016 21:35:49 CST
+    copyright            : (c) 2016 by Akarsh Simha
+    email                : akarsh@kde.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "exporteyepieceview.h"
 
@@ -37,7 +48,7 @@ ExportEyepieceView::ExportEyepieceView(const SkyPoint *_sp, const KStarsDateTime
     if (renderImage != nullptr)
         m_renderImage.reset(new QPixmap(*renderImage));
 
-    setWindowTitle(i18nc("@title:window", "Export eyepiece view"));
+    setWindowTitle(i18n("Export eyepiece view"));
 
     QWidget *mainWidget     = new QWidget(this);
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -171,7 +182,7 @@ void ExportEyepieceView::render()
 void ExportEyepieceView::slotSaveImage()
 {
     // does nothing at the moment. TODO: Implement.
-    QString fileName = QFileDialog::getSaveFileName(this, i18nc("@title:window", "Save Image as"), QString(),
+    QString fileName = QFileDialog::getSaveFileName(this, i18n("Save image as"), QString(),
                                                     i18n("Image files (*.png *.jpg *.xpm *.bmp *.gif)"));
     if (!fileName.isEmpty())
     {

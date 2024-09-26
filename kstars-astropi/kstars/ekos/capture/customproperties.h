@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Custom Properties
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -14,29 +17,29 @@
 
 class CustomProperties : public QDialog, public Ui::CustomProperties
 {
-        Q_OBJECT
+    Q_OBJECT
 
-    public:
-        CustomProperties();
+public:
+    CustomProperties();
 
-        void setCCD(ISD::CCD *ccd);
+    void setCCD(ISD::CCD *ccd);
 
-        QMap<QString, QMap<QString, QVariant> > getCustomProperties() const;
-        void setCustomProperties(const QMap<QString, QMap<QString, QVariant> > &value);
+    QMap<QString, QMap<QString, double> > getCustomProperties() const;
+    void setCustomProperties(const QMap<QString, QMap<QString, double> > &value);
 
-    signals:
-        void valueChanged();
+signals:
+    void valueChanged();
 
-    private slots:
-        void slotAdd();
-        void slotRemove();
-        void slotClear();
-        void slotApply();
+private slots:
+    void slotAdd();
+    void slotRemove();
+    void slotClear();
+    void slotApply();
 
-    private:
+private:
 
-        void syncProperties();
+    void syncProperties();
 
-        ISD::CCD *currentCCD = { nullptr };
-        QMap<QString, QMap<QString, QVariant>> customProperties;
+    ISD::CCD *currentCCD = { nullptr };
+    QMap<QString, QMap<QString,double>> customProperties;
 };

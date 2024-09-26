@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                  catalogcsvimport.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2021-06-03
+    copyright            : (C) 2021 by Valentin Boettcher
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "catalogcsvimport.h"
 #include "rapidcsv.h"
@@ -98,7 +109,7 @@ CatalogCSVImport::~CatalogCSVImport()
 
 void CatalogCSVImport::select_file()
 {
-    QFileDialog dialog(this, i18nc("@title:window", "Import Catalog"), QDir::homePath(),
+    QFileDialog dialog(this, i18n("Import Catalog"), QDir::homePath(),
                        QString("CSV") + i18n("File") + QString(" (*.csv);;") +
                            i18n("Any File") + QString(" (*);;"));
     dialog.setAcceptMode(QFileDialog::AcceptOpen);

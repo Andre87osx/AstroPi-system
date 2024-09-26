@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2009 Jerome SONRIER <jsid@emor3j.fr.eu.org>
+/***************************************************************************
+                          satellitescomponent.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue 02 Mar 2011
+    copyright            : (C) 2009 by Jerome SONRIER
+    email                : jsid@emor3j.fr.eu.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "satellitescomponent.h"
 
@@ -125,7 +136,7 @@ void SatellitesComponent::draw(SkyPainter *skyp)
 #endif
 }
 
-void SatellitesComponent::drawLabel(Satellite *sat, const QPointF &pos)
+void SatellitesComponent::drawLabel(Satellite *sat, const QPointF& pos)
 {
     SkyLabeler *labeler = SkyLabeler::Instance();
     labeler->setPen(KStarsData::Instance()->colorScheme()->colorNamed("SatLabelColor"));
@@ -153,7 +164,7 @@ void SatellitesComponent::updateTLEs()
             continue;
 
         progressDlg.setLabelText(i18n("Update %1 satellites", group->name()));
-        progressDlg.setWindowTitle(i18nc("@title:window", "Satellite Orbital Elements Update"));
+        progressDlg.setWindowTitle(i18n("Satellite Orbital Elements Update"));
 
         QNetworkAccessManager manager;
         QNetworkReply *response = manager.get(QNetworkRequest(group->tleUrl()));
@@ -228,9 +239,9 @@ SkyObject *SatellitesComponent::objectNearest(SkyPoint *p, double &maxrad)
                 continue;
 
             r = sat->angularDistanceTo(p).Degrees();
-            //qDebug() << Q_FUNC_INFO << sat->name();
-            //qDebug() << Q_FUNC_INFO << "r = " << r << " - max = " << rBest;
-            //qDebug() << Q_FUNC_INFO << "ra2=" << sat->ra().Degrees() << " - dec2=" << sat->dec().Degrees();
+            //qDebug() << sat->name();
+            //qDebug() << "r = " << r << " - max = " << rBest;
+            //qDebug() << "ra2=" << sat->ra().Degrees() << " - dec2=" << sat->dec().Degrees();
             if (r < rBest)
             {
                 rBest = r;
@@ -243,8 +254,7 @@ SkyObject *SatellitesComponent::objectNearest(SkyPoint *p, double &maxrad)
     return oBest;
 }
 
-SkyObject *SatellitesComponent::findByName(const QString &name, bool exact)
+SkyObject *SatellitesComponent::findByName(const QString &name)
 {
-    Q_UNUSED(exact)
     return nameHash[name.toLower()];
 }

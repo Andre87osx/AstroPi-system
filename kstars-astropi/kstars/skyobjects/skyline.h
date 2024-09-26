@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2006 Jason Harris <kstarss@30doradus.org>
+/***************************************************************************
+                          skyline.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Mon June 26 2006
+    copyright            : (C) 2006 by Jason Harris
+    email                : kstarss@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 

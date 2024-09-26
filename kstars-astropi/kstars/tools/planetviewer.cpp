@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2003 Jason Harris <jharris@30doradus.org>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          planetviewer.cpp  -  Display overhead view of the solar system
+                             -------------------
+    begin                : Sun May 25 2003
+    copyright            : (C) 2003 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "planetviewer.h"
 
@@ -26,9 +36,6 @@
 
 #include <cmath>
 
-// Qt version calming
-#include <qtskipemptyparts.h>
-
 PlanetViewerUI::PlanetViewerUI(QWidget *p) : QFrame(p)
 {
     setupUi(this);
@@ -47,7 +54,7 @@ PlanetViewer::PlanetViewer(QWidget *parent) : QDialog(parent), scale(1.0), isClo
     mainLayout->addWidget(pw);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Solar System Viewer"));
+    setWindowTitle(i18n("Solar System Viewer"));
     //setMainWidget( pw );
     //setButtons( QDialog::Close );
     setModal(false);
@@ -242,7 +249,7 @@ void PlanetViewer::initPlotObjects()
             while (fileReader.hasMoreLines())
             {
                 QString line       = fileReader.readLine();
-                QStringList fields = line.split(' ', Qt::SkipEmptyParts);
+                QStringList fields = line.split(' ', QString::SkipEmptyParts);
                 if (fields.size() == 3)
                 {
                     x = fields[0].toDouble();

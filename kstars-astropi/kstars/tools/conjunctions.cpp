@@ -1,13 +1,26 @@
-/*
-    SPDX-FileCopyrightText: 2008 Akarsh Simha <akarshsimha@gmail.com>
+/***************************************************************************
+                          conjunctions.cpp  -  Conjunctions Tool
+                             -------------------
+    begin                : Sun 20th Apr 2008
+    copyright            : (C) 2008 Akarsh Simha
+    email                : akarshsimha@gmail.com
+***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
-
-    Much of the code here is taken from Pablo de Vicente's
-    modcalcplanets.cpp
-
-*/
+/***************************************************************************
+ *                                                                         *
+ * Much of the code here is taken from Pablo de Vicente's                  *
+ * modcalcplanets.cpp                                                      *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "conjunctions.h"
 
@@ -59,8 +72,8 @@ ConjunctionsTool::ConjunctionsTool(QWidget *parentSplit) : QFrame(parentSplit)
     pNames[KSPlanetBase::MOON] = i18n("Moon");
 
     // Initialize the Maximum Separation box to 1 degree
-    maxSeparationBox->setUnits(dmsBox::DEGREES);
-    maxSeparationBox->show(1.0_deg);
+    maxSeparationBox->setDegType(true);
+    maxSeparationBox->setDMS("01 00 00.0");
 
     //FilterEdit->showClearButton = true;
     ClearFilterButton->setIcon(QIcon::fromTheme("edit-clear"));
@@ -90,7 +103,7 @@ ConjunctionsTool::ConjunctionsTool(QWidget *parentSplit) : QFrame(parentSplit)
 
     // Init filter type combobox
     FilterTypeComboBox->clear();
-    FilterTypeComboBox->addItem(i18n("Single Object"));
+    FilterTypeComboBox->addItem(i18n("Single Object..."));
     FilterTypeComboBox->addItem(i18n("Any"));
     FilterTypeComboBox->addItem(i18n("Stars"));
     FilterTypeComboBox->addItem(i18n("Solar System"));
@@ -203,7 +216,7 @@ void ConjunctionsTool::slotExport()
     QByteArray line;
 
     //QFile file( KFileDialog::getSaveFileName( QDir::homePath(), "*|All files", this, "Save Conjunctions" ) );
-    QFile file(QFileDialog::getSaveFileName(nullptr, i18nc("@title:window", "Save Conjunctions"), QDir::homePath(), "*|All files"));
+    QFile file(QFileDialog::getSaveFileName(nullptr, i18n("Save Conjunctions"), QDir::homePath(), "*|All files"));
 
     file.open(QIODevice::WriteOnly | QIODevice::Text);
 
@@ -246,7 +259,7 @@ void ConjunctionsTool::slotCompute(void)
     // Check if we have a valid angle in maxSeparationBox
     dms maxSeparation(0.0);
     bool ok;
-    maxSeparation = maxSeparationBox->createDms(&ok);
+    maxSeparation = maxSeparationBox->createDms(true, &ok);
 
     if (!ok)
     {
@@ -348,7 +361,7 @@ void ConjunctionsTool::slotCompute(void)
     {
         // Show a progress dialog while processing
         QProgressDialog progressDlg(i18n("Compute conjunction..."), i18n("Abort"), 0, objects.count(), this);
-        progressDlg.setWindowTitle(i18nc("@title:window", "Conjunction"));
+        progressDlg.setWindowTitle(i18n("Conjunction"));
         progressDlg.setWindowModality(Qt::WindowModal);
         progressDlg.setValue(0);
 

@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2010 Akarsh Simha <akarsh.simha@kdemail.net>
+/***************************************************************************
+                   skymapgldraw.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Wed Dec 29 2010 03:24 AM UTC -06:00
+    copyright            : (C) 2010 Akarsh Simha
+    email                : akarsh.simha@kdemail.net
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #ifndef SKYMAPGLDRAW_H_
 #define SKYMAPGLDRAW_H_

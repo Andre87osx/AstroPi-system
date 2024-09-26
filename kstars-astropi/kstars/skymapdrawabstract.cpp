@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                 skymapdrawabstract.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Mar 2 2003
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 // This file implements the class SkyMapDrawAbstract, and is almost
 // identical to the older skymapdraw.cpp file, written by Jason
@@ -264,15 +275,77 @@ void SkyMapDrawAbstract::drawTelescopeSymbols(QPainter &psky)
     psky.setBrush(Qt::NoBrush);
     float pxperdegree = Options::zoomFactor() / 57.3;
 
-    for (auto gd : INDIListener::Instance()->getDevices())
+    for (auto &gd : INDIListener::Instance()->getDevices())
     {
-        if (gd->getType() != KSTARS_TELESCOPE || gd->isConnected() == false)
+        if (gd->getType() != KSTARS_TELESCOPE)
             continue;
 
-        auto oneTelescope = dynamic_cast<ISD::Telescope*>(gd);
-        auto coordNP = oneTelescope->currentCoordinates();
+        ISD::Telescope *oneTelescope = dynamic_cast<ISD::Telescope*>(gd);
 
-        QPointF P = m_SkyMap->m_proj->toScreen(&coordNP);
+        if (oneTelescope->isConnected() == false)
+            continue;
+
+        auto coordNP = oneTelescope->getBaseDevice()->getNumber("EQUATORIAL_EOD_COORD");
+
+        if (coordNP == nullptr)
+        {
+            coordNP = oneTelescope->getBaseDevice()->getNumber("EQUATORIAL_COORD");
+            if (coordNP)
+            {
+                auto np = coordNP->findWidgetByName("RA");
+                if (np == nullptr)
+                    continue;
+                indi_sp.setRA(np->getValue());
+                indi_sp.setRA0(np->getValue());
+
+                np = coordNP->findWidgetByName("DEC");
+                if (np == nullptr)
+                    continue;
+                indi_sp.setDec(np->getValue());
+                indi_sp.setDec0(np->getValue());
+
+                indi_sp.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
+            }
+            else
+            {
+                coordNP = oneTelescope->getBaseDevice()->getNumber("HORIZONTAL_COORD");
+                if (coordNP == nullptr)
+                    continue;
+                else
+                {
+                    auto np = coordNP->findWidgetByName("AZ");
+                    if (np == nullptr)
+                        continue;
+                    indi_sp.setAz(np->getValue());
+
+                    np = coordNP->findWidgetByName("ALT");
+                    if (np == nullptr)
+                        continue;
+                    indi_sp.setAlt(np->getValue());
+                    indi_sp.HorizontalToEquatorial(m_KStarsData->lst(), m_KStarsData->geo()->lat());
+                }
+            }
+        }
+        else
+        {
+            auto np = coordNP->findWidgetByName("RA");
+            if (np == nullptr)
+                continue;
+            indi_sp.setRA(np->getValue());
+
+            np = coordNP->findWidgetByName("DEC");
+            if (np == nullptr)
+                continue;
+            indi_sp.setDec(np->getValue());
+        }
+
+        if (Options::useAltAz())
+            indi_sp.EquatorialToHorizontal(m_KStarsData->lst(), m_KStarsData->geo()->lat());
+
+        if (std::isnan(indi_sp.ra().Degrees()) || std::isnan(indi_sp.dec().Degrees()))
+            continue;
+
+        QPointF P = m_SkyMap->m_proj->toScreen(&indi_sp);
         if (Options::useAntialias())
         {
             float s1 = 0.5 * pxperdegree;
@@ -351,11 +424,11 @@ void SkyMapDrawAbstract::exportSkyImage(SkyQPainter *painter, bool scale)
     if (scale)
     {
         //scale sky image to fit paint device
-        qDebug() << Q_FUNC_INFO << "Scaling true while exporting Sky Image";
+        qDebug() << "Scaling true while exporting Sky Image";
         double xscale = double(painter->device()->width()) / double(m_SkyMap->width());
         double yscale = double(painter->device()->height()) / double(m_SkyMap->height());
         double scale  = qMin(xscale, yscale);
-        qDebug() << Q_FUNC_INFO << "xscale: " << xscale << "yscale: " << yscale << "chosen scale: " << scale;
+        qDebug() << "xscale: " << xscale << "yscale: " << yscale << "chosen scale: " << scale;
         painter->scale(scale, scale);
     }
 
@@ -370,7 +443,7 @@ void SkyMapDrawAbstract::exportSkyImage(SkyQPainter *painter, bool scale)
 {
     if(m_framecount == 25) {
         //float sec = m_fpstime.elapsed()/1000.;
-        // qDebug() << Q_FUNC_INFO << "FPS " << m_framecount/sec;
+        // qDebug() << "FPS " << m_framecount/sec;
         m_framecount = 0;
         m_fpstime.restart();
     }

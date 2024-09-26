@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
+/*  Gaussian Process Guider support class.
+    Copyright (C) 2020 Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "gpg.h"
 #include <vector>
@@ -26,13 +29,9 @@ constexpr int MAX_SKIPPED_SAMPLES = 4;
 // Fills parameters from the KStars options.
 void getGPGParameters(GaussianProcessGuider::guide_parameters *parameters)
 {
-    // Parameters from standard options.
-    parameters->control_gain_                      = Options::rAProportionalGain();
-    // We need a calibration to determine min move. This is re-set in computePulse() below.
-    parameters->min_move_                          = 0.25;
-
-    // Parameters from GPG-specific options.
+    parameters->control_gain_                      = Options::gPGcWeight();
     parameters->min_periods_for_inference_         = Options::gPGMinPeriodsForInference();
+    parameters->min_move_                          = Options::gPGMinMove();
     parameters->SE0KLengthScale_                   = Options::gPGSE0KLengthScale();
     parameters->SE0KSignalVariance_                = Options::gPGSE0KSignalVariance();
     parameters->PKLengthScale_                     = Options::gPGPKLengthScale();
@@ -113,11 +112,9 @@ void GPG::startDithering(double dx, double dy, const Calibration &cal)
     double raPixels, decPixels;
     cal.rotateToRaDec(dx, dy, &raPixels, &decPixels);
 
-    // The 1000 in the denominator below converts gear-milliseconds into gear-seconds,
-    // which is the unit GPG wants. Since calibration uses arcseconds, we convert using
-    // arcseconds/pixel, though that's inexact when the pixels aren't square.
+    // The 1000 in the denominator below converts gear-milliseconds into gear-seconds.
     // amount = (pixels * ms/pixel) / 1000;
-    const double amount = raPixels * cal.raPulseMillisecondsPerArcsecond() * cal.xArcsecondsPerPixel() / 1000.0;
+    const double amount = raPixels * cal.raPulseMillisecondsPerPixel() / 1000.0;
 
     qCDebug(KSTARS_EKOS_GUIDE) << "GPG Dither started. Gear-seconds =" << amount << "x,y was: " << dx << dy;
     gpg->GuidingDithered(amount, 1.0);
@@ -132,8 +129,8 @@ void GPG::ditheringSettled(bool success)
         qCDebug(KSTARS_EKOS_GUIDE) << "GPG Dither done (failed)";
 }
 
-void GPG::suspended(const GuiderUtils::Vector &guideStarPosition,
-                    const GuiderUtils::Vector &reticlePosition,
+void GPG::suspended(const Vector &guideStarPosition,
+                    const Vector &reticlePosition,
                     GuideStars *guideStars,
                     const Calibration &cal)
 {
@@ -147,9 +144,9 @@ void GPG::suspended(const GuiderUtils::Vector &guideStarPosition,
         return;
     }
 
-    const GuiderUtils::Vector arc_star = cal.convertToArcseconds(guideStarPosition);
-    const GuiderUtils::Vector arc_reticle = cal.convertToArcseconds(reticlePosition);
-    const GuiderUtils::Vector star_drift =  cal.rotateToRaDec(arc_star - arc_reticle);
+    const Vector arc_star = cal.convertToArcseconds(guideStarPosition);
+    const Vector arc_reticle = cal.convertToArcseconds(reticlePosition);
+    const Vector star_drift =  cal.rotateToRaDec(arc_star - arc_reticle);
 
     double gpgInput = star_drift.x;
     if (guideStars != nullptr)
@@ -168,7 +165,7 @@ void GPG::suspended(const GuiderUtils::Vector &guideStarPosition,
     double controlGain = gpg->GetControlGain();
     gpg->SetControlGain(0.0);
 
-    QElapsedTimer gpgTimer;
+    QTime gpgTimer;
     gpgTimer.restart();
     const double gpgResult = gpg->result(gpgInput, getSNR(guideStars, gpgInput), Options::guideExposure());
     // Store the updated period length.
@@ -218,12 +215,8 @@ bool GPG::computePulse(double raArcsecError, GuideStars *guideStars,
         return false;
     }
 
-    // GPG uses proportional gain and min-move from standard controls. Make sure they're using up-to-date values.
-    gpg->SetControlGain(Options::rAProportionalGain());
-    gpg->SetMinMove(Options::rAMinimumPulseArcSec());
-
     // GPG input is in RA arcseconds.
-    QElapsedTimer gpgTimer;
+    QTime gpgTimer;
     gpgTimer.restart();
     const double gpgResult = gpg->result(raArcsecError, getSNR(guideStars, raArcsecError), Options::guideExposure());
     const double gpgTime = gpgTimer.elapsed();

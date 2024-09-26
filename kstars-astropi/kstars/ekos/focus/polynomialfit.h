@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2019 Hy Murveit <hy-1@murveit.com>
+/*  Ekos polynomial fit utilities Algorithms
+    Copyright (C) 2019 Hy Murveit <hy-1@murveit.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -17,20 +20,18 @@ class PolynomialFit
 public:
     // Constructor. Pass in the degree of the desired polynomial fit, and a vector with the x and y values.
     // The constructor solves for the polynomial coefficients.
-    PolynomialFit(int degree, uint8_t maxCount, const QVector<double>& x, const QVector<double>& y);
+    PolynomialFit(int degree, const QVector<double>& x, const QVector<double>& y);
     PolynomialFit(int degree, const QVector<int>& x, const QVector<double>& y);
 
     // Returns the minimum position and value in the pointers for the solved polynomial.
     // Returns false if the polynomial couldn't be solved.
     bool findMinimum(double expected, double minPosition, double maxPosition, double *position, double *value);
 
-    /**
-     * @brief Polynomial function f(x)
-     * @param x argument
-     * @return f(x)
-     */
-    double f(double x);
-
+    // Draws the polynomial on the plot's graph.
+    void drawPolynomial(QCustomPlot *plot, QCPGraph *graph);
+    // Annotate's the plot's solution graph with the solution position.
+    void drawMinimum(QCustomPlot *plot, QCPGraph *solutionGraph,
+                     double solutionPosition, double solutionValue, const QFont& font);
 
 private:
     // Solves for the polynomial coefficients.

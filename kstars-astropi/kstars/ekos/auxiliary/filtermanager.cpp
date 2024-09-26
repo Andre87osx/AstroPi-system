@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos Filter Manager
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "filtermanager.h"
@@ -656,26 +659,6 @@ QString FilterManager::getFilterLock(const QString &name) const
 
     // Default value
     return "--";
-}
-
-bool FilterManager::setFilterLock(int index, QString name)
-{
-    if (m_currentFilterLabels.empty())
-        return false;
-
-    QString color = m_currentFilterLabels[index];
-    for (int i = 0; i < m_ActiveFilters.count(); i++)
-    {
-        if (color == m_ActiveFilters[i]->color())
-        {
-            filterModel->setData(filterModel->index(i, 8), name);
-            filterModel->submitAll();
-            refreshFilterModel();
-            return true;
-        }
-    }
-
-    return false;
 }
 
 void FilterManager::removeDevice(ISD::GDInterface *device)

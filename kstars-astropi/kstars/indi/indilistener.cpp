@@ -1,10 +1,13 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Listener
+    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 
     Handle INDI Standard properties.
-*/
+ */
 
 #include "indilistener.h"
 
@@ -76,23 +79,24 @@ INDIListener *INDIListener::Instance()
     {
         _INDIListener = new INDIListener(KStars::Instance());
 
-        connect(_INDIListener, &INDIListener::newTelescope,
-                [&]()
+        connect(_INDIListener, &INDIListener::newTelescope, [&]()
         {
             KStars::Instance()->slotSetTelescopeEnabled(true);
         });
 
-        connect(_INDIListener, &INDIListener::newDome,
-                [&]()
+        connect(_INDIListener, &INDIListener::newDome, [&]()
         {
             KStars::Instance()->slotSetDomeEnabled(true);
         });
+
     }
 
     return _INDIListener;
 }
 
-INDIListener::INDIListener(QObject *parent) : QObject(parent) {}
+INDIListener::INDIListener(QObject *parent) : QObject(parent)
+{
+}
 
 INDIListener::~INDIListener()
 {
@@ -100,7 +104,7 @@ INDIListener::~INDIListener()
     qDeleteAll(st4Devices);
 }
 
-bool INDIListener::isStandardProperty(const QString &name) const
+bool INDIListener::isStandardProperty(const QString &name)
 {
     for (auto &item : indi_std)
     {
@@ -110,9 +114,9 @@ bool INDIListener::isStandardProperty(const QString &name) const
     return false;
 }
 
-ISD::GDInterface *INDIListener::getDevice(const QString &name) const
+ISD::GDInterface *INDIListener::getDevice(const QString &name)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == name)
             return oneDevice;
@@ -122,15 +126,16 @@ ISD::GDInterface *INDIListener::getDevice(const QString &name) const
 
 void INDIListener::addClient(ClientManager *cm)
 {
-    qCDebug(KSTARS_INDI)
-            << "INDIListener: Adding a new client manager to INDI listener..";
+    qCDebug(KSTARS_INDI) << "INDIListener: Adding a new client manager to INDI listener..";
 
     clients.append(cm);
 
-    connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice);
+    connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice, Qt::BlockingQueuedConnection);
+    //connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice);
     connect(cm, &ClientManager::newINDIProperty, this, &INDIListener::registerProperty);
 
     connect(cm, &ClientManager::removeINDIDevice, this, &INDIListener::removeDevice);
+    //connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty, Qt::BlockingQueuedConnection);
     connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty);
 
     connect(cm, &ClientManager::newINDISwitch, this, &INDIListener::processSwitch);
@@ -138,14 +143,12 @@ void INDIListener::addClient(ClientManager *cm)
     connect(cm, &ClientManager::newINDINumber, this, &INDIListener::processNumber);
     connect(cm, &ClientManager::newINDILight, this, &INDIListener::processLight);
     connect(cm, &ClientManager::newINDIBLOB, this, &INDIListener::processBLOB);
-    connect(cm, &ClientManager::newINDIUniversalMessage, this,
-            &INDIListener::processUniversalMessage);
+    connect(cm, &ClientManager::newINDIUniversalMessage, this, &INDIListener::processUniversalMessage);
 }
 
 void INDIListener::removeClient(ClientManager *cm)
 {
-    qCDebug(KSTARS_INDI) << "INDIListener: Removing client manager for server"
-                         << cm->getHost() << "@" << cm->getPort();
+    qCDebug(KSTARS_INDI) << "INDIListener: Removing client manager for server" << cm->getHost() << "@" << cm->getPort();
 
     QList<ISD::GDInterface *>::iterator it = devices.begin();
     clients.removeOne(cm);
@@ -153,8 +156,7 @@ void INDIListener::removeClient(ClientManager *cm)
     while (it != devices.end())
     {
         DriverInfo *dv  = (*it)->getDriverInfo();
-        bool hostSource = (dv->getDriverSource() == HOST_SOURCE) ||
-                          (dv->getDriverSource() == GENERATED_SOURCE);
+        bool hostSource = (dv->getDriverSource() == HOST_SOURCE) || (dv->getDriverSource() == GENERATED_SOURCE);
 
         if (cm->isDriverManaged(dv))
         {
@@ -192,28 +194,38 @@ void INDIListener::processDevice(DeviceInfo *dv)
     qCDebug(KSTARS_INDI) << "INDIListener: New device" << dv->getDeviceName();
 
     ISD::GDInterface *gd = new ISD::GenericDevice(*dv, cm);
-    devices.append(gd);
 
-    // Register all existing properties
-    for (const auto &oneProperty : dv->getBaseDevice()->getProperties())
-        gd->registerProperty(oneProperty);
+    devices.append(gd);
 
     emit newDevice(gd);
 }
+
+//void INDIListener::removeDevice(DeviceInfo *dv)
+//{
+//    qCDebug(KSTARS_INDI) << "INDIListener: Removing device" << dv->getBaseDevice()->getDeviceName() << "with unique label "
+//                         << dv->getDriverInfo()->getUniqueLabel();
+
+//    foreach (ISD::GDInterface *gd, devices)
+//    {
+//        if (gd->getDeviceInfo() == dv)
+//        {
+//            emit deviceRemoved(gd);
+//            devices.removeOne(gd);
+//            delete (gd);
+//        }
+//    }
+//}
 
 void INDIListener::removeDevice(const QString &deviceName)
 {
     qCDebug(KSTARS_INDI) << "INDIListener: Removing device" << deviceName;
 
-    for (auto oneDevice : qAsConst(devices))
+    for (ISD::GDInterface *oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == deviceName)
         {
-            // Remove from list first
-            devices.removeOne(oneDevice);
-            // Then emit a signal to inform subscribers that this device is removed.
             emit deviceRemoved(oneDevice);
-            // Delete this device later.
+            devices.removeOne(oneDevice);
             oneDevice->deleteLater();
             return;
         }
@@ -225,10 +237,9 @@ void INDIListener::registerProperty(INDI::Property prop)
     if (!prop.getRegistered())
         return;
 
-    qCDebug(KSTARS_INDI) << "<" << prop.getDeviceName() << ">: <" << prop.getName()
-                         << ">";
+    qCDebug(KSTARS_INDI) << "<" << prop.getDeviceName() << ">: <" << prop.getName() << ">";
 
-    for (auto oneDevice : qAsConst(devices))
+    for (auto oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == prop.getDeviceName())
         {
@@ -287,7 +298,8 @@ void INDIListener::registerProperty(INDI::Property prop)
                 emit newFocuser(oneDevice);
             }
 
-            else if (prop.isNameMatch("DOME_SHUTTER") || prop.isNameMatch("DOME_MOTION"))
+            else if (prop.isNameMatch("DOME_SHUTTER") ||
+                     prop.isNameMatch("DOME_MOTION"))
             {
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
                 {
@@ -325,8 +337,7 @@ void INDIListener::registerProperty(INDI::Property prop)
                 // If light box part of dust cap
                 if (oneDevice->getType() == KSTARS_UNKNOWN)
                 {
-                    if (oneDevice->getBaseDevice()->getDriverInterface() &
-                            INDI::BaseDevice::DUSTCAP_INTERFACE)
+                    if (oneDevice->getBaseDevice()->getDriverInterface() & INDI::BaseDevice::DUSTCAP_INTERFACE)
                     {
                         devices.removeOne(oneDevice);
                         oneDevice = new ISD::DustCap(oneDevice);
@@ -348,16 +359,9 @@ void INDIListener::registerProperty(INDI::Property prop)
 
             if (prop.isNameMatch("TELESCOPE_TIMED_GUIDE_WE"))
             {
-                ISD::ST4 *st4Driver =  new ISD::ST4(oneDevice->getBaseDevice(), oneDevice->getDriverInfo()->getClientManager());
-                if (st4Driver == nullptr)
-                {
-                    qCCritical(KSTARS_INDI) << "Failed to allocate ST4 driver";
-                }
-                else
-                {
-                    st4Devices.append(st4Driver);
-                    emit newST4(st4Driver);
-                }
+                ISD::ST4 *st4Driver = new ISD::ST4(oneDevice->getBaseDevice(), oneDevice->getDriverInfo()->getClientManager());
+                st4Devices.append(st4Driver);
+                emit newST4(st4Driver);
             }
 
             oneDevice->registerProperty(prop);
@@ -368,7 +372,7 @@ void INDIListener::registerProperty(INDI::Property prop)
 
 void INDIListener::removeProperty(const QString &device, const QString &name)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == device)
         {
@@ -380,7 +384,7 @@ void INDIListener::removeProperty(const QString &device, const QString &name)
 
 void INDIListener::processSwitch(ISwitchVectorProperty *svp)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == svp->device)
         {
@@ -392,7 +396,7 @@ void INDIListener::processSwitch(ISwitchVectorProperty *svp)
 
 void INDIListener::processNumber(INumberVectorProperty *nvp)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == nvp->device)
         {
@@ -404,7 +408,7 @@ void INDIListener::processNumber(INumberVectorProperty *nvp)
 
 void INDIListener::processText(ITextVectorProperty *tvp)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == tvp->device)
         {
@@ -416,7 +420,7 @@ void INDIListener::processText(ITextVectorProperty *tvp)
 
 void INDIListener::processLight(ILightVectorProperty *lvp)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == lvp->device)
         {
@@ -428,7 +432,7 @@ void INDIListener::processLight(ILightVectorProperty *lvp)
 
 void INDIListener::processBLOB(IBLOB *bp)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == bp->bvp->device)
         {
@@ -440,7 +444,7 @@ void INDIListener::processBLOB(IBLOB *bp)
 
 void INDIListener::processMessage(INDI::BaseDevice *dp, int messageID)
 {
-    for (auto oneDevice : qAsConst(devices))
+    for (auto &oneDevice : devices)
     {
         if (oneDevice->getDeviceName() == dp->getDeviceName())
         {
@@ -467,8 +471,7 @@ void INDIListener::processUniversalMessage(const QString &message)
 
     if (Options::messageNotificationINDI())
     {
-        KSNotification::event(QLatin1String("IndiServerMessage"), displayMessage,
-                              KSNotification::EVENT_WARN);
+        KSNotification::event(QLatin1String("IndiServerMessage"), displayMessage, KSNotification::EVENT_WARN);
     }
     else
     {

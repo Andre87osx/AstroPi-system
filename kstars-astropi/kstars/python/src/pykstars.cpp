@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                  pykstars.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2021-06-03
+    copyright            : (C) 2021 by Valentin Boettcher
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include <pybind11/pybind11.h>
 #include <pybind11/chrono.h>
@@ -205,7 +216,7 @@ PYBIND11_MODULE(pykstars, m)
     py::enum_<SkyObject::TYPE>(m, "ObjectType", "The types of CatalogObjects",
                                py::arithmetic())
         .value("STAR", SkyObject::STAR)
-        .value("CATALOG_STAR", SkyObject::CATALOG_STAR)
+        .value("CATALOGSTAR", SkyObject::CATALOG_STAR)
         .value("PLANET", SkyObject::TYPE::PLANET)
         .value("OPEN_CLUSTER", SkyObject::TYPE::OPEN_CLUSTER)
         .value("GLOBULAR_CLUSTER", SkyObject::TYPE::GLOBULAR_CLUSTER)

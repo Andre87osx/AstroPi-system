@@ -3,9 +3,12 @@
 
     The KStars HiPS compoenent is used to load and overlay progress surveys from various online catalogs.
 
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "hipscomponent.h"
@@ -16,8 +19,6 @@
 
 HIPSComponent::HIPSComponent(SkyComposite *parent) : SkyComponent(parent)
 {
-    m_ElapsedTimer.start();
-    m_RefreshTimer.start();
 }
 
 bool HIPSComponent::selected()
@@ -27,45 +28,9 @@ bool HIPSComponent::selected()
 
 void HIPSComponent::draw(SkyPainter *skyp)
 {
-
 #if !defined(KSTARS_LITE)
-    if ( (SkyMap::IsSlewing() && !Options::hIPSPanning()) || !selected())
-        return;
-
-    // If we are tracking and we currently have a focus object or point
-    // Then no need for re-render every update cycle since that is CPU intensive
-    // Draw the cached HiPS image for 5000ms. When this expires, render the image again and
-    // restart the timer.
-
-    // Keep track of zoom level and redraw if changes.
-    double newZoom = Options::zoomFactor();
-    if (std::abs(newZoom - m_LastZoom) == 0. && Options::isTracking() && SkyMap::IsFocused())
-    {
-        // We can draw the cache when two conditions are met.
-        // 1. It is not yet time to re-draw
-        // 2. Refresh time expired.
-        if (m_ElapsedTimer.elapsed() < HIPS_REDRAW_PERIOD && m_RefreshTimer.elapsed() > HIPS_REFRESH_PERIOD)
-        {
-            skyp->drawHips(true);
-        }
-        else
-        {
-            skyp->drawHips(false);
-            m_ElapsedTimer.restart();
-        }
-
-        // If focus object changes, we reset fresh timer to force drawing of uncached image.
-        if (SkyMap::Instance()->focusObject() && SkyMap::Instance()->focusObject()->name() != m_LastFocusedObjectName)
-        {
-            m_LastFocusedObjectName = SkyMap::Instance()->focusObject()->name();
-            m_RefreshTimer.restart();
-        }
-    }
-    // When slewing or not tracking, render and draw immediately.
-    else
-        skyp->drawHips(false);
-
-    m_LastZoom = newZoom;
+  if (((SkyMap::IsSlewing() == false) || Options::hIPSPanning()) && selected())
+        skyp->drawHips();
 #else
     Q_UNUSED(skyp);
 #endif

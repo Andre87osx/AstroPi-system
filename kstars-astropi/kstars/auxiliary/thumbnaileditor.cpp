@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          thumbnaileditor.cpp  -  description
+                             -------------------
+    begin                : Thu Mar 2 2005
+    copyright            : (C) 2005 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "thumbnaileditor.h"
 
@@ -36,7 +47,7 @@ ThumbnailEditor::ThumbnailEditor(ThumbnailPicker *_tp, double _w, double _h) : Q
     h  = _h;
     ui->MessageLabel->setText(i18n("Crop region will be scaled to [ %1 * %2 ]", w, h));
 
-    setWindowTitle(i18nc("@title:window", "Edit Thumbnail Image"));
+    setWindowTitle(i18n("Edit Thumbnail Image"));
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ui);
     setLayout(mainLayout);
@@ -51,7 +62,7 @@ ThumbnailEditor::ThumbnailEditor(ThumbnailPicker *_tp, double _w, double _h) : Q
     ui->ImageCanvas->setImage(tp->currentListImage());
 
     //DEBUG
-    //qDebug() << Q_FUNC_INFO << tp->currentListImage()->size();
+    //qDebug() << tp->currentListImage()->size();
 
     connect(ui->ImageCanvas, SIGNAL(cropRegionModified()), SLOT(slotUpdateCropLabel()));
     slotUpdateCropLabel();

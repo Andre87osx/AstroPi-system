@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2002 Pablo de Vicente <vicente@oan.es>
+/***************************************************************************
+                          modcalcgal.cpp  -  description
+                             -------------------
+    begin                : Thu Jan 17 2002
+    copyright            : (C) 2002 by Pablo de Vicente
+    email                : vicente@oan.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "modcalcgalcoord.h"
 
@@ -17,7 +28,7 @@
 modCalcGalCoord::modCalcGalCoord(QWidget *parentSplit) : QFrame(parentSplit)
 {
     setupUi(this);
-    RA->setUnits(dmsBox::HOURS);
+    RA->setDegType(false);
 
     connect(RA, SIGNAL(editingFinished()), this, SLOT(slotComputeCoords()));
     connect(Dec, SIGNAL(editingFinished()), this, SLOT(slotComputeCoords()));
@@ -41,8 +52,8 @@ void modCalcGalCoord::slotObject()
     if (FindDialog::Instance()->exec() == QDialog::Accepted)
     {
         SkyObject *o = FindDialog::Instance()->targetObject();
-        RA->show(o->ra());
-        Dec->show(o->dec());
+        RA->showInHours(o->ra());
+        Dec->showInDegrees(o->dec());
         slotComputeCoords();
     }
 }
@@ -59,16 +70,16 @@ void modCalcGalCoord::slotComputeCoords()
         //Validate GLong and GLat
         bool ok(false);
         dms glat;
-        dms glong = GalLongitude->createDms(&ok);
+        dms glong = GalLongitude->createDms(true, &ok);
         if (ok)
-            glat = GalLatitude->createDms(&ok);
+            glat = GalLatitude->createDms(true, &ok);
         if (ok)
         {
             SkyPoint sp;
             sp.GalacticToEquatorial1950(&glong, &glat);
             sp.B1950ToJ2000();
-            RA->show(sp.ra());
-            Dec->show(sp.dec());
+            RA->showInHours(sp.ra());
+            Dec->showInDegrees(sp.dec());
         }
     }
     else
@@ -76,17 +87,17 @@ void modCalcGalCoord::slotComputeCoords()
         //Validate RA and Dec
         bool ok(false);
         dms dec;
-        dms ra = RA->createDms(&ok);
+        dms ra = RA->createDms(false, &ok);
         if (ok)
-            dec = Dec->createDms(&ok);
+            dec = Dec->createDms(true, &ok);
         if (ok)
         {
             dms glong, glat;
             SkyPoint sp(ra, dec);
             sp.J2000ToB1950();
             sp.Equatorial1950ToGalactic(glong, glat);
-            GalLongitude->show(glong);
-            GalLatitude->show(glat);
+            GalLongitude->showInDegrees(glong);
+            GalLatitude->showInDegrees(glat);
         }
     }
 }
@@ -246,7 +257,7 @@ void modCalcGalCoord::processLines(QTextStream &istream)
                 i++;
             }
             else
-                galLongB = galLongBoxBatch->createDms();
+                galLongB = galLongBoxBatch->createDms(true);
 
             if (allRadioBatch->isChecked())
                 ostream << galLongB.toDMSString() << space;
@@ -261,7 +272,7 @@ void modCalcGalCoord::processLines(QTextStream &istream)
                 i++;
             }
             else
-                galLatB = galLatBoxBatch->createDms();
+                galLatB = galLatBoxBatch->createDms(true);
 
             if (allRadioBatch->isChecked())
                 ostream << galLatB.toDMSString() << space;
@@ -283,7 +294,7 @@ void modCalcGalCoord::processLines(QTextStream &istream)
                 i++;
             }
             else
-                raB = raBoxBatch->createDms();
+                raB = raBoxBatch->createDms(false);
 
             if (allRadioBatch->isChecked())
                 ostream << raB.toHMSString() << space;

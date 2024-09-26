@@ -1,7 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Client Manager
+    Copyright (C) 2012 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
 */
 
 #pragma once
@@ -29,7 +33,7 @@ class ServerManager;
  * This enables the class to communicate with INDI server and to receive notification of devices, properties, and messages.
  *
  * @author Jasem Mutlaq
- * @version 1.3
+ * @version 1.2
  */
 #ifdef USE_QT5_INDI
 class ClientManager : public INDI::BaseClientQt
@@ -40,7 +44,7 @@ class ClientManager : public QObject, public INDI::BaseClient
         Q_OBJECT
 
     public:
-        ClientManager();
+        ClientManager() = default;
         virtual ~ClientManager() override = default;
 
         /**
@@ -64,7 +68,7 @@ class ClientManager : public QObject, public INDI::BaseClient
 
         int count()
         {
-            return m_ManagedDrivers.count();
+            return managedDrivers.count();
         }
 
         bool isBLOBEnabled(const QString &device, const QString &property);
@@ -81,8 +85,6 @@ class ClientManager : public QObject, public INDI::BaseClient
         bool isDriverManaged(DriverInfo *);
 
         QList<DriverInfo *> getManagedDrivers() const;
-
-        void establishConnection();
 
     protected:
         virtual void newDevice(INDI::BaseDevice *dp) override;
@@ -101,22 +103,16 @@ class ClientManager : public QObject, public INDI::BaseClient
 #endif
 
         virtual void serverConnected() override;
-        virtual void serverDisconnected(int exitCode) override;
+        virtual void serverDisconnected(int exit_code) override;
 
     private:
-        void processNewProperty(INDI::Property prop);
-        void processRemoveBLOBManager(const QString &device, const QString &property);
-        QList<DriverInfo *> m_ManagedDrivers;
-        QList<BlobManager *> blobManagers;
+        QList<DriverInfo *> managedDrivers;
+        QList<QPointer<BlobManager>> blobManagers;
         ServerManager *sManager { nullptr };
 
     signals:
-        // Client successfully connected to the server.
-        void started();
-        // Client failed to connect to the server.
-        void failed(const QString &message);
-        // Running client was abnormally disconnected from server.
-        void terminated(const QString &message);
+        void connectionSuccessful();
+        void connectionFailure(ClientManager *);
 
         // @note If using INDI Posix client, the following newINDIDevice/Property and removeINDIDevice/Property signals
         // must be connected to slots using Qt::BlockingQueuedConnection to ensure operation is fully completed before
@@ -129,7 +125,6 @@ class ClientManager : public QObject, public INDI::BaseClient
         void removeINDIProperty(const QString &device, const QString &name);
 
         void newBLOBManager(const char *device, INDI::Property prop);
-        void removeBLOBManager(const QString &device, const QString &property);
 
         void newINDIBLOB(IBLOB *bp);
         void newINDISwitch(ISwitchVectorProperty *svp);
@@ -140,9 +135,4 @@ class ClientManager : public QObject, public INDI::BaseClient
 #if INDI_VERSION_MAJOR >= 1 && INDI_VERSION_MINOR >= 5
         void newINDIUniversalMessage(const QString &message);
 #endif
-
-    private:
-        static constexpr uint8_t MAX_RETRIES {2};
-        uint8_t m_ConnectionRetries {MAX_RETRIES};
-        bool m_PendingConnection {false};
 };

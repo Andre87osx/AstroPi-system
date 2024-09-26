@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2018 Valentin Boettcher <valentin@boettcher.cf>
+/***************************************************************************
+           lunareclipsehandler.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Tue 18/09/2018
+    copyright            : (C) 2018 Valentin Boettcher
+    email                : valentin@boettcher.cf
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "lunareclipsehandler.h"
 #include "skymapcomposite.h"

@@ -1,9 +1,13 @@
 /*  KStars Asynchronous Message Box Implementation for Desktop/Android and EkosLive
     Based on QMessageBox.
 
-    SPDX-FileCopyrightText: 2019 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2019 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
 */
 
 #include "ksmessagebox.h"
@@ -57,7 +61,7 @@ KSMessageBox::KSMessageBox() : QMessageBox()
     });
 }
 
-void KSMessageBox::error(const QString &message, const QString &title, quint32 timeout)
+void KSMessageBox::error(const QString &message, const QString &title)
 {
 #ifdef KSTARS_LITE
     Q_UNUSED(title);
@@ -70,15 +74,13 @@ void KSMessageBox::error(const QString &message, const QString &title, quint32 t
     setIcon(QMessageBox::Critical);
     setText(message);
     setWindowTitle(title);
-
-    setupTimeout(timeout);
     open();
 
     emit newMessage(createMessageObject());
 #endif
 }
 
-void KSMessageBox::sorry(const QString &message, const QString &title, quint32 timeout)
+void KSMessageBox::sorry(const QString &message, const QString &title)
 {
 #ifdef KSTARS_LITE
     Q_UNUSED(title);
@@ -91,15 +93,13 @@ void KSMessageBox::sorry(const QString &message, const QString &title, quint32 t
     setIcon(QMessageBox::Warning);
     setText(message);
     setWindowTitle(title);
-
-    setupTimeout(timeout);
     open();
 
     emit newMessage(createMessageObject());
 #endif
 }
 
-void KSMessageBox::info(const QString &message, const QString &title, quint32 timeout)
+void KSMessageBox::info(const QString &message, const QString &title)
 {
 #ifdef KSTARS_LITE
     Q_UNUSED(title);
@@ -112,8 +112,6 @@ void KSMessageBox::info(const QString &message, const QString &title, quint32 ti
     setIcon(QMessageBox::Information);
     setText(message);
     setWindowTitle(title);
-
-    setupTimeout(timeout);
     open();
 
     emit newMessage(createMessageObject());
@@ -122,9 +120,8 @@ void KSMessageBox::info(const QString &message, const QString &title, quint32 ti
 #endif
 }
 
-void KSMessageBox::setupTimeout(quint32 timeout)
+void KSMessageBox::setupTimeout()
 {
-    m_Timeout = timeout;
     if (m_Timeout == 0)
         return;
 
@@ -158,7 +155,7 @@ void KSMessageBox::setupTimeout(quint32 timeout)
 void KSMessageBox::reset()
 {
     m_ProgressTimer.stop();
-    resetTimeout();
+    m_Timeout = 0;
 
     QList<QPushButton *> allButtons = findChildren<QPushButton*>();
     qDeleteAll(allButtons);
@@ -196,7 +193,9 @@ void KSMessageBox::questionYesNo(const QString &message, const QString &title, q
     yesButton->setDefault(defaultToYes);
     noButton->setDefault(!defaultToYes);
 
-    setupTimeout(timeout);
+    m_Timeout = timeout;
+
+    setupTimeout();
 
     open();
 
@@ -226,7 +225,9 @@ void KSMessageBox::warningContinueCancel(const QString &message, const QString &
     continueButton->setDefault(defaultToContinue);
     cancelButton->setDefault(!defaultToContinue);
 
-    setupTimeout(timeout);
+    m_Timeout = timeout;
+
+    setupTimeout();
 
     open();
 

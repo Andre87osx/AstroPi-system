@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                  catalogdetails.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2021-06-03
+    copyright            : (C) 2021 by Valentin Boettcher
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include <QMessageBox>
 #include "catalogdetails.h"
@@ -40,7 +51,7 @@ CatalogDetails::CatalogDetails(QWidget *parent, const QString &db_path,
     ui->object_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->object_table->adjustSize();
     ui->object_table->horizontalHeader()->setSectionResizeMode(
-        QHeaderView::ResizeMode::ResizeToContents);
+        QHeaderView::ResizeMode::Stretch);
 
     connect(ui->object_table, &QTableView::doubleClicked, this,
             &CatalogDetails::show_object_details);
@@ -89,6 +100,7 @@ void CatalogDetails::reload_catalog()
     ui->author->setText(m_catalog.author);
     ui->maintainer->setText(m_catalog.maintainer);
     ui->source->setText(m_catalog.source);
+    ui->color->setText(QString("<font color='%1'>%1</font>").arg(m_catalog.color));
     ui->description->setText(m_catalog.description);
     ui->version->setText(QString::number(m_catalog.version));
     ui->license->setText(m_catalog.license);

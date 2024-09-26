@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2004 Pablo de Vicente <vicente@oan.es>
+/***************************************************************************
+                          modcalcapcoord.cpp  -  description
+                             -------------------
+    begin                : Sun May 30 2004
+    copyright            : (C) 2004 by Pablo de Vicente
+    email                : vicente@oan.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "modcalcangdist.h"
 
@@ -22,8 +33,8 @@
 modCalcAngDist::modCalcAngDist(QWidget *parentSplit) : QFrame(parentSplit)
 {
     setupUi(this);
-    FirstRA->setUnits(dmsBox::HOURS);
-    SecondRA->setUnits(dmsBox::HOURS);
+    FirstRA->setDegType(false);
+    SecondRA->setDegType(false);
 
     connect(FirstRA, SIGNAL(editingFinished()), this, SLOT(slotValidatePositions()));
     connect(FirstDec, SIGNAL(editingFinished()), this, SLOT(slotValidatePositions()));
@@ -46,9 +57,9 @@ SkyPoint modCalcAngDist::getCoords(dmsBox *rBox, dmsBox *dBox, bool *ok)
     dms raCoord, decCoord;
 
     bool ok2 = false;
-    raCoord  = rBox->createDms(&ok2);
+    raCoord  = rBox->createDms(false, &ok2);
     if (ok2)
-        decCoord = dBox->createDms(&ok2);
+        decCoord = dBox->createDms(true, &ok2);
 
     if (ok2)
     {
@@ -93,14 +104,14 @@ void modCalcAngDist::slotObjectButton()
         SkyObject *o = FindDialog::Instance()->targetObject();
         if (sender()->objectName() == QString("FirstObjectButton"))
         {
-            FirstRA->show(o->ra());
-            FirstDec->show(o->dec());
+            FirstRA->showInHours(o->ra());
+            FirstDec->showInDegrees(o->dec());
             FirstPositionBox->setTitle(i18n("First position: %1", o->name()));
         }
         else
         {
-            SecondRA->show(o->ra());
-            SecondDec->show(o->dec());
+            SecondRA->showInHours(o->ra());
+            SecondDec->showInDegrees(o->dec());
             SecondPositionBox->setTitle(i18n("Second position: %1", o->name()));
         }
 
@@ -188,7 +199,7 @@ void modCalcAngDist::processLines(QTextStream &istream)
             i++;
         }
         else
-            ra0B = ra0BoxBatch->createDms();
+            ra0B = ra0BoxBatch->createDms(false);
 
         if (allRadioBatch->isChecked())
             ostream << ra0B.toHMSString() << space;
@@ -218,7 +229,7 @@ void modCalcAngDist::processLines(QTextStream &istream)
             i++;
         }
         else
-            ra1B = ra1BoxBatch->createDms();
+            ra1B = ra1BoxBatch->createDms(false);
 
         if (allRadioBatch->isChecked())
             ostream << ra1B.toHMSString() << space;

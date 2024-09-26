@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          dms.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Feb 11 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -443,9 +454,17 @@ inline void dms::SinCos(double &s, double &c) const
     start = std::clock();
 #endif
 
-#ifdef HAVE_SINCOS
+#ifdef __GLIBC__
+#if (__GLIBC__ >= 2 && __GLIBC_MINOR__ >= 1 && !defined(__UCLIBC__))
+    //GNU version
     sincos(radians(), &s, &c);
 #else
+    //For older GLIBC versions
+    s = ::sin(radians());
+    c = ::cos(radians());
+#endif
+#else
+    //ANSI-compliant version
     s = ::sin(radians());
     c = ::cos(radians());
 #endif
@@ -480,32 +499,3 @@ inline bool operator==(const dms &a1, const dms &a2)
 {
     return a1.Degrees() == a2.Degrees();
 }
-
-/**
- * User-defined dms literals for convenience
- */
-
-/**
- * Create a constant angle in degrees
- */
-inline dms operator "" _deg(long double x) { return dms(double(x)); }
-
-/**
- * Create a constant angle in hours
- */
-inline dms operator "" _h(long double x) { return dms(double(x * 15.0)); }
-
-/**
- * Create a constant angle in radians
- */
-inline dms operator "" _rad(long double x) { return dms(double(x / dms::DegToRad)); }
-
-/**
- * Create a constant angle from a DMS string
- */
-inline dms operator "" _dms(const char *dmsString) { return dms::fromString(QString(dmsString), true); }
-
-/**
- * Create a constant angle from a HMS string
- */
-inline dms operator "" _hms(const char *hmsString) { return dms::fromString(QString(hmsString), false); }

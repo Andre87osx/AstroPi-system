@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Heiko Evermann <heiko@evermann.de>
+/***************************************************************************
+                          kstarsdata.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Jul 29 2001
+    copyright            : (C) 2001 by Heiko Evermann
+    email                : heiko@evermann.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -173,45 +184,17 @@ class KStarsData : public QObject
             return &CScheme;
         }
 
-        /** @return file name of current color scheme **/
-        Q_INVOKABLE QString colorSchemeFileName() { return CScheme.fileName(); }
-
-        /** @return file name of the color scheme with the name \p name **/
-        QString colorSchemeFileName(const QString &name)
-        {
-            return m_color_schemes.count(name) > 0 ? m_color_schemes.at(name) : "";
-        }
-
-        /** @return file name of the current color scheme **/
+        /** @return name of current color scheme **/
         Q_INVOKABLE QString colorSchemeName()
         {
-            return colorSchemeName(CScheme.fileName());
+            return CScheme.fileName();
         }
-
-        /** @return the name of the color scheme with the name \p name **/
-        QString colorSchemeName(const QString &fileName)
-        {
-            return m_color_scheme_names.count(fileName) > 0 ? m_color_scheme_names.at(fileName) : "";
-        }
-
-        /** @return if the color scheme with the name or filename \p scheme is loaded **/
-        bool hasColorScheme(const QString &scheme)
-        {
-            return m_color_scheme_names.count(scheme) || m_color_schemes.count(scheme);
-        }
-
-        /** Register a color scheme with \p filename and \p name. */
-        void add_color_scheme(const QString &filename, const QString &name)
-        {
-            m_color_schemes[name] = filename;
-            m_color_scheme_names[filename] = name;
-        };
-
-        /** \return a map of color scheme names and filenames */
-        const std::map<QString, QString> color_schemes() { return m_color_schemes; };
 
         /** @return pointer to the KSUserDB object */
-        KSUserDB *userdb() { return &m_ksuserdb; }
+        KSUserDB *userdb()
+        {
+            return &m_ksuserdb;
+        }
 
         /** @return pointer to the simulation Clock object */
         Q_INVOKABLE SimClock *clock()
@@ -552,9 +535,6 @@ class KStarsData : public QObject
         KStarsDateTime LTime;
         KSUserDB m_ksuserdb;
         ColorScheme CScheme;
-        std::map<QString, QString> m_color_schemes; // name: filename
-        std::map<QString, QString> m_color_scheme_names; // filename: name
-
 #ifndef KSTARS_LITE
         ObservingList* m_ObservingList { nullptr };
         std::unique_ptr<OAL::Log> m_LogObject;

@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          kssun.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Jul 22 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "kssun.h"
 
@@ -89,7 +100,7 @@ bool KSSun::findGeocentricPosition(const KSNumbers *num, const KSPlanetBase *Ear
                 sum[i] += odc.Lon[i][j].A * cos(odc.Lon[i][j].B + odc.Lon[i][j].C * T);
             }
             sum[i] *= Tpow[i];
-            //qDebug() << Q_FUNC_INFO << name() << " : sum[" << i << "] = " << sum[i];
+            //qDebug() << name() << " : sum[" << i << "] = " << sum[i];
         }
 
         EarthLong.setRadians(sum[0] + sum[1] + sum[2] + sum[3] + sum[4] + sum[5]);

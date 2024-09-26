@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    SPDX-FileCopyrightText: 2017 Robert Lancaster <rlancaste@gmail.com>
+/*  Astrometry.net Options Editor
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2017 Robert Lancaster <rlancaste@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "opsalign.h"
@@ -44,25 +47,17 @@ OpsAlign::OpsAlign(Align *parent) : QWidget(KStars::Instance())
 
 void OpsAlign::reloadOptionsProfiles()
 {
-    QString savedOptionsProfiles = QDir(KSPaths::writableLocation(
-                                            QStandardPaths::AppLocalDataLocation)).filePath("SavedAlignProfiles.ini");
+    QString savedOptionsProfiles = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                                   QString("SavedAlignProfiles.ini");
 
     if(QFile(savedOptionsProfiles).exists())
         optionsList = StellarSolver::loadSavedOptionsProfiles(savedOptionsProfiles);
     else
         optionsList = getDefaultAlignOptionsProfiles();
-    int currentIndex = kcfg_SolveOptionsProfile->currentIndex();
     kcfg_SolveOptionsProfile->clear();
-    for(auto &param : optionsList)
+    foreach(SSolver::Parameters param, optionsList)
         kcfg_SolveOptionsProfile->addItem(param.listName);
-
-    if (currentIndex >= 0)
-    {
-        kcfg_SolveOptionsProfile->setCurrentIndex(currentIndex);
-        Options::setSolveOptionsProfile(currentIndex);
-    }
-    else
-        kcfg_SolveOptionsProfile->setCurrentIndex(Options::solveOptionsProfile());
+    kcfg_SolveOptionsProfile->setCurrentIndex(Options::solveOptionsProfile());
 }
 
 void OpsAlign::slotApply()

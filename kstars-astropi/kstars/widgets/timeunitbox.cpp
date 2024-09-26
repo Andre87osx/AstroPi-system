@@ -1,15 +1,24 @@
-/*
-    SPDX-FileCopyrightText: 2002 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          timeunitbox.cpp  -  description
+                             -------------------
+    begin                : Sat Apr 27 2002
+    copyright            : (C) 2002 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "timeunitbox.h"
 
 #include <QToolButton>
 #include <QVBoxLayout>
-
-#include <KLocalizedString>
 
 #define TUB_DAYUNITS 5
 
@@ -25,25 +34,16 @@ TimeUnitBox::TimeUnitBox(QWidget *parent, bool daysonly) : QWidget(parent)
     UpButton->setMaximumWidth(26);
     UpButton->setMaximumHeight(13);
 
-    IncreaseAction = new QAction(QIcon::fromTheme("go-next-skip"),
-                                 i18n("Increase Time Scale"));
-    IncreaseAction->setToolTip(i18n("Increase time scale to the next largest unit"));
-    connect(IncreaseAction, SIGNAL(triggered()), this, SLOT(increase()));
-    UpButton->setDefaultAction(IncreaseAction);
-
     DownButton = new QToolButton(this);
     DownButton->setArrowType(Qt::DownArrow);
     DownButton->setMaximumWidth(26);
     DownButton->setMaximumHeight(13);
 
-    DecreaseAction = new QAction(QIcon::fromTheme("go-previous-skip"),
-                                 i18n("Decrease Time Scale"));
-    DecreaseAction->setToolTip(i18n("Decrease time scale to the next smallest unit"));
-    connect(DecreaseAction, SIGNAL(triggered()), this, SLOT(decrease()));
-    DownButton->setDefaultAction(DecreaseAction);
-
     vlay->addWidget(UpButton);
     vlay->addWidget(DownButton);
+
+    connect(UpButton, SIGNAL(clicked()), this, SLOT(increase()));
+    connect(DownButton, SIGNAL(clicked()), this, SLOT(decrease()));
 
     for (int &item : UnitStep)
         item = 0;
@@ -88,11 +88,6 @@ void TimeUnitBox::increase()
     {
         setValue(value() + 1);
         emit valueChanged(value());
-        DecreaseAction->setEnabled(true);
-    }
-    else
-    {
-        IncreaseAction->setEnabled(false);
     }
 }
 
@@ -102,11 +97,6 @@ void TimeUnitBox::decrease()
     {
         setValue(value() - 1);
         emit valueChanged(value());
-        IncreaseAction->setEnabled(true);
-    }
-    else
-    {
-        DecreaseAction->setEnabled(false);
     }
 }
 

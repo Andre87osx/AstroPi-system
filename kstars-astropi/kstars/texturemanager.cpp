@@ -1,7 +1,21 @@
 /*
-    SPDX-FileCopyrightText: 2010 Henry de Valence <hdevalence@gmail.com>
+    Copyright (C) 2010 Henry de Valence <hdevalence@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY
+    or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
 */
 
 #include "texturemanager.h"
@@ -79,7 +93,7 @@ TextureManager::CacheIter TextureManager::findTexture(const QString &name)
     }
 
     //Try to load from the file in 'skycultures/western' subdirectory for western constellation art
-    QString filename = KSPaths::locate(QStandardPaths::AppLocalDataLocation,
+    QString filename = KSPaths::locate(QStandardPaths::GenericDataLocation,
                                        QString("skycultures/western/%1.png").arg(name));
     if (!filename.isNull())
     {
@@ -88,7 +102,7 @@ TextureManager::CacheIter TextureManager::findTexture(const QString &name)
     }
 
     //Try to load from the file in 'skycultures/inuit' subdirectory for Inuit constellation art
-    filename = KSPaths::locate(QStandardPaths::AppLocalDataLocation,
+    filename = KSPaths::locate(QStandardPaths::GenericDataLocation,
                                QString("skycultures/inuit/%1.png").arg(name));
     if (!filename.isNull())
     {
@@ -97,7 +111,7 @@ TextureManager::CacheIter TextureManager::findTexture(const QString &name)
     }
 
     // Try to load from file in main data directory
-    filename = KSPaths::locate(QStandardPaths::AppLocalDataLocation,
+    filename = KSPaths::locate(QStandardPaths::GenericDataLocation,
                                QString("textures/%1.png").arg(name));
 
     if (!filename.isNull())
@@ -158,7 +172,7 @@ void TextureManager::discoverTextureDirs()
     // clear the cache
     m_p->m_textures = {};
 
-    const auto &base = KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    const auto &base = KSPaths::writableLocation(QStandardPaths::GenericDataLocation);
     QDirIterator search(base, QStringList() << "textures_*", QDir::Dirs);
 
     auto &dirs = m_p->m_texture_directories;

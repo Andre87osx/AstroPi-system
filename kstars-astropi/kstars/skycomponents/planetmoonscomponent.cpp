@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2009 Vipul Kumar Singh Médéric Boquien <vipulkrsingh@gmail.com, mboquien@free.fr>
+/***************************************************************************
+                         planetmoonscomponent.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sat Mar 13 2009
+    copyright            : (C) 2009 by Vipul Kumar Singh, Médéric Boquien
+    email                : vipulkrsingh@gmail.com, mboquien@free.fr
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "planetmoonscomponent.h"
 
@@ -59,9 +70,8 @@ void PlanetMoonsComponent::updateMoons(KSNumbers *num)
         pmoons->findPosition(num, m_Planet->planet(), dynamic_cast<KSSun *>(parent()->findByName(i18n("Sun"))));
 }
 
-SkyObject *PlanetMoonsComponent::findByName(const QString &name, bool exact)
+SkyObject *PlanetMoonsComponent::findByName(const QString &name)
 {
-    Q_UNUSED(exact)
     int nmoons = pmoons->nMoons();
 
     for (int i = 0; i < nmoons; ++i)

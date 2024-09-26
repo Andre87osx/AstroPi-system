@@ -1,8 +1,12 @@
 /*  KStars UI tests
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    Copyright (C) 2020
+    Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 
 #include "test_ekos_scheduler.h"
@@ -14,14 +18,6 @@
 #include "test_ekos_simulator.h"
 
 TestEkosScheduler::TestEkosScheduler(QObject *parent) : QObject(parent)
-{
-}
-
-void TestEkosScheduler::init()
-{
-}
-
-void TestEkosScheduler::cleanup()
 {
 }
 
@@ -41,6 +37,16 @@ void TestEkosScheduler::cleanupTestCase()
     KTRY_EKOS_STOP_SIMULATORS();
     KTRY_CLOSE_EKOS();
     KVERIFY_EKOS_IS_HIDDEN();
+}
+
+void TestEkosScheduler::init()
+{
+
+}
+
+void TestEkosScheduler::cleanup()
+{
+
 }
 
 void TestEkosScheduler::testScheduleManipulation_data()
@@ -134,9 +140,9 @@ void TestEkosScheduler::testScheduleManipulation()
 
         SkyObject o(SkyObject::TYPE_UNKNOWN, LST.radians() - (double)i/10 + (double)count/2, 45.0);
         raBox->setText(o.ra().toHMSString());
-        QVERIFY(abs(raBox->createDms().Hours() - o.ra().Hours()) <= 15.0/3600.0);
+        QVERIFY(abs(raBox->createDms(false).Hours() - o.ra().Hours()) <= 15.0/3600.0);
         decBox->setText(o.dec().toDMSString());
-        QVERIFY(abs(decBox->createDms().Degrees() - o.dec().Degrees()) <= 1.0/3600.0);
+        QVERIFY(abs(decBox->createDms(true).Degrees() - o.dec().Degrees()) <= 1.0/3600.0);
         sequenceEdit->setText(seqs[i % seqs.count()]);
 
         Ekos::Manager::Instance()->schedulerModule()->addObject(&o);
@@ -152,9 +158,10 @@ void TestEkosScheduler::testScheduleManipulation()
     for (int i = 0; i < count; i++)
     {
         queueTable->selectRow(i % queueTable->rowCount());
-        QCOMPARE(qPrintable(nameEdit->text()), qPrintable(QString("Object-%1").arg(i)));
-        QCOMPARE(qPrintable(sequenceEdit->text()), qPrintable(seqs[i % seqs.count()]));
-        SkyObject o(SkyObject::TYPE_UNKNOWN, LST.radians() - (double)i/10 + (double)count/2, 45.0);
+        int const index = count - i - 1;
+        QCOMPARE(qPrintable(nameEdit->text()), qPrintable(QString("Object-%1").arg(index)));
+        QCOMPARE(qPrintable(sequenceEdit->text()), qPrintable(seqs[index % seqs.count()]));
+        SkyObject o(SkyObject::TYPE_UNKNOWN, LST.radians() - (double)index/10 + (double)count/2, 45.0);
         QCOMPARE(qPrintable(dms::fromString(raBox->text(), false).toHMSString()), qPrintable(o.ra().toHMSString()));
         QCOMPARE(qPrintable(dms::fromString(decBox->text(), true).toDMSString()), qPrintable(o.dec().toDMSString()));
     }
@@ -170,9 +177,10 @@ void TestEkosScheduler::testScheduleManipulation()
         queueTable->selectRow(0);
         queueTable->selectRow(i % queueTable->rowCount());
 
-        QCOMPARE(qPrintable(nameEdit->text()), qPrintable(QString("Object-%1").arg(i)));
-        QCOMPARE(qPrintable(sequenceEdit->text()), qPrintable(seqs[i % seqs.count()]));
-        SkyObject o(SkyObject::TYPE_UNKNOWN, LST.radians() - (double)i/10 + (double)count/2, 45.0);
+        int const index = count - i - 1;
+        QCOMPARE(qPrintable(nameEdit->text()), qPrintable(QString("Object-%1").arg(index)));
+        QCOMPARE(qPrintable(sequenceEdit->text()), qPrintable(seqs[index % seqs.count()]));
+        SkyObject o(SkyObject::TYPE_UNKNOWN, LST.radians() - (double)index/10 + (double)count/2, 45.0);
         QCOMPARE(qPrintable(dms::fromString(raBox->text(), false).toHMSString()), qPrintable(o.ra().toHMSString()));
         QCOMPARE(qPrintable(dms::fromString(decBox->text(), true).toDMSString()), qPrintable(o.dec().toDMSString()));
     }

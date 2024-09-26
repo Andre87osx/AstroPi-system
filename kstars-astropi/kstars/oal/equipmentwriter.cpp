@@ -1,8 +1,20 @@
-/*
-    SPDX-FileCopyrightText: 2009 Prakash Mohan <prakash.mohan@kdemail.net>
+/***************************************************************************
+                          equipmentwriter.cpp  -  description
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+                             -------------------
+    begin                : Friday July 19, 2009
+    copyright            : (C) 2009 by Prakash Mohan
+    email                : prakash.mohan@kdemail.net
+ ***************************************************************************/
+
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "oal/equipmentwriter.h"
 #include "ui_equipmentwriter.h"
@@ -27,7 +39,7 @@ EquipmentWriter::EquipmentWriter()
     QWidget *widget = new QWidget;
     ui.setupUi(widget);
     ui.tabWidget->setCurrentIndex(0);
-    setWindowTitle(i18nc("@title:window", "Configure Equipment"));
+    setWindowTitle(i18n("Configure Equipment"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(widget);

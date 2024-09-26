@@ -1,8 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  FITS Debayer class
+    Copyright (C) 2015 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+ */
 
 #include "fitsdebayer.h"
 
@@ -30,13 +34,14 @@ FITSDebayer::FITSDebayer(FITSViewer *parent) : QDialog(parent)
 
 void FITSDebayer::applyDebayer()
 {
-    QSharedPointer<FITSView> view;
-    if (viewer->getCurrentView(view))
-    {
-        auto image_data = view->imageData();
+    FITSView *view = viewer->getCurrentView();
 
-        dc1394bayer_method_t method = static_cast<dc1394bayer_method_t>(ui->methodCombo->currentIndex());
-        dc1394color_filter_t filter = static_cast<dc1394color_filter_t>(ui->filterCombo->currentIndex() + 512);
+    if (view)
+    {
+        const QSharedPointer<FITSData> &image_data = view->imageData();
+
+        dc1394bayer_method_t method = (dc1394bayer_method_t)ui->methodCombo->currentIndex();
+        dc1394color_filter_t filter = (dc1394color_filter_t)(ui->filterCombo->currentIndex() + 512);
 
         int offsetX = ui->XOffsetSpin->value();
         int offsetY = ui->YOffsetSpin->value();

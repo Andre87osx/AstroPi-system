@@ -1,10 +1,21 @@
-/*
-    SPDX-FileCopyrightText: 2004 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/***************************************************************************
+                          FITSViewer.cpp  -  A FITSViewer for KStars
+                             -------------------
+    begin                : Thu Jan 22 2004
+    copyright            : (C) 2004 by Jasem Mutlaq
+    email                : mutlaqja@ikarustech.com
 
-    2006-03-03	Using CFITSIO, Porting to Qt4
+ 2006-03-03	Using CFITSIO, Porting to Qt4
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "fitsviewer.h"
 
@@ -85,7 +96,6 @@ FITSViewer::FITSViewer(QWidget *parent) : KXmlGuiWindow(parent)
 
     fitsWCS.setVisible(false);
 
-    statusBar()->insertPermanentWidget(FITS_CLIP, &fitsClip);
     statusBar()->insertPermanentWidget(FITS_HFR, &fitsHFR);
     statusBar()->insertPermanentWidget(FITS_WCS, &fitsWCS);
     statusBar()->insertPermanentWidget(FITS_VALUE, &fitsValue);
@@ -170,41 +180,6 @@ FITSViewer::FITSViewer(QWidget *parent) : KXmlGuiWindow(parent)
     action->setText(i18n("Statistics"));
     connect(action, SIGNAL(triggered(bool)), SLOT(statFITS()));
 
-    action = actionCollection()->addAction("image_roi_stats");
-
-    roiActionMenu = new KActionMenu(QIcon(":/icons/select_stat"), "Selection Statistics", action );
-    roiActionMenu->setText(i18n("&Selection Statistics"));
-    roiActionMenu->setDelayed(false);
-    roiActionMenu->addSeparator();
-    connect(roiActionMenu, &QAction::triggered, this, &FITSViewer::toggleSelectionMode);
-
-    KToggleAction *ksa = actionCollection()->add<KToggleAction>("100x100");
-    ksa->setText("100x100");
-    ksa->setCheckable(false);
-    roiActionMenu->addAction(ksa);
-    ksa = actionCollection()->add<KToggleAction>("50x50");
-    ksa->setText("50x50");
-    ksa->setCheckable(false);
-    roiActionMenu->addAction(ksa);
-    ksa = actionCollection()->add<KToggleAction>("25x25");
-    ksa->setText("25x25");
-    ksa->setCheckable(false);
-    roiActionMenu->addAction(ksa);
-    ksa = actionCollection()->add<KToggleAction>("CustomRoi");
-    ksa->setText("Custom");
-    ksa->setCheckable(false);
-    roiActionMenu->addAction(ksa);
-
-    action->setMenu(roiActionMenu->menu());
-    action->setIcon(QIcon(":/icons/select_stat"));
-    action->setCheckable(true);
-
-    connect(roiActionMenu->menu()->actions().at(1), &QAction::triggered, this, [this] { ROIFixedSize(100); });
-    connect(roiActionMenu->menu()->actions().at(2), &QAction::triggered, this, [this] { ROIFixedSize(50); });
-    connect(roiActionMenu->menu()->actions().at(3), &QAction::triggered, this, [this] { ROIFixedSize(25); });
-    connect(roiActionMenu->menu()->actions().at(4), &QAction::triggered, this, [this] { customROIInputWindow();});
-    connect(action, &QAction::triggered, this, &FITSViewer::toggleSelectionMode);
-
     action = actionCollection()->addAction("view_crosshair");
     action->setIcon(QIcon::fromTheme("crosshairs"));
     action->setText(i18n("Show Cross Hairs"));
@@ -272,11 +247,10 @@ FITSViewer::FITSViewer(QWidget *parent) : KXmlGuiWindow(parent)
         filterCounter++;
     }
 
-    this->setAttribute(Qt::WA_AlwaysShowToolTips);
     /* Create GUI */
     createGUI("fitsviewerui.rc");
 
-    setWindowTitle(i18nc("@title:window", "KStars FITS Viewer"));
+    setWindowTitle(i18n("KStars FITS Viewer"));
 
     /* initially resize in accord with KDE rules */
     show();
@@ -370,22 +344,15 @@ QString HFRStatusString(const QSharedPointer<FITSData> &data)
     if (hfrValue <= 0.0) return QString("");
     if (data->getSkyBackground().starsDetected > 0)
         return
-            i18np("HFR:%2 Ecc:%3 %1 star.", "HFR:%2 Ecc:%3 %1 stars.",
+            i18np("HFR=%2 Ecc=%3 %1 star.", "HFR=%2 Ecc=%3 %1 stars.",
                   data->getSkyBackground().starsDetected,
                   QString::number(hfrValue, 'f', 2),
                   QString::number(data->getEccentricity(), 'f', 2));
     else
         return
-            i18np("HFR:%2, %1 star.", "HFR:%2, %1 stars.",
+            i18np("HFR=%2, %1 star.", "HFR=%2, %1 stars.",
                   data->getDetectedStars(),
                   QString::number(hfrValue, 'f', 2));
-}
-
-QString HFRClipString(FITSView* view)
-{
-    if (view->isClippingShown())
-        return QString("Clip:%1").arg(view->getNumClipped());
-    return "";
 }
 }  // namespace
 
@@ -407,9 +374,9 @@ bool FITSViewer::addFITSCommon(FITSTab *tab, const QUrl &imageName,
     connect(tab, &FITSTab::changeStatus, this, &FITSViewer::updateTabStatus);
     connect(tab, &FITSTab::debayerToggled, this, &FITSViewer::setDebayerAction);
     // Connect tab view signals
-    connect(tab->getView().get(), &FITSView::actionUpdated, this, &FITSViewer::updateAction);
-    connect(tab->getView().get(), &FITSView::wcsToggled, this, &FITSViewer::updateWCSFunctions);
-    connect(tab->getView().get(), &FITSView::starProfileWindowClosed, this, &FITSViewer::starProfileButtonOff);
+    connect(tab->getView(), &FITSView::actionUpdated, this, &FITSViewer::updateAction);
+    connect(tab->getView(), &FITSView::wcsToggled, this, &FITSViewer::updateWCSFunctions);
+    connect(tab->getView(), &FITSView::starProfileWindowClosed, this, &FITSViewer::starProfileButtonOff);
 
     switch (mode)
     {
@@ -431,9 +398,6 @@ bool FITSViewer::addFITSCommon(FITSTab *tab, const QUrl &imageName,
 
         case FITS_ALIGN:
             fitsTabWidget->addTab(tab, i18n("Align"));
-            break;
-
-        case FITS_UNKNOWN:
             break;
     }
 
@@ -462,8 +426,6 @@ bool FITSViewer::addFITSCommon(FITSTab *tab, const QUrl &imageName,
         updateStatusBar("", FITS_HFR);
     updateStatusBar(i18n("Ready."), FITS_MESSAGE);
 
-    updateStatusBar(HFRClipString(tab->getView().get()), FITS_CLIP);
-
     tab->getView()->setCursorMode(FITSView::dragCursor);
 
     updateWCSFunctions();
@@ -471,14 +433,14 @@ bool FITSViewer::addFITSCommon(FITSTab *tab, const QUrl &imageName,
     return true;
 }
 
-void FITSViewer::loadFile(const QUrl &imageName, FITSMode mode, FITSScale filter, const QString &previewText)
+void FITSViewer::loadFile(const QUrl &imageName, FITSMode mode, FITSScale filter, const QString &previewText, bool silent)
 {
     led.setColor(Qt::yellow);
     QApplication::setOverrideCursor(Qt::WaitCursor);
 
     FITSTab *tab = new FITSTab(this);
 
-    connect(tab, &FITSTab::failed, this, [&](const QString & errorMessage)
+    connect(tab, &FITSTab::failed, [&]()
     {
         QApplication::restoreOverrideCursor();
         led.setColor(Qt::red);
@@ -488,16 +450,16 @@ void FITSViewer::loadFile(const QUrl &imageName, FITSMode mode, FITSScale filter
             close();
         }
 
-        emit failed(errorMessage);
+        emit failed();
     });
 
-    connect(tab, &FITSTab::loaded, this, [ = ]()
+    connect(tab, &FITSTab::loaded, [ = ]()
     {
         if (addFITSCommon(tab, imageName, mode, previewText))
             emit loaded(fitsID++);
     });
 
-    tab->loadFile(imageName, mode, filter);
+    tab->loadFile(imageName, mode, filter, silent);
 }
 
 bool FITSViewer::loadData(const QSharedPointer<FITSData> &data, const QUrl &imageName, int *tab_uid, FITSMode mode,
@@ -510,7 +472,6 @@ bool FITSViewer::loadData(const QSharedPointer<FITSData> &data, const QUrl &imag
 
     if (!tab->loadData(data, mode, filter))
     {
-        auto errorMessage = tab->getView()->imageData()->getLastError();
         QApplication::restoreOverrideCursor();
         led.setColor(Qt::red);
         if (fitsTabs.size() == 0)
@@ -518,7 +479,7 @@ bool FITSViewer::loadData(const QSharedPointer<FITSData> &data, const QUrl &imag
             // Close FITS Viewer and let KStars know it is no longer needed in memory.
             close();
         }
-        emit failed(errorMessage);
+        emit failed();
         return false;
     }
 
@@ -550,14 +511,14 @@ bool FITSViewer::removeFITS(int fitsUID)
     return false;
 }
 
-void FITSViewer::updateFile(const QUrl &imageName, int fitsUID, FITSScale filter)
+void FITSViewer::updateFile(const QUrl &imageName, int fitsUID, FITSScale filter, bool silent)
 {
     FITSTab *tab = fitsMap.value(fitsUID);
 
     if (tab == nullptr)
     {
-        QString message = i18n("Cannot find tab with UID %1 in the FITS Viewer", fitsUID);
-        emit failed(message);
+        qCWarning(KSTARS_FITS) << "Cannot find tab with UID " << fitsUID << " in the FITS Viewer";
+        emit failed();
         return;
     }
 
@@ -575,7 +536,7 @@ void FITSViewer::updateFile(const QUrl &imageName, int fitsUID, FITSScale filter
         }
     });
 
-    tab->loadFile(imageName, tab->getView()->getMode(), filter);
+    tab->loadFile(imageName, tab->getView()->getMode(), filter, silent);
 }
 
 bool FITSViewer::updateFITSCommon(FITSTab *tab, const QUrl &imageName)
@@ -601,23 +562,13 @@ bool FITSViewer::updateFITSCommon(FITSTab *tab, const QUrl &imageName)
     if (tab->isVisible())
         led.setColor(Qt::green);
 
-    if (tab->shouldComputeHFR())
-        updateStatusBar(HFRStatusString(tab->getView()->imageData()), FITS_HFR);
-    else
-        updateStatusBar("", FITS_HFR);
-
-    updateStatusBar(HFRClipString(tab->getView().get()), FITS_CLIP);
-
     return true;
 }
 
 bool FITSViewer::updateData(const QSharedPointer<FITSData> &data, const QUrl &imageName, int fitsUID, int *tab_uid,
-                            FITSScale filter, FITSMode mode)
+                            FITSScale filter)
 {
     FITSTab *tab = fitsMap.value(fitsUID);
-
-    if (mode != FITS_UNKNOWN)
-        tab->getView()->updateMode(mode);
 
     if (tab == nullptr)
         return false;
@@ -642,7 +593,7 @@ void FITSViewer::tabFocusUpdated(int currentIndex)
 
     fitsTabs[currentIndex]->tabPositionUpdated();
 
-    auto view = fitsTabs[currentIndex]->getView();
+    FITSView *view = fitsTabs[currentIndex]->getView();
 
     view->toggleStars(markStars);
 
@@ -653,8 +604,6 @@ void FITSViewer::tabFocusUpdated(int currentIndex)
         updateStatusBar(HFRStatusString(view->imageData()), FITS_HFR);
     else
         updateStatusBar("", FITS_HFR);
-
-    updateStatusBar(HFRClipString(fitsTabs[currentIndex]->getView().get()), FITS_CLIP);
 
     if (view->imageData()->hasDebayer())
     {
@@ -671,17 +620,13 @@ void FITSViewer::tabFocusUpdated(int currentIndex)
         actionCollection()->action("fits_debayer")->setEnabled(false);
 
     updateStatusBar("", FITS_WCS);
-    connect(view.get(), &FITSView::starProfileWindowClosed, this, &FITSViewer::starProfileButtonOff);
-    QSharedPointer<FITSView> currentView;
-    if (getCurrentView(currentView))
-    {
-        updateButtonStatus("toggle_3D_graph", i18n("currentView 3D Graph"), currentView->isStarProfileShown());
-        updateButtonStatus("currentView_crosshair", i18n("Cross Hairs"), currentView->isCrosshairShown());
-        updateButtonStatus("currentView_clipping", i18n("Clipping"), currentView->isClippingShown());
-        updateButtonStatus("currentView_eq_grid", i18n("Equatorial Gridines"), currentView->isEQGridShown());
-        updateButtonStatus("currentView_objects", i18n("Objects in Image"), currentView->areObjectsShown());
-        updateButtonStatus("currentView_pixel_grid", i18n("Pixel Gridlines"), currentView->isPixelGridShown());
-    }
+    connect(view, &FITSView::starProfileWindowClosed, this, &FITSViewer::starProfileButtonOff);
+    updateButtonStatus("toggle_3D_graph", i18n("View 3D Graph"), getCurrentView()->isStarProfileShown());
+    updateButtonStatus("view_crosshair", i18n("Cross Hairs"), getCurrentView()->isCrosshairShown());
+    updateButtonStatus("view_clipping", i18n("Clipping"), getCurrentView()->isClippingShown());
+    updateButtonStatus("view_eq_grid", i18n("Equatorial Gridines"), getCurrentView()->isEQGridShown());
+    updateButtonStatus("view_objects", i18n("Objects in Image"), getCurrentView()->areObjectsShown());
+    updateButtonStatus("view_pixel_grid", i18n("Pixel Gridlines"), getCurrentView()->isPixelGridShown());
 
     updateScopeButton();
     updateWCSFunctions();
@@ -694,7 +639,7 @@ void FITSViewer::starProfileButtonOff()
 
 void FITSViewer::openFile()
 {
-    QUrl fileURL = QFileDialog::getOpenFileUrl(KStars::Instance(), i18nc("@title:window", "Open Image"), lastURL,
+    QUrl fileURL = QFileDialog::getOpenFileUrl(KStars::Instance(), i18n("Open Image"), lastURL,
                    "Images (*.fits *.fits.fz *.fit *.fts "
                    "*.jpg *.jpeg *.png *.gif *.bmp "
                    "*.cr2 *.cr3 *.crw *.nef *.raf *.dng *.arw *.orf)");
@@ -717,7 +662,7 @@ void FITSViewer::openFile()
         }
     }
 
-    loadFile(fileURL, FITS_NORMAL, FITS_NONE, QString());
+    loadFile(fileURL, FITS_NORMAL, FITS_NONE, QString(), false);
 }
 
 void FITSViewer::saveFile()
@@ -795,14 +740,16 @@ void FITSViewer::debayerFITS()
         debayerDialog = new FITSDebayer(this);
     }
 
-    QSharedPointer<FITSView> view;
-    if (getCurrentView(view))
-    {
-        BayerParams param;
-        view->imageData()->getBayerParams(&param);
-        debayerDialog->setBayerParams(&param);
-        debayerDialog->show();
-    }
+    FITSView *view = getCurrentView();
+
+    if (view == nullptr)
+        return;
+
+    BayerParams param;
+    view->imageData()->getBayerParams(&param);
+    debayerDialog->setBayerParams(&param);
+
+    debayerDialog->show();
 }
 
 void FITSViewer::updateStatusBar(const QString &msg, FITSBar id)
@@ -827,9 +774,6 @@ void FITSViewer::updateStatusBar(const QString &msg, FITSBar id)
             break;
         case FITS_HFR:
             fitsHFR.setText(msg);
-            break;
-        case FITS_CLIP:
-            fitsClip.setText(msg);
             break;
         case FITS_MESSAGE:
             statusBar()->showMessage(msg);
@@ -869,9 +813,7 @@ void FITSViewer::ZoomToFit()
     if (fitsTabs.empty())
         return;
 
-    QSharedPointer<FITSView> currentView;
-    if (getCurrentView(currentView))
-        currentView->ZoomToFit();
+    getCurrentView()->ZoomToFit();
 }
 
 void FITSViewer::updateAction(const QString &name, bool enable)
@@ -949,17 +891,16 @@ This is a method that either enables or disables the WCS based features in the C
 
 void FITSViewer::updateWCSFunctions()
 {
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
+    if (getCurrentView() == nullptr)
         return;
 
-    if (currentView->imageHasWCS())
+    if (getCurrentView()->imageHasWCS())
     {
         actionCollection()->action("view_eq_grid")->setDisabled(false);
         actionCollection()->action("view_eq_grid")->setText(i18n("Show Equatorial Gridlines"));
         actionCollection()->action("view_objects")->setDisabled(false);
         actionCollection()->action("view_objects")->setText(i18n("Show Objects in Image"));
-        if (currentView->isTelescopeActive())
+        if (getCurrentView()->isTelescopeActive())
         {
             actionCollection()->action("center_telescope")->setDisabled(false);
 
@@ -984,11 +925,7 @@ void FITSViewer::updateWCSFunctions()
 
 void FITSViewer::updateScopeButton()
 {
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    if (currentView->getCursorMode() == FITSView::scopeCursor)
+    if (getCurrentView()->getCursorMode() == FITSView::scopeCursor)
     {
         actionCollection()->action("center_telescope")->setChecked(true);
     }
@@ -998,85 +935,6 @@ void FITSViewer::updateScopeButton()
     }
 }
 
-void FITSViewer::ROIFixedSize(int s)
-{
-    if (fitsTabs.empty())
-        return;
-
-    QSharedPointer<FITSView> currentView;
-    if (getCurrentView(currentView))
-    {
-        if(!currentView->isSelectionRectShown())
-        {
-            toggleSelectionMode();
-            updateButtonStatus("image_roi_stats", i18n("Selection Rectangle"), currentView->isSelectionRectShown());
-        }
-        currentView->processRectangleFixed(s);
-    }
-}
-
-void FITSViewer::customROIInputWindow()
-{
-    if(fitsTabs.empty())
-        return;
-
-    QSharedPointer<FITSView> currentView;
-    if (getCurrentView(currentView))
-    {
-        if(!currentView->isSelectionRectShown())
-            return;
-
-        int mh = currentView->imageData()->height();
-        int mw = currentView->imageData()->width();
-
-        if(mh % 2)
-            mh++;
-        if(mw % 2)
-            mw++;
-
-        QDialog customRoiDialog;
-        QFormLayout form(&customRoiDialog);
-        QDialogButtonBox buttonBox(QDialogButtonBox:: Ok | QDialogButtonBox:: Cancel, Qt::Horizontal, &customRoiDialog);
-
-        form.addRow(new QLabel(i18n("Size")));
-
-        QLineEdit wle(&customRoiDialog);
-        QLineEdit hle(&customRoiDialog);
-
-        wle.setValidator(new QIntValidator(1, mw, &wle));
-        hle.setValidator(new QIntValidator(1, mh, &hle));
-
-        form.addRow(i18n("Width"), &wle);
-        form.addRow(i18n("Height"), &hle);
-        form.addRow(&buttonBox);
-
-        connect(&buttonBox, &QDialogButtonBox::accepted, &customRoiDialog, &QDialog::accept);
-        connect(&buttonBox, &QDialogButtonBox::rejected, &customRoiDialog, &QDialog::reject);
-
-        if(customRoiDialog.exec() == QDialog::Accepted)
-        {
-            QPoint resetCenter = currentView->getSelectionRegion().center();
-            int newheight = hle.text().toInt();
-            int newwidth = wle.text().toInt();
-
-            newheight = qMin(newheight, mh) ;
-            newheight = qMax(newheight, 1) ;
-            newwidth = qMin(newwidth, mw);
-            newwidth = qMax(newwidth, 1);
-
-            QPoint topLeft = resetCenter;
-            QPoint botRight = resetCenter;
-
-            topLeft.setX((topLeft.x() - newwidth / 2));
-            topLeft.setY((topLeft.y() - newheight / 2));
-            botRight.setX((botRight.x() + newwidth / 2));
-            botRight.setY((botRight.y() + newheight / 2));
-
-            emit currentView->setRubberBand(QRect(topLeft, botRight));
-            currentView->processRectangle(topLeft, botRight, true);
-        }
-    }
-}
 /**
  This method either enables or disables the scope mouse mode so you can slew your scope to coordinates
  just by clicking the mouse on a spot in the image.
@@ -1084,19 +942,15 @@ void FITSViewer::customROIInputWindow()
 
 void FITSViewer::centerTelescope()
 {
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->setScopeButton(actionCollection()->action("center_telescope"));
-    if (currentView->getCursorMode() == FITSView::scopeCursor)
+    getCurrentView()->setScopeButton(actionCollection()->action("center_telescope"));
+    if (getCurrentView()->getCursorMode() == FITSView::scopeCursor)
     {
-        currentView->setCursorMode(currentView->lastMouseMode);
+        getCurrentView()->setCursorMode(getCurrentView()->lastMouseMode);
     }
     else
     {
-        currentView->lastMouseMode = currentView->getCursorMode();
-        currentView->setCursorMode(FITSView::scopeCursor);
+        getCurrentView()->lastMouseMode = getCurrentView()->getCursorMode();
+        getCurrentView()->setCursorMode(FITSView::scopeCursor);
     }
     updateScopeButton();
 }
@@ -1105,92 +959,48 @@ void FITSViewer::toggleCrossHair()
 {
     if (fitsTabs.empty())
         return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->toggleCrosshair();
-    updateButtonStatus("view_crosshair", i18n("Cross Hairs"), currentView->isCrosshairShown());
+    getCurrentView()->toggleCrosshair();
+    updateButtonStatus("view_crosshair", i18n("Cross Hairs"), getCurrentView()->isCrosshairShown());
 }
 
 void FITSViewer::toggleClipping()
 {
     if (fitsTabs.empty())
         return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-    currentView->toggleClipping();
-    if (!currentView->isClippingShown())
-        fitsClip.clear();
-    updateButtonStatus("view_clipping", i18n("Clipping"), currentView->isClippingShown());
+    getCurrentView()->toggleClipping();
+    updateButtonStatus("view_clipping", i18n("Clipping"), getCurrentView()->isClippingShown());
 }
 
 void FITSViewer::toggleEQGrid()
 {
     if (fitsTabs.empty())
         return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->toggleEQGrid();
-    updateButtonStatus("view_eq_grid", i18n("Equatorial Gridlines"), currentView->isEQGridShown());
-}
-
-void FITSViewer::toggleSelectionMode()
-{
-    if (fitsTabs.empty())
-        return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->toggleSelectionMode();
-    updateButtonStatus("image_roi_stats", i18n("Selection Rectangle"), currentView->isSelectionRectShown());
+    getCurrentView()->toggleEQGrid();
+    updateButtonStatus("view_eq_grid", i18n("Equatorial Gridlines"), getCurrentView()->isEQGridShown());
 }
 
 void FITSViewer::toggleObjects()
 {
     if (fitsTabs.empty())
         return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->toggleObjects();
-    updateButtonStatus("view_objects", i18n("Objects in Image"), currentView->areObjectsShown());
+    getCurrentView()->toggleObjects();
+    updateButtonStatus("view_objects", i18n("Objects in Image"), getCurrentView()->areObjectsShown());
 }
 
 void FITSViewer::togglePixelGrid()
 {
     if (fitsTabs.empty())
         return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->togglePixelGrid();
-    updateButtonStatus("view_pixel_grid", i18n("Pixel Gridlines"), currentView->isPixelGridShown());
+    getCurrentView()->togglePixelGrid();
+    updateButtonStatus("view_pixel_grid", i18n("Pixel Gridlines"), getCurrentView()->isPixelGridShown());
 }
 
 void FITSViewer::toggle3DGraph()
 {
     if (fitsTabs.empty())
         return;
-
-    QSharedPointer<FITSView> currentView;
-    if (!getCurrentView(currentView))
-        return;
-
-    currentView->toggleStarProfile();
-    updateButtonStatus("toggle_3D_graph", i18n("View 3D Graph"), currentView->isStarProfileShown());
+    getCurrentView()->toggleStarProfile();
+    updateButtonStatus("toggle_3D_graph", i18n("View 3D Graph"), getCurrentView()->isStarProfileShown());
 }
 
 void FITSViewer::toggleStars()
@@ -1228,25 +1038,22 @@ void FITSViewer::applyFilter(int ftype)
     updateStatusBar(i18n("Ready."), FITS_MESSAGE);
 }
 
-bool FITSViewer::getView(int fitsUID, QSharedPointer<FITSView> &view)
+FITSView *FITSViewer::getView(int fitsUID)
 {
     FITSTab *tab = fitsMap.value(fitsUID);
-    if (tab)
-    {
-        view = tab->getView();
-        return true;
-    }
-    return false;
 
+    if (tab)
+        return tab->getView();
+
+    return nullptr;
 }
 
-bool FITSViewer::getCurrentView(QSharedPointer<FITSView> &view)
+FITSView *FITSViewer::getCurrentView()
 {
     if (fitsTabs.empty() || fitsTabWidget->currentIndex() >= fitsTabs.count())
-        return false;
+        return nullptr;
 
-    view = fitsTabs[fitsTabWidget->currentIndex()]->getView();
-    return true;
+    return fitsTabs[fitsTabWidget->currentIndex()]->getView();
 }
 
 void FITSViewer::setDebayerAction(bool enable)

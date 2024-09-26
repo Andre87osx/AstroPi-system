@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          finddialog.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Wed Jul 4 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "finddialog.h"
 
@@ -59,18 +70,16 @@ FindDialog *FindDialog::Instance()
 }
 
 FindDialog::FindDialog(QWidget *parent)
-    : QDialog(parent)
-    , timer(nullptr)
-    , m_targetObject(nullptr)
-    , m_asyncDBManager(new CatalogsDB::AsyncDBManager(CatalogsDB::dso_db_path()))
-    , m_dbManager(CatalogsDB::dso_db_path())
+    : QDialog(parent), timer(nullptr),
+      m_targetObject(nullptr), m_manager{ CatalogsDB::dso_db_path() }
+
 {
 #ifdef Q_OS_OSX
     setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
 #endif
     ui = new FindDialogUI(this);
 
-    setWindowTitle(i18nc("@title:window", "Find Object"));
+    setWindowTitle(i18n("Find Object"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(ui);
@@ -82,7 +91,6 @@ FindDialog::FindDialog(QWidget *parent)
     connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
 
     okB = buttonBox->button(QDialogButtonBox::Ok);
-    okB->setEnabled(false);
 
     QPushButton *detailB = new QPushButton(i18n("Details..."));
     buttonBox->addButton(detailB, QDialogButtonBox::ActionRole);
@@ -137,7 +145,6 @@ FindDialog::FindDialog(QWidget *parent)
     connect(ui->SearchBox, &QLineEdit::returnPressed, this, &FindDialog::slotOk);
     connect(ui->FilterType, &QComboBox::currentTextChanged, this, &FindDialog::enqueueSearch);
     connect(ui->SearchList, SIGNAL(doubleClicked(QModelIndex)), SLOT(slotOk()));
-    connect(ui->SearchList->selectionModel(), &QItemSelectionModel::selectionChanged, this, &FindDialog::slotUpdateButtons);
 
     // Set focus to object name edit
     ui->SearchBox->setFocus();
@@ -150,12 +157,6 @@ FindDialog::FindDialog(QWidget *parent)
 
 void FindDialog::init()
 {
-    const auto &objs = m_dbManager.get_objects(Options::magLimitDrawDeepSky(), 100);
-    for (const auto &obj : objs)
-    {
-        KStarsData::Instance()->skyComposite()->catalogsComponent()->insertStaticObject(
-            obj);
-    }
     ui->SearchBox->clear();
     filterByType();
     sortModel->sort(0);
@@ -218,6 +219,8 @@ void FindDialog::initSelection()
             ui->SearchList->selectionModel()->select(selectItem, QItemSelectionModel::ClearAndSelect);
             ui->SearchList->scrollTo(selectItem);
             ui->SearchList->setCurrentIndex(selectItem);
+
+            okB->setEnabled(true);
         }
     }
 
@@ -295,25 +298,7 @@ void FindDialog::filterByType()
 void FindDialog::filterList()
 {
     QString SearchText = processSearchText();
-    //const std::size_t searchId = m_currentSearchSequence;
-
-    // JM 2022.08.28: Disabling use of async DB manager until further notice since it appears to cause a crash
-    // on MacOS and some embedded systems.
-    //    QEventLoop loop;
-    //    QMutexLocker {&dbCallMutex}; // To prevent re-entrant calls into this
-    //    connect(m_asyncDBManager.get(), &CatalogsDB::AsyncDBManager::resultReady, &loop, &QEventLoop::quit);
-    //    QMetaObject::invokeMethod(m_asyncDBManager.get(), [&](){
-    //        m_asyncDBManager->find_objects_by_name(SearchText, 10); });
-    //    loop.exec();
-    //    std::unique_ptr<CatalogsDB::CatalogObjectList> objs = m_asyncDBManager->result();
-    //    if (m_currentSearchSequence != searchId) {
-    //        return; // Ignore this search since the search text has changed
-    //    }
-
-    auto objs = m_dbManager.find_objects_by_name(SearchText, 10);
-
-    bool exactMatchExists = objs.size() > 0 ? QString::compare(objs.front().name(), SearchText, Qt::CaseInsensitive) : false;
-
+    const auto &objs   = m_manager.find_objects_by_name(SearchText, 10);
     for (const auto &obj : objs)
     {
         KStarsData::Instance()->skyComposite()->catalogsComponent()->insertStaticObject(
@@ -321,12 +306,10 @@ void FindDialog::filterList()
     }
 
     sortModel->setFilterFixedString(SearchText);
-    ui->InternetSearchButton->setText(i18n("Search the Internet for %1", SearchText.isEmpty() ? i18nc("no text to search for",
-                                           "(nothing)") : SearchText));
+    ui->InternetSearchButton->setText(i18n("or search the Internet for %1", SearchText));
     filterByType();
     initSelection();
 
-    bool enableInternetSearch = (!exactMatchExists) && (ui->FilterType->currentIndex() == 0);
     //Select the first item in the list that begins with the filter string
     if (!SearchText.isEmpty())
     {
@@ -345,30 +328,17 @@ void FindDialog::filterList()
                     selectItem, QItemSelectionModel::ClearAndSelect);
                 ui->SearchList->scrollTo(selectItem);
                 ui->SearchList->setCurrentIndex(selectItem);
+
+                okB->setEnabled(true);
             }
         }
-        ui->InternetSearchButton->setEnabled(enableInternetSearch && !mItems.contains(
-                SearchText, Qt::CaseInsensitive)); // Disable searching the internet when an exact match for SearchText exists in KStars
+        ui->InternetSearchButton->setEnabled(!mItems.contains(
+            SearchText)); // Disable searching the internet when an exact match for SearchText exists in KStars
     }
     else
         ui->InternetSearchButton->setEnabled(false);
 
     listFiltered = true;
-    slotUpdateButtons();
-}
-
-void FindDialog::slotUpdateButtons()
-{
-    okB->setEnabled(ui->SearchList->selectionModel()->hasSelection());
-
-    if (okB->isEnabled())
-    {
-        okB->setDefault(true);
-    }
-    else if (ui->InternetSearchButton->isEnabled())
-    {
-        ui->InternetSearchButton->setDefault(true);
-    }
 }
 
 SkyObject *FindDialog::selectedObject() const
@@ -390,69 +360,52 @@ void FindDialog::enqueueSearch()
     {
         timer = new QTimer(this);
         timer->setSingleShot(true);
-        connect(timer, &QTimer::timeout, [&]()
-        {
-            this->m_currentSearchSequence++;
-            this->filterList();
-        });
+        connect(timer, SIGNAL(timeout()), this, SLOT(filterList()));
     }
     timer->start(500);
 }
 
 // Process the search box text to replace equivalent names like "m93" with "m 93"
-QString FindDialog::processSearchText(QString searchText)
+QString FindDialog::processSearchText()
 {
     QRegExp re;
+    QString searchtext = ui->SearchBox->text();
+
     re.setCaseSensitivity(Qt::CaseInsensitive);
 
     // Remove multiple spaces and replace them by a single space
     re.setPattern("  +");
-    searchText.replace(re, " ");
+    searchtext.replace(re, " ");
 
     // If it is an NGC/IC/M catalog number, as in "M 76" or "NGC 5139", check for absence of the space
     re.setPattern("^(m|ngc|ic)\\s*\\d*$");
-    if (searchText.contains(re))
+    if (searchtext.contains(re))
     {
         re.setPattern("\\s*(\\d+)");
-        searchText.replace(re, " \\1");
+        searchtext.replace(re, " \\1");
         re.setPattern("\\s*$");
-        searchText.remove(re);
+        searchtext.remove(re);
         re.setPattern("^\\s*");
-        searchText.remove(re);
-    }
-
-    // If it is a comet, and starts with c20## or c 20## make it c/20## (or similar with p).
-    re.setPattern("^(c|p)\\s*((19|20).*)");
-    if (searchText.contains(re))
-    {
-        if (searchText.at(0) == 'c' || searchText.at(0) == 'C')
-            searchText.replace(re, "c/\\2");
-        else searchText.replace(re, "p/\\2");
+        searchtext.remove(re);
     }
 
     // TODO after KDE 4.1 release:
     // If it is a IAU standard three letter abbreviation for a constellation, then go to that constellation
     // Check for genetive names of stars. Example: alp CMa must go to alpha Canis Majoris
 
-    return searchText;
+    return searchtext;
 }
 
 void FindDialog::slotOk()
 {
-    // JM 2022.04.20 Below does not work when a user is simply browsing
-    // and selecting an item without entering any text in the search box.
     //If no valid object selected, show a sorry-box.  Otherwise, emit accept()
-    //    if (ui->SearchBox->text().isEmpty())
-    //    {
-    //        return;
-    //    }
     SkyObject *selObj;
     if (!listFiltered)
     {
         filterList();
     }
     selObj = selectedObject();
-    finishProcessing(selObj, Options::resolveNamesOnline() && ui->InternetSearchButton->isEnabled());
+    finishProcessing(selObj, Options::resolveNamesOnline());
 }
 
 void FindDialog::slotResolve()
@@ -460,33 +413,28 @@ void FindDialog::slotResolve()
     finishProcessing(nullptr, true);
 }
 
-CatalogObject *FindDialog::resolveAndAdd(CatalogsDB::DBManager &db_manager, const QString &query)
-{
-    CatalogObject *dso = nullptr;
-    const auto &cedata = NameResolver::resolveName(query);
-
-    if (cedata.first)
-    {
-        db_manager.add_object(CatalogsDB::user_catalog_id, cedata.second);
-        const auto &added_object =
-            db_manager.get_object(cedata.second.getId(), CatalogsDB::user_catalog_id);
-
-        if (added_object.first)
-        {
-            dso = &KStarsData::Instance()
-                  ->skyComposite()
-                  ->catalogsComponent()
-                  ->insertStaticObject(added_object.second);
-        }
-    }
-    return dso;
-}
-
 void FindDialog::finishProcessing(SkyObject *selObj, bool resolve)
 {
     if (!selObj && resolve)
     {
-        selObj = resolveAndAdd(m_dbManager, processSearchText());
+        const auto &cedata = NameResolver::resolveName(processSearchText());
+
+        if (cedata.first)
+        {
+            m_manager.add_object(CatalogsDB::user_catalog_id, cedata.second);
+            const auto &added_object =
+                m_manager.get_object(cedata.second.getId(), CatalogsDB::user_catalog_id);
+
+            if (added_object.first)
+            {
+                CatalogObject *dso = &KStarsData::Instance()
+                                          ->skyComposite()
+                                          ->catalogsComponent()
+                                          ->insertStaticObject(added_object.second);
+
+                selObj = dso;
+            }
+        }
     }
     m_targetObject = selObj;
     if (selObj == nullptr)
@@ -509,8 +457,8 @@ void FindDialog::finishProcessing(SkyObject *selObj, bool resolve)
                 case SkyObject::GALAXY:
                     if (selObj->name() != selObj->longname())
                         m_HistoryCombo->addItem(QString("%1 (%2)")
-                                                .arg(selObj->name())
-                                                .arg(selObj->longname()));
+                                                    .arg(selObj->name())
+                                                    .arg(selObj->longname()));
                     else
                         m_HistoryCombo->addItem(QString("%1").arg(selObj->longname()));
                     break;

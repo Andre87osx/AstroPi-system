@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
+/*  Rotations class.
+    Copyright (C) 2021 Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "rotations.h"
 
@@ -151,16 +154,6 @@ V3 rotateAroundY(const V3 &point, double degrees)
     return V3( point.x() * cosAngle + point.z() * sinAngle,
                point.y(),
                -point.x() * sinAngle + point.z() * cosAngle);
-}
-
-V3 rotateAroundZ(const V3 &point, double degrees)
-{
-    const double radians = d2r(degrees);
-    const double cosAngle = cos(radians);
-    const double sinAngle = sin(radians);
-    return V3( point.x() * cosAngle - point.y() * sinAngle,
-               point.x() * sinAngle + point.y() * cosAngle,
-               point.z());
 }
 
 // Rotates in altitude then azimuth, as is done to correct for polar alignment.

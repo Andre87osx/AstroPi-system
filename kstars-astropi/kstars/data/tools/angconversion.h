@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2011 Akarsh Simha <akarshsimha@gmail.com>
+/***************************************************************************
+         angconversion.h -- Functions for converting angle formats
+                             -------------------
+    begin                : Sat Jul 9 2011
+    copyright            : (C) 2011 by Akarsh Simha
+    email                : akarshsimha@gmail.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #ifndef ANGCONVERSION_H
 #define ANGCONVERSION_H

@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2008 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          calendarwidget.h  -  description
+                             -------------------
+    begin                : Wed Jul 16 2008
+    copyright            : (C) 2008 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #ifndef CALENDARWIDGET_H_
 #define CALENDARWIDGET_H_

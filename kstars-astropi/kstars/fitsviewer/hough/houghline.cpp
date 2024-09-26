@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2019 Patrick Molenaar <pr_molenaar@hotmail.com>
+/*  HoughLine
+    Copyright (C) 2019 Patrick Molenaar (pr_molenaar@hotmail.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "houghline.h"
@@ -161,7 +164,7 @@ void HoughLine::getSortedTopThreeLines(QVector<HoughLine*> &houghLines, QVector<
 {
     // Sort houghLines by score (highest scores are clearest lines)
     // For use of sort compare methods see: https://www.off-soft.net/en/develop/qt/qtb1.html
-    std::sort(houghLines.begin(), houghLines.end(), HoughLine::compareByScore);
+    qSort(houghLines.begin(), houghLines.end(), HoughLine::compareByScore);
 
     // Get top three lines (these should represent the three lines matching the bahtinov mask lines
     top3Lines = houghLines.mid(0, 3);
@@ -196,5 +199,5 @@ void HoughLine::getSortedTopThreeLines(QVector<HoughLine*> &houghLines, QVector<
         lineG->setTheta(thetaG);
     }
     // Now sort top3lines array according to calculated new angles
-    std::sort(top3Lines.begin(),top3Lines.end(), HoughLine::compareByTheta);
+    qSort(top3Lines.begin(),top3Lines.end(), HoughLine::compareByTheta);
 }

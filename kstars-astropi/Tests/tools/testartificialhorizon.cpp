@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
+/*  ArtificialHorizon Unit test.
+    Copyright (C) 2021 Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 /*
  * This file contains unit tests for the ArtificialHorizon class.
@@ -158,8 +161,8 @@ void TestArtificialHorizon::artificialHorizonTest()
 
     // Now add a ceiling above the first horizon line.
     // Above the ceiling should not be visible
-    QList<double> az2  = {14.0, 20.0, 24.0};
-    QList<double> alt2 = {40.0, 46.0, 50.0};
+    QList<double> az2  = {14.0, 24.0};
+    QList<double> alt2 = {50.0, 50.0};
     auto list2 = setupHorizonEntities(az2, alt2);
     horizon.addRegion("R2", true, list2, true);
     polygons.clear();
@@ -169,7 +172,7 @@ void TestArtificialHorizon::artificialHorizonTest()
     QVERIFY(checkHorizon(horizon, 18, 60, false, polygons));
     QVERIFY(checkHorizon(horizon, 22, 51, false, polygons));
     QVERIFY(checkHorizon(horizon, 22, 60, false, polygons));
-    QVERIFY(checkHorizon(horizon, 18, 42, true, polygons));
+    QVERIFY(checkHorizon(horizon, 18, 49, true, polygons));
     // but it doesn't affect things to its side
     QVERIFY(checkHorizon(horizon, 13, 51, true, polygons));
     QVERIFY(checkHorizon(horizon, 13, 49, true, polygons));
@@ -192,11 +195,11 @@ void TestArtificialHorizon::artificialHorizonTest()
     horizon.drawPolygons(nullptr, &polygons);
     QVERIFY(checkHorizon(horizon, 18, 51, false, polygons));
     QVERIFY(checkHorizon(horizon, 18, 60, false, polygons));
-    QVERIFY(checkHorizon(horizon, 22.5, 51, false, polygons));
-    QVERIFY(checkHorizon(horizon, 22.5, 60, false, polygons));
+    QVERIFY(checkHorizon(horizon, 22, 51, false, polygons));
+    QVERIFY(checkHorizon(horizon, 22, 60, false, polygons));
 
     // Add another horizon line above the ceiling again makes that visible.
-    QList<double> az3  = {10.0, 19.0};
+    QList<double> az3  = {10.0, 20.0};
     QList<double> alt3 = {50.5, 50.2};
     auto list3 = setupHorizonEntities(az3, alt3);
     horizon.addRegion("R3", true, list3, false);
@@ -206,8 +209,8 @@ void TestArtificialHorizon::artificialHorizonTest()
     QVERIFY(checkHorizon(horizon, 18, 51, true, polygons));
     QVERIFY(checkHorizon(horizon, 18, 60, true, polygons));
     // but it shouldn't affect other az values
-    QVERIFY(checkHorizon(horizon, 22.5, 51, false, polygons));
-    QVERIFY(checkHorizon(horizon, 22.5, 60, false, polygons));
+    QVERIFY(checkHorizon(horizon, 22, 51, false, polygons));
+    QVERIFY(checkHorizon(horizon, 22, 60, false, polygons));
 
 }
 

@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos Live Client
+    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "Options.h"
@@ -45,7 +48,7 @@ Client::Client(Ekos::Manager *manager) : QDialog(manager), m_Manager(manager)
     connect(networkManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(onResult(QNetworkReply*)));
 
     QPixmap im;
-    if (im.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "ekoslive.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "ekoslive.png")))
         leftBanner->setPixmap(im);
 
     pi = new QProgressIndicator(this);

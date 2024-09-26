@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Dome
+    Copyright (C) 2015 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #pragma once
 
@@ -23,41 +26,41 @@ class Dome : public DeviceDecorator
 {
         Q_OBJECT
 
-    public:
-        explicit Dome(GDInterface *iPtr);
-        typedef enum
-        {
-            DOME_IDLE,
-            DOME_MOVING_CW,
-            DOME_MOVING_CCW,
-            DOME_TRACKING,
-            DOME_PARKING,
-            DOME_UNPARKING,
-            DOME_PARKED,
-            DOME_ERROR
-        } Status;
+public:
+    explicit Dome(GDInterface *iPtr);
+    typedef enum
+    {
+        DOME_IDLE,
+        DOME_MOVING_CW,
+        DOME_MOVING_CCW,
+        DOME_TRACKING,
+        DOME_PARKING,
+        DOME_UNPARKING,
+        DOME_PARKED,
+        DOME_ERROR
+    } Status;
 
-        typedef enum
-        {
-            SHUTTER_UNKNOWN,
-            SHUTTER_OPEN,
-            SHUTTER_CLOSED,
-            SHUTTER_OPENING,
-            SHUTTER_CLOSING,
-            SHUTTER_ERROR
-        } ShutterStatus;
+    typedef enum
+    {
+        SHUTTER_UNKNOWN,
+        SHUTTER_OPEN,
+        SHUTTER_CLOSED,
+        SHUTTER_OPENING,
+        SHUTTER_CLOSING,
+        SHUTTER_ERROR
+    } ShutterStatus;
 
-        typedef enum
-        {
-            DOME_CW,
-            DOME_CCW
-        } DomeDirection;
+    typedef enum
+    {
+        DOME_CW,
+        DOME_CCW
+    } DomeDirection;
 
-        typedef enum
-        {
-            MOTION_START,
-            MOTION_STOP
-        } DomeMotionCommand;
+    typedef enum
+    {
+        MOTION_START,
+        MOTION_STOP
+    } DomeMotionCommand;
 
 
         void processSwitch(ISwitchVectorProperty *svp) override;
@@ -112,12 +115,12 @@ class Dome : public DeviceDecorator
         {
             return m_Status;
         }
-        static const QString getStatusString (Status status, bool translated = true);
+        static const QString getStatusString (Status status);
 
         ShutterStatus shutterStatus();
         ShutterStatus shutterStatus(ISwitchVectorProperty *svp);
 
-    public slots:
+public slots:
         bool Abort();
         bool Park();
         bool UnPark();
@@ -141,7 +144,6 @@ class Dome : public DeviceDecorator
         bool m_CanAbort { false };
         bool m_HasShutter { false };
         std::unique_ptr<QTimer> readyTimer;
-        static const QList<const char *> domeStates;
 };
 }
 

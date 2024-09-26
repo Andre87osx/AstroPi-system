@@ -1,8 +1,12 @@
 /*  KStars UI tests
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
+    Copyright (C) 2020
+    Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #ifndef TESTEKOSFOCUS_H
 #define TESTEKOSFOCUS_H
@@ -64,12 +68,6 @@
     combobox->setCurrentIndex(cbIndex); \
     combobox->activated(cbIndex); \
     QCOMPARE(combobox->currentText(), QString(text)); } while(false);
-
-#define KTRY_FOCUS_CHECK_POSITION_WITH_TIMEOUT(pos, timeout) do { \
-    KTRY_FOCUS_GADGET(QLineEdit, absTicksLabel); \
-    QTRY_VERIFY2_WITH_TIMEOUT(pos == absTicksLabel->text().toInt(), \
-                              QString("Focuser is at position %1 instead of last focus position %2") \
-                              .arg(absTicksLabel->text()).arg(pos).toLocal8Bit(), timeout);} while(false);
 
 /** @brief Helper for exposure.
  * @param exposure is the amount of seconds to expose for.

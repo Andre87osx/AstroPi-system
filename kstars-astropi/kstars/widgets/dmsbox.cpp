@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001-2002 Pablo de Vicente <vicente@oan.es>
+/***************************************************************************
+                          dmsbox.cpp  -  description
+                             -------------------
+    begin                : wed Dec 19 2001
+    copyright            : (C) 2001-2002 by Pablo de Vicente
+    email                : vicente@oan.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "dmsbox.h"
 
@@ -16,25 +27,79 @@
 
 #include <cstdlib>
 
-dmsBox::dmsBox(QWidget *parent, Unit unit) : QLineEdit(parent), m_unit(unit)
+dmsBox::dmsBox(QWidget *parent, bool dg) : QLineEdit(parent), EmptyFlag(true)
 {
     setMaxLength(14);
     setMaximumWidth(160);
-    setUnits(unit);
+    setDegType(dg);
+
+    connect(this, SIGNAL(textChanged(QString)), this, SLOT(slotTextChanged(QString)));
 }
 
-void dmsBox::setPlaceholderText()
+void dmsBox::setEmptyText()
 {
-    if (m_unit == DEGREES)
-        QLineEdit::setPlaceholderText("dd mm ss.s");
+    //Set the text color to the average between
+    //QColorGroup::Text and QColorGroup::Base
+    QPalette p = QApplication::palette();
+    QColor txc = p.color(QPalette::Active, QPalette::Text);
+    QColor bgc = p.color(QPalette::Active, QPalette::Base);
+    int r((txc.red() + bgc.red()) / 2);
+    int g((txc.green() + bgc.green()) / 2);
+    int b((txc.blue() + bgc.blue()) / 2);
+
+    p.setColor(QPalette::Active, QPalette::Text, QColor(r, g, b));
+    p.setColor(QPalette::Inactive, QPalette::Text, QColor(r, g, b));
+    setPalette(p);
+
+    if (degType())
+        setText("dd mm ss.s");
     else
-        QLineEdit::setPlaceholderText("hh mm ss.s");
+        setText("hh mm ss.s");
+
+    EmptyFlag = true;
 }
 
-void dmsBox::setUnits(Unit unit)
+void dmsBox::focusInEvent(QFocusEvent *e)
 {
-    m_unit = unit;
-    const bool t = (m_unit == Unit::DEGREES);
+    QLineEdit::focusInEvent(e);
+
+    if (EmptyFlag)
+    {
+        clear();
+        setPalette(QApplication::palette());
+        EmptyFlag = false;
+    }
+}
+
+void dmsBox::focusOutEvent(QFocusEvent *e)
+{
+    QLineEdit::focusOutEvent(e);
+
+    if (text().isEmpty())
+    {
+        setEmptyText();
+    }
+}
+
+void dmsBox::slotTextChanged(const QString &t)
+{
+    if (!hasFocus())
+    {
+        if (EmptyFlag && !t.isEmpty())
+        {
+            EmptyFlag = false;
+        }
+
+        if (!EmptyFlag && t.isEmpty())
+        {
+            setEmptyText();
+        }
+    }
+}
+
+void dmsBox::setDegType(bool t)
+{
+    deg = t;
 
     QString sTip = (t ? i18n("Angle value in degrees.") : i18n("Angle value in hours."));
     QString sWhatsThis;
@@ -84,34 +149,49 @@ void dmsBox::setUnits(Unit unit)
 
     setToolTip(sTip);
     setWhatsThis(sWhatsThis);
-    setPlaceholderText();
 
     clear();
+    EmptyFlag = false;
+    setEmptyText();
 }
 
-void dmsBox::show(const dms &d)
+void dmsBox::showInDegrees(const dms *d)
 {
-    if (m_unit == Unit::DEGREES)
-    {
-        double seconds = d.arcsec() + d.marcsec() / 1000.;
-        setText(QString::asprintf("%02d %02d %05.2f", d.degree(), d.arcmin(), seconds));
-    }
-    else if (m_unit == Unit::HOURS)
-    {
-        double seconds = d.second() + d.msecond() / 1000.;
-        setText(QString::asprintf("%02d %02d %05.2f", d.hour(), d.minute(), seconds));
-    }
+    showInDegrees(dms(*d));
+}
+void dmsBox::showInDegrees(dms d)
+{
+    double seconds = d.arcsec() + d.marcsec() / 1000.;
+    setDMS(QString::asprintf("%02d %02d %05.2f", d.degree(), d.arcmin(), seconds));
+}
+
+void dmsBox::showInHours(const dms *d)
+{
+    showInHours(dms(*d));
+}
+void dmsBox::showInHours(dms d)
+{
+    double seconds = d.second() + d.msecond() / 1000.;
+    setDMS(QString::asprintf("%02d %02d %05.2f", d.hour(), d.minute(), seconds));
+}
+
+void dmsBox::show(const dms *d, bool deg)
+{
+    show(dms(*d), deg);
+}
+void dmsBox::show(dms d, bool deg)
+{
+    if (deg)
+        showInDegrees(d);
     else
-    {
-        Q_ASSERT(false); // Unhandled unit type
-    }
+        showInHours(d);
 }
 
-dms dmsBox::createDms(bool *ok)
+dms dmsBox::createDms(bool deg, bool *ok)
 {
-    dms dmsAngle;
+    dms dmsAngle(0.0); // FIXME: Should we change this to NaN?
     bool check;
-    check = dmsAngle.setFromString(text(), (m_unit == Unit::DEGREES));
+    check = dmsAngle.setFromString(text(), deg);
     if (ok)
         *ok = check; //ok might be a null pointer!
 

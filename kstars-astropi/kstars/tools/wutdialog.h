@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2003 Thomas Kabelmann <tk78@gmx.de>
+/***************************************************************************
+                          wutdialog.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Die Feb 25 2003
+    copyright            : (C) 2003 by Thomas Kabelmann
+    email                : tk78@gmx.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -10,7 +21,6 @@
 #include "kstarsdatetime.h"
 #include "ui_wutdialog.h"
 #include "catalogobject.h"
-#include "catalogsdb.h"
 
 #include <QFrame>
 #include <QDialog>
@@ -117,7 +127,6 @@ class WUTDialog : public QDialog
 
   private:
     QSet<const SkyObject *> &visibleObjects(const QString &category);
-    const SkyObject * findVisibleObject(const QString &name);
     bool isCategoryInitialized(const QString &category);
     /** @short Initialize all SIGNAL/SLOT connections, used in constructor */
     void makeConnections();
@@ -137,5 +146,5 @@ class WUTDialog : public QDialog
     QStringList m_Categories;
     QHash<QString, QSet<const SkyObject *>> m_VisibleList;
     QHash<QString, bool> m_CategoryInitialized;
-    QHash<QString, CatalogsDB::CatalogObjectList> m_CatalogObjects;
+    QHash<QString, CatalogObject::CatalogObjectList> m_CatalogObjects;
 };

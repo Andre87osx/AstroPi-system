@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos
+    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "guideinterface.h"
 
@@ -68,13 +71,13 @@ void GuideInterface::setStarPosition(QVector3D &starCenter)
     INDI_UNUSED(starCenter);
 }
 
-void GuideInterface::setMountCoords(const SkyPoint &position, ISD::Telescope::PierSide side)
+void GuideInterface::setMountCoords(const QString &ra, const QString &dec, const QString &az, const QString &alt, int side)
 {
-    mountRA = position.ra();
-    mountDEC = position.dec();
-    mountAzimuth = position.az();
-    mountAltitude = position.alt();
-    pierSide = side;
+    mountRA = dms::fromString(ra, false);
+    mountDEC = dms::fromString(dec, true);
+    mountAzimuth = dms::fromString(az, true);
+    mountAltitude = dms::fromString(alt, true);
+    pierSide = static_cast<ISD::Telescope::PierSide>(side);
 }
 
 void GuideInterface::setPierSide(ISD::Telescope::PierSide newSide)

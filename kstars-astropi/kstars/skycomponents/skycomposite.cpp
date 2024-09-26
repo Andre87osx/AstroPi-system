@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2005 Thomas Kabelmann <thomas.kabelmann@gmx.de>
+/***************************************************************************
+                          skycomposite.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2005/07/08
+    copyright            : (C) 2005 by Thomas Kabelmann
+    email                : thomas.kabelmann@gmx.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "skycomposite.h"
 
@@ -21,18 +32,18 @@ SkyComposite::~SkyComposite()
 
 void SkyComposite::addComponent(SkyComponent *component, int priority)
 {
-    //qDebug() << Q_FUNC_INFO << "Adding sky component " << component << " of type " << typeid( *component ).name() << " with priority " << priority;
-    m_Components.insert(priority, component);
+    //qDebug() << "Adding sky component " << component << " of type " << typeid( *component ).name() << " with priority " << priority;
+    m_Components.insertMulti(priority, component);
     /*
     foreach( SkyComponent *p, components() ) {
-        qDebug() << Q_FUNC_INFO << "List now has: " << p << " of type " << typeid( *p ).name();
+        qDebug() << "List now has: " << p << " of type " << typeid( *p ).name();
     }
     */
 }
 
 void SkyComposite::removeComponent(SkyComponent *const component)
 {
-    // qDebug() << Q_FUNC_INFO << "Removing sky component " << component << " of type " << typeid( *component ).name();
+    // qDebug() << "Removing sky component " << component << " of type " << typeid( *component ).name();
     QMap<int, SkyComponent *>::iterator it;
     for (it = m_Components.begin(); it != m_Components.end();)
     {
@@ -43,7 +54,7 @@ void SkyComposite::removeComponent(SkyComponent *const component)
     }
     /*
     foreach( SkyComponent *p, components() ) {
-        qDebug() << Q_FUNC_INFO << "List now has: " << p << " of type " << typeid( *p ).name();
+        qDebug() << "List now has: " << p << " of type " << typeid( *p ).name();
     }
     */
 }
@@ -61,11 +72,11 @@ void SkyComposite::update(KSNumbers *num)
         component->update(num);
 }
 
-SkyObject *SkyComposite::findByName(const QString &name, bool exact)
+SkyObject *SkyComposite::findByName(const QString &name)
 {
-    for (const auto &oneComponent : components())
+    foreach (SkyComponent *comp, components())
     {
-        SkyObject *o = oneComponent->findByName(name, exact);
+        SkyObject *o = comp->findByName(name);
         if (o)
             return o;
     }
@@ -79,7 +90,7 @@ SkyObject *SkyComposite::objectNearest(SkyPoint *p, double &maxrad)
     SkyObject *oBest = nullptr;
     foreach (SkyComponent *comp, components())
     {
-        //qDebug() << Q_FUNC_INFO << "Checking " << typeid( *comp ).name() <<" for oBest";
+        //qDebug() << "Checking " << typeid( *comp ).name() <<" for oBest";
         SkyObject *oTry = comp->objectNearest(p, maxrad);
         if (oTry)
         {
@@ -87,9 +98,9 @@ SkyObject *SkyComposite::objectNearest(SkyPoint *p, double &maxrad)
             maxrad =
                 p->angularDistanceTo(oBest).Degrees() *
                 0.95; // Set a new maxrad, smaller than original to give priority to the earlier objects in the list.
-            // qDebug() << Q_FUNC_INFO << "oBest = " << oBest << " of type " << typeid( *oTry ).name() << "; updated maxrad = " << maxrad;
+            // qDebug() << "oBest = " << oBest << " of type " << typeid( *oTry ).name() << "; updated maxrad = " << maxrad;
         }
     }
-    // qDebug() << Q_FUNC_INFO << "Returning best match: oBest = " << oBest;
+    // qDebug() << "Returning best match: oBest = " << oBest;
     return oBest; //will be 0 if no object nearer than maxrad was found
 }

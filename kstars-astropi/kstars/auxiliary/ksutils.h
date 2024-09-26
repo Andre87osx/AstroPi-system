@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2002 Mark Hollomon <mhh@mindspring.com>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          kstars.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Mon Jan 7 2002
+    copyright            : (C) 2002 by Mark Hollomon
+    email                : mhh@mindspring.com
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 /** @class KSUtils
     *@short KStars utility functions
@@ -20,13 +30,7 @@
 
 #include <QPointF>
 #include <QSharedPointer>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
-#include "polyfills/qstring_hash.h"
-#include <unordered_map>
 #include "config-kstars.h"
-#include "kstars_debug.h"
 
 #if __GNUC__ > 5
 #pragma GCC diagnostic push
@@ -51,6 +55,7 @@ class StarObject;
 
 namespace KSUtils
 {
+
 // Quick checks whether hardware is limited or not
 // right now the only check is architecture. arm processors are limited while x86 are sufficient
 bool isHardwareLimited();
@@ -136,8 +141,7 @@ QString getDSSURL(const SkyPoint *const p);
  *@param type The image type, either gif or fits.
  *@note This method resets height and width to fall within the range accepted by DSS
  */
-QString getDSSURL(const dms &ra, const dms &dec, float width = 0, float height = 0,
-                  const QString &type = "gif");
+QString getDSSURL(const dms &ra, const dms &dec, float width = 0, float height = 0, const QString &type = "gif");
 
 /**
  *@short Return a string corresponding to an angle specifying direction
@@ -208,48 +212,43 @@ class Logging
 {
     public:
         /**
-                 * Store all logs into the specified file
-                 */
+             * Store all logs into the specified file
+             */
         static void UseFile();
 
         /**
-                 * Output logs to stdout
-                 */
+             * Output logs to stdout
+             */
         static void UseStdout();
 
         /**
-                 * Output logs to stderr
-                 */
+             * Output logs to stderr
+             */
         static void UseStderr();
 
         /**
-                 * Use the default logging mechanism
-                 */
+             * Use the default logging mechanism
+             */
         static void UseDefault();
 
         /**
-                 * Disable logging
-                 */
+             * Disable logging
+             */
         static void Disable();
 
         /**
-             * @brief SyncFilterRules Sync QtLogging filter rules from Options
-             */
+         * @brief SyncFilterRules Sync QtLogging filter rules from Options
+         */
         static void SyncFilterRules();
 
     private:
         static QString _filename;
 
-        static void Disabled(QtMsgType type, const QMessageLogContext &context,
-                             const QString &msg);
-        static void File(QtMsgType type, const QMessageLogContext &context,
-                         const QString &msg);
-        static void Stdout(QtMsgType type, const QMessageLogContext &context,
-                           const QString &msg);
-        static void Stderr(QtMsgType type, const QMessageLogContext &context,
-                           const QString &msg);
-        static void Write(QTextStream &stream, QtMsgType type,
-                          const QMessageLogContext &context, const QString &msg);
+        static void Disabled(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+        static void File(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+        static void Stdout(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+        static void Stderr(QtMsgType type, const QMessageLogContext &context, const QString &msg);
+        static void Write(QTextStream &stream, QtMsgType type, const QMessageLogContext &context, const QString &msg);
 };
 
 QString getDefaultPath(const QString &option);
@@ -264,6 +263,10 @@ bool copyRecursively(QString sourceFolder, QString destFolder);
 
 // Astrometry Related functions
 QStringList getAstrometryDefaultIndexFolderPaths();
+#if 0
+bool configureLocalAstrometryConfIfNecessary();
+bool createLocalAstrometryConf();
+#endif
 QString getAstrometryConfFilePath();
 QStringList getAstrometryDataDirs();
 bool addAstrometryDataDir(const QString &dataDir);
@@ -276,60 +279,7 @@ struct JPLFilter
     QByteArray value;
 };
 
-class JPLParser
-{
-    public:
-        JPLParser(const QString &path);
-
-        const QJsonArray &data() const
-        {
-            return m_data;
-        }
-        const std::unordered_map<QString, int> &fieldMap() const
-        {
-            return m_field_map;
-        }
-
-        template <typename Lambda>
-        void for_each(const Lambda &fct)
-        {
-            for (const auto &item : m_data)
-            {
-                fct([ &, this](const QString & key)
-                {
-                    return item.toArray().at(m_field_map.at(key));
-                });
-            }
-        };
-
-    private:
-        QJsonDocument m_doc;
-        QJsonArray m_data;
-        std::unordered_map<QString, int> m_field_map;
-};
 // TODO: Implement Datatypes//Maps for kind, datafields, filters...
-
-class MPCParser
-{
-    public:
-        MPCParser(const QString &path);
-
-        template <typename Lambda>
-        void for_each(const Lambda &fct)
-        {
-            for (const auto &item : m_data)
-            {
-                fct([ &, this](const QString & key)
-                {
-                    return item.toObject().value(key);
-                });
-            }
-        };
-
-    private:
-        QJsonDocument m_doc;
-        QJsonArray m_data;
-};
 
 /**
  *@short Generate a query string for downloading comet/asteroid data from JPL.
@@ -338,8 +288,7 @@ class MPCParser
  *@param filters Filters for the Data.
  *@return The query string.
  */
-QByteArray getJPLQueryString(const QByteArray &kind, const QByteArray &dataFields,
-                             const QVector<JPLFilter> &filters);
+QByteArray getJPLQueryString(const QByteArray &kind, const QByteArray &dataFields, const QVector<JPLFilter> &filters);
 
 /**
  * @brief RAWToJPEG Convert raw image (e.g. CR2) using libraw to a JPEG image
@@ -352,7 +301,8 @@ bool RAWToJPEG(const QString &rawImage, const QString &output, QString &errorMes
 /**
  * @brief getAvailableRAM Try to get available and total RAM on system
  * @return availableRAM Available (free and unclaimed) system RAM in bytes. 0 if failed to determine RAM
+ * @return True if RAM was successfully queried, false otherwise.
  */
 double getAvailableRAM();
 
-} // namespace KSUtils
+}

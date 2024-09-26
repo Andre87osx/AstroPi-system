@@ -1,24 +1,34 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/***************************************************************************
+                          FITS Common Variables
+                             -------------------
+    copyright            : (C) 2012 by Jasem Mutlaq
+    email                : mutlaqja@ikarustech.com
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
 #include <QString>
 #include <KLocalizedString>
 
-typedef enum { FITS_NORMAL, FITS_FOCUS, FITS_GUIDE, FITS_CALIBRATE, FITS_ALIGN, FITS_UNKNOWN } FITSMode;
+typedef enum { FITS_NORMAL, FITS_FOCUS, FITS_GUIDE, FITS_CALIBRATE, FITS_ALIGN } FITSMode;
 
 // Focus States
 static const QStringList FITSModes =   { I18N_NOOP("Normal"),  I18N_NOOP("Focus"), I18N_NOOP("Guide"),
-                                         I18N_NOOP("Calibrate"), I18N_NOOP("Align"), I18N_NOOP("Unknown")
+                                         I18N_NOOP("Calibrate"), I18N_NOOP("Align")
                                        };
 
 const QString &getFITSModeStringString(FITSMode mode);
 
-typedef enum { FITS_CLIP, FITS_HFR, FITS_WCS, FITS_VALUE, FITS_POSITION, FITS_ZOOM, FITS_RESOLUTION, FITS_LED, FITS_MESSAGE} FITSBar;
+typedef enum { FITS_HFR, FITS_WCS, FITS_VALUE, FITS_POSITION, FITS_ZOOM, FITS_RESOLUTION, FITS_LED, FITS_MESSAGE} FITSBar;
 
 typedef enum
 {

@@ -9,7 +9,7 @@
 //#
 //#		Date:		October 19, 1999
 //#
-//#	    SPDX-FileCopyrightText: 2000 Peter Z. Kunszt Alex S. Szalay, Aniruddha R. Thakar
+//#		Copyright (C) 2000  Peter Z. Kunszt, Alex S. Szalay, Aniruddha R. Thakar
 //#                     The Johns Hopkins University
 //#
 //#     Modification History:

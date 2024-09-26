@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2005 Jason Harris <kstars@30doradus.org>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          pvplotwidget.cpp
+                             -------------------
+    begin                : Sat 17 Dec 2005
+    copyright            : (C) 2005 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "pvplotwidget.h"
 
@@ -255,7 +265,7 @@ void PVPlotWidget::mouseDoubleClickEvent(QMouseEvent *e)
 void PVPlotWidget::wheelEvent(QWheelEvent *e)
 {
     updateFactor(e->modifiers());
-    if (e->angleDelta().y() > 0)
+    if (e->delta() > 0)
         slotZoomIn();
     else
         slotZoomOut();

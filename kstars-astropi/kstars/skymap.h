@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          skymap.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sat Feb 10 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #pragma once
 
@@ -68,12 +79,6 @@ class SkyMap : public QGraphicsView
 
         static SkyMap *Instance();
 
-        static bool IsFocused()
-        {
-            //return (pinstance->focusObject() || pinstance->focusPoint());
-            return (pinstance->focusObject());
-        }
-
         static bool IsSlewing()
         {
             return pinstance->isSlewing();
@@ -108,9 +113,6 @@ class SkyMap : public QGraphicsView
 
         /** @short Update object name and coordinates in the Focus InfoBox */
         void showFocusCoords();
-
-        /** @brief Update info boxes coordinates */
-        void updateInfoBoxes();
 
         /** @short Update the focus position according to current options. */
         void updateFocus();
@@ -576,11 +578,6 @@ class SkyMap : public QGraphicsView
         /** Emitted when a sky object is removed from the database */
         void removeSkyObject(SkyObject *object);
 
-        /** Emitter when mosaic center is dragged in the sky map */
-        void mosaicCenterChanged(dms dRA, dms dDE);
-
-        void updateQueued();
-
     protected:
         bool event(QEvent *event) override;
 
@@ -644,9 +641,6 @@ class SkyMap : public QGraphicsView
         /** Set the shape of mouse cursor to a cross with 4 arrows. */
         void setMouseMoveCursor();
 
-        /** Set the shape of mouse cursor to an open hand. */
-        void setMouseDragCursor();
-
     private:
 
         /** @short Sets the shape of the mouse cursor to a magnifying glass. */
@@ -699,7 +693,6 @@ class SkyMap : public QGraphicsView
         bool midMouseButtonDown { false };
         /// True if mouseMoveEvent; needed by setMouseMoveCursor
         bool mouseMoveCursor { false };
-        bool mouseDragCursor { false };
         bool slewing { false };
         bool clockSlewing { false };
         //if false only old pixmap will repainted with bitBlt(), this

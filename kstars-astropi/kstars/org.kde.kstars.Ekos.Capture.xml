@@ -71,10 +71,6 @@
       <arg type="s" direction="out"/>
       <arg name="id" type="i" direction="in"/>
     </method>
-    <method name="getJobFilterName">
-      <arg type="s" direction="out"/>
-      <arg name="id" type="i" direction="in"/>
-    </method>
     <method name="getJobImageProgress">
       <arg type="i" direction="out"/>
       <arg name="id" type="i" direction="in"/>
@@ -89,10 +85,6 @@
     </method>
     <method name="getJobExposureDuration">
       <arg type="d" direction="out"/>
-      <arg name="id" type="i" direction="in"/>
-    </method>
-    <method name="getJobFrameType">
-      <arg type="i" direction="out"/>
       <arg name="id" type="i" direction="in"/>
     </method>
     <method name="getProgressPercentage">
@@ -130,11 +122,6 @@
         <arg name="status" type="(i)" direction="out"/>
         <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::CaptureState"/>
         <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::CaptureState"/>
-    </signal>
-    <signal name="captureComplete">
-        <arg name="metadata" type="a{sv}" direction="out"/>
-        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
-        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
     </signal>
     <signal name="ready"/>
   </interface>

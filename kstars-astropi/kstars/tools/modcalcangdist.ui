@@ -110,7 +110,7 @@
               <item>
                <widget class="QPushButton" name="FirstObjectButton">
                 <property name="text">
-                 <string>Select Object...</string>
+                 <string>Select object...</string>
                 </property>
                </widget>
               </item>
@@ -213,7 +213,7 @@
               <item>
                <widget class="QPushButton" name="SecondObjectButton">
                 <property name="text">
-                 <string>Select Object...</string>
+                 <string>Select object...</string>
                 </property>
                </widget>
               </item>
@@ -328,14 +328,14 @@
            <item row="0" column="2">
             <widget class="QLabel" name="AngDistLabel_4">
              <property name="text">
-              <string>degrees</string>
+              <string>Degrees</string>
              </property>
             </widget>
            </item>
            <item row="1" column="0">
             <widget class="QLabel" name="AngDistLabel_2">
              <property name="text">
-              <string>Position angle:</string>
+              <string>Position Angle:</string>
              </property>
             </widget>
            </item>
@@ -360,7 +360,7 @@
            <item row="1" column="2">
             <widget class="QLabel" name="AngDistLabel_3">
              <property name="text">
-              <string>degrees E of N</string>
+              <string>Degrees E of N</string>
              </property>
             </widget>
            </item>
@@ -607,14 +607,14 @@
           <item row="0" column="0">
            <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>Input file:</string>
+             <string>Input File:</string>
             </property>
            </widget>
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label_4">
             <property name="text">
-             <string>Output file:</string>
+             <string>Output File:</string>
             </property>
            </widget>
           </item>

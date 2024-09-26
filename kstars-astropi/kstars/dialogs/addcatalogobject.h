@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                  addcatalogobject.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : 2021-06-03
+    copyright            : (C) 2021 by Valentin Boettcher
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #ifndef ADDCATALOGOBJECT_H
 #define ADDCATALOGOBJECT_H
@@ -51,13 +62,6 @@ class AddCatalogObject : public QDialog
 
     /** Enable/Disable the `flux` field depending on object type. */
     void refresh_flux();
-
-    /** Guess the contents of the form by parsing the supplied text. */
-    void guess_form_contents_from_text(QString text);
-
-  private slots:
-    /** Overload of the above that prompts for the text using an input box. */
-    void guess_form_contents_from_text();
 };
 
 #endif // ADDCATALOGOBJECT_H

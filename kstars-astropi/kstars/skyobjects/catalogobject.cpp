@@ -1,9 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <jharris@30doradus.org>
-    SPDX-FileCopyrightText: 2021 Valentin Boettcher <hiro at protagon.space; @hiro98:tchncs.de>
+/***************************************************************************
+                   catalogobject.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Jun 2021
+    copyright            : (C) 2021 by Valentin Boettcher, Jason Harris
+    email                : hiro at protagon.space; @hiro98:tchncs.de
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "catalogobject.h"
 #include "ksutils.h"
@@ -19,7 +29,7 @@
 CatalogObject *CatalogObject::clone() const
 {
     Q_ASSERT(typeid(this) == typeid(static_cast<const CatalogObject *>(
-                                        this))); // Ensure we are not slicing a derived class
+                                 this))); // Ensure we are not slicing a derived class
     return new CatalogObject(*this);      // NOLINT, (b.c. returning raw memory is bad!)
 }
 
@@ -59,7 +69,7 @@ QString CatalogObject::labelString() const
             oName = translatedName();
     }
 
-    if (Options::showDeepSkyMagnitudes() && !std::isnan(mag()))
+    if (Options::showDeepSkyMagnitudes())
     {
         if (Options::showDeepSkyNames())
             oName += ' ';
@@ -103,7 +113,7 @@ void CatalogObject::initPopupMenu(KSPopupMenu *pmenu)
 
 const CatalogsDB::Catalog CatalogObject::getCatalog() const
 {
-    if (m_database_path.get().length() == 0)
+    if (m_database_path.length() == 0)
         return {};
 
     CatalogsDB::DBManager db{ m_database_path };
@@ -120,8 +130,8 @@ const CatalogObject::oid CatalogObject::getId() const
 }
 
 const CatalogObject::oid CatalogObject::getId(const SkyObject::TYPE type, const double ra,
-        const double dec, const QString &name,
-        const QString &catalog_identifier)
+                                              const double dec, const QString &name,
+                                              const QString &catalog_identifier)
 {
     QString data;
     data += QString::number(type);

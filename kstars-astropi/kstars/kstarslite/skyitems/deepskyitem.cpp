@@ -1,7 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2016 Artem Fedoskin <afedoskin3@gmail.com>
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/** *************************************************************************
+                          deepskyitem.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : 18/06/2016
+    copyright            : (C) 2016 by Artem Fedoskin
+    email                : afedoskin3@gmail.com
+ ***************************************************************************/
+/** *************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "deepskyitem.h"
 
@@ -249,7 +260,7 @@ void DeepSkyItem::updateDeepSkyNode(DSOIndexNode *indexNode, bool drawObject, Me
                 //zoom > 2000.), and it's brighter than maglim (unless mag is
                 //undefined (=99.9)
                 bool sizeCriterion = (size > 1.0 || Options::zoomFactor() > 2000.);
-                bool magCriterion = (mag < (float)maglim) || (showUnknownMagObjects && (std::isnan(mag) || mag > FAINTEST_MAGNITUDE));
+                bool magCriterion = (mag < (float)maglim) || (showUnknownMagObjects && (std::isnan(mag) || mag > 36.0));
 
                 bool drawLabel = false;
 

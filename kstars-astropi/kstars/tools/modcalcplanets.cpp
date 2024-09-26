@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2004-2005 Pablo de Vicente <p.devicentea@wanadoo.es>
+/***************************************************************************
+                          modcalcequinox.cpp  -  description
+                             -------------------
+    begin                : dom may 2 2004
+    copyright            : (C) 2004-2005 by Pablo de Vicente
+    email                : p.devicentea@wanadoo.es
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "modcalcplanets.h"
 
@@ -26,7 +37,7 @@ modCalcPlanets::modCalcPlanets(QWidget *parentSplit) : QFrame(parentSplit)
     geoPlace = KStarsData::Instance()->geo();
     LocationButton->setText(geoPlace->fullName());
 
-    RABox->setUnits(dmsBox::HOURS);
+    RABox->setDegType(false);
 
     // signals and slots connections
     connect(PlanetComboBox, SIGNAL(activated(int)), this, SLOT(slotComputePosition()));
@@ -145,7 +156,7 @@ void modCalcPlanets::showGeocentricEclipticCoords(const dms &eLong, const dms &e
 
 void modCalcPlanets::showEquatorialCoords(const dms &ra, const dms &dec)
 {
-    RABox->show(ra);
+    RABox->show(ra, false);
     DecBox->show(dec);
 }
 
@@ -355,7 +366,7 @@ void modCalcPlanets::processLines(QTextStream &istream)
         }
         else
         {
-            longB = LongBoxBatch->createDms();
+            longB = LongBoxBatch->createDms(true);
         }
         if (AllRadioBatch->isChecked() || LongCheckBatch->isChecked())
             lineToWrite += longB.toDMSString() + space;
@@ -368,7 +379,7 @@ void modCalcPlanets::processLines(QTextStream &istream)
         }
         else
         {
-            latB = LatBoxBatch->createDms();
+            latB = LatBoxBatch->createDms(true);
         }
         if (AllRadioBatch->isChecked() || LatCheckBatch->isChecked())
             lineToWrite += latB.toDMSString() + space;

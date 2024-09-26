@@ -1,8 +1,18 @@
-/*
-    SPDX-FileCopyrightText: 2005 Jason Harris <jharris@30doradus.org>
-
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+                          obslistwizard.cpp  -  Display overhead view of the solar system
+                             -------------------
+    begin                : Thu 23 Jun 2005
+    copyright            : (C) 2005 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "obslistwizard.h"
 #include "Options.h"
@@ -31,7 +41,7 @@ ObsListWizard::ObsListWizard(QWidget *ksparent) : QDialog(ksparent)
     mainLayout->addWidget(olw);
     setLayout(mainLayout);
 
-    setWindowTitle(i18nc("@title:window", "Observing List Wizard"));
+    setWindowTitle(i18n("Observing List Wizard"));
 
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal);
     nextB                       = new QPushButton(i18n("&Next >"));
@@ -114,12 +124,12 @@ void ObsListWizard::initialize()
     olw->Mag->setMaximum(20.0);
     olw->Mag->setValue(6.0);
 
-    olw->RA->setUnits(dmsBox::HOURS);
-    olw->RAMin->setUnits(dmsBox::HOURS);
-    olw->RAMax->setUnits(dmsBox::HOURS);
+    olw->RA->setDegType(false);
+    olw->RAMin->setDegType(false);
+    olw->RAMax->setDegType(false);
 
     //Initialize object counts
-    ObjectCount   = 0; //number of objects in observing list
+    ObjectCount   = 0;                                        //number of objects in observing list
     StarCount     = data->skyComposite()->stars().size();     //total number of stars
     PlanetCount   = 10;                                       //Sun, Moon, 8 planets
     AsteroidCount = data->skyComposite()->asteroids().size(); //total number of asteroids
@@ -139,28 +149,26 @@ void ObsListWizard::initialize()
 
     for (const auto &element : stats.second.object_counts)
     {
-        auto cnt = element.second;
         switch (element.first)
         {
             case SkyObject::GALAXY:
-                GalaxyCount += cnt;
+                ++GalaxyCount;
                 break;
             case SkyObject::STAR:
             case SkyObject::CATALOG_STAR:
-                StarCount += cnt;
+                ++StarCount;
                 break;
             case SkyObject::OPEN_CLUSTER:
-                OpenClusterCount += cnt;
+                ++OpenClusterCount;
                 break;
             case SkyObject::GLOBULAR_CLUSTER:
-                GlobClusterCount += cnt;
-                break;
+                ++GlobClusterCount;
             case SkyObject::GASEOUS_NEBULA:
             case SkyObject::SUPERNOVA_REMNANT:
-                GasNebCount += cnt;
+                ++GasNebCount;
                 break;
             case SkyObject::PLANETARY_NEBULA:
-                PlanNebCount += cnt;
+                ++PlanNebCount;
                 break;
             default:
                 break;
@@ -339,13 +347,13 @@ void ObsListWizard::slotParseRegion()
             yRect1      = 0.0;
             yRect2      = 0.0;
 
-            xRect1 = olw->RAMin->createDms(&rectOk).Hours();
+            xRect1 = olw->RAMin->createDms(false, &rectOk).Hours();
             if (rectOk)
-                xRect2 = olw->RAMax->createDms(&rectOk).Hours();
+                xRect2 = olw->RAMax->createDms(false, &rectOk).Hours();
             if (rectOk)
-                yRect1 = olw->DecMin->createDms(&rectOk).Degrees();
+                yRect1 = olw->DecMin->createDms(true, &rectOk).Degrees();
             if (rectOk)
-                yRect2 = olw->DecMax->createDms(&rectOk).Degrees();
+                yRect2 = olw->DecMax->createDms(true, &rectOk).Degrees();
             if (xRect2 == 0.0)
                 xRect2 = 24.0;
 
@@ -385,14 +393,14 @@ void ObsListWizard::slotParseRegion()
     else if (!olw->RA->isEmpty() && !olw->Dec->isEmpty() && !olw->Radius->isEmpty())
     {
         bool circOk;
-        dms ra = olw->RA->createDms(&circOk);
+        dms ra = olw->RA->createDms(false, &circOk);
         dms dc;
         if (circOk)
-            dc = olw->Dec->createDms(&circOk);
+            dc = olw->Dec->createDms(true, &circOk);
         if (circOk)
         {
             pCirc.set(ra, dc);
-            rCirc = olw->Radius->createDms(&circOk).Degrees();
+            rCirc = olw->Radius->createDms(true, &circOk).Degrees();
         }
         else
         {
@@ -482,7 +490,7 @@ void ObsListWizard::applyFilters(bool doBuildList)
         }
 
         //DEBUG
-        qDebug() << Q_FUNC_INFO << QString("starIndex for mag %1: %2").arg(maglimit).arg(starIndex);
+        qDebug() << QString("starIndex for mag %1: %2").arg(maglimit).arg(starIndex);
 
         if (!doBuildList)
         {

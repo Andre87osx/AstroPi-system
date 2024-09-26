@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2001 Jason Harris <kstars@30doradus.org>
+/***************************************************************************
+                          ksmoon.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Aug 26 2001
+    copyright            : (C) 2001 by Jason Harris
+    email                : kstars@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "ksmoon.h"
 
@@ -27,9 +38,6 @@
 #endif
 
 #include <typeinfo>
-
-// Qt version calming
-#include <qtskipemptyparts.h>
 
 using namespace std;
 
@@ -108,7 +116,7 @@ bool KSMoon::loadData()
         QTextStream stream(&f);
         while (!stream.atEnd())
         {
-            fields = stream.readLine().split(' ', Qt::SkipEmptyParts);
+            fields = stream.readLine().split(' ', QString::SkipEmptyParts);
 
             if (fields.size() == 6)
             {
@@ -131,7 +139,7 @@ bool KSMoon::loadData()
         QTextStream stream(&f);
         while (!stream.atEnd())
         {
-            fields = stream.readLine().split(' ', Qt::SkipEmptyParts);
+            fields = stream.readLine().split(' ', QString::SkipEmptyParts);
 
             if (fields.size() == 5)
             {

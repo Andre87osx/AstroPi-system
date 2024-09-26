@@ -1,9 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
+/*  KStars UI tests
+    Copyright (C) 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
+    Copyright (C) 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "config-kstars.h"
 
@@ -41,16 +44,18 @@ void TestKStarsStartup::cleanupTestCase()
             d->hide();
 }
 
-void TestKStarsStartup::init()
-{
-}
-
-void TestKStarsStartup::cleanup()
-{
-}
-
 void TestKStarsStartup::createInstanceTest()
 {
+    // Ensure we are in test mode (user .qttest)
+    QStandardPaths::setTestModeEnabled(true);
+    QVERIFY(QStandardPaths::isTestModeEnabled());
+
+    // Remove the user folder that may eventually exist
+    QWARN(qPrintable("Removing " + KSPaths::writableLocation(QStandardPaths::GenericDataLocation)));
+    QVERIFY(QDir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation)).removeRecursively());
+    QVERIFY(!QDir(KSPaths::writableLocation(QStandardPaths::GenericDataLocation)).exists());
+    QVERIFY(QDir().mkpath(KSPaths::writableLocation(QStandardPaths::GenericDataLocation)));
+
 #if defined(HAVE_INDI)
     QWARN("INDI driver registry is unexpectedly required before we start the KStars wizard");
 

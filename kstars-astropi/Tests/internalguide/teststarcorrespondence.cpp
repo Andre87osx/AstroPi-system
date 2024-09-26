@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2020 Hy Murveit <hy@murveit.com>
+/*  StarCorrespondence class test.
+    Copyright (C) 2020 Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "ekos/guide/internalguide/starcorrespondence.h"
 
@@ -63,7 +66,7 @@ void runTest(int guideStar)
     QVector<int> output;
 
     // Identity test.
-    GuiderUtils::Vector position = c.find(stars, maxDistanceToStar, &output, false);
+    Vector position = c.find(stars, maxDistanceToStar, &output, false);
     QVERIFY2(position.x == stars[guideStar].x, "Identity");
     QVERIFY2(position.y == stars[guideStar].y, "Identity");
     for (int i = 0; i < stars.size(); ++i)
@@ -194,48 +197,11 @@ void runAdaptationTest()
     QVERIFY(fabs(c.reference(1).y - y1) < .0001);
 }
 
-// Checks a set of reference stars and detected stars which should fail star correspondence.
-void runNoCorrespondenceTest()
-{
-    constexpr double maxDistanceToStar = 10.0;
-
-    // Setup a number of stars.
-    QList<Edge> stars;
-    stars.append(makeEdge(1186.73, 483.568));
-    stars.append(makeEdge(367.712, 293.589));
-    stars.append(makeEdge(190.09, 944.418));
-    stars.append(makeEdge(1067.85, 30.3361));
-    stars.append(makeEdge(1067.58, 313.792));
-    // Assign guideStar as the guide star.
-    StarCorrespondence c(stars, 0);
-    c.setImageSize(1280, 960); // Not necessary, but speeds things up.
-    QVector<int> output;
-
-    // This detected set only has 2 of the ref stars, so multistar should fail.
-    QList<Edge> stars2;
-    stars2.append(makeEdge(241.8, 125.5));
-    stars2.append(makeEdge(233.5, 119.3));
-    stars2.append(makeEdge(1186.6, 483.5)); // ref 0
-    stars2.append(makeEdge(368.1, 294.1));  // ref 1
-    stars2.append(makeEdge(1006.5, 909.7));
-    stars2.append(makeEdge(903.3, 448.7));
-    stars2.append(makeEdge(940.5, 177.2));
-    stars2.append(makeEdge(695.4, 97.6));
-
-    c.setAllowMissingGuideStar(true);
-    GuiderUtils::Vector position = c.find(stars2, maxDistanceToStar, &output, false);
-    QVERIFY(position.x == -1);
-    QVERIFY(position.y == -1);
-    for (int i = 0; i < output.size(); ++i)
-        QVERIFY(output[i] == -1);
-}
-
 void TestStarCorrespondence::basicTest()
 {
     for (int i = 0; i < 6; ++i)
         runTest(i);
     runAdaptationTest();
-    runNoCorrespondenceTest();
 }
 
 QTEST_GUILESS_MAIN(TestStarCorrespondence)

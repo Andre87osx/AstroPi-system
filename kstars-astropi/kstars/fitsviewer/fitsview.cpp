@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    SPDX-FileCopyrightText: 2016-2017 Robert Lancaster <rlancaste@gmail.com>
+/*  FITS View
+    Copyright (C) 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2016-2017 Robert Lancaster <rlancaste@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "config-kstars.h"
@@ -36,11 +39,8 @@
 #include <QApplication>
 #include <QImageReader>
 #include <QGestureEvent>
-#include <QMutexLocker>
 
-#ifndef _WIN32
 #include <unistd.h>
-#endif
 
 #define BASE_OFFSET    50
 #define ZOOM_DEFAULT   100.0f
@@ -199,23 +199,27 @@ FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : 
 
     m_ImageFrame = new FITSLabel(this);
     m_ImageFrame->setMouseTracking(true);
-    connect(m_ImageFrame, &FITSLabel::newStatus, this, &FITSView::newStatus);
-    connect(m_ImageFrame, &FITSLabel::pointSelected, this, &FITSView::processPointSelection);
-    connect(m_ImageFrame, &FITSLabel::markerSelected, this, &FITSView::processMarkerSelection);
-    connect(m_ImageFrame, &FITSLabel::rectangleSelected, this, &FITSView::processRectangle);
-    connect(this, &FITSView::setRubberBand, m_ImageFrame, &FITSLabel::setRubberBand);
-    connect(this, &FITSView::showRubberBand, m_ImageFrame, &FITSLabel::showRubberBand);
-    connect(this, &FITSView::zoomRubberBand, m_ImageFrame, &FITSLabel::zoomRubberBand);
+    connect(m_ImageFrame, SIGNAL(newStatus(QString, FITSBar)), this, SIGNAL(newStatus(QString, FITSBar)));
+    connect(m_ImageFrame, SIGNAL(pointSelected(int, int)), this, SLOT(processPointSelection(int, int)));
+    connect(m_ImageFrame, SIGNAL(markerSelected(int, int)), this, SLOT(processMarkerSelection(int, int)));
 
-
-
-    connect(&wcsWatcher, &QFutureWatcher<bool>::finished, this, &FITSView::syncWCSState);
+    connect(&wcsWatcher, SIGNAL(finished()), this, SLOT(syncWCSState()));
 
     m_UpdateFrameTimer.setInterval(50);
     m_UpdateFrameTimer.setSingleShot(true);
-    connect(&m_UpdateFrameTimer, &QTimer::timeout, this, [this]()
+    connect(&m_UpdateFrameTimer, &QTimer::timeout, [this]()
     {
-        this->updateFrame(true);
+        if (toggleStretchAction)
+            toggleStretchAction->setChecked(stretchImage);
+
+        // We employ two schemes for managing the image and its overlays, depending on the size of the image
+        // and whether we need to therefore conserve memory. The small-image strategy explicitly scales up
+        // the image, and writes overlays on the scaled pixmap. The large-image strategy uses a pixmap that's
+        // the size of the image itself, never scaling that up.
+        if (isLargeImage())
+            updateFrameLargeImage();
+        else
+            updateFrameSmallImage();
     });
 
     connect(&fitsWatcher, &QFutureWatcher<bool>::finished, this, &FITSView::loadInFrame);
@@ -236,9 +240,6 @@ FITSView::FITSView(QWidget * parent, FITSMode fitsMode, FITSScale filterType) : 
 
 FITSView::~FITSView()
 {
-    QMutexLocker locker(&updateMutex);
-    m_UpdateFrameTimer.stop();
-    m_Suspended = true;
     fitsWatcher.waitForFinished();
     wcsWatcher.waitForFinished();
 }
@@ -311,7 +312,7 @@ void FITSView::resizeEvent(QResizeEvent * event)
 }
 
 
-void FITSView::loadFile(const QString &inFilename)
+void FITSView::loadFile(const QString &inFilename, bool silent)
 {
     if (floatingToolBar != nullptr)
     {
@@ -345,7 +346,7 @@ void FITSView::loadFile(const QString &inFilename)
     if (setBayerParams)
         m_ImageData->setBayerParams(&param);
 
-    fitsWatcher.setFuture(m_ImageData->loadFromFile(inFilename));
+    fitsWatcher.setFuture(m_ImageData->loadFromFile(inFilename, silent));
 }
 
 void FITSView::clearData()
@@ -381,7 +382,6 @@ bool FITSView::loadData(const QSharedPointer<FITSData> &data)
     // Takes control of the objects passed in.
     m_ImageData = data;
 
-
     return processData();
 }
 
@@ -391,19 +391,12 @@ bool FITSView::processData()
     if (!m_ImageData)
         return false;
 
-    connect(m_ImageData.data(), &FITSData::dataChanged, this, [this]()
+    connect(m_ImageData.data(), &FITSData::dataChanged, [this]()
     {
         rescale(ZOOM_KEEP_LEVEL);
         updateFrame();
     });
 
-    connect(this, &FITSView::rectangleUpdated, this, [this](const QRect roi)
-    {
-        if(m_ImageData)
-        {
-            m_ImageData->makeRoiBuffer(roi);
-        }
-    });
     currentWidth = m_ImageData->width();
     currentHeight = m_ImageData->height();
 
@@ -414,9 +407,9 @@ bool FITSView::processData()
     {
         m_ImageFrame = new FITSLabel(this);
         m_ImageFrame->setMouseTracking(true);
-        connect(m_ImageFrame, &FITSLabel::newStatus, this, &FITSView::newStatus);
-        connect(m_ImageFrame, &FITSLabel::pointSelected, this, &FITSView::processPointSelection);
-        connect(m_ImageFrame, &FITSLabel::markerSelected, this, &FITSView::processMarkerSelection);
+        connect(m_ImageFrame, SIGNAL(newStatus(QString, FITSBar)), this, SIGNAL(newStatus(QString, FITSBar)));
+        connect(m_ImageFrame, SIGNAL(pointSelected(int, int)), this, SLOT(processPointSelection(int, int)));
+        connect(m_ImageFrame, SIGNAL(markerSelected(int, int)), this, SLOT(processMarkerSelection(int, int)));
     }
     m_ImageFrame->setSize(image_width, image_height);
 
@@ -499,12 +492,11 @@ bool FITSView::processData()
 
 void FITSView::loadInFrame()
 {
-    m_LastError = m_ImageData->getLastError();
-
     // Check if the loading was OK
     if (fitsWatcher.result() == false)
     {
-        emit failed(m_LastError);
+        m_LastError = m_ImageData->getLastError();
+        emit failed();
         return;
     }
 
@@ -514,7 +506,7 @@ void FITSView::loadInFrame()
     if (processData())
         emit loaded();
     else
-        emit failed(m_LastError);
+        emit failed();
 }
 
 bool FITSView::saveImage(const QString &newFilename)
@@ -527,6 +519,41 @@ bool FITSView::saveImage(const QString &newFilename)
     }
 
     return m_ImageData->saveImage(newFilename);
+}
+
+bool FITSView::rescale(FITSZoom type)
+{
+    switch (m_ImageData->dataType())
+    {
+        case TBYTE:
+            return rescale<uint8_t>(type);
+
+        case TSHORT:
+            return rescale<int16_t>(type);
+
+        case TUSHORT:
+            return rescale<uint16_t>(type);
+
+        case TLONG:
+            return rescale<int32_t>(type);
+
+        case TULONG:
+            return rescale<uint32_t>(type);
+
+        case TFLOAT:
+            return rescale<float>(type);
+
+        case TLONGLONG:
+            return rescale<int64_t>(type);
+
+        case TDOUBLE:
+            return rescale<double>(type);
+
+        default:
+            break;
+    }
+
+    return false;
 }
 
 FITSView::CursorMode FITSView::getCursorMode()
@@ -568,6 +595,7 @@ void FITSView::leaveEvent(QEvent * event)
     }
 }
 
+template <typename T>
 bool FITSView::rescale(FITSZoom type)
 {
     if (!m_ImageData)
@@ -668,7 +696,6 @@ void FITSView::ZoomIn()
     updateFrame(true);
 
     emit newStatus(QString("%1%").arg(currentZoom), FITS_ZOOM);
-    emit zoomRubberBand(getCurrentZoom() / ZOOM_DEFAULT);
 }
 
 void FITSView::ZoomOut()
@@ -697,7 +724,6 @@ void FITSView::ZoomOut()
     updateFrame(true);
 
     emit newStatus(QString("%1%").arg(currentZoom), FITS_ZOOM);
-    emit zoomRubberBand(getCurrentZoom() / ZOOM_DEFAULT);
 }
 
 void FITSView::ZoomToFit()
@@ -710,7 +736,6 @@ void FITSView::ZoomToFit()
         rescale(ZOOM_FIT_WINDOW);
         updateFrame(true);
     }
-    emit zoomRubberBand(getCurrentZoom() / ZOOM_DEFAULT);
 }
 
 void FITSView::setStarFilterRange(float const innerRadius, float const outerRadius)
@@ -755,12 +780,6 @@ double FITSView::scaleSize(double size)
 
 void FITSView::updateFrame(bool now)
 {
-    QMutexLocker locker(&updateMutex);
-
-    // Do not process if suspended.
-    if (m_Suspended)
-        return;
-
     // JM 2021-03-13: This timer is used to throttle updateFrame calls to improve performance
     // If after 250ms no further update frames are called, then the actual update is triggered.
     // JM 2021-03-16: When stretching in progress, immediately execute so that the user see the changes
@@ -819,7 +838,6 @@ void FITSView::updateFrameSmallImage()
     m_ImageFrame->resize(currentWidth, currentHeight);
 }
 
-
 void FITSView::drawStarFilter(QPainter *painter, double scale)
 {
     if (!starFilter.used())
@@ -844,9 +862,8 @@ namespace
 {
 
 template <typename T>
-int drawClippingOneChannel(T *inputBuffer, QPainter *painter, int width, int height, double clipVal, double scale)
+void drawClippingOneChannel(T *inputBuffer, QPainter *painter, int width, int height, double clipVal, double scale)
 {
-    int numClipped = 0;
     painter->save();
     painter->setPen(QPen(Qt::red, scale, Qt::SolidLine));
     const T clipping = clipVal;
@@ -856,25 +873,19 @@ int drawClippingOneChannel(T *inputBuffer, QPainter *painter, int width, int hei
         for (int x = 0; x < width; x++)
         {
             if (inputLine[x] > clipping)
-            {
                 painter->drawPoint(x, y);
-                numClipped++;
-            }
         }
     }
-    fprintf(stderr, "%d of %d clipped (%.2f%%)\n", numClipped, width * height, numClipped * 100.0 / (width * height));
     painter->restore();
-    return numClipped;
 }
 
 template <typename T>
-int drawClippingThreeChannels(T *inputBuffer, QPainter *painter, int width, int height, double clipVal, double scale)
+void drawClippingThreeChannels(T *inputBuffer, QPainter *painter, int width, int height, double clipVal, double scale)
 {
     painter->save();
     painter->setPen(QPen(Qt::red, scale, Qt::SolidLine));
     const int size = width * height;
     const T clipping = clipVal;
-    int numClipped = 0;
     for (int y = 0; y < height; y++)
     {
         // R, G, B input images are stored one after another.
@@ -888,25 +899,19 @@ int drawClippingThreeChannels(T *inputBuffer, QPainter *painter, int width, int 
             const T inputG = inputLineG[x];
             const T inputB = inputLineB[x];
             if (inputR > clipping || inputG > clipping || inputB > clipping)
-            {
                 painter->drawPoint(x, y);
-                numClipped++;
-            }
         }
     }
-    fprintf(stderr, "%d of %d clipped (%.2f%%)\n", numClipped, width * height, numClipped * 100.0 / (width * height));
     painter->restore();
-    return numClipped;
 }
 
 template <typename T>
-int drawClip(T *input_buffer, int num_channels, QPainter *painter, int width, int height, double clipVal, double scale)
+void drawClip(T *input_buffer, int num_channels, QPainter *painter, int width, int height, double clipVal, double scale)
 {
     if (num_channels == 1)
-        return drawClippingOneChannel(input_buffer, painter, width, height, clipVal, scale);
+        drawClippingOneChannel(input_buffer, painter, width, height, clipVal, scale);
     else if (num_channels == 3)
-        return drawClippingThreeChannels(input_buffer, painter, width, height, clipVal, scale);
-    else return 0;
+        drawClippingThreeChannels(input_buffer, painter, width, height, clipVal, scale);
 }
 
 }  // namespace
@@ -923,41 +928,36 @@ void FITSView::drawClipping(QPainter *painter)
     switch (m_ImageData->dataType())
     {
         case TBYTE:
-            m_NumClipped = drawClip(reinterpret_cast<uint8_t const*>(input), m_ImageData->channels(), painter, width, height, BYTE_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<uint8_t const*>(input), m_ImageData->channels(), painter, width, height, BYTE_CLIP,
+                     scaleSize(1));
             break;
         case TSHORT:
-            m_NumClipped = drawClip(reinterpret_cast<short const*>(input), m_ImageData->channels(), painter, width, height, SHORT_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<short const*>(input), m_ImageData->channels(), painter, width, height, SHORT_CLIP,
+                     scaleSize(1));
             break;
         case TUSHORT:
-            m_NumClipped = drawClip(reinterpret_cast<unsigned short const*>(input), m_ImageData->channels(), painter, width, height,
-                                    USHORT_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<unsigned short const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
+                     scaleSize(1));
             break;
         case TLONG:
-            m_NumClipped = drawClip(reinterpret_cast<long const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<long const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
+                     scaleSize(1));
             break;
         case TFLOAT:
-            m_NumClipped = drawClip(reinterpret_cast<float const*>(input), m_ImageData->channels(), painter, width, height, FLOAT_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<float const*>(input), m_ImageData->channels(), painter, width, height, FLOAT_CLIP,
+                     scaleSize(1));
             break;
         case TLONGLONG:
-            m_NumClipped = drawClip(reinterpret_cast<long long const*>(input), m_ImageData->channels(), painter, width, height,
-                                    USHORT_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<long long const*>(input), m_ImageData->channels(), painter, width, height, USHORT_CLIP,
+                     scaleSize(1));
             break;
         case TDOUBLE:
-            m_NumClipped = drawClip(reinterpret_cast<double const*>(input), m_ImageData->channels(), painter, width, height, FLOAT_CLIP,
-                                    scaleSize(1));
+            drawClip(reinterpret_cast<double const*>(input), m_ImageData->channels(), painter, width, height, FLOAT_CLIP,
+                     scaleSize(1));
             break;
         default:
-            m_NumClipped = 0;
             break;
     }
-    emit newStatus(QString("Clip:%1").arg(m_NumClipped), FITS_CLIP);
-
 }
 
 void FITSView::ZoomDefault()
@@ -995,10 +995,8 @@ void FITSView::drawOverlay(QPainter * painter, double scale)
     if (showObjects)
         drawObjectNames(painter, scale);
 
-#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
     if (showEQGrid)
         drawEQGrid(painter, scale);
-#endif
 
     if (showPixelGrid)
         drawPixelGrid(painter, scale);
@@ -1011,7 +1009,6 @@ void FITSView::drawOverlay(QPainter * painter, double scale)
 
     if (showMagnifyingGlass)
         drawMagnifyingGlass(painter, scale);
-
 }
 
 // Draws a 100% resolution image rectangle around the mouse position.
@@ -1349,6 +1346,7 @@ void FITSView::drawPixelGrid(QPainter * painter, double scale)
         painter->drawLine(0, cY - y, width, cY - y);
     }
 }
+
 bool FITSView::imageHasWCS()
 {
     if (m_ImageData != nullptr)
@@ -1359,7 +1357,7 @@ bool FITSView::imageHasWCS()
 void FITSView::drawObjectNames(QPainter * painter, double scale)
 {
     painter->setPen(QPen(QColor(KStarsData::Instance()->colorScheme()->colorNamed("FITSObjectLabelColor"))));
-    for (const auto &listObject : m_ImageData->getSkyObjects())
+    foreach (FITSSkyObject * listObject, m_ImageData->getSkyObjects())
     {
         painter->drawRect(listObject->x() * scale - 5, listObject->y() * scale - 5, 10, 10);
         painter->drawText(listObject->x() * scale + 10, listObject->y() * scale + 10, listObject->skyObject()->name());
@@ -1373,7 +1371,6 @@ judge which gridLines to draw.  Then it calls the drawEQGridlines methods below
 to draw gridlines at those specific RA and Dec values.
  */
 
-#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
 void FITSView::drawEQGrid(QPainter * painter, double scale)
 {
     const int image_width = m_ImageData->width();
@@ -1381,164 +1378,180 @@ void FITSView::drawEQGrid(QPainter * painter, double scale)
 
     if (m_ImageData->hasWCS() && m_ImageData->fullWCS())
     {
-        double maxRA  = -1000;
-        double minRA  = 1000;
-        double maxDec = -1000;
-        double minDec = 1000;
-        m_ImageData->findWCSBounds(minRA, maxRA, minDec, maxDec);
-
-        auto minDecMinutes = (int)(minDec * 12); //This will force the Dec Scale to 5 arc minutes in the loop
-        auto maxDecMinutes = (int)(maxDec * 12);
-
-        auto minRAMinutes =
-            (int)(minRA / 15.0 *
-                  120.0); //This will force the scale to 1/2 minutes of RA in the loop from 0 to 50 degrees
-        auto maxRAMinutes = (int)(maxRA / 15.0 * 120.0);
-
-        double raConvert  = 15 / 120.0; //This will undo the calculation above to retrieve the actual RA.
-        double decConvert = 1.0 / 12.0; //This will undo the calculation above to retrieve the actual DEC.
-
-        if (maxDec > 50 || minDec < -50)
+        FITSImage::wcs_point * wcs_coord = m_ImageData->getWCSCoord();
+        if (wcs_coord != nullptr)
         {
-            minRAMinutes =
-                (int)(minRA / 15.0 * 60.0); //This will force the scale to 1 min of RA from 50 to 80 degrees
-            maxRAMinutes = (int)(maxRA / 15.0 * 60.0);
-            raConvert    = 15 / 60.0;
-        }
+            const int size      = image_width * image_height;
+            double maxRA  = -1000;
+            double minRA  = 1000;
+            double maxDec = -1000;
+            double minDec = 1000;
 
-        if (maxDec > 80 || minDec < -80)
-        {
-            minRAMinutes =
-                (int)(minRA / 15.0 * 30); //This will force the scale to 2 min of RA from 80 to 85 degrees
-            maxRAMinutes = (int)(maxRA / 15.0 * 30);
-            raConvert    = 15 / 30.0;
-        }
-        if (maxDec > 85 || minDec < -85)
-        {
-            minRAMinutes =
-                (int)(minRA / 15.0 * 6); //This will force the scale to 10 min of RA from 85 to 89 degrees
-            maxRAMinutes = (int)(maxRA / 15.0 * 6);
-            raConvert    = 15 / 6.0;
-        }
-        if (maxDec >= 89.25 || minDec <= -89.25)
-        {
-            minRAMinutes =
-                (int)(minRA /
-                      15); //This will force the scale to whole hours of RA in the loop really close to the poles
-            maxRAMinutes = (int)(maxRA / 15);
-            raConvert    = 15;
-        }
+            for (int i = 0; i < (size); i++)
+            {
+                double ra  = wcs_coord[i].ra;
+                double dec = wcs_coord[i].dec;
+                if (ra > maxRA)
+                    maxRA = ra;
+                if (ra < minRA)
+                    minRA = ra;
+                if (dec > maxDec)
+                    maxDec = dec;
+                if (dec < minDec)
+                    minDec = dec;
+            }
+            auto minDecMinutes = (int)(minDec * 12); //This will force the Dec Scale to 5 arc minutes in the loop
+            auto maxDecMinutes = (int)(maxDec * 12);
 
-        painter->setPen(QPen(Qt::yellow));
+            auto minRAMinutes =
+                (int)(minRA / 15.0 *
+                      120.0); //This will force the scale to 1/2 minutes of RA in the loop from 0 to 50 degrees
+            auto maxRAMinutes = (int)(maxRA / 15.0 * 120.0);
 
-        QPointF pixelPoint, imagePoint, pPoint;
+            double raConvert  = 15 / 120.0; //This will undo the calculation above to retrieve the actual RA.
+            double decConvert = 1.0 / 12.0; //This will undo the calculation above to retrieve the actual DEC.
 
-        //This section draws the RA Gridlines
+            if (maxDec > 50 || minDec < -50)
+            {
+                minRAMinutes =
+                    (int)(minRA / 15.0 * 60.0); //This will force the scale to 1 min of RA from 50 to 80 degrees
+                maxRAMinutes = (int)(maxRA / 15.0 * 60.0);
+                raConvert    = 15 / 60.0;
+            }
 
-        for (int targetRA = minRAMinutes; targetRA <= maxRAMinutes; targetRA++)
-        {
+            if (maxDec > 80 || minDec < -80)
+            {
+                minRAMinutes =
+                    (int)(minRA / 15.0 * 30); //This will force the scale to 2 min of RA from 80 to 85 degrees
+                maxRAMinutes = (int)(maxRA / 15.0 * 30);
+                raConvert    = 15 / 30.0;
+            }
+            if (maxDec > 85 || minDec < -85)
+            {
+                minRAMinutes =
+                    (int)(minRA / 15.0 * 6); //This will force the scale to 10 min of RA from 85 to 89 degrees
+                maxRAMinutes = (int)(maxRA / 15.0 * 6);
+                raConvert    = 15 / 6.0;
+            }
+            if (maxDec >= 89.25 || minDec <= -89.25)
+            {
+                minRAMinutes =
+                    (int)(minRA /
+                          15); //This will force the scale to whole hours of RA in the loop really close to the poles
+                maxRAMinutes = (int)(maxRA / 15);
+                raConvert    = 15;
+            }
+
             painter->setPen(QPen(Qt::yellow));
-            double target = targetRA * raConvert;
 
-            if (eqGridPoints.count() != 0)
-                eqGridPoints.clear();
+            QPointF pixelPoint, imagePoint, pPoint;
 
-            double increment = std::abs((maxDec - minDec) /
-                                        100.0); //This will determine how many points to use to create the RA Line
+            //This section draws the RA Gridlines
 
-            for (double targetDec = minDec; targetDec <= maxDec; targetDec += increment)
+            for (int targetRA = minRAMinutes; targetRA <= maxRAMinutes; targetRA++)
             {
-                SkyPoint pointToGet(target / 15.0, targetDec);
-                bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
-                if (inImage)
+                painter->setPen(QPen(Qt::yellow));
+                double target = targetRA * raConvert;
+
+                if (eqGridPoints.count() != 0)
+                    eqGridPoints.clear();
+
+                double increment = std::abs((maxDec - minDec) /
+                                            100.0); //This will determine how many points to use to create the RA Line
+
+                for (double targetDec = minDec; targetDec <= maxDec; targetDec += increment)
                 {
-                    QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
-                    eqGridPoints.append(pt);
+                    SkyPoint pointToGet(target / 15.0, targetDec);
+                    bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
+                    if (inImage)
+                    {
+                        QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
+                        eqGridPoints.append(pt);
+                    }
+                }
+
+                if (eqGridPoints.count() > 1)
+                {
+                    for (int i = 1; i < eqGridPoints.count(); i++)
+                        painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
+                    QString str = QString::number(dms(target).hour()) + "h " +
+                                  QString::number(dms(target).minute()) + '\'';
+                    if  (maxDec <= 50 && maxDec >= -50)
+                        str = str + " " + QString::number(dms(target).second()) + "''";
+                    QPointF pt = getPointForGridLabel(painter, str, scale);
+                    if (pt.x() != -100)
+                        painter->drawText(pt.x(), pt.y(), str);
                 }
             }
 
-            if (eqGridPoints.count() > 1)
+            //This section draws the DEC Gridlines
+
+            for (int targetDec = minDecMinutes; targetDec <= maxDecMinutes; targetDec++)
             {
-                for (int i = 1; i < eqGridPoints.count(); i++)
-                    painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
-                QString str = QString::number(dms(target).hour()) + "h " +
-                              QString::number(dms(target).minute()) + '\'';
-                if  (maxDec <= 50 && maxDec >= -50)
-                    str = str + " " + QString::number(dms(target).second()) + "''";
-                QPointF pt = getPointForGridLabel(painter, str, scale);
-                if (pt.x() != -100)
-                    painter->drawText(pt.x(), pt.y(), str);
-            }
-        }
+                if (eqGridPoints.count() != 0)
+                    eqGridPoints.clear();
 
-        //This section draws the DEC Gridlines
+                double increment = std::abs((maxRA - minRA) /
+                                            100.0); //This will determine how many points to use to create the Dec Line
+                double target    = targetDec * decConvert;
 
-        for (int targetDec = minDecMinutes; targetDec <= maxDecMinutes; targetDec++)
-        {
-            if (eqGridPoints.count() != 0)
-                eqGridPoints.clear();
-
-            double increment = std::abs((maxRA - minRA) /
-                                        100.0); //This will determine how many points to use to create the Dec Line
-            double target    = targetDec * decConvert;
-
-            for (double targetRA = minRA; targetRA <= maxRA; targetRA += increment)
-            {
-                SkyPoint pointToGet(targetRA / 15, targetDec * decConvert);
-                bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
-                if (inImage)
+                for (double targetRA = minRA; targetRA <= maxRA; targetRA += increment)
                 {
-                    QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
-                    eqGridPoints.append(pt);
+                    SkyPoint pointToGet(targetRA / 15, targetDec * decConvert);
+                    bool inImage = m_ImageData->wcsToPixel(pointToGet, pixelPoint, imagePoint);
+                    if (inImage)
+                    {
+                        QPointF pt(pixelPoint.x() * scale, pixelPoint.y() * scale);
+                        eqGridPoints.append(pt);
+                    }
+                }
+                if (eqGridPoints.count() > 1)
+                {
+                    for (int i = 1; i < eqGridPoints.count(); i++)
+                        painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
+                    QString str = QString::number(dms(target).degree()) + "° " + QString::number(dms(target).arcmin()) + '\'';
+                    QPointF pt = getPointForGridLabel(painter, str, scale);
+                    if (pt.x() != -100)
+                        painter->drawText(pt.x(), pt.y(), str);
                 }
             }
-            if (eqGridPoints.count() > 1)
+
+            //This Section Draws the North Celestial Pole if present
+            SkyPoint NCP(0, 90);
+
+            bool NCPtest = m_ImageData->wcsToPixel(NCP, pPoint, imagePoint);
+            if (NCPtest)
             {
-                for (int i = 1; i < eqGridPoints.count(); i++)
-                    painter->drawLine(eqGridPoints.value(i - 1), eqGridPoints.value(i));
-                QString str = QString::number(dms(target).degree()) + "° " + QString::number(dms(target).arcmin()) + '\'';
-                QPointF pt = getPointForGridLabel(painter, str, scale);
-                if (pt.x() != -100)
-                    painter->drawText(pt.x(), pt.y(), str);
+                bool NCPinImage =
+                    (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
+                if (NCPinImage)
+                {
+                    painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
+                                      KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
+                    painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
+                                      i18nc("North Celestial Pole", "NCP"));
+                }
             }
-        }
 
-        //This Section Draws the North Celestial Pole if present
-        SkyPoint NCP(0, 90);
+            //This Section Draws the South Celestial Pole if present
+            SkyPoint SCP(0, -90);
 
-        bool NCPtest = m_ImageData->wcsToPixel(NCP, pPoint, imagePoint);
-        if (NCPtest)
-        {
-            bool NCPinImage =
-                (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
-            if (NCPinImage)
+            bool SCPtest = m_ImageData->wcsToPixel(SCP, pPoint, imagePoint);
+            if (SCPtest)
             {
-                painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
-                                  KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
-                painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
-                                  i18nc("North Celestial Pole", "NCP"));
-            }
-        }
-
-        //This Section Draws the South Celestial Pole if present
-        SkyPoint SCP(0, -90);
-
-        bool SCPtest = m_ImageData->wcsToPixel(SCP, pPoint, imagePoint);
-        if (SCPtest)
-        {
-            bool SCPinImage =
-                (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
-            if (SCPinImage)
-            {
-                painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
-                                  KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
-                painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
-                                  i18nc("South Celestial Pole", "SCP"));
+                bool SCPinImage =
+                    (pPoint.x() > 0 && pPoint.x() < image_width) && (pPoint.y() > 0 && pPoint.y() < image_height);
+                if (SCPinImage)
+                {
+                    painter->fillRect(pPoint.x() * scale - 2, pPoint.y() * scale - 2, 4, 4,
+                                      KStarsData::Instance()->colorScheme()->colorNamed("TargetColor"));
+                    painter->drawText(pPoint.x() * scale + 15, pPoint.y() * scale + 15,
+                                      i18nc("South Celestial Pole", "SCP"));
+                }
             }
         }
     }
 }
-#endif
 
 bool FITSView::pointIsInImage(QPointF pt, double scale)
 {
@@ -1662,59 +1675,6 @@ void FITSView::resizeTrackingBox(int newSize)
     setTrackingBox(QRect( x - delta, y - delta, newSize, newSize));
 }
 
-void FITSView::processRectangleFixed(int s)
-{
-    int w = m_ImageData->width();
-    int h = m_ImageData->height();
-
-    QPoint c = selectionRectangleRaw.center();
-    c.setX(qMax((int)round(s / 2.0), c.x()));
-    c.setX(qMin(w - (int)round(s / 2.0), c.x()));
-    c.setY(qMax((int)round(s / 2.0), c.y()));
-    c.setY(qMin(h - (int)round(s / 2.0), c.y()));
-
-    QPoint topLeft, botRight;
-    topLeft = QPoint(c.x() - round(s / 2.0), c.y() - round(s / 2.0));
-    botRight = QPoint(c.x() + round(s / 2.0), c.y() + round(s / 2.0));
-
-    emit setRubberBand(QRect(topLeft, botRight));
-    processRectangle(topLeft, botRight, true);
-}
-
-void FITSView::processRectangle(QPoint p1, QPoint p2, bool calculate)
-{
-    if(!isSelectionRectShown())
-        return;
-    //the user can draw a rectangle by dragging the mouse to any direction
-    //but we need to feed Rectangle(topleft, topright)
-    //hence we calculate topleft and topright for each case
-
-    //p1 is the the point where the user presses the mouse
-    //p2 is the point where the user releases the mouse
-    selectionRectangleRaw = QRect(p1, p2).normalized();
-    //Index out of bounds Check for raw Rectangle, this effectively works when user does shift + drag, other wise becomes redundant
-
-    QPoint topLeft = selectionRectangleRaw.topLeft();
-    QPoint botRight = selectionRectangleRaw.bottomRight();
-
-    topLeft.setX(qMax(1, topLeft.x()));
-    topLeft.setY(qMax(1, topLeft.y()));
-    botRight.setX(qMin((int)m_ImageData->width(), botRight.x()));
-    botRight.setY(qMin((int)m_ImageData->height(), botRight.y()));
-
-    selectionRectangleRaw.setTopLeft(topLeft);
-    selectionRectangleRaw.setBottomRight(botRight);
-
-    if(calculate)
-    {
-        emit rectangleUpdated(selectionRectangleRaw);
-    }
-    //updateFrameRoi();
-
-    //emit raw rectangle for calculation
-    //update the stats pane after calculation; there should be ample time for calculation before showing the values
-}
-
 bool FITSView::isImageStretched()
 {
     return stretchImage;
@@ -1735,10 +1695,6 @@ bool FITSView::isEQGridShown()
     return showEQGrid;
 }
 
-bool FITSView::isSelectionRectShown()
-{
-    return showSelectionRect;
-}
 bool FITSView::areObjectsShown()
 {
     return showObjects;
@@ -1776,14 +1732,6 @@ void FITSView::toggleEQGrid()
         updateFrame();
 }
 
-void FITSView::toggleSelectionMode()
-{
-    showSelectionRect = !showSelectionRect;
-    emit showRubberBand(showSelectionRect);
-    if (m_ImageFrame)
-        updateFrame();
-
-}
 void FITSView::toggleObjects()
 {
     showObjects = !showObjects;
@@ -1796,12 +1744,7 @@ void FITSView::toggleObjects()
     }
 
     if (m_ImageFrame)
-    {
-#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
-        m_ImageData->searchObjects();
-#endif
         updateFrame();
-    }
 }
 
 void FITSView::toggleStars()
@@ -1923,6 +1866,8 @@ void FITSView::viewStarProfile()
 #endif
 }
 
+
+
 void FITSView::togglePixelGrid()
 {
     showPixelGrid = !showPixelGrid;
@@ -2004,11 +1949,7 @@ void FITSView::wheelEvent(QWheelEvent * event)
     }
     else
     {
-#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
         QPoint mouseCenter = getImagePoint(event->pos());
-#else
-        QPoint mouseCenter = getImagePoint(event->position().toPoint());
-#endif
         if (event->angleDelta().y() > 0)
             ZoomIn();
         else
@@ -2016,7 +1957,6 @@ void FITSView::wheelEvent(QWheelEvent * event)
         event->accept();
         cleanUpZoom(mouseCenter);
     }
-    emit zoomRubberBand(getCurrentZoom() / ZOOM_DEFAULT);
 }
 
 /**
@@ -2151,11 +2091,6 @@ void FITSView::syncWCSState()
 {
     bool hasWCS    = m_ImageData->hasWCS();
     bool wcsLoaded = m_ImageData->getWCSState() == FITSData::Success;
-
-#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
-    if (showObjects)
-        m_ImageData->searchObjects();
-#endif
 
     if (hasWCS && wcsLoaded)
         this->updateFrame();
@@ -2305,11 +2240,17 @@ bool FITSView::isTelescopeActive()
         return false;
     }
 
-    for (auto oneDevice : INDIListener::Instance()->getDevices())
+    foreach (ISD::GDInterface * gd, INDIListener::Instance()->getDevices())
     {
-        if (oneDevice->getType() != KSTARS_TELESCOPE)
+        INDI::BaseDevice * bd = gd->getBaseDevice();
+
+        if (gd->getType() != KSTARS_TELESCOPE)
             continue;
-        return oneDevice->isConnected();
+
+        if (bd == nullptr)
+            continue;
+
+        return bd->isConnected();
     }
     return false;
 #else

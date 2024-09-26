@@ -1,7 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos Profile Wizard
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    Copyright (C) 2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #include "profilewizard.h"
@@ -25,7 +29,7 @@ ProfileWizard::ProfileWizard() : QDialog(KStars::Instance())
 #endif
 
     QPixmap im;
-    if (im.load(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "wzekos.png")))
+    if (im.load(KSPaths::locate(QStandardPaths::GenericDataLocation, "wzekos.png")))
         wizardPix->setPixmap(im);
 
     remoteEquipmentSVG->load(QString(":/icons/pi.svg"));
@@ -270,7 +274,7 @@ void ProfileWizard::detectStellarMate()
     stellarMateDetectDialog = new QProgressDialog(this);
     stellarMateDetectDialog->setMinimum(0);
     stellarMateDetectDialog->setMaximum(0);
-    stellarMateDetectDialog->setWindowTitle(i18nc("@title:window", "Detecting StellarMate..."));
+    stellarMateDetectDialog->setWindowTitle(i18n("Detecting StellarMate..."));
     stellarMateDetectDialog->setLabelText(i18n("Please wait while searching for StellarMate..."));
 
     stellarMateDetectDialog->show();

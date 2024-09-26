@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2004 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          opssolarsystem.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun 22 Aug 2004
+    copyright            : (C) 2004 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "opssolarsystem.h"
 
@@ -44,13 +55,8 @@ OpsSolarSystem::OpsSolarSystem() : QFrame(KStars::Instance())
     connect(m_ConfigDialog->button(QDialogButtonBox::Ok), SIGNAL(clicked()), SLOT(slotApply()));
     //connect( m_ConfigDialog->button(QDialogButtonBox::Cancel), SIGNAL(clicked()), SLOT(slotCancel()) );
 
-    #if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
     connect(solarButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::buttonPressed), this,
             [&]() { isDirty = true; });
-    #else
-    connect(solarButtonGroup, static_cast<void (QButtonGroup::*)(int)>(&QButtonGroup::idPressed), this,
-            [&]() { isDirty = true; });
-    #endif
 }
 
 void OpsSolarSystem::slotChangeMagDownload(double mag)

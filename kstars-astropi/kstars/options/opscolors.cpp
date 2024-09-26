@@ -1,8 +1,19 @@
-/*
-    SPDX-FileCopyrightText: 2004 Jason Harris <jharris@30doradus.org>
+/***************************************************************************
+                          opscolors.cpp  -  K Desktop Planetarium
+                             -------------------
+    begin                : Sun Feb 29  2004
+    copyright            : (C) 2004 by Jason Harris
+    email                : jharris@30doradus.org
+ ***************************************************************************/
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
 
 #include "opscolors.h"
 
@@ -67,7 +78,7 @@ OpsColors::OpsColors() : QFrame(KStars::Instance())
 
     QFile file;
     QString line, schemeName, filename;
-    file.setFileName(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "colors.dat"));
+    file.setFileName(KSPaths::locate(QStandardPaths::GenericDataLocation, "colors.dat"));
     if (file.exists() && file.open(QIODevice::ReadOnly))
     {
         QTextStream stream(&file);
@@ -144,12 +155,8 @@ void OpsColors::newColor(QListWidgetItem *item)
 
 #ifdef HAVE_CFITSIO
     QList<FITSViewer *> viewers = KStars::Instance()->findChildren<FITSViewer *>();
-    for (auto &viewer : viewers)
-    {
-        QSharedPointer<FITSView> currentView;
-        if (viewer->getCurrentView(currentView))
-            currentView->updateFrame();
-    }
+    foreach (FITSViewer *viewer, viewers)
+        viewer->getCurrentView()->updateFrame();
 #endif
 }
 
@@ -166,7 +173,7 @@ bool OpsColors::setColors(const QString &filename)
     //check if colorscheme is removable...
     QFile test;
     //try filename in local user KDE directory tree.
-    test.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(filename));
+    test.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + filename);
     if (test.exists())
     {
         RemovePreset->setEnabled(true);
@@ -199,12 +206,8 @@ bool OpsColors::setColors(const QString &filename)
     KStars::Instance()->map()->forceUpdate();
 #ifdef HAVE_CFITSIO
     QList<FITSViewer *> viewers = KStars::Instance()->findChildren<FITSViewer *>();
-    for (auto &viewer : viewers)
-    {
-        QSharedPointer<FITSView> currentView;
-        if (viewer->getCurrentView(currentView))
-            currentView->updateFrame();
-    }
+    foreach (FITSViewer *viewer, viewers)
+        viewer->getCurrentView()->updateFrame();
 #endif
 
     return true;
@@ -250,8 +253,8 @@ void OpsColors::slotRemovePreset()
     QString name     = current->text();
     QString filename = PresetFileList[PresetBox->currentRow()];
     QFile cdatFile;
-    //determine filename in local user KDE directory tree.
-    cdatFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath("colors.dat"));
+    cdatFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                         "colors.dat"); //determine filename in local user KDE directory tree.
 
     //Remove action from color-schemes menu
     KStars::Instance()->removeColorMenuItem(QString("cs_" + filename.left(filename.indexOf(".colors"))).toUtf8());
@@ -288,8 +291,8 @@ void OpsColors::slotRemovePreset()
         if (removed) //Entry was removed; delete the corresponding .colors file.
         {
             QFile colorFile;
-            //determine filename in local user KDE directory tree.
-            colorFile.setFileName(QDir(KSPaths::writableLocation(QStandardPaths::AppLocalDataLocation)).filePath(filename));
+            colorFile.setFileName(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                                  filename); //determine filename in local user KDE directory tree.
             if (!colorFile.remove())
             {
                 QString message = i18n("Could not delete the file: %1", colorFile.fileName());

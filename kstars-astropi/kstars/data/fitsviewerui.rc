@@ -79,6 +79,7 @@
         <Action name="view_objects" />
         <Action name="center_telescope" />
 
+
         <Separator/>
 </ToolBar>
 	
@@ -87,7 +88,6 @@
 	<Action name="image_histogram" />
         <Action name="image_stats" />
         <Action name="image_stretch" />
-        <Action name="image_roi_stats" />
 </ToolBar>
 
 </kpartgui>

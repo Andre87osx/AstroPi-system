@@ -1,7 +1,10 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos PHD2 Handler
+    Copyright (C) 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -70,7 +73,6 @@ class PHD2 : public GuideInterface
             LOSTLOCK,
             PAUSED,
             LOOPING,
-            DITHERING,
         };
         enum PHD2Connection
         {
@@ -195,7 +197,7 @@ class PHD2 : public GuideInterface
         bool abort() override;                  //stop_capture
 
         bool calibrate() override; //Note PHD2 does not have a separate calibrate command.  This is unused.
-        void setGuideView(const QSharedPointer<FITSView> &guideView);
+        void setGuideView(FITSView *guideView);
 
         QString getCurrentCamera()
         {
@@ -225,7 +227,7 @@ class PHD2 : public GuideInterface
         void displayError(QAbstractSocket::SocketError socketError);
 
     private:
-        QSharedPointer<FITSView> m_GuideFrame;
+        QPointer<FITSView> guideFrame;
 
         QVector<QPointF> errorLog;
 

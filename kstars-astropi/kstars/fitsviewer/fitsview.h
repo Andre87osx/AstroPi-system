@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
-    SPDX-FileCopyrightText: 2016-2017 Robert Lancaster <rlancaste@gmail.com>
+/*  FITS Label
+    Copyright (C) 2003-2017 Jasem Mutlaq <mutlaqja@ikarustech.com>
+    Copyright (C) 2016-2017 Robert Lancaster <rlancaste@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -47,8 +50,6 @@ class FITSLabel;
 class FITSView : public QScrollArea
 {
         Q_OBJECT
-        Q_PROPERTY(bool suspended MEMBER m_Suspended)
-
     public:
         explicit FITSView(QWidget *parent = nullptr, FITSMode fitsMode = FITS_NORMAL, FITSScale filterType = FITS_NONE);
         virtual ~FITSView() override;
@@ -58,10 +59,11 @@ class FITSView : public QScrollArea
         /**
          * @brief loadFITS Loads FITS data and displays it in a FITSView frame
          * @param inFilename FITS File name
+         * @param silent if set, error popups are suppressed.
          * @note If image is successfully, loaded() signal is emitted, otherwise failed() signal is emitted.
          * Obtain error by calling lastError()
          */
-        void loadFile(const QString &inFilename);
+        void loadFile(const QString &inFilename, bool silent = true);
 
         /**
          * @brief loadFITSFromData Takes ownership of the FITSData instance passed in and displays it in a FITSView frame
@@ -126,39 +128,35 @@ class FITSView : public QScrollArea
         void drawTrackingBox(QPainter *, double scale);
         void drawMarker(QPainter *, double scale);
         void drawCrosshair(QPainter *, double scale);
-
-#if !defined(KSTARS_LITE) && defined(HAVE_WCSLIB)
         void drawEQGrid(QPainter *, double scale);
-#endif
         void drawObjectNames(QPainter *painter, double scale);
         void drawPixelGrid(QPainter *painter, double scale);
         void drawMagnifyingGlass(QPainter *painter, double scale);
+
         bool isImageStretched();
         bool isCrosshairShown();
         bool isClippingShown();
         bool areObjectsShown();
         bool isEQGridShown();
-        bool isSelectionRectShown();
         bool isPixelGridShown();
         bool imageHasWCS();
 
         // Setup the graphics.
         void updateFrame(bool now = false);
 
-        // Telescope
         bool isTelescopeActive();
-        void updateScopeButton();
-        void setScopeButton(QAction *action)
-        {
-            centerTelescopeAction = action;
-        }
 
-        // Events Management
         void enterEvent(QEvent *event) override;
         void leaveEvent(QEvent *event) override;
         CursorMode getCursorMode();
         void setCursorMode(CursorMode mode);
         void updateMouseCursor();
+
+        void updateScopeButton();
+        void setScopeButton(QAction *action)
+        {
+            centerTelescopeAction = action;
+        }
 
         // Zoom related
         void cleanUpZoom(QPoint viewCenter = QPoint());
@@ -175,6 +173,7 @@ class FITSView : public QScrollArea
         {
             return m_ZoomFactor;
         }
+
 
         // Star Detection
         QFuture<bool> findStars(StarAlgorithm algorithm = ALGORITHM_CENTROID, const QRect &searchBox = QRect());
@@ -259,17 +258,6 @@ class FITSView : public QScrollArea
             }
         }
 
-        // Returns the number of clipped pixels, if that's being computed.
-        int getNumClipped()
-        {
-            return m_NumClipped;
-        }
-
-        QRect getSelectionRegion() const
-        {
-            return selectionRectangleRaw;
-        }
-
     public slots:
         void wheelEvent(QWheelEvent *event) override;
         void resizeEvent(QResizeEvent *event) override;
@@ -285,9 +273,6 @@ class FITSView : public QScrollArea
         void togglePixelGrid();
         void toggleCrosshair();
 
-        //Selection Rectngle
-        void toggleSelectionMode();
-
         // Stars
         void toggleStars();
         void toggleStarProfile();
@@ -300,11 +285,8 @@ class FITSView : public QScrollArea
 
         virtual void processPointSelection(int x, int y);
         virtual void processMarkerSelection(int x, int y);
-
         void move3DTrackingBox(int x, int y);
         void resizeTrackingBox(int newSize);
-        void processRectangle(QPoint p1, QPoint p2, bool refreshCenter = false);
-        void processRectangleFixed(int s);
 
     protected slots:
         /**
@@ -317,6 +299,9 @@ class FITSView : public QScrollArea
         void pinchTriggered(QPinchGesture *gesture);
 
     protected:
+        template <typename T>
+        bool rescale(FITSZoom type);
+
         double average();
         double stddev();
         void calculateMaxPixel(double min, double max);
@@ -329,10 +314,6 @@ class FITSView : public QScrollArea
 
         double getScale();
 
-        /// selectionRectangleRaw is used to do the calculations, this rectangle remains the same when user changes the zoom
-        QRect selectionRectangleRaw;
-        /// Floating toolbar
-        QToolBar *floatingToolBar { nullptr };
         /// WCS Future Watcher
         QFutureWatcher<bool> wcsWatcher;
         /// FITS Future Watcher
@@ -346,10 +327,6 @@ class FITSView : public QScrollArea
         // The maximum percent zoom. The value is recalculated in the constructor
         // based on the amount of physical memory.
         int zoomMax { 400 };
-        /// Image Buffer if Selection is to be done
-        uint8_t *m_ImageRoiBuffer { nullptr };
-        /// Above buffer size in bytes
-        uint32_t m_ImageRoiBufferSize { 0 };
 
     private:
         bool processData();
@@ -386,10 +363,6 @@ class FITSView : public QScrollArea
         bool showPixelGrid { false };
         bool showStarsHFR { false };
         bool showClipping { false };
-
-        int m_NumClipped { 0 };
-
-        bool showSelectionRect { false };
 
         // Should the image be displayed in linear (false) or stretched (true).
         // Initial value controlled by Options::autoStretch.
@@ -442,6 +415,8 @@ class FITSView : public QScrollArea
         // Magenta Scope Pixmap
         QPixmap magentaScopePixmap;
 
+        // Floating toolbar
+        QToolBar *floatingToolBar { nullptr };
         QAction *centerTelescopeAction { nullptr };
         QAction *toggleEQGridAction { nullptr };
         QAction *toggleObjectsAction { nullptr };
@@ -453,9 +428,6 @@ class FITSView : public QScrollArea
         int magnifyingGlassX { -1 };
         int magnifyingGlassY { -1 };
         bool showMagnifyingGlass { false };
-        bool m_Suspended {false};
-
-        QMutex updateMutex;
 
         //Star Profile Viewer
 #ifdef HAVE_DATAVISUALIZATION
@@ -469,12 +441,8 @@ class FITSView : public QScrollArea
         void actionUpdated(const QString &name, bool enable);
         void trackingStarSelected(int x, int y);
         void loaded();
-        void failed(const QString &error);
+        void failed();
         void starProfileWindowClosed();
-        void rectangleUpdated(QRect roi);
-        void setRubberBand(QRect rect);
-        void showRubberBand(bool on = false);
-        void zoomRubberBand(double scale);
 
         friend class FITSLabel;
 };

@@ -1,8 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2003 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI Options
+    Copyright (C) 2003 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+ */
 
 #include "opsindi.h"
 
@@ -86,7 +90,7 @@ void OpsINDI::toggleDriversInternal()
 void OpsINDI::saveFITSDirectory()
 {
     QString dir =
-        QFileDialog::getExistingDirectory(KStars::Instance(), i18nc("@title:window", "FITS Default Directory"), kcfg_fitsDir->text());
+        QFileDialog::getExistingDirectory(KStars::Instance(), i18n("FITS Default Directory"), kcfg_fitsDir->text());
 
     if (!dir.isEmpty())
         kcfg_fitsDir->setText(dir);
@@ -94,7 +98,7 @@ void OpsINDI::saveFITSDirectory()
 
 void OpsINDI::saveDriversDirectory()
 {
-    QString dir = QFileDialog::getExistingDirectory(KStars::Instance(), i18nc("@title:window", "INDI Drivers Directory"),
+    QString dir = QFileDialog::getExistingDirectory(KStars::Instance(), i18n("INDI Drivers Directory"),
                   kcfg_indiDriversDir->text());
 
     if (!dir.isEmpty())
@@ -106,7 +110,7 @@ void OpsINDI::saveDriversDirectory()
 
 void OpsINDI::saveINDIHubAgent()
 {
-    QUrl url = QFileDialog::getOpenFileUrl(this, i18nc("@title:window", "Select INDIHub Agent"), QUrl(),  "indihub-agent");
+    QUrl url = QFileDialog::getOpenFileUrl(this, i18n("Select INDIHub Agent"), QUrl(),  "indihub-agent");
     if (url.isEmpty())
         return;
 

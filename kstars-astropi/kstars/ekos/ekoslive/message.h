@@ -1,9 +1,13 @@
-/*
-    SPDX-FileCopyrightText: 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  Ekos Live Client
+
+    Copyright (C) 2018 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
     Message Channel
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
 */
 
 #pragma once
@@ -12,9 +16,8 @@
 #include <memory>
 
 #include "ekos/ekos.h"
-#include "ekos/align/polaralignmentassistant.h"
 #include "ekos/manager.h"
-#include "catalogsdb.h"
+
 
 namespace EkosLive
 {
@@ -56,10 +59,6 @@ class Message : public QObject
         void sendCaps();
         void sendDrivers();
         void sendDevices();
-        void sendSchedulerJobList(QJsonArray jobsList);
-
-        // Scheduler
-        void sendSchedulerJobs();
 
     signals:
         void connected();
@@ -93,14 +92,10 @@ class Message : public QObject
         // Focus
         void sendFocusSettings(const QJsonObject &settings);
 
-        //Scheduler
-        void sendSchedulerSettings(const QJsonObject &settings);
-
         // Polar
-        void setPAHStage(Ekos::PolarAlignmentAssistant::PAHStage stage);
+        void setPAHStage(Ekos::Align::PAHStage stage);
         void setPAHMessage(const QString &message);
         void setPolarResults(QLineF correctionVector, double polarError, double azError, double altError);
-        void setUpdatedErrors(double total, double az, double alt);
         void setPAHEnabled(bool enabled);
         void setBoundingRect(QRect rect, QSize view, double currentZoom);
         // Capture
@@ -109,9 +104,6 @@ class Message : public QObject
 
         // DSLR
         void requestDSLRInfo(const QString &cameraName);
-
-        // Port Selection
-        void requestPortSelection(bool show);
 
         // Dialogs
         void sendDialog(const QJsonObject &message);
@@ -127,8 +119,6 @@ class Message : public QObject
 
         // StellarSolver
         void sendStellarSolverProfiles();
-
-        void sendManualRotatorStatus(double currentPA, double targetPA, double threshold);
 
     private slots:
 
@@ -163,9 +153,6 @@ class Message : public QObject
         // Align
         void processAlignCommands(const QString &command, const QJsonObject &payload);
 
-        // Scheduler
-        void processSchedulerCommands(const QString &command, const QJsonObject &payload);
-
         // Polar
         void processPolarCommands(const QString &command, const QJsonObject &payload);
 
@@ -190,15 +177,8 @@ class Message : public QObject
         // Filter Manager commands
         void processFilterManagerCommands(const QString &command, const QJsonObject &payload);
 
-        // Dark Library commands
-        void processDarkLibraryCommands(const QString &command, const QJsonObject &payload);
-
         // Low-level Device commands
         void processDeviceCommands(const QString &command, const QJsonObject &payload);
-
-        // Process Astronomy Library command
-        void processAstronomyCommands(const QString &command, const QJsonObject &payload);
-        KStarsDateTime getNextDawn();
 
         QWebSocket m_WebSocket;
         QJsonObject m_AuthResponse;
@@ -217,23 +197,12 @@ class Message : public QObject
         double m_CurrentZoom {100};
 
         QDateTime m_ThrottleTS;
-        CatalogsDB::DBManager m_DSOManager;
-        QCache<QString, QJsonObject> m_PropertyCache;
-
-        typedef enum
-        {
-            North,
-            East,
-            South,
-            West,
-            All
-        } Direction;
 
         // Retry every 5 seconds in case remote server is down
         static const uint16_t RECONNECT_INTERVAL = 5000;
         // Retry for 1 hour before giving up
         static const uint16_t RECONNECT_MAX_TRIES = 720;
         // Throttle interval
-        static const uint16_t THROTTLE_INTERVAL = 1000;
+        static const uint16_t THROTTLE_INTERVAL = 5000;
 };
 }

@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2021 Hy Murveit <hy@murveit.com>
+/*  TestPolarAlign class.
+    Copyright (C) 2021 Hy Murveit
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #pragma once
 
@@ -31,14 +34,13 @@ class TestPolarAlign : public QObject
 
     private slots:
         void testRunPAA();
-        void testRefreshCoords();
         void testAlt();
         void testRotate();
         void testRotate_data();
 
     private:
-        void compare(double a, double e, QString msg, int line, double tolerance = 0.0003);
-        bool compare(const QPointF &point, double x, double y, double tolerance = 0.0001);
+        void compare(double a, double e, QString msg = "", double tolerance = 0.0003);
+        void compare(const QPointF &point, double x, double y, double tolerance = 0.0001);
 
         void getAzAlt(const KStarsDateTime &time, const GeoLocation &geo,
                       const QPointF &pixel, double ra, double dec, double orientation,

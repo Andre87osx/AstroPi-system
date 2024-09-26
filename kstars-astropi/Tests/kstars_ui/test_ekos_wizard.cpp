@@ -1,9 +1,12 @@
-/*
-    SPDX-FileCopyrightText: 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
-    SPDX-FileCopyrightText: 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
+/*  KStars UI tests
+    Copyright (C) 2017 Csaba Kertesz <csaba.kertesz@gmail.com>
+    Copyright (C) 2020 Eric Dejouhanet <eric.dejouhanet@gmail.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "kstars_ui_tests.h"
 
@@ -47,7 +50,7 @@ void TestEkosWizard::testProfileWizard()
     QVERIFY(QDir(Options::indiDriversDir()).exists());
 
     // Locate INDI drivers - the XML list of drivers is the generic data path
-    QFile drivers(KSPaths::locate(QStandardPaths::AppLocalDataLocation, "indidrivers.xml"));
+    QFile drivers(KSPaths::locate(QStandardPaths::GenericDataLocation, "indidrivers.xml"));
     if (drivers.exists())
         Options::setIndiDriversDir(QFileInfo(drivers).dir().path());
     QVERIFY(QDir(Options::indiDriversDir()).exists());

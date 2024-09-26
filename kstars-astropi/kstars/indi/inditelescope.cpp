@@ -1,8 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  INDI CCD
+    Copyright (C) 2012 Jasem Mutlaq <mutlaqja@ikarustech.com>
 
-    SPDX-License-Identifier: GPL-2.0-or-later
-*/
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+ */
 
 #include "inditelescope.h"
 
@@ -17,23 +20,13 @@
 #include "ksnotification.h"
 
 #include <KActionCollection>
-#include <KLocalizedString>
 
 #include <QAction>
 
 #include <indi_debug.h>
 
-// Qt version calming
-#include <qtendl.h>
-
 namespace ISD
 {
-
-const QList<const char *> Telescope::mountStates = { I18N_NOOP("Idle"),  I18N_NOOP("Moving"), I18N_NOOP("Slewing"),
-                                                     I18N_NOOP("Tracking"), I18N_NOOP("Parking"), I18N_NOOP("Parked"),
-                                                     I18N_NOOP("Error")
-                                                   };
-
 Telescope::Telescope(GDInterface *iPtr) : DeviceDecorator(iPtr)
 {
     dType                = KSTARS_TELESCOPE;
@@ -54,28 +47,11 @@ Telescope::Telescope(GDInterface *iPtr) : DeviceDecorator(iPtr)
     readyTimer.setSingleShot(true);
     connect(&readyTimer, &QTimer::timeout, this, &Telescope::ready);
 
-    // Regularly update the coordinates even if no update has been sent from the INDI service
-    updateCoordinatesTimer.setInterval(1000);
-    updateCoordinatesTimer.setSingleShot(false);
-    connect(&updateCoordinatesTimer, &QTimer::timeout, this, [this]()
-    {
-        if (isConnected())
-        {
-            currentCoords.EquatorialToHorizontal(KStarsData::Instance()->lst(), KStarsData::Instance()->geo()->lat());
-            emit newCoords(currentCoords, pierSide(), hourAngle());
-        }
-    });
-
     qRegisterMetaType<ISD::Telescope::Status>("ISD::Telescope::Status");
     qDBusRegisterMetaType<ISD::Telescope::Status>();
 
     qRegisterMetaType<ISD::Telescope::PierSide>("ISD::Telescope::PierSide");
     qDBusRegisterMetaType<ISD::Telescope::PierSide>();
-
-    // Need to delay check for alignment model to upon connection is established since the property is defined BEFORE Telescope class is created.
-    // and therefore no registerProperty is called for these properties since they were already registered _before_ the Telescope
-    // class was created.
-    m_hasAlignmentModel = getProperty("ALIGNMENT_POINTSET_ACTION").isValid() || getProperty("ALIGNLIST").isValid();
 }
 
 void Telescope::registerProperty(INDI::Property prop)
@@ -94,7 +70,7 @@ void Telescope::registerProperty(INDI::Property prop)
         double temp = 0;
 
         auto aperture = ti->findWidgetByName("TELESCOPE_APERTURE");
-        if (aperture && aperture->getValue() <= 0)
+        if (aperture && aperture->getValue() == 0)
         {
             if (getDriverInfo()->getAuxInfo().contains("TELESCOPE_APERTURE"))
             {
@@ -103,14 +79,14 @@ void Telescope::registerProperty(INDI::Property prop)
                 {
                     aperture->setValue(temp);
                     auto g_aperture = ti->findWidgetByName("GUIDER_APERTURE");
-                    if (g_aperture && g_aperture->getValue() <= 0)
+                    if (g_aperture && g_aperture->getValue() == 0)
                         g_aperture->setValue(aperture->getValue());
                 }
             }
         }
 
         auto focal_length = ti->findWidgetByName("TELESCOPE_FOCAL_LENGTH");
-        if (focal_length && focal_length->getValue() <= 0)
+        if (focal_length && focal_length->getValue() == 0)
         {
             if (getDriverInfo()->getAuxInfo().contains("TELESCOPE_FOCAL_LENGTH"))
             {
@@ -119,7 +95,7 @@ void Telescope::registerProperty(INDI::Property prop)
                 {
                     focal_length->setValue(temp);
                     auto g_focal = ti->findWidgetByName("GUIDER_FOCAL_LENGTH");
-                    if (g_focal && g_focal->getValue() <= 0)
+                    if (g_focal && g_focal->getValue() == 0)
                         g_focal->setValue(focal_length->getValue());
                 }
             }
@@ -180,6 +156,8 @@ void Telescope::registerProperty(INDI::Property prop)
             emit pierSideChanged(m_PierSide);
         }
     }
+    else if (prop->isNameMatch("ALIGNMENT_POINTSET_ACTION") || prop->isNameMatch("ALIGNLIST"))
+        m_hasAlignmentModel = true;
     else if (prop->isNameMatch("TELESCOPE_TRACK_STATE"))
         m_canControlTrack = true;
     else if (prop->isNameMatch("TELESCOPE_TRACK_MODE"))
@@ -211,14 +189,13 @@ void Telescope::registerProperty(INDI::Property prop)
         if (svp)
         {
             m_slewRates.clear();
-            for (const auto &it : *svp)
+            for (const auto &it: *svp)
                 m_slewRates << it.getLabel();
         }
     }
     else if (prop->isNameMatch("EQUATORIAL_EOD_COORD"))
     {
         m_isJ2000 = false;
-        m_hasEquatorialCoordProperty = true;
     }
     else if (prop->isNameMatch("SAT_TRACKING_STAT"))
     {
@@ -227,18 +204,9 @@ void Telescope::registerProperty(INDI::Property prop)
     else if (prop->isNameMatch("EQUATORIAL_COORD"))
     {
         m_isJ2000 = true;
-        m_hasEquatorialCoordProperty = true;
     }
 
     DeviceDecorator::registerProperty(prop);
-}
-
-void Telescope::updateJ2000Coordinates(SkyPoint *coords)
-{
-    SkyPoint J2000Coord(coords->ra(), coords->dec());
-    J2000Coord.catalogueCoord(KStars::Instance()->data()->ut().djd());
-    coords->setRA0(J2000Coord.ra());
-    coords->setDec0(J2000Coord.dec());
 }
 
 void Telescope::processNumber(INumberVectorProperty *nvp)
@@ -251,54 +219,41 @@ void Telescope::processNumber(INumberVectorProperty *nvp)
         if (RA == nullptr || DEC == nullptr)
             return;
 
-        // set both JNow and J2000 coordinates
-        if (isJ2000())
+        currentCoord.setRA(RA->value);
+        currentCoord.setDec(DEC->value);
+
+        // If J2000, convert it to JNow
+        if (!strcmp(nvp->name, "EQUATORIAL_COORD"))
         {
-            currentCoords.setRA0(RA->value);
-            currentCoords.setDec0(DEC->value);
-            currentCoords.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
-        }
-        else
-        {
-            currentCoords.setRA(RA->value);
-            currentCoords.setDec(DEC->value);
-            // calculate J2000 coordinates
-            updateJ2000Coordinates(&currentCoords);
+            currentCoord.setRA0(RA->value);
+            currentCoord.setDec0(DEC->value);
+            currentCoord.apparentCoord(static_cast<long double>(J2000), KStars::Instance()->data()->ut().djd());
         }
 
-        // calculate horizontal coordinates
-        currentCoords.EquatorialToHorizontal(KStars::Instance()->data()->lst(),
-                                             KStars::Instance()->data()->geo()->lat());
-        // ensure that coordinates are regularly updated
-        if (! updateCoordinatesTimer.isActive())
-            updateCoordinatesTimer.start();
-
-        ISD::Telescope::Status currentStatus = status(nvp);
+        currentCoord.EquatorialToHorizontal(KStars::Instance()->data()->lst(),
+                                            KStars::Instance()->data()->geo()->lat());
 
         if (nvp->s == IPS_BUSY && EqCoordPreviousState != IPS_BUSY)
         {
-            if (currentStatus == MOUNT_SLEWING)
+            if (status() != MOUNT_PARKING)
                 KSNotification::event(QLatin1String("SlewStarted"), i18n("Mount is slewing to target location"));
-            emit newStatus(currentStatus);
         }
         else if (EqCoordPreviousState == IPS_BUSY && nvp->s == IPS_OK)
         {
             KSNotification::event(QLatin1String("SlewCompleted"), i18n("Mount arrived at target location"));
-            emit newStatus(currentStatus);
-            // Hint: we intentionally do not communicate the target here, since it has been communicated
-            // at the beginning of the slew AND we cannot be sure that the position the INDI mount reports
-            // when starting to track is exactly that one where the slew went to.
+
+            double maxrad = 1000.0 / Options::zoomFactor();
+
+            currentObject = KStarsData::Instance()->skyComposite()->objectNearest(&currentCoord, maxrad);
+            if (currentObject != nullptr)
+                emit newTarget(currentObject->name());
         }
 
         EqCoordPreviousState = nvp->s;
 
         KStars::Instance()->map()->update();
     }
-    // JM 2022.03.11 Only process HORIZONTAL_COORD if it was the ONLY source of information
-    // When a driver both sends EQUATORIAL_COORD and HORIZONTAL_COORD, we should prioritize EQUATORIAL_COORD
-    // especially since the conversion from horizontal to equatorial is not as accurate and can result in weird
-    // coordinates near the poles.
-    else if (!strcmp(nvp->name, "HORIZONTAL_COORD") && m_hasEquatorialCoordProperty == false)
+    else if (!strcmp(nvp->name, "HORIZONTAL_COORD"))
     {
         INumber *Az  = IUFindNumber(nvp, "AZ");
         INumber *Alt = IUFindNumber(nvp, "ALT");
@@ -306,27 +261,12 @@ void Telescope::processNumber(INumberVectorProperty *nvp)
         if (Az == nullptr || Alt == nullptr)
             return;
 
-        currentCoords.setAz(Az->value);
-        currentCoords.setAlt(Alt->value);
-        currentCoords.HorizontalToEquatorial(KStars::Instance()->data()->lst(),
-                                             KStars::Instance()->data()->geo()->lat());
-
-        // calculate J2000 coordinates
-        updateJ2000Coordinates(&currentCoords);
-
-        // ensure that coordinates are regularly updated
-        if (! updateCoordinatesTimer.isActive())
-            updateCoordinatesTimer.start();
+        currentCoord.setAz(Az->value);
+        currentCoord.setAlt(Alt->value);
+        currentCoord.HorizontalToEquatorial(KStars::Instance()->data()->lst(),
+                                            KStars::Instance()->data()->geo()->lat());
 
         KStars::Instance()->map()->update();
-    }
-    else if (!strcmp(nvp->name, "POLLING_PERIOD"))
-    {
-        // set the timer how often the coordinates should be published
-        INumber *period = IUFindNumber(nvp, "PERIOD_MS");
-        if (period != nullptr)
-            updateCoordinatesTimer.setInterval(static_cast<int>(period->value));
-
     }
 
     DeviceDecorator::processNumber(nvp);
@@ -397,7 +337,7 @@ void Telescope::processSwitch(ISwitchVectorProperty *svp)
                 if (unParkAction)
                     unParkAction->setEnabled(true);
 
-                emit newTarget(currentCoords);
+                emit newTarget(QString());
             }
             else if ( (svp->s == IPS_OK || svp->s == IPS_IDLE) && sp->s == ISS_OFF && m_ParkStatus != PARK_UNPARKED)
             {
@@ -452,18 +392,35 @@ void Telescope::processSwitch(ISwitchVectorProperty *svp)
         manualMotionChanged = true;
     else if (!strcmp(svp->name, "TELESCOPE_MOTION_WE"))
         manualMotionChanged = true;
-    else if (!strcmp(svp->name, "TELESCOPE_REVERSE_MOTION"))
-    {
-        emit axisReversed(AXIS_DE, svp->sp[0].s == ISS_ON);
-        emit axisReversed(AXIS_RA, svp->sp[1].s == ISS_ON);
-    }
 
     if (manualMotionChanged)
     {
-        IPState NSCurrentMotion = baseDevice->getSwitch("TELESCOPE_MOTION_NS")->s;
-        IPState WECurrentMotion = baseDevice->getSwitch("TELESCOPE_MOTION_WE")->s;
+        IPState NSCurrentMotion, WECurrentMotion;
+
+        NSCurrentMotion = baseDevice->getSwitch("TELESCOPE_MOTION_NS")->s;
+        WECurrentMotion = baseDevice->getSwitch("TELESCOPE_MOTION_WE")->s;
+
         inCustomParking = false;
-        inManualMotion = (NSCurrentMotion == IPS_BUSY || WECurrentMotion == IPS_BUSY);
+
+        if (NSCurrentMotion == IPS_BUSY || WECurrentMotion == IPS_BUSY || NSPreviousState == IPS_BUSY ||
+                WEPreviousState == IPS_BUSY)
+        {
+            if (inManualMotion == false && ((NSCurrentMotion == IPS_BUSY && NSPreviousState != IPS_BUSY) ||
+                                            (WECurrentMotion == IPS_BUSY && WEPreviousState != IPS_BUSY)))
+            {
+                inManualMotion = true;
+                //KSNotification::event(QLatin1String("MotionStarted"), i18n("Mount is manually moving"));
+            }
+            else if (inManualMotion && ((NSCurrentMotion != IPS_BUSY && NSPreviousState == IPS_BUSY) ||
+                                        (WECurrentMotion != IPS_BUSY && WEPreviousState == IPS_BUSY)))
+            {
+                inManualMotion = false;
+                //KSNotification::event(QLatin1String("MotionStopped"), i18n("Mount motion stopped"));
+            }
+
+            NSPreviousState = NSCurrentMotion;
+            WEPreviousState = WECurrentMotion;
+        }
     }
 
     DeviceDecorator::processSwitch(svp);
@@ -617,14 +574,14 @@ bool Telescope::doPulse(GuideDirection dir, int msecs)
 
     clientManager->sendNewNumber(npulse);
 
-    //qDebug() << Q_FUNC_INFO << "Sending pulse for " << npulse->getName() << " in direction " << dirPulse->getName() << " for " << msecs << " ms " << Qt::endl;
+    //qDebug() << "Sending pulse for " << npulse->getName() << " in direction " << dirPulse->getName() << " for " << msecs << " ms " << endl;
 
     return true;
 }
 
 bool Telescope::runCommand(int command, void *ptr)
 {
-    //qDebug() << Q_FUNC_INFO << "Telescope run command is called!!!" << Qt::endl;
+    //qDebug() << "Telescope run command is called!!!" << endl;
 
     switch (command)
     {
@@ -652,11 +609,14 @@ bool Telescope::runCommand(int command, void *ptr)
 
         case INDI_FIND_TELESCOPE:
         {
-            updateJ2000Coordinates(&currentCoords);
+            SkyPoint J2000Coord(currentCoord.ra(), currentCoord.dec());
+            J2000Coord.catalogueCoord(KStars::Instance()->data()->ut().djd());
+            currentCoord.setRA0(J2000Coord.ra());
+            currentCoord.setDec0(J2000Coord.dec());
             double maxrad = 1000.0 / Options::zoomFactor();
-            SkyObject *currentObject = KStarsData::Instance()->skyComposite()->objectNearest(&currentCoords, maxrad);
+            SkyObject *currentObject = KStarsData::Instance()->skyComposite()->objectNearest(&currentCoord, maxrad);
             KStars::Instance()->map()->setFocusObject(currentObject);
-            KStars::Instance()->map()->setDestination(currentCoords);
+            KStars::Instance()->map()->setDestination(currentCoord);
         }
         break;
 
@@ -664,13 +624,16 @@ bool Telescope::runCommand(int command, void *ptr)
         {
             //if (currentObject == nullptr || KStars::Instance()->map()->focusObject() != currentObject)
             if (Options::isTracking() == false ||
-                    currentCoords.angularDistanceTo(KStars::Instance()->map()->focus()).Degrees() > 0.5)
+                    currentCoord.angularDistanceTo(KStars::Instance()->map()->focus()).Degrees() > 0.5)
             {
-                updateJ2000Coordinates(&currentCoords);
+                SkyPoint J2000Coord(currentCoord.ra(), currentCoord.dec());
+                J2000Coord.catalogueCoord(KStars::Instance()->data()->ut().djd());
+                currentCoord.setRA0(J2000Coord.ra());
+                currentCoord.setDec0(J2000Coord.dec());
                 //KStars::Instance()->map()->setClickedPoint(&currentCoord);
                 //KStars::Instance()->map()->slotCenter();
-                KStars::Instance()->map()->setDestination(currentCoords);
-                KStars::Instance()->map()->setFocusPoint(&currentCoords);
+                KStars::Instance()->map()->setDestination(currentCoord);
+                KStars::Instance()->map()->setFocusPoint(&currentCoord);
                 //KStars::Instance()->map()->setFocusObject(currentObject);
                 KStars::Instance()->map()->setFocusObject(nullptr);
                 Options::setIsTracking(true);
@@ -697,7 +660,7 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
     INumber *DecEle                = nullptr;
     INumber *AzEle                 = nullptr;
     INumber *AltEle                = nullptr;
-    double currentRA = 0, currentDEC = 0, currentAlt = 0, currentAz = 0;
+    double currentRA = 0, currentDEC = 0, currentAlt = 0, currentAz = 0, targetAlt = 0;
     bool useJ2000(false);
 
     auto EqProp = baseDevice->getNumber("EQUATORIAL_EOD_COORD");
@@ -717,7 +680,7 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
     if (HorProp && HorProp->getPermission() == IP_RO)
         HorProp = nullptr;
 
-    //qDebug() << Q_FUNC_INFO << "Skymap click - RA: " << scope_target->ra().toHMSString() << " DEC: " << scope_target->dec().toDMSString();
+    //qDebug() << "Skymap click - RA: " << scope_target->ra().toHMSString() << " DEC: " << scope_target->dec().toDMSString();
 
     if (EqProp)
     {
@@ -755,18 +718,22 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
     if (EqProp == nullptr && HorProp == nullptr)
         return false;
 
-    // Function for sending the coordinates to the INDI mount device
-    // via the ClientManager. This helper function translates EKOS objects into INDI commands.
-    auto sendToMountDevice = [ = ]()
-    {
-        // communicate the new target only if a slew will be executed for the given coordinates
-        if (slewDefined())
-        {
-            emit newTarget(*ScopeTarget);
-            if (currentObject)
-                emit newTargetName(currentObject->name());
-        }
+    //targetAz = ScopeTarget->az().Degrees();
+    targetAlt = ScopeTarget->altRefracted().Degrees();
 
+    if (minAlt != -1 && maxAlt != -1)
+    {
+        if (targetAlt < minAlt || targetAlt > maxAlt)
+        {
+            KSNotification::error(i18n("Requested altitude %1 is outside the specified altitude limit boundary (%2,%3).",
+                                       QString::number(targetAlt, 'g', 3), QString::number(minAlt, 'g', 3),
+                                       QString::number(maxAlt, 'g', 3)), i18n("Telescope Motion"));
+            return false;
+        }
+    }
+
+    auto sendToClient = [ = ]()
+    {
         if (EqProp)
         {
             dms ra, de;
@@ -817,14 +784,9 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
 
     };
 
-    // Helper function that first checks for the selected target object whether the
-    // tracking modes have to be adapted (special cases moon and sun), explicitely warns before
-    // slewing to the sun and finally (independant whether there exists a target object
-    // for the target coordinates) calls sendToMountDevice
-    auto checkObjectAndSend = [ = ]()
+    auto checkObject = [ = ]()
     {
-        // Search within 0.1 degrees indepdent of zoom level.
-        double maxrad = 0.1;
+        double maxrad = 1000.0 / Options::zoomFactor();
         currentObject = KStarsData::Instance()->skyComposite()->objectNearest(ScopeTarget, maxrad);
         if (currentObject)
         {
@@ -851,6 +813,10 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
                         setTrackMode(TRACK_SIDEREAL);
 
                 }
+
+                emit newTarget(currentObject->name());
+
+                sendToClient();
             };
 
             // Sun Warning, but don't ask if tracking is already solar.
@@ -860,7 +826,6 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
                 {
                     KSMessageBox::Instance()->disconnect(this);
                     checkTrackModes();
-                    sendToMountDevice();
                 });
                 connect(KSMessageBox::Instance(), &KSMessageBox::rejected, this, [ = ]()
                 {
@@ -872,36 +837,18 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
                     i18n("Sun Warning"));
             }
             else
-            {
                 checkTrackModes();
-                sendToMountDevice();
-            }
         }
         else
-            sendToMountDevice();
+            sendToClient();
     };
 
-    // If altitude limits is enabled, then reject motion immediately.
-    double targetAlt = ScopeTarget->altRefracted().Degrees();
-
-    if ((minAlt != -1 && maxAlt != -1) && (targetAlt < minAlt || targetAlt > maxAlt))
-    {
-        KSNotification::event(QLatin1String("IndiServerMessage"),
-                              i18n("Requested altitude %1 is outside the specified altitude limit boundary (%2,%3).",
-                                   QString::number(targetAlt, 'g', 3), QString::number(minAlt, 'g', 3),
-                                   QString::number(maxAlt, 'g', 3)), KSNotification::EVENT_WARN);
-        return false;
-    }
-
-    // If disabled, then check if below horizon and warning the user unless the user previously dismissed it.
-    if (Options::confirmBelowHorizon() && targetAlt < 0 && minAlt == -1)
+    if (targetAlt < 0)
     {
         connect(KSMessageBox::Instance(), &KSMessageBox::accepted, this, [ = ]()
         {
-            if (minAlt == -1 && maxAlt == -1)
-                Options::setConfirmBelowHorizon(false);
             KSMessageBox::Instance()->disconnect(this);
-            checkObjectAndSend();
+            checkObject();
         });
         connect(KSMessageBox::Instance(), &KSMessageBox::rejected, this, [ = ]()
         {
@@ -922,31 +869,10 @@ bool Telescope::sendCoords(SkyPoint *ScopeTarget)
                                                 i18n("Telescope Motion"), 15, false);
     }
     else
-        checkObjectAndSend();
+        checkObject();
 
     return true;
 }
-
-bool Telescope::slewDefined()
-{
-    if (baseDevice == nullptr)
-        return false;
-
-    auto motionSP = baseDevice->getSwitch("ON_COORD_SET");
-
-    if (motionSP == nullptr)
-        return false;
-
-    // take either the TRACK of the SLEW widget
-    auto slewSW = motionSP->findWidgetByName("TRACK");
-
-    if (slewSW == nullptr)
-        slewSW = motionSP->findWidgetByName("SLEW");
-
-    // a slew is planned if the selected widget is on
-    return (slewSW != nullptr && slewSW->getState() == ISState::ISS_ON);
-}
-
 
 bool Telescope::Slew(double ra, double dec)
 {
@@ -1039,7 +965,7 @@ bool Telescope::Abort()
     if (!abortSW)
         return false;
 
-    qCDebug(KSTARS_INDI) << "ISD:Telescope: Aborted." << Qt::endl;
+    qCDebug(KSTARS_INDI) << "ISD:Telescope: Aborted." << endl;
 
     abortSW->setState(ISS_ON);
     clientManager->sendNewSwitch(motionSP);
@@ -1061,7 +987,7 @@ bool Telescope::Park()
     if (!parkSW)
         return false;
 
-    qCDebug(KSTARS_INDI) << "ISD:Telescope: Parking..." << Qt::endl;
+    qCDebug(KSTARS_INDI) << "ISD:Telescope: Parking..." << endl;
 
     parkSP->reset();
     parkSW->setState(ISS_ON);
@@ -1082,7 +1008,7 @@ bool Telescope::UnPark()
     if (!parkSW)
         return false;
 
-    qCDebug(KSTARS_INDI) << "ISD:Telescope: UnParking..." << Qt::endl;
+    qCDebug(KSTARS_INDI) << "ISD:Telescope: UnParking..." << endl;
 
     parkSP->reset();
     parkSW->setState(ISS_ON);
@@ -1367,18 +1293,76 @@ Telescope::Status Telescope::status()
             return MOUNT_ERROR;
     }
 
-    return status(EqProp);
+    switch (EqProp->s)
+    {
+        case IPS_IDLE:
+            if (inManualMotion)
+                return MOUNT_MOVING;
+            else if (isParked())
+                return MOUNT_PARKED;
+            else
+                return MOUNT_IDLE;
+
+        case IPS_OK:
+            if (inManualMotion)
+                return MOUNT_MOVING;
+            else if (inCustomParking)
+            {
+                inCustomParking = false;
+                // set CURRENT position as the desired parking position
+                sendParkingOptionCommand(PARK_OPTION_CURRENT);
+                // Write data to disk
+                sendParkingOptionCommand(PARK_OPTION_WRITE_DATA);
+
+                return MOUNT_TRACKING;
+            }
+            else
+                return MOUNT_TRACKING;
+
+        case IPS_BUSY:
+        {
+            auto parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
+            if (parkSP && parkSP->getState() == IPS_BUSY)
+                return MOUNT_PARKING;
+            else
+                return MOUNT_SLEWING;
+        }
+
+        case IPS_ALERT:
+            inCustomParking = false;
+            return MOUNT_ERROR;
+    }
+
+    return MOUNT_ERROR;
 }
 
-const QString Telescope::statusString(Telescope::Status status, bool translated) const
+const QString Telescope::getStatusString(Telescope::Status status)
 {
     switch (status)
     {
+        case ISD::Telescope::MOUNT_IDLE:
+            return i18n("Idle");
+
+        case ISD::Telescope::MOUNT_PARKED:
+            return i18n("Parked");
+
+        case ISD::Telescope::MOUNT_PARKING:
+            return i18n("Parking");
+
+        case ISD::Telescope::MOUNT_SLEWING:
+            return i18n("Slewing");
+
         case ISD::Telescope::MOUNT_MOVING:
-            return (translated ? i18n(mountStates[status]) : mountStates[status]) + QString(" %1").arg(getManualMotionString());
-        default:
-            return translated ? i18n(mountStates[status]) : mountStates[status];
+            return i18n("Moving %1", getManualMotionString());
+
+        case ISD::Telescope::MOUNT_TRACKING:
+            return i18n("Tracking");
+
+        case ISD::Telescope::MOUNT_ERROR:
+            return i18n("Error");
     }
+
+    return i18n("Error");
 }
 
 QString Telescope::getManualMotionString() const
@@ -1509,87 +1493,6 @@ bool Telescope::sendParkingOptionCommand(ParkOptionCommand command)
     clientManager->sendNewSwitch(parkOptionsSP);
 
     return true;
-}
-
-Telescope::Status Telescope::status(INumberVectorProperty *nvp)
-{
-    switch (nvp->s)
-    {
-        case IPS_IDLE:
-            if (inManualMotion)
-                return MOUNT_MOVING;
-            else if (isParked())
-                return MOUNT_PARKED;
-            else
-                return MOUNT_IDLE;
-
-        case IPS_OK:
-            if (inManualMotion)
-                return MOUNT_MOVING;
-            else if (inCustomParking)
-            {
-                inCustomParking = false;
-                // set CURRENT position as the desired parking position
-                sendParkingOptionCommand(PARK_OPTION_CURRENT);
-                // Write data to disk
-                sendParkingOptionCommand(PARK_OPTION_WRITE_DATA);
-
-                return MOUNT_TRACKING;
-            }
-            else
-                return MOUNT_TRACKING;
-
-        case IPS_BUSY:
-        {
-            if (inManualMotion)
-                return MOUNT_MOVING;
-
-            auto parkSP = baseDevice->getSwitch("TELESCOPE_PARK");
-            if (parkSP && parkSP->getState() == IPS_BUSY)
-                return MOUNT_PARKING;
-            else
-                return MOUNT_SLEWING;
-        }
-
-        case IPS_ALERT:
-            inCustomParking = false;
-            return MOUNT_ERROR;
-    }
-
-    return MOUNT_ERROR;
-}
-
-const dms Telescope::hourAngle() const
-{
-    dms lst = KStarsData::Instance()->geo()->GSTtoLST(KStarsData::Instance()->clock()->utc().gst());
-    return dms(lst.Degrees() - currentCoords.ra().Degrees());
-}
-
-bool Telescope::isReversed(INDI_EQ_AXIS axis)
-{
-    auto reversed = baseDevice->getSwitch("TELESCOPE_REVERSE_MOTION");
-    if (!reversed)
-        return false;
-
-    return reversed->at(axis == AXIS_DE ? 0 : 1)->getState() == ISS_ON;
-}
-
-bool Telescope::setReversedEnabled(INDI_EQ_AXIS axis, bool enabled)
-{
-    auto reversed = baseDevice->getSwitch("TELESCOPE_REVERSE_MOTION");
-    if (!reversed)
-        return false;
-
-    reversed->at(axis == AXIS_DE ? 0 : 1)->setState(enabled ? ISS_ON : ISS_OFF);
-    clientManager->sendNewSwitch(reversed);
-    return true;
-}
-
-void Telescope::stopTimers()
-{
-    updateCoordinatesTimer.stop();
-    centerLockTimer.stop();
-    readyTimer.stop();
 }
 
 }

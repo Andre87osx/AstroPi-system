@@ -1,7 +1,11 @@
-/*
-    SPDX-FileCopyrightText: 2016 Jasem Mutlaq <mutlaqja@ikarustech.com>
+/*  General KStars Notifications for desktop and lite version
+    Copyright (C) 2016 Jasem Mutlaq (mutlaqja@ikarustech.com)
 
-    SPDX-License-Identifier: GPL-2.0-or-later
+    This application is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
 */
 
 #include "ksnotification.h"
@@ -13,9 +17,8 @@
 #else
 #include <QPointer>
 #include <QTimer>
+#include <KMessageBox>
 #include <KNotification>
-
-#include "ksmessagebox.h"
 
 #ifdef HAVE_INDI
 #ifdef HAVE_CFITSIO
@@ -27,33 +30,33 @@
 
 namespace KSNotification
 {
-void error(const QString &message, const QString &title, uint32_t timeout)
+void error(const QString &message, const QString &title)
 {
 #ifdef KSTARS_LITE
     Q_UNUSED(title);
     KStarsLite::Instance()->notificationMessage(message);
 #else
-    KSMessageBox::Instance()->error(message, title, timeout);
+    KMessageBox::error(nullptr, message, title);
 #endif
 }
 
-void sorry(const QString &message, const QString &title, uint32_t timeout)
+void sorry(const QString &message, const QString &title)
 {
 #ifdef KSTARS_LITE
     Q_UNUSED(title);
     KStarsLite::Instance()->notificationMessage(message);
 #else
-    KSMessageBox::Instance()->sorry(message, title, timeout);
+    KMessageBox::sorry(nullptr, message, title);
 #endif
 }
 
-void info(const QString &message, const QString &title, uint32_t timeout)
+void info(const QString &message, const QString &title)
 {
 #ifdef KSTARS_LITE
     Q_UNUSED(title);
     KStarsLite::Instance()->notificationMessage(message);
 #else
-    KSMessageBox::Instance()->info(message, title, timeout);
+    KMessageBox::information(nullptr, message, title);
 #endif
 }
 
