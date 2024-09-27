@@ -1,0 +1,44 @@
+/***************************************************************************
+                          opssupernovae.h  -  K Desktop Planetarium
+                             -------------------
+    begin                : Thu, 25 Aug 2011
+    copyright            : (C) 2011 by Samikshan Bairagya
+    email                : samikshan@gmail.com
+ ***************************************************************************/
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+#pragma once
+
+#include "ui_opssupernovae.h"
+
+#include <kconfigdialog.h>
+
+class KStars;
+
+/**
+ * @class OpsSupernovae
+ *
+ * The Supernovae Tab of the Options window.  In this Tab the user can configure
+ * supernovae options and select if supernovae should be drawn on the skymap.
+ * Also the user is given the option to check for updates on startup. And whether
+ * to be alerted on startup.
+ *
+ * @author Samikshan Bairagya
+ * @version 1.0
+ */
+class OpsSupernovae : public QFrame, public Ui::OpsSupernovae
+{
+    Q_OBJECT
+
+  public:
+    explicit OpsSupernovae();
+
+    ~OpsSupernovae() override = default;
+};

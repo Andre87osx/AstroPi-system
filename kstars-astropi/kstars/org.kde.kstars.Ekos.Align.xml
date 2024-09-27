@@ -1,0 +1,82 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+  <interface name="org.kde.kstars.Ekos.Align">
+  <property name="camera" type="s" access="readwrite"/>
+  <property name="filterWheel" type="s" access="readwrite"/>
+  <property name="filter" type="s" access="readwrite"/>
+  <property name="logText" type="as" access="read"/>
+  <property name="status" type="i" access="read">
+    <annotation name="org.qtproject.QtDBus.QtTypeName" value="Ekos::AlignState"/>
+  </property>
+  <property name="fov" type="ad" access="read">
+    <annotation name="org.qtproject.QtDBus.QtTypeName" value="QList&lt;double&gt;"/>
+  </property>
+  <property name="solverArguments" type="s" access="readwrite"/>
+    <method name="abort">
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="captureAndSolve">
+      <arg type="b" direction="out"/>
+    </method>
+    <method name="loadAndSlew">
+      <arg type="b" direction="out"/>
+      <arg name="fileURL" type="s" direction="in"/>
+    </method>
+    <method name="setSolverMode">
+      <arg name="mode" type="u" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setSolverAction">
+      <arg name="mode" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="cameraInfo">
+    <arg type="ad" direction="out"/>
+    <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QList&lt;double&gt;"/>
+    <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;double&gt;"/>
+    </method>
+    <method name="telescopeInfo">
+    <arg type="ad" direction="out"/>
+    <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QList&lt;double&gt;"/>
+    <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;double&gt;"/>
+    </method>
+    <method name="getSolutionResult">
+      <arg type="ad" direction="out"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QList&lt;double&gt;"/>
+      <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QList&lt;double&gt;"/>
+    </method>
+    <method name="getLoadAndSlewStatus">
+      <arg type="i" direction="out"/>
+    </method>
+    <method name="setBinningIndex">
+      <arg name="binningIndex" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setFOVTelescopeType">
+      <arg name="index" type="i" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setTargetCoords">
+      <arg name="ra" type="d" direction="in"/>
+      <arg name="de" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <method name="setTargetRotation">
+      <arg name="rotation" type="d" direction="in"/>
+      <annotation name="org.freedesktop.DBus.Method.NoReply" value="true"/>
+    </method>
+    <signal name="newStatus">
+        <arg name="status" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="Ekos::AlignState"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="Ekos::AlignState"/>
+    </signal>
+    <signal name="newSolution">
+        <arg name="solution" type="(i)" direction="out"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.In0" value="QVariantMap"/>
+        <annotation name="org.qtproject.QtDBus.QtTypeName.Out0" value="QVariantMap"/>
+    </signal>
+    <signal name="newLog">
+        <arg name="text" type="s" direction="out"/>
+    </signal>
+  </interface>
+</node>

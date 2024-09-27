@@ -1,0 +1,565 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OpsINDI</class>
+ <widget class="QWidget" name="OpsINDI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>513</width>
+    <height>412</height>
+   </rect>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_5">
+   <property name="spacing">
+    <number>3</number>
+   </property>
+   <property name="leftMargin">
+    <number>3</number>
+   </property>
+   <property name="topMargin">
+    <number>3</number>
+   </property>
+   <property name="rightMargin">
+    <number>3</number>
+   </property>
+   <property name="bottomMargin">
+    <number>3</number>
+   </property>
+   <item>
+    <widget class="QGroupBox" name="generalGroup">
+     <property name="title">
+      <string>General</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="spacing">
+       <number>3</number>
+      </property>
+      <property name="leftMargin">
+       <number>3</number>
+      </property>
+      <property name="topMargin">
+       <number>3</number>
+      </property>
+      <property name="rightMargin">
+       <number>3</number>
+      </property>
+      <property name="bottomMargin">
+       <number>3</number>
+      </property>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QCheckBox" name="kcfg_indiServerIsInternal">
+          <property name="toolTip">
+           <string>INDI Server binary is internal to the application bundle</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="videoLabel_2">
+          <property name="toolTip">
+           <string>Default INDI video port</string>
+          </property>
+          <property name="text">
+           <string>INDI Server:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="kcfg_indiServer">
+          <property name="toolTip">
+           <string>Path to the indiserver binary</string>
+          </property>
+          <property name="text">
+           <string notr="true">/usr/bin/indiserver</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_6">
+        <property name="spacing">
+         <number>5</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="kcfg_indiDriversAreInternal">
+          <property name="toolTip">
+           <string>INDI Drivers are internal to the application bundle</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="videoLabel_3">
+          <property name="toolTip">
+           <string>Default INDI video port</string>
+          </property>
+          <property name="text">
+           <string>INDI Drivers XML Directory:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="kcfg_indiDriversDir">
+          <property name="toolTip">
+           <string>path to the INDI drivers xml directory</string>
+          </property>
+          <property name="text">
+           <string notr="true">/usr/share/indi</string>
+          </property>
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="selectDriversDirB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>28</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>28</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_5">
+        <item>
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>INDIHub Agent</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="kcfg_INDIHubAgent"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="selectINDIHubB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>28</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>28</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_4">
+        <item>
+         <widget class="QLabel" name="fitsLabel">
+          <property name="whatsThis">
+           <string>Specify where new FITS images are saved once captured and downloaded</string>
+          </property>
+          <property name="text">
+           <string>Default FITS directory:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="kcfg_fitsDir"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="selectFITSDirB">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>28</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>28</width>
+            <height>28</height>
+           </size>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout_3">
+       <item>
+        <widget class="QGroupBox" name="autoGroup">
+         <property name="toolTip">
+          <string>Select time and location synchronization settings between KStars and INDI Devices</string>
+         </property>
+         <property name="title">
+          <string>Time &amp;&amp; Location Updates</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="0">
+             <widget class="QRadioButton" name="kcfg_useKStarsSource">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KStars is the master source for time and location settings. All INDI devices time and locations settings are synchronized to KStars settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>KStars Updates All Devices</string>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1" rowspan="2">
+             <widget class="Line" name="line">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QCheckBox" name="kcfg_useTimeUpdate">
+              <property name="toolTip">
+               <string>Enable time synchronization upon connection between KStars and INDI</string>
+              </property>
+              <property name="whatsThis">
+               <string>Synchronize KStars date and time automatically from the update source.</string>
+              </property>
+              <property name="text">
+               <string>Time</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QRadioButton" name="kcfg_useMountSource">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Mount handset is the master source of time and location settings. KStars time and location settings are synchronized with controller settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>Mount Updates KStars</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="2">
+             <widget class="QCheckBox" name="kcfg_useGeographicUpdate">
+              <property name="toolTip">
+               <string>Enable geographic location synchronization upon connection between KStars and INDI</string>
+              </property>
+              <property name="whatsThis">
+               <string>Synchronize KStars location settings from the update source</string>
+              </property>
+              <property name="text">
+               <string>Location</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QRadioButton" name="kcfg_useGPSSource">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;GPS driver is the master source of time and location settings. KStars time and location settings are synchronized with GPS settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>GPS Updates KStars</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox">
+         <property name="whatsThis">
+          <string>Specify range of ports that INDI Server will bind to when starting new drivers</string>
+         </property>
+         <property name="title">
+          <string>INDI Server</string>
+         </property>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <layout class="QVBoxLayout">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_4">
+              <property name="text">
+               <string>Transfer Buffer (MB)</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label">
+              <property name="text">
+               <string>Port From:</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>Port To:</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <layout class="QVBoxLayout">
+            <property name="spacing">
+             <number>6</number>
+            </property>
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QSpinBox" name="kcfg_serverTransferBufferSize">
+              <property name="minimum">
+               <number>256</number>
+              </property>
+              <property name="maximum">
+               <number>10000</number>
+              </property>
+              <property name="singleStep">
+               <number>256</number>
+              </property>
+              <property name="value">
+               <number>1024</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="kcfg_serverPortStart">
+              <property name="minimum">
+               <number>7624</number>
+              </property>
+              <property name="maximum">
+               <number>8623</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="kcfg_serverPortEnd">
+              <property name="minimum">
+               <number>7625</number>
+              </property>
+              <property name="maximum">
+               <number>8623</number>
+              </property>
+              <property name="value">
+               <number>8623</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <spacer>
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="displayGroup">
+       <property name="title">
+        <string>Display</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QCheckBox" name="kcfg_showTargetCrosshair">
+          <property name="toolTip">
+           <string>Display the telescope position on the sky map</string>
+          </property>
+          <property name="statusTip">
+           <string>Display a telescope marker on the sky map in order to track the telescope motion across the sky.</string>
+          </property>
+          <property name="whatsThis">
+           <string>Display a telescope marker on the sky map in order to track the telescope motion across the sky.</string>
+          </property>
+          <property name="text">
+           <string>&amp;Telescope crosshair</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="kcfg_showINDIMessages">
+          <property name="toolTip">
+           <string>Display INDI status messages in the status bar</string>
+          </property>
+          <property name="statusTip">
+           <string>Display incoming INDI status messages in KStars status bar</string>
+          </property>
+          <property name="whatsThis">
+           <string>Display incoming INDI status messages in KStars status bar</string>
+          </property>
+          <property name="text">
+           <string>INDI messages in status &amp;bar</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="kcfg_independentWindowINDI">
+          <property name="text">
+           <string>Independent Window</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="kcfg_messageNotificationINDI">
+          <property name="toolTip">
+           <string>Show INDI messages as desktop notifications instead of dialogs</string>
+          </property>
+          <property name="text">
+           <string>Message notifications</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::MinimumExpanding</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>28</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QPushButton" name="showLogsB">
+          <property name="text">
+           <string>Show INDI Logs</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <tabstops>
+  <tabstop>kcfg_useTimeUpdate</tabstop>
+  <tabstop>kcfg_useGeographicUpdate</tabstop>
+  <tabstop>kcfg_showTargetCrosshair</tabstop>
+  <tabstop>kcfg_showINDIMessages</tabstop>
+ </tabstops>
+ <resources/>
+ <connections/>
+</ui>
