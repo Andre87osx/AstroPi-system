@@ -165,11 +165,11 @@
    <group name="indi">
     <entry name="INDIWindowWidth" type="UInt">
           <label>INDI window width</label>
-          <default>800</default>
+          <default>900</default>
     </entry>
     <entry name="INDIWindowHeight" type="UInt">
           <label>INDI window height</label>
-          <default>600</default>
+          <default>800</default>
     </entry>
       <entry name="useGeographicUpdate" type="Bool">
          <label>Automatically updates geographic location?</label>
@@ -1471,7 +1471,7 @@
     </entry>
     <entry name="EkosWindowHeight" type="UInt">
              <label>Ekos window height</label>
-             <default>700</default>
+             <default>850</default>
     </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>

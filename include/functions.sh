@@ -658,6 +658,8 @@ function chkINDI()
         		${commands[$i]} 2>&1 | while IFS= read -r line; do
             		echo "# $line"
         		done
+	  		(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>Stellar Solver</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
     		done
 
     		echo "100"
@@ -666,6 +668,11 @@ function chkINDI()
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>Stellar Solver</b>
 	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+
+ 	echo "# Cleaning CMake Project..."
+	if [ -d "${WorkDir}" ]; then 
+		sudo rm -rf "${WorkDir}"
+	fi
 
 	zenity --info --text="INDI and Driver has been updated to version $Indi_v" --width=${W} --title="${W_Title}"
 }
@@ -700,6 +707,8 @@ function chkKStars()
         		${commands[$i]} 2>&1 | while IFS= read -r line; do
             		echo "# $line"
         		done
+	  		(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>KStars AstroPi</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
    	 	done
 
     		echo "100"
@@ -709,6 +718,11 @@ function chkKStars()
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>KStars AstroPi</b>
 	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+  	
+   	echo "# Cleaning CMake Project..."
+	if [ -d "${WorkDir}" ]; then 
+		sudo rm -rf "${WorkDir}"
+	fi
 
 	zenity --info --width=${W} --text="KStars AstroPi $KStars_v allredy installed" --title="${W_Title}"
 }
