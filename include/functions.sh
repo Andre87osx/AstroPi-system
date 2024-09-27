@@ -475,6 +475,22 @@ function chkINDI()
 	if [ ! -d "${WorkDir}" ]; then mkdir "${WorkDir}"; fi
 	cd "${WorkDir}" || exit 1
 
+	# File path
+ 	# >> Didable arm_64 for install INDI 1.9.1
+	CONFIG_FILE="/boot/config.txt"
+
+	# Check if the line exists
+	if sudo grep -q "^arm_64bit=1" "$CONFIG_FILE"; then
+    		# Comment out the line
+    		sudo sed -i 's/^arm_64bit=1/#arm_64bit=1/' "$CONFIG_FILE"
+    		echo "Line 'arm_64bit=1' has been commented out."
+      		zenity --info --width=${W} --text "<b>Restart your AstroPi before proceeding with the update.</b>\nOtherwise, the INDI packages will be corrupted" --title="${W_Title}"
+		exit 0
+	else
+    		echo "Line 'arm_64bit=1' not found."
+	fi
+	# <<
+ 
 	# =================================================================
 	# Dowload pakage from git
 	(
@@ -672,6 +688,18 @@ function chkINDI()
  	echo "# Cleaning CMake Project..."
 	if [ -d "${WorkDir}" ]; then 
 		sudo rm -rf "${WorkDir}"
+	fi
+
+	# File path
+	CONFIG_FILE="/boot/config.txt"
+
+	# Check if the line exists
+	if sudo grep -q "^arm_64bit=1" "$CONFIG_FILE"; then
+    		# Comment out the line
+    		sudo sed -i 's/^arm_64bit=1/#arm_64bit=1/' "$CONFIG_FILE"
+    		echo "Line 'arm_64bit=1' has been commented out."
+	else
+    		echo "Line 'arm_64bit=1' not found."
 	fi
 
 	zenity --info --text="INDI and Driver has been updated to version $Indi_v" --width=${W} --title="${W_Title}"
