@@ -118,6 +118,17 @@ while [ "${CONN}" == "true" ]; do
 	sudo systemctl enable autohotspot.service
 	(($? != 0)) && zenity --error --width=${W} --text="I couldn't enable autohotspot. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 	zenity --info --width=${W} --text "The auto hotspot service is now <b>active</b>. Network Manager create a hotspot if no wifi found" --title="${W_Title}"
+ 	# autohotspot nee forwarding to work with ETH
+	file="/etc/sysctl.conf"
+
+	# Check if the line exists and is commented
+	if sudo grep -q "^#net.ipv4.ip_forward=1" "$file"; then
+    	# Uncomment the line
+    		sudo sed -i 's/^#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' "$file"
+    		echo "The line has been uncommented in $file"
+	else
+    		echo "The line is already uncommented or does not exist in $file"
+	fi
 	
 	# Delete old AstroPi installations and GIT
 	file_old=(
