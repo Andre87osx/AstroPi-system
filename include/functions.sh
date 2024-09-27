@@ -606,14 +606,16 @@ function chkINDI()
     		for i in "${!commands[@]}"; do
         		echo "${percentages[$i]}"
         		echo "# ${steps[$i]}..."
-        		${commands[$i]}
+        		${commands[$i]}  2>&1 | while IFS= read -r line; do
+            		echo "# $line"
+        		done
 	  		(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party LIB</b>
 			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
     		done
 
     		echo "100"
     		echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI 3rd party LIB ${Indi_v}" --text="Starting build and installation..." --percentage=1 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Building and Installing INDI 3rd party LIB ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party LIB</b>
 	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
@@ -638,7 +640,9 @@ function chkINDI()
     		for i in "${!commands[@]}"; do
         		echo "${percentages[$i]}"
         		echo "# ${steps[$i]}..."
-        		${commands[$i]}
+        		${commands[$i]} 2>&1 | while IFS= read -r line; do
+            		echo "# $line"
+        		done
 	  		(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party DRIVER</b>
 			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
 
@@ -646,7 +650,7 @@ function chkINDI()
 
     		echo "100"
     		echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing INDI 3rd party DRIVER ${Indi_v}" --text="Starting build and installation..." --percentage=1 --auto-close --width="${Wprogress}"
+	) | zenity --progress --title="Building and Installing INDI 3rd party DRIVER ${Indi_v}" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
 	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>INDI 3rd party DRIVER</b>
 	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
