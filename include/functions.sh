@@ -136,6 +136,17 @@ function install_script()
 			exit 1
 			
 		fi
+  		if [[ -f ./dnsmasq.conf ]]; then
+			echo "# overwrite DNSMAQ.CONF in /etc/dnsmasq.conf"
+			echo "Overwrite DNSMAQ.CONF in /etc/dnsmasq.conf"
+			sudo cp "${appDir}"/bin/dnsmasq.conf /etc/dnsmasq.conf
+		else
+			echo "Error in addigng AstroPi system files"
+			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+			exit 1
+			
+		fi
 		if [[ -f ./autohotspot ]]; then
 			echo "# Install autohotspot in /usr/bin/"
 			echo "Install autohotspot in /usr/bin/"
