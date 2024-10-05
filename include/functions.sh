@@ -401,9 +401,7 @@ function sysClean()
 		'functions'
 		'wget-log'
 		)
-		for f in "${HOME}"/"${file_old[@]}".*; do sudo rm -Rf "$f"; done
-  
-		zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
+		for f in "${HOME}"/"${file_old[@]}"*; do sudo rm -Rf "${HOME}/$f"; done	
 	) | zenity --progress --title="${W_Title}" --percentage=1 --pulsate --auto-close --auto-kill --width="${Wprogress}"
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
@@ -411,6 +409,7 @@ function sysClean()
 		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		exit 1
 	fi
+ 	zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
 }
 
 # Add WiFi SSID
