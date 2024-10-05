@@ -240,11 +240,13 @@ function system_pre_update()
 # Get full AstoPi System update
 function system_update()
 {
-	# Ensure unbuffer is installed
-	if ! command -v unbuffer &> /dev/null; then
-    		sudo apt-get install -y expect
-	fi
- 
+	(
+ 		# Ensure unbuffer is installed
+		if ! command -v unbuffer &> /dev/null; then
+    			sudo apt-get install -y expect
+		fi
+ 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
+  
  	# APT Default commands for up to date the system
 	apt_commands=(
 	'apt-get update'
