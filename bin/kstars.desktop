@@ -1,7 +1,7 @@
 # AstroPi - System 
 # KStars - AstroPi
 [Desktop Entry]
-Version=1.5
+Version=1.6
 Type=Application
 Exec=/usr/bin/kstars.sh
 Icon=/usr/share/icons/gnome/scalable/places/kstars.svg
