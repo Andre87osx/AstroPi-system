@@ -1698,7 +1698,7 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
         case FITS_NORMAL:
         case FITS_CALIBRATE:
         {
-            if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
+            if (Options::useFITSViewer())
             {
                 bool success = false;
                 int tabIndex = -1;
@@ -1711,7 +1711,7 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
                     // single tab called "Preview", then set the title to "Preview",
                     // Otherwise, the title will be the captured image name
                     QString previewTitle;
-                    if (targetChip->isBatchMode() == false && Options::singlePreviewFITS())
+                    if (Options::singlePreviewFITS())
                     {
                         // If we are displaying all images from all cameras in a single FITS
                         // Viewer window, then we prefix the camera name to the "Preview" string
@@ -1771,10 +1771,10 @@ void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPoin
 
         }
         // FITSViewer is shown if:
-        // Image in preview mode, or useFITSViewer is true; AND
+        // useFITSViewer is true; AND
         // Image type is either NORMAL or CALIBRATION since the rest have their dedicated windows.
         // NORMAL is used for raw INDI drivers without Ekos.
-        if ( (Options::useFITSViewer() || targetChip->isBatchMode() == false) &&
+        if ( (Options::useFITSViewer()) &&
                 (mode == FITS_NORMAL || mode == FITS_CALIBRATE))
             m_FITSViewerWindow->show();
 
