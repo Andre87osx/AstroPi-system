@@ -66,7 +66,7 @@ if kstars > /dev/null 2>&1; then
 else
 	echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
  	time=$( date '+%F_%H:%M:%S' )			# Set current date and time
-	zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
+	nohup zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
 	\nThe telescope will be parked and the INDI services stopped on ${time}.
 	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" &	
 	# Re-open KStars - AstroPi for use DBUS to control devices
