@@ -78,6 +78,10 @@ else
         		echo "KStars is running."
 	  		cd ${HOME}/.local/share/astropi/bin		# Go to app directory
   			python parking.py				# Launch parking script
+     			pkill kstars                     		# Close KStars after parking script
+			nohup zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
+			\nThe telescope will be parked and the INDI services stopped on ${time}.
+			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
     		else
         		echo "KStars is not running."
     		fi
