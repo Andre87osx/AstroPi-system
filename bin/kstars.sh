@@ -68,7 +68,8 @@ else
  	time=$( date '+%F_%H:%M:%S' )			# Set current date and time
 	nohup zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
 	\nThe telescope will be parked and the INDI services stopped on ${time}.
-	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" &	
+ 	\nThis message will be closed after 60 second. The process go on to park safetly your mount
+	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --timeout=60 &	
 	# Re-open KStars - AstroPi for use DBUS to control devices
  	( kstars & )
  	interval=5
