@@ -1792,7 +1792,7 @@
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>100</default>
+         <default>25</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1818,7 +1818,7 @@
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
          <whatsthis>Set the maximum travel distance of an absolute focuser.</whatsthis>
-         <default>10000</default>
+         <default>100</default>
       </entry>
       <entry name="InitialFocusOutSteps" type="Double">
          <label>Initial Focus Out Steps</label>
@@ -2258,7 +2258,7 @@
       </entry>
        <entry name="GuideCalibrationTimeout" type="UInt">
          <label>When calibration starts, wait this many seconds before aborting.</label>
-         <default>600</default>
+         <default>360</default>
       </entry>
       <entry name="GuideMaxDeltaRMS" type="Double">
          <label>Maximum delta RMS permitted while guiding before aborting.</label>
@@ -2498,7 +2498,7 @@
       </entry>
       <entry name="ForceAlignmentBeforeJob" type="Bool">
          <label>Force alignment before starting or restarting each job.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="ReuseGuideCalibration" type="Bool">
          <label>Guider may re-use guiding calibration if one is available.</label>
@@ -2517,7 +2517,7 @@
       </entry>
       <entry name="RealignAfterCalibrationFailure" type="Bool">
          <label>If guiding calibration fails, run alignment process again before proceeding to recalibration.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="PreemptiveShutdownTime" type="Double">
          <label>Maximum number of hours before the next job is due to trigger a pre-emptive shutdown.</label>
@@ -2577,7 +2577,7 @@
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
          <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
-         <default>600</default>
+         <default>6</default>
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>
