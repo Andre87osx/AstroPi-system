@@ -1519,7 +1519,7 @@
                 </sizepolicy>
                </property>
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum travel in steps before the autofocus process aborts&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum travel in steps before the autofocus process aborts. Il parametro “corsa max” si riferisce alla distanza massima che il focheggiatore può percorrere dal suo punto di partenza durante un’operazione di autofocus.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="decimals">
                 <number>0</number>
@@ -1590,7 +1590,7 @@
              <item row="1" column="1">
               <widget class="QSpinBox" name="maxSingleStepIN">
                <property name="toolTip">
-                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The maximum single step size the algorithm is allowed to command as it searches for the critical focus zone. The calculated step size would be limited to this maximum value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Il “max step size” si riferisce al numero massimo di passi che il focheggiatore può compiere in un solo comando. Questa impostazione è importante perché aiuta a prevenire che il focheggiatore faccia movimenti eccessivamente grandi che potrebbero farlo superare il punto di messa a fuoco desiderato.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>
                <property name="minimum">
                 <number>10</number>
@@ -1599,7 +1599,7 @@
                 <number>100000</number>
                </property>
                <property name="value">
-                <number>100000</number>
+                <number>100</number>
                </property>
               </widget>
              </item>
