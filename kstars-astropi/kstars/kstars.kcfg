@@ -1897,7 +1897,7 @@
       </entry>
       <entry name="FocusMaxSingleStep" type="UInt">
          <label>Maximum single step the focus algorithm is permitted to command.</label>
-         <default>100000</default>
+         <default>100</default>
       </entry>
       <entry name="FocusExposure" type="double">
          <label>Default focus exposure time when no filters are used.</label>
@@ -2581,7 +2581,7 @@
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
    </group>
    <group name="Analyze">
