@@ -67,7 +67,7 @@ DetailDialog::DetailDialog(SkyObject *o, const KStarsDateTime &ut, GeoLocation *
     //Create thumbnail image
     Thumbnail.reset(new QPixmap(200, 200));
 
-    setWindowTitle(i18nc("@title:window", "Object Details"));
+    setWindowTitle(i18n("Object Details"));
 
     // JM 2016-11-22: Do we really need a close button?
     //setStandardButtons(QDialogButtonBox::Close);
@@ -187,23 +187,6 @@ void DetailDialog::createGeneralTab()
             {
                 Data->AngSizeLabel->setText(
                     i18nc("the star is a variable star", "variable"));
-            }
-
-            // Add a label to indicate proper motion
-            double pmRA = s->pmRA(), pmDec = s->pmDec();
-            if (std::isfinite(pmRA) && std::isfinite(pmDec) && (pmRA != 0.0 || pmDec != 0.0))
-            {
-                // we have data : abuse the illumination label to show it!
-                Data->IllumLabel->setText(i18nc("Proper motion of a star", "Proper Motion:"));
-                Data->Illumination->setText(
-                    i18nc(
-                        "The first arg is proper motion in right ascension and the second in the declination. The unit stands for milliarcsecond per year",
-                        "%1 %2 mas/yr",
-                        QLocale().toString(pmRA, 'f', (pmRA >= 100.0 ? 1 :  2)),
-                        QLocale().toString(pmDec, 'f', (pmDec >= 100.0 ? 1 : 2))
-                        ));
-                Data->IllumLabel->setVisible(true);
-                Data->Illumination->setVisible(true);
             }
 
             break; //end of stars case
@@ -861,7 +844,7 @@ void DetailDialog::editLinkDialog()
         return;
 
     QDialog editDialog(this);
-    editDialog.setWindowTitle(i18nc("@title:window", "Edit Link"));
+    editDialog.setWindowTitle(i18n("Edit Link"));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
 
@@ -1162,28 +1145,22 @@ void DetailDialog::showThumbnail()
 
     //Try to load the object's image from disk
     //If no image found, load "no image" image
+    QFile file;
 
-    const auto &base = KSPaths::writableLocation(QStandardPaths::AppDataLocation);
-    QDirIterator search(base, QStringList() << "thumb*", QDir::Dirs);
+    const auto &base = KSPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QDirIterator search(
+        base,
+        QStringList() << "thumb-" +
+                             selectedObject->name().toLower().remove(' ').remove('/') +
+                             ".png",
+        QDir::Files, QDirIterator::Subdirectories);
 
-    bool found = false;
-    while (search.hasNext())
+    if (search.hasNext())
     {
-        const auto &path =
-            QDir(search.next())
-                .absoluteFilePath(
-                    "thumb-" + selectedObject->name().toLower().remove(' ').remove('/') +
-                    ".png");
-
-        const QFile file{ path };
-        if (file.exists())
-        {
-            Thumbnail->load(path, "PNG");
-            found = true;
-        }
+        file.close();
+        Thumbnail->load(search.next(), "PNG");
     }
-
-    if (!found)
+    else
         Thumbnail->load(":/images/noimage.png");
 
     *Thumbnail = Thumbnail->scaled(Data->Image->width(), Data->Image->height(),
@@ -1198,11 +1175,11 @@ void DetailDialog::updateThumbnail()
 
     if (tp->exec() == QDialog::Accepted)
     {
-        QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation)).mkpath("thumbnails");
-
-        QString const fname =
-                QDir(KSPaths::writableLocation(QStandardPaths::AppDataLocation))
-                .filePath("thumb-" + selectedObject->name().toLower().remove(' ').remove('/') + ".png");
+        QDir().mkpath(KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                      "thumbnails");
+        QString fname = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) +
+                        "thumbnails/thumb-" +
+                        selectedObject->name().toLower().remove(' ').remove('/') + ".png";
 
         Data->Image->setPixmap(*(tp->image()));
 

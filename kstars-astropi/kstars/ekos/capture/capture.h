@@ -999,7 +999,7 @@ class Capture : public QWidget, public Ui::Capture
 
         // Guide Deviation
         bool m_DeviationDetected { false };
-        int m_SpikesDetected { 0 };
+        bool m_SpikeDetected { false };
         bool m_FilterOverride { false };
         QTimer guideDeviationTimer;
 
