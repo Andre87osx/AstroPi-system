@@ -37,7 +37,7 @@
 #include <indicom.h>
 
 #define BAD_SCORE                -1000
-#define MAX_FAILURE_ATTEMPTS      5
+#define MAX_FAILURE_ATTEMPTS      3
 #define UPDATE_PERIOD_MS          1000
 #define RESTART_GUIDING_DELAY_MS  5000
 
