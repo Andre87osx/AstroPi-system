@@ -244,6 +244,5 @@ else #ssid or MAC address not in range
               createAdHocNetwork
        else #"No SSID, activating Hotspot"
               createAdHocNetwork
-              setupSysTime
        fi
 fi

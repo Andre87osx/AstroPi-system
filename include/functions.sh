@@ -12,10 +12,10 @@
 
 # Create version of AstroPi
 majorRelease=1								# Major Release
-minorRelease=7								# Minor Release
+minorRelease=6								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
-KStars_v=3.5.4_v1.7							# Based on KDE Kstrs v.3.5.4
-Indi_v=1.9.8								# Based on INDI 1.9.8 Core
+KStars_v=3.5.4_v1.6							# Based on KDE Kstrs v.3.5.4
+Indi_v=1.9.1								# Based on INDI 1.9.1 Core
 StellarSolver_v=1.9							# From Rlancaste GitHub
 
 # Get width and height of screen
@@ -496,9 +496,8 @@ function chkINDI()
     		# Comment out the line
     		sudo sed -i 's/^arm_64bit=1/#arm_64bit=1/' "$CONFIG_FILE"
     		echo "Line 'arm_64bit=1' has been commented out."
-      		## FIX ME ##
-			#zenity --info --width=${W} --text "<b>Restart your AstroPi before proceeding with the update.</b>\nOtherwise, the INDI packages will be corrupted" --title="${W_Title}"
-			#exit 0
+      		zenity --info --width=${W} --text "<b>Restart your AstroPi before proceeding with the update.</b>\nOtherwise, the INDI packages will be corrupted" --title="${W_Title}"
+		exit 0
 	else
     		echo "Line 'arm_64bit=1' not found."
 	fi
