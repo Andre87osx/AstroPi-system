@@ -37,7 +37,7 @@
 #include <indicom.h>
 
 #define BAD_SCORE                -1000
-#define MAX_FAILURE_ATTEMPTS      3
+#define MAX_FAILURE_ATTEMPTS      5
 #define UPDATE_PERIOD_MS          1000
 #define RESTART_GUIDING_DELAY_MS  5000
 
@@ -6855,8 +6855,8 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
             else
             {
                 appendLogText(i18n("Warning: job '%1' guiding procedure failed, marking aborted.", currentJob->getName()));
-                restartGuidingTimer.stop(); // stop the timer if it is running
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
+
                 findNextJob();
             }
         }
