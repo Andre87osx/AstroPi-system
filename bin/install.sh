@@ -23,7 +23,8 @@ echo "Check internet connectionions and if Git exist"
 echo ""
 case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
   [23]) echo "HTTP connectivity is up"  && CONN="true"
-  		curl https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/include/functions.sh > "${HOME}"/functions.sh
+  		LATEST_TAG=$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases/latest | grep tag_name | cut -d '"' -f4)
+		curl -L "https://raw.githubusercontent.com/Andre87osx/AstroPi-system/${LATEST_TAG}/include/functions.sh" > "${HOME}/functions.sh"
 		echo ""
 		echo "Library downloaded";;
   5)	echo "The web proxy won't let us through" && CONN="false"
