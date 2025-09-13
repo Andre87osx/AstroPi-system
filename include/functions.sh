@@ -15,7 +15,7 @@ majorRelease=1								# Major Release
 minorRelease=7								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
 KStars_v=3.5.4_v1.7							# Based on KDE Kstrs v.3.5.4
-Indi_v=1.9.8								# Based on INDI 1.9.8 Core
+Indi_v=1.9.1								# Based on INDI 1.9.1 Core
 StellarSolver_v=1.9							# From Rlancaste GitHub
 
 # Get width and height of screen
