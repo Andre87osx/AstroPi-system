@@ -38,14 +38,6 @@ sysinfo=$(uname -sonmr)
 diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
 diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
 
-# Create next AstoPi versions
-#//FIXME
-function next_v()
-{
-	#//FIXME
-	next_AstroPi_v=("${AstroPi_v%.*}.$((${AstroPi_v##*.}+1))")
-}
-
 # Chk USER and create path
 function chkUser()
 {
