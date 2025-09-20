@@ -188,6 +188,35 @@ function install_script()
 			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
 			exit 1
 		fi
+		if [[ -f ./VNC-Server-7.15.0-Linux-ARM.deb ]]; then
+            echo "# Update VNC Server"
+            echo "Update VNC Server"
+            # Try to install the local .deb with apt (handles dependencies). Fallback to dpkg + apt -f.
+            if sudo apt-get update -y >/dev/null 2>&1 && sudo apt install -y ./VNC-Server-7.15.0-Linux-ARM.deb >/dev/null 2>&1; then
+                echo "VNC Server installed/updated successfully"
+            else
+                echo "Primary install failed, trying dpkg + fix-deps..."
+                if sudo dpkg -i ./VNC-Server-7.15.0-Linux-ARM.deb >/dev/null 2>&1; then
+                    sudo apt-get install -f -y >/dev/null 2>&1
+                    if [ $? -ne 0 ]; then
+                        zenity --error --text="<b>WARNING! Error installing VNC Server (fixing dependencies failed)</b>
+                        \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+                        exit 1
+                    else
+                        echo "VNC Server installed with dependency fix"
+                    fi
+                else
+                    zenity --error --text="<b>WARNING! Error installing VNC Server</b>
+                    \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+                    exit 1
+                fi
+            fi
+        else
+            echo "Error in addigng AstroPi system files"
+            zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
+            \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
+            exit 1
+        fi	
 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 }
 
