@@ -501,14 +501,21 @@ function chkHotspot()
 # Install / Update INDI 
 function chkINDI()
 {
+    # Fail on pipeline errors and catch unexpected errors to show zenity message
+    set -o pipefail
+    trap 'err_exit "An error occurred while installing/updating INDI (line ${LINENO})."' ERR
+
     err_exit() {
         zenity --error --width="${W}" --text="$1\n\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+        # restore default behaviour before exit (optional)
+        trap - ERR
         exit 1
     }
 
     # Ensure unbuffer is installed
     if ! command -v unbuffer &> /dev/null; then
-        sudo apt-get install -y expect || err_exit "Failed to install 'expect' (required for unbuffer)"
+        sudo apt-get update -y >/dev/null 2>&1 || err_exit "Failed to update apt before installing 'expect'"
+        sudo apt-get install -y expect >/dev/null 2>&1 || err_exit "Failed to install 'expect' (required for unbuffer)"
     fi
 
     # Prepare work dir
@@ -520,24 +527,24 @@ function chkINDI()
     # =================================================================
     # Download packages from git - fail fast and report on error
     (
-        set -o pipefail
         echo "# Downloading INDI ${Indi_v}..."
         wget -c "https://github.com/indilib/indi/archive/refs/tags/v${Indi_v}.tar.gz" -O - | tar -xz -C "${WorkDir}" 2>&1 | while IFS= read -r line; do echo "# $line"; done
-        if [ $? -ne 0 ]; then exit 2; fi
+        if [ ${PIPESTATUS[0]:-1} -ne 0 ]; then exit 2; fi
 
         echo "33"
         echo "# Downloading INDI 3rd-party ${Indi_v}..."
         wget -c "https://github.com/indilib/indi-3rdparty/archive/refs/tags/v${Indi_v}.tar.gz" -O - | tar -xz -C "${WorkDir}" 2>&1 | while IFS= read -r line; do echo "# $line"; done
-        if [ $? -ne 0 ]; then exit 3; fi
+        if [ ${PIPESTATUS[0]:-1} -ne 0 ]; then exit 3; fi
 
         echo "66"
         echo "# Downloading StellarSolver ${StellarSolver_v}..."
         git clone -b "${StellarSolver_v}" https://github.com/rlancaste/stellarsolver.git "${WorkDir}/stellarsolver" 2>&1 | while IFS= read -r line; do echo "# $line"; done
-        if [ $? -ne 0 ]; then exit 4; fi
+        if [ ${PIPESTATUS[0]:-1} -ne 0 ]; then exit 4; fi
 
         echo "100"
         echo "# Downloads complete"
     ) | zenity --progress --title="Downloading INDI ${Indi_v}, 3rd-party and StellarSolver" --text="Starting..." --percentage=0 --auto-close --width="${Wprogress}"
+    # Because of set -o pipefail above, a non-zero exit inside the parens will make the pipeline non-zero
     if [ $? -ne 0 ]; then err_exit "Error downloading required sources for INDI/stellarsolver"; fi
 
     # =================================================================
@@ -650,7 +657,11 @@ function chkINDI()
         sudo rm -rf "${WorkDir}" || err_exit "Failed to remove WorkDir during cleanup"
     fi
 
+    # Success message (reached only if no error occurred)
     zenity --info --text="INDI and Driver have been updated to version ${Indi_v}" --width="${W}" --title="${W_Title}"
+
+    # restore trap
+    trap - ERR
 }
 
 # Install / Update KStars AstroPi 
