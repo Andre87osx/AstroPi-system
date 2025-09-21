@@ -507,7 +507,6 @@ function chkINDI()
 
     err_exit() {
         zenity --error --width="${W}" --text="$1\n\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-        # restore default behaviour before exit (optional)
         trap - ERR
         exit 1
     }
@@ -523,6 +522,63 @@ function chkINDI()
         mkdir -p "${WorkDir}" || err_exit "Cannot create WorkDir: ${WorkDir}"
     fi
     cd "${WorkDir}" || err_exit "Cannot change directory to ${WorkDir}"
+
+    # Helper: run a list of commands, stream output to zenity and move progress during output
+    run_steps() {
+        local title="$1"; shift
+        local -n cmds=$1; shift
+        local -n ends=$1; shift
+
+        (
+            local current=5
+            echo "${current}"
+            echo "# ${title} - starting..."
+
+            for i in "${!cmds[@]}"; do
+                local cmd="${cmds[$i]}"
+                local target=${ends[$i]}
+                [ -z "${target}" ] && target=$(( current + 30 ))
+                if [ "${target}" -gt 100 ]; then target=100; fi
+
+                echo "# Running: ${cmd}"
+                # Ensure line-buffered output, then read each line and nudge progress forward.
+                # We use stdbuf -oL -eL to reduce buffering; unbuffer could be used if available.
+                stdbuf -oL -eL bash -c "${cmd} 2>&1" | while IFS= read -r line; do
+                    # compute a small step towards target, never overshoot
+                    step=$(( (target - current) / 8 ))
+                    if [ "${step}" -le 0 ]; then step=1; fi
+                    current=$(( current + step ))
+                    if [ "${current}" -ge "${target}" ]; then current=$(( target - 1 )); fi
+                    echo "${current}"
+                    echo "# ${line}"
+                done
+                # capture exit status of the command (first element of PIPESTATUS)
+                status=${PIPESTATUS[0]}
+
+                # If the command produced no output (while loop not executed), advance progress artificially
+                if [ "${status}" -eq 0 ]; then
+                    # finish the segment to the exact target
+                    while [ "${current}" -lt "${target}" ]; do
+                        current=$(( current + 2 ))
+                        [ "${current}" -gt "${target}" ] && current="${target}"
+                        echo "${current}"
+                        echo "# running..."
+                        sleep 0.25
+                    done
+                    # ensure the target value is shown as completed for this step
+                    echo "${target}"
+                    echo "# Step complete"
+                else
+                    echo "# Command failed (exit ${status})"
+                    exit ${status}
+                fi
+            done
+
+            echo "100"
+            echo "# ${title} complete"
+        ) | zenity --progress --title="${title}" --text="Starting ${title}..." --percentage=0 --auto-close --width="${Wprogress}"
+        if [ $? -ne 0 ]; then err_exit "Error during: ${title}"; fi
+    }
 
     # =================================================================
     # Download packages from git - fail fast and report on error
@@ -544,64 +600,18 @@ function chkINDI()
         echo "100"
         echo "# Downloads complete"
     ) | zenity --progress --title="Downloading INDI ${Indi_v}, 3rd-party and StellarSolver" --text="Starting..." --percentage=0 --auto-close --width="${Wprogress}"
-    # Because of set -o pipefail above, a non-zero exit inside the parens will make the pipeline non-zero
     if [ $? -ne 0 ]; then err_exit "Error downloading required sources for INDI/stellarsolver"; fi
 
     # =================================================================
     # Update dependencies and libraries for INDI
     (
         steps=("Updating package list" "Installing packages")
-        percentages=(2 100)
-        commands=(
-            "sudo apt-get update -y"
-            "sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev"
-        )
+        percentages=(5 90)
+        commands=( "sudo apt-get update -y" "sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev" )
 
-        for i in "${!steps[@]}"; do
-            echo "${percentages[$i]}"
-            echo "# ${steps[$i]}..."
-            # run command and stream output to zenity
-            output="$(${commands[$i]} 2>&1)"
-            status=$?
-            echo "$output" | while IFS= read -r line; do echo "# $line"; done
-            if (( status != 0 )); then
-                echo "# Failed step: ${steps[$i]} (exit ${status})"
-                exit $status
-            fi
-        done
-
-        echo "100"
-        echo "# Dependencies installed"
-    ) | zenity --progress --title="Installing dependencies for INDI" --text="Starting installation..." --percentage=0 --auto-close --width="${Wprogress}"
+        run_steps "Installing dependencies for INDI" commands percentages
+    ) 
     if [ $? -ne 0 ]; then err_exit "Error installing dependencies required for INDI build"; fi
-
-    # Helper to run build steps (cmake/make/install) with streamed output and fail fast
-    run_steps() {
-        local title="$1"; shift
-        local -n cmds=$1; shift
-        local -n sts=$1; shift
-
-        (
-            echo "10"
-            echo "# ${title} - Preparing..."
-
-            for i in "${!cmds[@]}"; do
-                echo "${sts[$i]}"
-                echo "# ${cmds[$i]}..."
-                output="$(${cmds[$i]} 2>&1)"
-                status=$?
-                echo "$output" | while IFS= read -r line; do echo "# $line"; done
-                if (( status != 0 )); then
-                    echo "# Error: '${cmds[$i]}' failed with exit ${status}"
-                    exit $status
-                fi
-            done
-
-            echo "100"
-            echo "# ${title} complete"
-        ) | zenity --progress --title="${title}" --text="Starting ${title}..." --percentage=0 --auto-close --width="${Wprogress}"
-        if [ $? -ne 0 ]; then err_exit "Error during: ${title}"; fi
-    }
 
     # =================================================================
     # Build INDI Core
@@ -612,8 +622,8 @@ function chkINDI()
         "make -j $(expr $(nproc) + 2)"
         "sudo make install"
     )
-    percentages_core=(30 60 90)
-    run_steps "Building and Installing INDI Core" commands_core percentages_core
+    ends_core=(30 80 95)
+    run_steps "Building and Installing INDI Core" commands_core ends_core
 
     # =================================================================
     # Build INDI 3rd party LIB
@@ -624,8 +634,8 @@ function chkINDI()
         "make -j $(expr $(nproc) + 2)"
         "sudo make install"
     )
-    percentages_lib=(30 60 90)
-    run_steps "Building and Installing INDI 3rd party LIB" commands_lib percentages_lib
+    ends_lib=(30 80 95)
+    run_steps "Building and Installing INDI 3rd party LIB" commands_lib ends_lib
 
     # =================================================================
     # Build INDI 3rd party DRIVER
@@ -636,8 +646,8 @@ function chkINDI()
         "make -j $(expr $(nproc) + 2)"
         "sudo make install"
     )
-    percentages_drv=(30 60 90)
-    run_steps "Building and Installing INDI 3rd party DRIVER" commands_drv percentages_drv
+    ends_drv=(30 80 95)
+    run_steps "Building and Installing INDI 3rd party DRIVER" commands_drv ends_drv
 
     # =================================================================
     # Build StellarSolver
@@ -648,8 +658,8 @@ function chkINDI()
         "make -j $(expr $(nproc) + 2)"
         "sudo make install"
     )
-    percentages_solver=(30 60 90)
-    run_steps "Building and Installing StellarSolver" commands_solver percentages_solver
+    ends_solver=(30 80 95)
+    run_steps "Building and Installing StellarSolver" commands_solver ends_solver
 
     # Cleanup workspace
     echo "# Cleaning CMake Project..."
@@ -657,7 +667,7 @@ function chkINDI()
         sudo rm -rf "${WorkDir}" || err_exit "Failed to remove WorkDir during cleanup"
     fi
 
-    # Success message (reached only if no error occurred)
+    # Success message
     zenity --info --text="INDI and Driver have been updated to version ${Indi_v}" --width="${W}" --title="${W_Title}"
 
     # restore trap
