@@ -701,17 +701,19 @@ function chkKStars()
 			for i in "${!commands[@]}"; do
 				echo "${percentages[$i]}"
 				echo "# ${steps[$i]}..."
+				${commands[$i]} 2>&1 | while IFS= read -r line; do
+            		echo "# $line"
+        		done
 				{
-					output="$(${commands[$i]} 2>&1)"
 					status=$?
-					echo "$output" | while IFS= read -r line; do
-						echo "# $line"
-					done
-
 					if (( status != 0 )); then
 						zenity --error --width=${W} \
 							--text="Error during <b>${steps[$i]}</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
 							--title="${W_Title}"
+						echo "# Cleaning CMake Project..."
+						if [ -d "${WorkDir}" ]; then 
+							sudo rm -rf "${WorkDir}"
+						fi	
 						exit 1
 					fi
 				}
