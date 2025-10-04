@@ -571,6 +571,10 @@ function chkINDI()
                 else
                     echo "# Command failed (exit ${status})"
                     exit ${status}
+					echo "# Cleaning CMake Project..."
+					if [ -d "${WorkDir}" ]; then 
+						sudo rm -rf "${WorkDir}"
+					fi	
                 fi
             done
 
