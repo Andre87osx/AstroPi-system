@@ -506,6 +506,12 @@ function chkINDI()
     trap 'err_exit "An error occurred while installing/updating INDI (line ${LINENO})."' ERR
 
     err_exit() {
+        # Cleanup workspace on any error so build artifacts are removed
+        echo "# Cleaning CMake Project..."
+        if [ -d "${WorkDir}" ]; then
+            sudo rm -rf "${WorkDir}"
+        fi
+        # Show error message and exit
         zenity --error --width="${W}" --text="$1\n\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
         trap - ERR
         exit 1
