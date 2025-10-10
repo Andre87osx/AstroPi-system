@@ -1564,9 +1564,16 @@ bool InternalGuider::selectAutoStar()
 
 bool InternalGuider::reacquire()
 {
+    // Maximum number of immediate reacquire attempts before forcing abort.
+    // This avoids endlessly capturing if the sky suddenly goes dark.
+    static const int MAX_REACQUIRE_ATTEMPTS = 3;
+    static int reacquireAttempts = 0;
+
     bool rc = selectAutoStar();
     if (rc)
     {
+        // reset counters on success
+        reacquireAttempts = 0;
         m_highRMSCounter = m_starLostCounter = 0;
         m_isFirstFrame = true;
         pmath->reset();
@@ -1587,13 +1594,20 @@ bool InternalGuider::reacquire()
             state = GUIDE_GUIDING;
             emit newStatus(state);
         }
-
     }
-    else if (reacquireTimer.elapsed() > static_cast<int>(Options::guideLostStarTimeout() * 1000))
+    else
     {
-        emit newLog(i18n("Failed to find any suitable guide stars. Aborting..."));
-        abort();
-        return false;
+        reacquireAttempts++;
+        // Abort either on timeout OR if we've tried too many times quickly.
+        if (reacquireTimer.elapsed() > static_cast<int>(Options::guideLostStarTimeout() * 1000) ||
+                reacquireAttempts >= MAX_REACQUIRE_ATTEMPTS)
+        {
+            emit newLog(i18n("Failed to find any suitable guide stars. Aborting..."));
+            // reset counter for next session
+            reacquireAttempts = 0;
+            abort();
+            return false;
+        }
     }
 
     emit frameCaptureRequested();
