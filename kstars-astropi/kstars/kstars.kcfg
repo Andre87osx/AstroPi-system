@@ -1631,7 +1631,7 @@
       </entry>
       <entry name="EnforceGuideDeviation" type="Bool">
          <label>Enforce guiding deviation limit.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="EnforceAutofocus" type="Bool">
          <label>Enforce Autofocus HFR limit.</label>
