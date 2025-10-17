@@ -319,40 +319,40 @@
       <entry name="CityName" type="String">
          <label>City name of geographic location.</label>
          <whatsthis>The City name of the current geographic location.</whatsthis>
-         <default>Greenwich</default>
+         <default>Cantalupa</default>
       </entry>
       <entry name="ProvinceName" type="String">
          <label>Province name of geographic location.</label>
          <whatsthis>The Province name of the current geographic location. This is the name of the state for locations in the U. S.</whatsthis>
-         <default> </default>
+         <default>Torino</default>
       </entry>
       <entry name="CountryName" type="String">
          <label>Country name of geographic location.</label>
          <whatsthis>The Country name of the current geographic location.</whatsthis>
-         <default>United Kingdom</default>
+         <default>Italia</default>
       </entry>
       <entry name="Longitude" type="Double">
          <label>Geographic Longitude, in degrees.</label>
          <whatsthis>The longitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>0.0</default>
+         <default>7.3300</default>
       </entry>
       <entry name="Latitude" type="Double">
          <label>Geographic Latitude, in degrees.</label>
          <whatsthis>The latitude of the current geographic location, in decimal degrees.</whatsthis>
-         <default>51.468</default>
+         <default>44.9397</default>
       </entry>
       <entry name="Elevation" type="Double">
          <label>Elevation above sea level of geographic location, in meters.</label>
-         <default>-10.0</default>
+         <default>527</default>
       </entry>
       <entry name="TimeZone" type="Double">
          <label>Time Zone offset of geographic location, in hours.</label>
-         <default>0.0</default>
+         <default>1.0</default>
       </entry>
       <entry name="DST" type="String">
          <label>Two-letter code for daylight savings time rule used by geographic location.</label>
          <whatsthis>Two-letter code that determines the dates on which daylight savings time begins and ends (you can view the rules by pressing the "Explain DST Rules" button in the Geographic Location window).</whatsthis>
-         <default>--</default>
+         <default>EU</default>
       </entry>
    </group>
 
@@ -1631,7 +1631,7 @@
       </entry>
       <entry name="EnforceGuideDeviation" type="Bool">
          <label>Enforce guiding deviation limit.</label>
-         <default>false</default>
+         <default>true</default>
       </entry>
       <entry name="EnforceAutofocus" type="Bool">
          <label>Enforce Autofocus HFR limit.</label>
@@ -2573,7 +2573,7 @@
       </entry>
       <entry name="ErrorHandlingStrategy" type="UInt">
          <label>Strategy how to react, when a job aborts or steps into an error.</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
          <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>

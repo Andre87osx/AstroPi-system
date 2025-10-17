@@ -75,6 +75,9 @@ while [ "${CONN}" == "true" ]; do
 	# Chk USER and create path
 	chkUser
 
+	# Chk if system is NOT ARM64
+	chkARM64()
+
 	# Download last AstroPi System script project
 	release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v${AstroPi_v}.tar.gz -O -"
 	echo "Downloading AstroPi v${AstroPi_v}..."

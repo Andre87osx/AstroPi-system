@@ -363,16 +363,31 @@ function chkIndexAstro()
 	fi
 }
 
-# Check if system work on 64bit kernel
 function chkARM64()
 {
-	if [ -n "$(grep 'arm_64bit=1' '/boot/config.txt')" ]; then
-		# Do not force automatic switching to 64bit. Warn only 
+	if grep -q 'arm_64bit=0' '/boot/config.txt'; then
+		# Il sistema è già a 32 bit
 		true
 	else
-		zenity --warning --width="${W}" --text="Your system is NOT 64 bit.
+		zenity --question --width="${W}" --text="Il sistema NON è a 32 bit.
 		\n${sysinfo}
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		\nVuoi forzare la modalità 32 bit?
+		\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+
+		if [ $? -eq 0 ]; then
+			# L'utente ha accettato → modifica config.txt
+			sudo sed -i '/^arm_64bit=/d' /boot/config.txt
+			echo 'arm_64bit=0' | sudo tee -a /boot/config.txt > /dev/null
+
+			# Chiede se riavviare
+			zenity --question --width="${W}" --text="Configurazione aggiornata: il sistema sarà in modalità 32 bit al prossimo riavvio.
+			\nVuoi riavviare ora?" --title="${W_Title}"
+
+			if [ $? -eq 0 ]; then
+				# Riavvio immediato
+				sudo reboot
+			fi
+		fi
 	fi
 }
 
