@@ -30,6 +30,9 @@ import "functions"
 # Chk USER and create path
 chkUser
 
+# Chk if system is NOT ARM64
+chkARM64()
+
 ########################## Starting AstroPi GUI ##########################
 # Powered with zenity lib. See https://help.gnome.org/users/zenity/stable/
 
