@@ -76,7 +76,7 @@ while [ "${CONN}" == "true" ]; do
 	chkUser
 
 	# Chk if system is NOT ARM64
-	chkARM64()
+	chkARM64
 
 	# Download last AstroPi System script project
 	release="https://github.com/Andre87osx/AstroPi-system/archive/refs/tags/v${AstroPi_v}.tar.gz -O -"
