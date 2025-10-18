@@ -153,9 +153,14 @@ while [ "${CONN}" == "true" ]; do
 		
 	# Installation is finished
 	echo ""
-	echo "The installation of AstroPi v${AstroPi_v} is completed. Launch AstroPi to try it out"
-	zenity --info --width=${W} --text="<b><big>The installation of AstroPi v${AstroPi_v} is completed.</big>
-	\nLaunch AstroPi to try it out</b>" --title=${W_Title}
+	echo "L'installazione di AstroPi v${AstroPi_v} è conclusa. Vuoi riavviare ora?"
+	zenity --question --width=${W} \
+  	--text="<b><big>L'installazione di AstroPi v${AstroPi_v} è conclusa.</big>\n\nPer applicare le modifiche correttamente devi riavviare il sitema.\n\nVuoi riavviare ora?</b>" \
+  	--title="${W_Title}"
+
+	if [ $? -eq 0 ]; then
+  		sudo reboot
+	fi
     
 	# STOP LOOP
 	break
