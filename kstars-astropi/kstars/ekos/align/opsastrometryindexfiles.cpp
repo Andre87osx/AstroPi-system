@@ -552,9 +552,9 @@ void OpsAstrometryIndexFiles::downloadOrDeleteIndexFiles(bool checked)
             {
                 QString URL;
                 if (indexSeriesName.startsWith(QLatin1String("index-41")))
-                    URL = "http://broiler.astrometry.net/~dstn/4100/" + indexSeriesName;
+                    URL = "http://data.astrometry.net/4100/" + indexSeriesName;
                 else if (indexSeriesName.startsWith(QLatin1String("index-42")))
-                    URL = "http://broiler.astrometry.net/~dstn/4200/" + indexSeriesName;
+                    URL = "http://data.astrometry.net/4200/" + indexSeriesName;
                 int maxIndex = 0;
                 if (indexFileNum < 8 && URL.contains("*"))
                 {
@@ -570,7 +570,7 @@ void OpsAstrometryIndexFiles::downloadOrDeleteIndexFiles(bool checked)
             }
             else
             {
-                KSNotification::sorry(i18n("Could not contact Astrometry Index Server: broiler.astrometry.net"));
+                KSNotification::sorry(i18n("Could not contact Astrometry Index Server: data.astrometry.net"));
             }
         }
         else
