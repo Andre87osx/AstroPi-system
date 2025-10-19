@@ -323,7 +323,7 @@ void OpsAstrometryIndexFiles::slotOpenIndexFileDirectory()
 
 bool OpsAstrometryIndexFiles::astrometryIndicesAreAvailable()
 {
-    QNetworkReply *response = manager->get(QNetworkRequest(QUrl("http://broiler.astrometry.net")));
+    QNetworkReply *response = manager->get(QNetworkRequest(QUrl("http://data.astrometry.net")));
     QTimer timeout(this);
     timeout.setInterval(5000);
     timeout.setSingleShot(true);
