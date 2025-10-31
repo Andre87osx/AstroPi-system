@@ -53,7 +53,7 @@ function AdminSystem() {
 		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
 		FALSE "System Cleaning	" "=> Delete unused library and script" \
 		FALSE "Check for System update	" "=> Update Linux AstroPi" \
-		FALSE "System Backup	" "=> Perform complete AstroPi backup" )	
+		FALSE "System Backup	" "=> Perform KStars & INDI backup" )	
     
 	case $? in
 	0)
