@@ -450,6 +450,79 @@ function sysClean()
  	zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
 }
 
+function sysBackup()
+{
+	# Percorsi principali
+	CONFIG_FILE="$HOME/.config/kstarsrc"
+	DATA_DIR="$HOME/.local/share/kstars"
+	INDI_DIR="$HOME/.indi"
+	BACKUP_DIR="$HOME/BCK_KStars"
+	RESTORE_SCRIPT="$BACKUP_DIR/ripristina_kstars.sh"
+
+	# Crea cartella di backup
+	mkdir -p "$BACKUP_DIR"
+
+	# Zenity: avvio
+	zenity --info --title="Backup KStars" --text="Inizio backup dei file KStars, INDI, .esl e .esq..."
+
+	# Backup file principali
+	[ -f "$CONFIG_FILE" ] && cp "$CONFIG_FILE" "$BACKUP_DIR/kstarsrc"
+	[ -d "$DATA_DIR" ] && cp -r "$DATA_DIR" "$BACKUP_DIR/kstarsData"
+	[ -d "$INDI_DIR" ] && cp -r "$INDI_DIR" "$BACKUP_DIR/INDIConfig"
+
+	# Cerca file .esl e .esq nella home
+	mapfile -t ESL_FILES < <(find "$HOME" -type f -iname "*.esl")
+	mapfile -t ESQ_FILES < <(find "$HOME" -type f -iname "*.esq")
+
+	# Copia file .esl
+	for FILE in "${ESL_FILES[@]}"; do
+		REL_PATH="${FILE#$HOME/}"
+		DEST="$BACKUP_DIR/esl/$REL_PATH"
+		mkdir -p "$(dirname "$DEST")"
+		cp "$FILE" "$DEST"
+	done
+
+	# Copia file .esq
+	for FILE in "${ESQ_FILES[@]}"; do
+		REL_PATH="${FILE#$HOME/}"
+		DEST="$BACKUP_DIR/esq/$REL_PATH"
+		mkdir -p "$(dirname "$DEST")"
+		cp "$FILE" "$DEST"
+	done
+
+	# Crea script di ripristino
+	cat <<EOF > "$RESTORE_SCRIPT"
+	#!/bin/bash
+	echo "Ripristino file KStars e INDI..."
+	cp -f "$BACKUP_DIR/kstarsrc" "\$HOME/.config/kstarsrc"
+	rm -rf "\$HOME/.local/share/kstars"
+	cp -r "$BACKUP_DIR/kstarsData" "\$HOME/.local/share/kstars"
+	rm -rf "\$HOME/.indi"
+	cp -r "$BACKUP_DIR/INDIConfig" "\$HOME/.indi"
+
+	echo "Ripristino file .esl..."
+	find "$BACKUP_DIR/esl" -type f -iname "*.esl" | while read FILE; do
+		REL_PATH="\${FILE#$BACKUP_DIR/esl/}"
+		mkdir -p "\$HOME/\$(dirname "\$REL_PATH")"
+		cp "\$FILE" "\$HOME/\$REL_PATH"
+	done
+
+	echo "Ripristino file .esq..."
+	find "$BACKUP_DIR/esq" -type f -iname "*.esq" | while read FILE; do
+		REL_PATH="\${FILE#$BACKUP_DIR/esq/}"
+		mkdir -p "\$HOME/\$(dirname "\$REL_PATH")"
+		cp "\$FILE" "\$HOME/\$REL_PATH"
+	done
+
+	echo "Ripristino completato."
+EOF
+
+	chmod +x "$RESTORE_SCRIPT"
+
+	# Zenity: fine
+	zenity --info --title="Backup completato" --text="Backup completato in:\n$BACKUP_DIR\n\nPer ripristinare, esegui:\n$RESTORE_SCRIPT"
+}	
+
 # Add WiFi SSID
 function setupWiFi()
 {
