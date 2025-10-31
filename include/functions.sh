@@ -463,7 +463,7 @@ function sysBackup()
 	mkdir -p "$BACKUP_DIR"
 
 	# Zenity: avvio
-	zenity --info --title="Backup KStars" --text="Inizio backup dei file KStars, INDI, .esl e .esq..."
+	zenity --info --width="${W}" --title="Backup KStars" --text="Inizio backup dei file KStars, INDI, .esl e .esq..."
 
 	# Backup file principali
 	[ -f "$CONFIG_FILE" ] && cp "$CONFIG_FILE" "$BACKUP_DIR/kstarsrc"
@@ -520,7 +520,7 @@ EOF
 	chmod +x "$RESTORE_SCRIPT"
 
 	# Zenity: fine
-	zenity --info --title="Backup completato" --text="Backup completato in:\n$BACKUP_DIR\n\nPer ripristinare, esegui:\n$RESTORE_SCRIPT"
+	zenity --info --width="${W}" --title="Backup completato" --text="Backup completato in:\n$BACKUP_DIR\n\nPer ripristinare, esegui:\n$RESTORE_SCRIPT"
 }	
 
 # Add WiFi SSID
