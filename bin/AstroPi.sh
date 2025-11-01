@@ -39,64 +39,80 @@ chkARM64
 # AdminSystem windows >>>>
 function AdminSystem() {
 	# Define if hotspot is active or disabled
-	if [ -n "$(grep 'nohook wpa_supplicant' '/etc/dhcpcd.conf')" ]; then
-		StatHotSpot=Enable		# Hotspot is active in AUTO MODE
+	if grep -q 'nohook wpa_supplicant' '/etc/dhcpcd.conf'; then
+		StatHotSpot="Enable"   # Hotspot is active in AUTO MODE
 	else
-		StatHotSpot=Disable		# Hotspot is disabled
+		StatHotSpot="Disable"  # Hotspot is disabled
 	fi
-	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
-	\n<b>${sysinfo}</b>
-	\n<b>Storage details:</b>\nMain disk used at ${diskUsagePerc} Free disk space  ${diskUsageFree}"
 
-	ansS=$( zenity --list --width=$((W+220)) --height="${H}" --title="${W_Title}" --cancel-label=Main --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
-		FALSE "Hotspot Manager is $StatHotSpot	" "=> AUTO/Off WiFi NETWORK Manager" \
-		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
-		FALSE "System Cleaning	" "=> Delete unused library and script" \
-		FALSE "Check for System update	" "=> Update Linux AstroPi" \
-		FALSE "System Backup	" "=> Perform AstroPi full backup" )	
-    
+	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage details:\nMain disk used at <b>${diskUsagePerc}</b>	|	Free disk space: <b>${diskUsageFree}</b>"
+
+	ansS=$(zenity --list \
+		--width=$((W+220)) \
+		--height=$((H+30)) \
+		--title="${W_Title}" \
+		--cancel-label="Main" \
+		--hide-header \
+		--text "${textS}" \
+		--radiolist \
+		--column "Pick" --column "Option" --column "Details" \
+		FALSE "Hotspot Manager is ${StatHotSpot}" "=> AUTO/Off WiFi NETWORK Manager" \
+		FALSE "Setup my WiFi" "=> Add new WiFi SSID connection" \
+		FALSE "System Cleaning" "=> Delete unused library and script" \
+		FALSE "Check for System update" "=> Update Linux AstroPi" \
+		FALSE "System Backup" "=> Perform AstroPi full backup")
+
 	case $? in
-	0)
-		if [ "$ansS" == "Check for System update	" ]; then
-			updateSH=( https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/install.sh )
-			echo "wellcome to AstroPi installer"
-			echo ""
-			echo "Check internet connectionions and if Git exist"
-			echo ""
-			case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
- 				[23]) echo "HTTP connectivity is up"
-  					( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
-					zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
-					echo "Library downloaded"
-					bash install.sh&
+		0)
+			case "$(echo "$ansS" | xargs)" in
+				"Check for System update")
+					updateSH="https://raw.githubusercontent.com/Andre87osx/AstroPi-system/main/bin/install.sh"
+					echo "Welcome to AstroPi installer"
+					echo "Checking internet connection and Git availability..."
+
+					case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
+						[23])
+							echo "HTTP connectivity is up"
+							( curl "${updateSH}" > install.sh ) 2>&1 | sed -u 's/.* \([0-9]\+%\)\ \+\([0-9.]\+.\) \(.*\)/\1\n# Downloading at \2\/s, Time \3/' | \
+							zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
+							echo "Library downloaded"
+							bash install.sh &
+							exit 0
+							;;
+						5)
+							echo "The web proxy won't let us through"
+							zenity --error --text="The web proxy won't let us through"
+							exit 1
+							;;
+						*)
+							echo "The network is down or very slow"
+							zenity --error --text="The network is down or very slow"
+							exit 1
+							;;
+					esac
+					;;
+				"Setup my WiFi")
+					setupWiFi
+					;;
+				"Hotspot Manager is Enable"|"Hotspot Manager is Disable")
+					chkHotspot
+					;;
+				"System Cleaning")
+					sysClean
+					;;
+				"System Backup")
+					export DISPLAY=:0
+					/usr/bin/piclone
 					exit 0
 					;;
- 				5)	echo "The web proxy won't let us through"
-  					zenity --error --text="The web proxy won't let us through"
-					exit 1;;
-  				*)	echo "The network is down or very slow"
-					zenity --error --text="The network is down or very slow"
-					exit 1;;
 			esac
-		elif [ "$ansS" == "Setup my WiFi	" ]; then
-			setupWiFi
-
-		elif [ "$ansS" == "Hotspot Manager is $StatHotSpot	" ]; then
-			chkHotspot
-
-		elif [ "$ansS" == "System Cleaning	" ]; then
-			sysClean
-
-		elif [ "$ansS" == "System Backup	" ]; then
-			sysBackup
-		fi
-	;;
-	1)
-		return 0
-	;;
-	-1)
-		zenity --error --text="Reload AstroPi System"
-	;;
+			;;
+		1)
+			return 0
+			;;
+		-1)
+			zenity --error --text="Reload AstroPi System"
+			;;
 	esac
 }
 # AdminSystem windows <<<<
