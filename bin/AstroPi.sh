@@ -53,7 +53,7 @@ function AdminSystem() {
 		FALSE "Setup my WiFi	" "=> Add new WiFi SSID connection" \
 		FALSE "System Cleaning	" "=> Delete unused library and script" \
 		FALSE "Check for System update	" "=> Update Linux AstroPi" \
-		FALSE "System Backup	" "=> Perform KStars & INDI backup" )	
+		FALSE "System Backup	" "=> Perform AstroPi full backup" )	
     
 	case $? in
 	0)
@@ -109,7 +109,7 @@ function AdminKStars() {
 		FALSE "Update INDI and Driver	" "=> Update INDI core and Driver" \
 		FALSE "Update KStars AstroPi	" "=> Update KStars AstroPi" \
 		FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" \
-		FALSE "Backup/Restore KStars	" "=> Make a backup or restore all KStars and INDI data" )	
+		FALSE "Backup/Restore KStars	" "=> Make a backup for all KStars and INDI data" )	
     
 	case $? in
 	0)

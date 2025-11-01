@@ -450,7 +450,7 @@ function sysClean()
  	zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
 }
 
-function sysBackup()
+function ksBackup()
 {
 	# Percorsi principali
 	CONFIG_FILE="$HOME/.config/kstarsrc"
@@ -459,68 +459,126 @@ function sysBackup()
 	BACKUP_DIR="$HOME/BCK_KStars"
 	RESTORE_SCRIPT="$BACKUP_DIR/ripristina_kstars.sh"
 
-	# Crea cartella di backup
 	mkdir -p "$BACKUP_DIR"
 
-	# Zenity: avvio
-	zenity --info --width="${W}" --title="Backup KStars" --text="Inizio backup dei file KStars, INDI, .esl e .esq..."
+	zenity --info --title="Backup KStars" --width="${W}" \
+	--text="Inizio backup dei file:\n\n• kstarsrc\n• kstarsData\n• INDIConfig\n• File .esl e .esq trovati nella home"
 
-	# Backup file principali
-	[ -f "$CONFIG_FILE" ] && cp "$CONFIG_FILE" "$BACKUP_DIR/kstarsrc"
-	[ -d "$DATA_DIR" ] && cp -r "$DATA_DIR" "$BACKUP_DIR/kstarsData"
-	[ -d "$INDI_DIR" ] && cp -r "$INDI_DIR" "$BACKUP_DIR/INDIConfig"
+	# Conta file totali
+	TOTAL_FILES=0
+	[ -f "$CONFIG_FILE" ] && TOTAL_FILES=$((TOTAL_FILES + 1))
+	[ -d "$DATA_DIR" ] && TOTAL_FILES=$((TOTAL_FILES + $(find "$DATA_DIR" -type f | wc -l)))
+	[ -d "$INDI_DIR" ] && TOTAL_FILES=$((TOTAL_FILES + $(find "$INDI_DIR" -type f | wc -l)))
+	ESL_FILES=($(find "$HOME" -type f -iname "*.esl"))
+	ESQ_FILES=($(find "$HOME" -type f -iname "*.esq"))
+	TOTAL_FILES=$((TOTAL_FILES + ${#ESL_FILES[@]} + ${#ESQ_FILES[@]}))
 
-	# Cerca file .esl e .esq nella home
-	mapfile -t ESL_FILES < <(find "$HOME" -type f -iname "*.esl")
-	mapfile -t ESQ_FILES < <(find "$HOME" -type f -iname "*.esq")
+	# Barra Zenity
+	(
+	COUNT=0
 
-	# Copia file .esl
+	[ -f "$CONFIG_FILE" ] && cp "$CONFIG_FILE" "$BACKUP_DIR/kstarsrc" && COUNT=$((COUNT + 1)) && echo $((COUNT * 100 / TOTAL_FILES))
+
+	if [ -d "$DATA_DIR" ]; then
+		find "$DATA_DIR" -type f | while read FILE; do
+			DEST="$BACKUP_DIR/kstarsData/${FILE#$DATA_DIR/}"
+			mkdir -p "$(dirname "$DEST")"
+			cp "$FILE" "$DEST"
+			COUNT=$((COUNT + 1))
+			echo $((COUNT * 100 / TOTAL_FILES))
+		done
+	fi
+
+	if [ -d "$INDI_DIR" ]; then
+		find "$INDI_DIR" -type f | while read FILE; do
+			DEST="$BACKUP_DIR/INDIConfig/${FILE#$INDI_DIR/}"
+			mkdir -p "$(dirname "$DEST")"
+			cp "$FILE" "$DEST"
+			COUNT=$((COUNT + 1))
+			echo $((COUNT * 100 / TOTAL_FILES))
+		done
+	fi
+
 	for FILE in "${ESL_FILES[@]}"; do
-		REL_PATH="${FILE#$HOME/}"
-		DEST="$BACKUP_DIR/esl/$REL_PATH"
+		REL="${FILE#$HOME/}"
+		DEST="$BACKUP_DIR/esl/$REL"
 		mkdir -p "$(dirname "$DEST")"
 		cp "$FILE" "$DEST"
+		COUNT=$((COUNT + 1))
+		echo $((COUNT * 100 / TOTAL_FILES))
 	done
 
-	# Copia file .esq
 	for FILE in "${ESQ_FILES[@]}"; do
-		REL_PATH="${FILE#$HOME/}"
-		DEST="$BACKUP_DIR/esq/$REL_PATH"
+		REL="${FILE#$HOME/}"
+		DEST="$BACKUP_DIR/esq/$REL"
 		mkdir -p "$(dirname "$DEST")"
 		cp "$FILE" "$DEST"
+		COUNT=$((COUNT + 1))
+		echo $((COUNT * 100 / TOTAL_FILES))
 	done
 
-	# Crea script di ripristino
+	) | zenity --progress --title="Backup in corso..." --width="${W}" --percentage=0 --auto-close
+
+	# Script di ripristino
 	cat <<EOF > "$RESTORE_SCRIPT"
 	#!/bin/bash
-	echo "Ripristino file KStars e INDI..."
+
+	W=500
+	zenity --info --title="Ripristino KStars" --width="\${W}" \
+	--text="Inizio ripristino dei file:\n\n• kstarsrc\n• kstarsData\n• INDIConfig\n• File .esl e .esq"
+
+	TOTAL=\$(find "$BACKUP_DIR" -type f | wc -l)
+	COUNT=0
+
+	(
 	cp -f "$BACKUP_DIR/kstarsrc" "\$HOME/.config/kstarsrc"
-	rm -rf "\$HOME/.local/share/kstars"
-	cp -r "$BACKUP_DIR/kstarsData" "\$HOME/.local/share/kstars"
-	rm -rf "\$HOME/.indi"
-	cp -r "$BACKUP_DIR/INDIConfig" "\$HOME/.indi"
+	COUNT=\$((COUNT + 1))
+	echo \$((COUNT * 100 / TOTAL))
 
-	echo "Ripristino file .esl..."
+	find "$BACKUP_DIR/kstarsData" -type f | while read FILE; do
+		DEST="\$HOME/.local/share/kstars/\${FILE#$BACKUP_DIR/kstarsData/}"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
+	done
+
+	find "$BACKUP_DIR/INDIConfig" -type f | while read FILE; do
+		DEST="\$HOME/.indi/\${FILE#$BACKUP_DIR/INDIConfig/}"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
+	done
+
 	find "$BACKUP_DIR/esl" -type f -iname "*.esl" | while read FILE; do
-		REL_PATH="\${FILE#$BACKUP_DIR/esl/}"
-		mkdir -p "\$HOME/\$(dirname "\$REL_PATH")"
-		cp "\$FILE" "\$HOME/\$REL_PATH"
+		REL="\${FILE#$BACKUP_DIR/esl/}"
+		DEST="\$HOME/\$REL"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
 	done
 
-	echo "Ripristino file .esq..."
 	find "$BACKUP_DIR/esq" -type f -iname "*.esq" | while read FILE; do
-		REL_PATH="\${FILE#$BACKUP_DIR/esq/}"
-		mkdir -p "\$HOME/\$(dirname "\$REL_PATH")"
-		cp "\$FILE" "\$HOME/\$REL_PATH"
+		REL="\${FILE#$BACKUP_DIR/esq/}"
+		DEST="\$HOME/\$REL"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
 	done
 
-	echo "Ripristino completato."
+	) | zenity --progress --title="Ripristino in corso..." --width="\${W}" --percentage=0 --auto-close
+
+	zenity --info --title="Ripristino completato" --width="\${W}" \
+	--text="Tutti i file sono stati ripristinati correttamente."
 EOF
 
 	chmod +x "$RESTORE_SCRIPT"
 
-	# Zenity: fine
-	zenity --info --width="${W}" --title="Backup completato" --text="Backup completato in:\n$BACKUP_DIR\n\nPer ripristinare, esegui:\n$RESTORE_SCRIPT"
+	zenity --info --title="Backup completato" --width="${W}" \
+	--text="Backup completato in:\n\n$BACKUP_DIR\n\nPer ripristinare, esegui:\n\n$RESTORE_SCRIPT"
 }	
 
 # Add WiFi SSID
