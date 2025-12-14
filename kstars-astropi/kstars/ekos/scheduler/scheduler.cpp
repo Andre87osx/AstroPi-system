@@ -3443,6 +3443,24 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_CAPTURING:
+            // Check if guiding is still active and healthy (if required for this job)
+            if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE)
+            {
+                GuideState guideStatus = getGuidingStatus();
+                
+                // If guide has failed or lost connection during capture, abort the capture
+                if (guideStatus == Ekos::GUIDE_ABORTED || guideStatus == Ekos::GUIDE_CALIBRATION_ERROR)
+                {
+                    appendLogText(i18n("Warning: job '%1' guide failed during capture. Aborting capture and restarting guide.", 
+                                       currentJob->getName()));
+                    captureInterface->call(QDBus::AutoDetect, "abort");
+                    
+                    // Trigger guide recovery through setGuideStatus
+                    setGuideStatus(guideStatus);
+                    return;
+                }
+            }
+            
             // Let's make sure capture module does not become unresponsive
             if (currentOperationTime.elapsed() > static_cast<int>(CAPTURE_INACTIVITY_TIMEOUT))
             {
@@ -4747,12 +4765,44 @@ void Scheduler::startCapture(bool restart)
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting capturing must be valid");
 
     // ensure that guiding is running before we start capturing
-    if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE && getGuidingStatus() != GUIDE_GUIDING)
+    if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE)
     {
-        // guiding should run, but it doesn't. So start guiding first
-        currentJob->setStage(SchedulerJob::STAGE_GUIDING);
-        startGuiding();
-        return;
+        GuideState gStatus = getGuidingStatus();
+        
+        // If guiding is not active, or if it's in error state, restart guiding first
+        if (gStatus != GUIDE_GUIDING)
+        {
+            if (gStatus == Ekos::GUIDE_ABORTED || gStatus == Ekos::GUIDE_CALIBRATION_ERROR)
+            {
+                // Guiding has failed - need to restart the full calibration chain
+                appendLogText(i18n("Job '%1' detected guide error before capture. Restarting focus-align-guide sequence...", 
+                                   currentJob->getName()));
+                
+                if (currentJob->getStepPipeline() & SchedulerJob::USE_FOCUS)
+                {
+                    currentJob->setStage(SchedulerJob::STAGE_FOCUSING);
+                    startFocusing();
+                }
+                else if (currentJob->getStepPipeline() & SchedulerJob::USE_ALIGN)
+                {
+                    currentJob->setStage(SchedulerJob::STAGE_ALIGNING);
+                    startAstrometry();
+                }
+                else
+                {
+                    currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+                    startGuiding(true);
+                }
+            }
+            else
+            {
+                // Guiding is not running yet - start it
+                appendLogText(i18n("Job '%1' starting guiding before capture...", currentJob->getName()));
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+                startGuiding();
+            }
+            return;
+        }
     }
 
     QString sanitized = currentJob->getName();
@@ -6770,7 +6820,17 @@ void Scheduler::setAlignStatus(Ekos::AlignState status)
         {
             appendLogText(i18n("Warning: job '%1' alignment failed.", currentJob->getName()));
 
-            if (alignFailureCount++ < MAX_FAILURE_ATTEMPTS)
+            // If we're in guide recovery mode (guideFailureCount > MAX), don't retry align
+            // Just move to next job immediately to avoid wasting time
+            if (guideFailureCount > MAX_FAILURE_ATTEMPTS)
+            {
+                appendLogText(i18n("Job '%1' alignment failed during guide recovery. "
+                                   "Moving to next job or initiating shutdown.",
+                                   currentJob->getName()));
+                guideFailureCount = 0;  // Reset for next job
+                findNextJob();
+            }
+            else if (alignFailureCount++ < MAX_FAILURE_ATTEMPTS)
             {
                 if (Options::resetMountModelOnAlignFail() && MAX_FAILURE_ATTEMPTS - 1 < alignFailureCount)
                 {
@@ -6784,6 +6844,7 @@ void Scheduler::setAlignStatus(Ekos::AlignState status)
             else
             {
                 appendLogText(i18n("Warning: job '%1' alignment procedure failed, marking aborted.", currentJob->getName()));
+                guideFailureCount = 0;  // Reset for next job
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
@@ -6826,9 +6887,9 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
                  status == Ekos::GUIDE_ABORTED)
         {
             if (status == Ekos::GUIDE_ABORTED)
-                appendLogText(i18n("Warning: job '%1' guiding failed.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' guiding failed (possible cloud or temporary issue).", currentJob->getName()));
             else
-                appendLogText(i18n("Warning: job '%1' calibration failed.", currentJob->getName()));
+                appendLogText(i18n("Warning: job '%1' calibration failed. Retrying guiding only first...", currentJob->getName()));
 
             // if the timer for restarting the guiding is already running, we do nothing and
             // wait for the action triggered by the timer. This way we avoid that a small guiding problem
@@ -6837,26 +6898,51 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
             if (restartGuidingTimer.isActive())
                 return;
 
-            if (guideFailureCount++ < MAX_FAILURE_ATTEMPTS)
+            // STAGE 1: Retry guiding alone first (3 attempts)
+            // This handles temporary issues like passing clouds without wasting time on full recalibration
+            if (guideFailureCount < MAX_FAILURE_ATTEMPTS)
             {
-                if (status == Ekos::GUIDE_CALIBRATION_ERROR &&
-                        Options::realignAfterCalibrationFailure())
+                guideFailureCount++;
+                appendLogText(i18n("Job '%1' retrying guiding only (quick recovery attempt #%2 of %3) in %4 seconds.",
+                                   currentJob->getName(), guideFailureCount, MAX_FAILURE_ATTEMPTS,
+                                   (RESTART_GUIDING_DELAY_MS * guideFailureCount) / 1000));
+                restartGuidingTimer.start(RESTART_GUIDING_DELAY_MS * guideFailureCount);
+            }
+            // STAGE 2: Full recovery sequence after 3 quick attempts (up to 3 more attempts)
+            else if (guideFailureCount < MAX_FAILURE_ATTEMPTS * 2)
+            {
+                guideFailureCount++;
+                appendLogText(i18n("Job '%1' quick retries exhausted. Starting full focus-align-guide recovery (deep recovery attempt #%2 of %3)...",
+                                   currentJob->getName(), (guideFailureCount - MAX_FAILURE_ATTEMPTS) + 1, MAX_FAILURE_ATTEMPTS));
+                
+                // Start full recovery chain
+                if (currentJob->getStepPipeline() & SchedulerJob::USE_FOCUS)
                 {
-                    appendLogText(i18n("Restarting %1 alignment procedure...", currentJob->getName()));
+                    currentJob->setStage(SchedulerJob::STAGE_FOCUSING);
+                    startFocusing();
+                }
+                else if (currentJob->getStepPipeline() & SchedulerJob::USE_ALIGN)
+                {
+                    currentJob->setStage(SchedulerJob::STAGE_ALIGNING);
                     startAstrometry();
                 }
                 else
                 {
-                    appendLogText(i18n("Job '%1' is guiding, guiding procedure will be restarted in %2 seconds.", currentJob->getName(),
-                                       (RESTART_GUIDING_DELAY_MS * guideFailureCount) / 1000));
-                    restartGuidingTimer.start(RESTART_GUIDING_DELAY_MS * guideFailureCount);
+                    currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+                    startGuiding(true);  // Reset calibration
                 }
             }
+            // STAGE 3: All recovery attempts exhausted - move to next job or shutdown
             else
             {
-                appendLogText(i18n("Warning: job '%1' guiding procedure failed, marking aborted.", currentJob->getName()));
-                restartGuidingTimer.stop(); // stop the timer if it is running
-                currentJob->setState(SchedulerJob::JOB_ABORTED);
+                appendLogText(i18n("Warning: job '%1' guiding recovery failed after %2 quick attempts and %3 deep attempts. "
+                                   "Moving to next job or initiating shutdown.",
+                                   currentJob->getName(), MAX_FAILURE_ATTEMPTS, MAX_FAILURE_ATTEMPTS));
+                restartGuidingTimer.stop();
+                guideFailureCount = 0;  // Reset counter for next job
+                
+                // Instead of aborting, move to next job
+                // This allows recovery if the issue was job-specific (clouds, equipment change, etc.)
                 findNextJob();
             }
         }
@@ -6982,7 +7068,17 @@ void Scheduler::setFocusStatus(Ekos::FocusState status)
         {
             appendLogText(i18n("Warning: job '%1' focusing failed.", currentJob->getName()));
 
-            if (focusFailureCount++ < MAX_FAILURE_ATTEMPTS)
+            // If we're in guide recovery mode (guideFailureCount > MAX), don't retry focus
+            // Just move to next job immediately to avoid wasting time
+            if (guideFailureCount > MAX_FAILURE_ATTEMPTS)
+            {
+                appendLogText(i18n("Job '%1' focusing failed during guide recovery. "
+                                   "Moving to next job or initiating shutdown.",
+                                   currentJob->getName()));
+                guideFailureCount = 0;  // Reset for next job
+                findNextJob();
+            }
+            else if (focusFailureCount++ < MAX_FAILURE_ATTEMPTS)
             {
                 appendLogText(i18n("Job '%1' is restarting its focusing procedure.", currentJob->getName()));
                 // Reset frame to original size.
@@ -6994,6 +7090,7 @@ void Scheduler::setFocusStatus(Ekos::FocusState status)
             else
             {
                 appendLogText(i18n("Warning: job '%1' focusing procedure failed, marking aborted.", currentJob->getName()));
+                guideFailureCount = 0;  // Reset for next job
                 currentJob->setState(SchedulerJob::JOB_ABORTED);
 
                 findNextJob();
