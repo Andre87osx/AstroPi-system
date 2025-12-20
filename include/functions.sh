@@ -236,14 +236,14 @@ function system_pre_update()
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		fi
 
-		# Imposta repository snapshot per Buster
-		sources=/etc/apt/sources.list.d/raspbian-snapshot.list
+		# Imposta repository legacy ufficiale per Buster
+		sources=/etc/apt/sources.list.d/raspbian-legacy.list
 
 		# Rimuovi vecchie voci duplicate
 		sudo sed -i '/raspbian/d' /etc/apt/sources.list
 
-		# Scrivi nuova sorgente con trusted=yes
-		echo "deb [trusted=yes] http://snapshot.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee ${sources}
+		# Scrivi nuova sorgente
+		echo "deb [trusted=yes] https://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee ${sources}
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources}</b>
 		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
