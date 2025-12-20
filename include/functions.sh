@@ -605,45 +605,51 @@ EOF
 }	
 
 # Add WiFi SSID
-function setupWiFi()
-{
-	# Setup WiFi in wpa_supplicant
-	# =========================================================================
 
-	WIFI=$(zenity --forms --width=400 --height=300 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
-		--add-entry="Enter the SSID of the wifi network to be added." \
-		--add-password="Enter the password of selected wifi network")
-	SSID=$(echo "$WIFI" | cut -d'|' -f1)
-	PSK=$(echo "$WIFI" | cut -d'|' -f2)
-	PRIORITY=10
-	
-	case "$?" in
-	0)
-		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
-			sudo chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
-			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
-			case $? in
-			0)
-				zenity --info --width="${W}" --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
-				sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
-			;;
-			1)
-				zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-				sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
-			;;
-			esac
-		fi
-	;;
-	1)
-		zenity --info --width="${W}" --text "No changes have been made to your current configuration" --title="${W_Title}"
-		exit 0
-	;;
-	-1)
-		zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-		exit 0
-	;;
-	esac
+function setupWiFi() {
+    WIFI=$(zenity --forms --width=400 --height=300 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
+        --add-entry="Enter the SSID of the wifi network to be added." \
+        --add-password="Enter the password of selected wifi network")
+
+    SSID=$(echo "$WIFI" | cut -d'|' -f1)
+    PSK=$(echo "$WIFI" | cut -d'|' -f2)
+    PRIORITY=10
+
+    case "$?" in
+    0)
+        if grep -q 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf'; then
+            sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
+
+            # Aggiunge la rete senza cancellare le altre
+            sudo bash -c "cat >> /etc/wpa_supplicant/wpa_supplicant.conf <<EOF
+
+network={
+    ssid=\"$SSID\"
+    psk=\"$PSK\"
+    key_mgmt=WPA-PSK
+    scan_ssid=1
+    priority=$PRIORITY
 }
+EOF"
+
+            if [ $? -eq 0 ]; then
+                zenity --info --width=300 --text "Nuova rete WiFi aggiunta. Riavvia il Raspberry Pi." --title="Setup WiFi"
+            else
+                zenity --error --width=300 --text="Errore nella scrittura del file wpa_supplicant." --title="Setup WiFi"
+            fi
+
+            sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+        fi
+    ;;
+    1)
+        zenity --info --width=300 --text "Nessuna modifica effettuata." --title="Setup WiFi"
+    ;;
+    -1)
+        zenity --error --width=300 --text="Errore imprevisto." --title="Setup WiFi"
+    ;;
+    esac
+}
+
 
 # Enable / Disable HotSpot services
 function chkHotspot()
