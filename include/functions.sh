@@ -235,7 +235,24 @@ function system_pre_update()
 			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		fi
-		
+
+		# Aggiorna il source list per mantenere Buster dal repository archivio
+		sources=/etc/apt/sources.list.d/raspbian-archive.list
+		echo "deb http://archive.raspbian.org/raspbian buster main contrib non-free rpi" | sudo tee ${sources}
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Qualcosa è andato storto in <b>sources.list.d</b>
+		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+			exit 1
+		fi
+
+		# Aggiorna anche il file principale sources.list sostituendo il vecchio URL
+		sudo sed -i 's|http://raspbian.raspberrypi.org/raspbian|http://archive.raspbian.org/raspbian|g' /etc/apt/sources.list
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la modifica di <b>/etc/apt/sources.list</b>
+		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+			exit 1
+		fi
+
 		# Implement USB memory dump
 		echo "# Preparing update"
 		sudo sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
