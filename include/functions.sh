@@ -236,19 +236,16 @@ function system_pre_update()
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		fi
 
-		# Aggiorna il source list per mantenere Buster dal repository archivio
+		# Imposta repository snapshot per Buster
 		sources=/etc/apt/sources.list.d/raspbian-archive.list
-		echo "deb http://archive.raspbian.org/raspbian buster main contrib non-free rpi" | sudo tee ${sources}
-		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Qualcosa è andato storto in <b>sources.list.d</b>
-		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
-			exit 1
-		fi
 
-		# Aggiorna anche il file principale sources.list sostituendo il vecchio URL
-		sudo sed -i 's|http://raspbian.raspberrypi.org/raspbian|http://archive.raspbian.org/raspbian|g' /etc/apt/sources.list
+		# Rimuovi duplicati dal file principale
+		sudo sed -i '/raspbian/d' /etc/apt/sources.list
+
+		# Scrivi nuova sorgente con trusted=yes
+		echo "deb [trusted=yes] http://archive.raspbian.org/raspbian buster main contrib non-free rpi" | sudo tee ${sources}
 		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Errore durante la modifica di <b>/etc/apt/sources.list</b>
+			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources}</b>
 		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 			exit 1
 		fi
