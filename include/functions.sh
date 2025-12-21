@@ -236,29 +236,46 @@ function system_pre_update()
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		fi
 
-		# Pulizia e configurazione repository per Raspbian Buster
-		# 1. Rimuovi eventuali voci duplicate per raspbian e raspberrypi
+		# 1. Rimuovi vecchie voci e qualsiasi [trusted=yes] per evitare conflitti
 		sudo sed -i '/raspbian/d' /etc/apt/sources.list
 		sudo sed -i '/archive.raspberrypi.org/d' /etc/apt/sources.list
+		sudo sed -i 's/\[trusted=yes\]//g' /etc/apt/sources.list.d/*.list 2>/dev/null
 
-		# 2. Imposta repository legacy ufficiale per Raspbian Buster
+		# 2. Prova ad aggiungere la chiave GPG ufficiale di Raspbian
+		curl -s https://archive.raspbian.org/raspbian.public.key | sudo apt-key add -
+		if [ $? -ne 0 ]; then
+			# Se fallisce, useremo trusted=yes come fallback
+			USE_TRUSTED="yes"
+		else
+			USE_TRUSTED="no"
+		fi
+
+		# 3. Configura repository legacy Raspbian Buster
 		sources_legacy=/etc/apt/sources.list.d/raspbian-legacy.list
 		echo "# Repository legacy per Raspbian Buster" | sudo tee ${sources_legacy}
-		echo "deb [trusted=yes] https://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee -a ${sources_legacy}
+		if [ "$USE_TRUSTED" = "yes" ]; then
+			echo "deb [trusted=yes] https://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee -a ${sources_legacy}
+		else
+			echo "deb https://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee -a ${sources_legacy}
+		fi
 		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources_legacy}</b>
-		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources_legacy}</b>" --title=${W_Title}
 			exit 1
 		fi
 
-		# 3. Imposta repository ufficiale Raspberry Pi per firmware e tool
+		# 4. Configura repository ufficiale Raspberry Pi (senza trusted=yes)
 		sources_pi=/etc/apt/sources.list.d/raspberrypi.list
 		echo "# Repository ufficiale Raspberry Pi per Buster" | sudo tee ${sources_pi}
-		echo "deb [trusted=yes] http://archive.raspberrypi.org/debian buster main" | sudo tee -a ${sources_pi}
+		echo "deb http://archive.raspberrypi.org/debian/ buster main" | sudo tee -a ${sources_pi}
+		echo "#deb-src http://archive.raspberrypi.org/debian/ buster main" | sudo tee -a ${sources_pi}
 		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources_pi}</b>
-		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources_pi}</b>" --title=${W_Title}
 			exit 1
+		fi
+
+		# 5. Messaggio finale
+		if [ "$USE_TRUSTED" = "yes" ]; then
+			zenity --info --width=${W} --text="Repository configurati con fallback [trusted=yes] per Raspbian.\nOra puoi eseguire <b>sudo apt-get update</b>." --title=${W_Title}
 		fi
 
 		# Implement USB memory dump
