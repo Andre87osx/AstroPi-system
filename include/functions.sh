@@ -261,10 +261,6 @@ function system_pre_update()
 			exit 1
 		fi
 
-		# Messaggio finale di conferma
-		zenity --info --width=${W} --text="Repository aggiornati correttamente per Raspbian Buster.\nOra puoi eseguire <b>sudo apt-get update</b>." --title=${W_Title}
-
-
 		# Implement USB memory dump
 		echo "# Preparing update"
 		sudo sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
@@ -619,7 +615,6 @@ function setupWiFi() {
 
     SSID=$(echo "$WIFI" | cut -d'|' -f1)
     PSK=$(echo "$WIFI" | cut -d'|' -f2)
-    PRIORITY=10
 
     case "$?" in
     0)
@@ -634,7 +629,6 @@ network={
     psk=\"$PSK\"
     key_mgmt=WPA-PSK
     scan_ssid=1
-    priority=$PRIORITY
 }
 EOF"
 
