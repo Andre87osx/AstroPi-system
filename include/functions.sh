@@ -236,28 +236,34 @@ function system_pre_update()
 			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
 		fi
 
-		# Imposta repository legacy ufficiale per Raspbian Buster
-		sources=/etc/apt/sources.list.d/raspbian-legacy.list
-
-		# Rimuovi vecchie voci duplicate
+		# Pulizia e configurazione repository per Raspbian Buster
+		# 1. Rimuovi eventuali voci duplicate per raspbian e raspberrypi
 		sudo sed -i '/raspbian/d' /etc/apt/sources.list
+		sudo sed -i '/archive.raspberrypi.org/d' /etc/apt/sources.list
 
-		# Scrivi nuova sorgente per pacchetti Raspbian
-		echo "deb [trusted=yes] https://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee ${sources}
+		# 2. Imposta repository legacy ufficiale per Raspbian Buster
+		sources_legacy=/etc/apt/sources.list.d/raspbian-legacy.list
+		echo "# Repository legacy per Raspbian Buster" | sudo tee ${sources_legacy}
+		echo "deb [trusted=yes] https://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi" | sudo tee -a ${sources_legacy}
 		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources}</b>
+			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources_legacy}</b>
 		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 			exit 1
 		fi
 
-		# Aggiungi repository ufficiale Raspberry Pi per firmware e tool
+		# 3. Imposta repository ufficiale Raspberry Pi per firmware e tool
 		sources_pi=/etc/apt/sources.list.d/raspberrypi.list
-		echo "deb [trusted=yes] http://archive.raspberrypi.org/debian buster main" | sudo tee ${sources_pi}
+		echo "# Repository ufficiale Raspberry Pi per Buster" | sudo tee ${sources_pi}
+		echo "deb [trusted=yes] http://archive.raspberrypi.org/debian buster main" | sudo tee -a ${sources_pi}
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la modifica di <b>${sources_pi}</b>
 		\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 			exit 1
 		fi
+
+		# Messaggio finale di conferma
+		zenity --info --width=${W} --text="Repository aggiornati correttamente per Raspbian Buster.\nOra puoi eseguire <b>sudo apt-get update</b>." --title=${W_Title}
+
 
 		# Implement USB memory dump
 		echo "# Preparing update"
