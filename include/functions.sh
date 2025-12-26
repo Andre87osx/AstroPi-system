@@ -248,29 +248,32 @@ function system_pre_update()
 
 		   # 2. Ricostruzione sources.list
 		   echo "==> Ricostruzione sources.list…"
-		   sudo bash -c 'cat > /etc/apt/sources.list <<EOF\ndeb http://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi\nEOF'
+		   sudo bash -c 'cat > /etc/apt/sources.list <<EOF
+deb http://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi
+EOF'
 		   if [ $? -ne 0 ]; then
 			   zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
 			   exit 1
 		   fi
+				   # 3. Creazione raspi.list
+				   echo "==> Creazione raspi.list…"
+				   sudo bash -c 'cat > /etc/apt/sources.list.d/raspi.list <<EOF
+		deb http://archive.raspberrypi.org/debian buster main
+		EOF'
+				   if [ $? -ne 0 ]; then
+					   zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list.d/raspi.list" --title=${W_Title}
+					   exit 1
+				   fi
 
-		   # 3. Creazione raspi.list
-		   echo "==> Creazione raspi.list…"
-		   sudo bash -c 'cat > /etc/apt/sources.list.d/raspi.list <<EOF\ndeb http://archive.raspberrypi.org/debian buster main\nEOF'
-		   if [ $? -ne 0 ]; then
-			   zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list.d/raspi.list" --title=${W_Title}
-			   exit 1
-		   fi
+				   # 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
+				   echo "==> Pulizia cache APT…"
+				   sudo apt clean
+				   if [ $? -ne 0 ]; then
+					   zenity --error --width=${W} --text="Errore durante la pulizia della cache di APT" --title=${W_Title}
+					   exit 1
+				   fi
 
-		   # 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
-		   echo "==> Pulizia cache APT…"
-		   sudo apt clean
-		   if [ $? -ne 0 ]; then
-			   zenity --error --width=${W} --text="Errore durante la pulizia della cache di APT" --title=${W_Title}
-			   exit 1
-		   fi
-
-		   echo "==> Completato."
+				   echo "==> Completato."
 
 		# Implement USB memory dump
 		echo "# Preparing update"
