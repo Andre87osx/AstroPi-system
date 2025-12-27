@@ -227,71 +227,66 @@ function make_executable()
 # Prepair fot update system
 function system_pre_update()
 {
-	(	
-		# Check APT Source and stops unwanted updates
+	(
+		# Rimuovi il repository astroberry se esiste
 		sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f ${sources} ]; then
-			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
-			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
-			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+			sudo rm -f ${sources}
+			if [ $? -ne 0 ]; then
+				zenity --error --width=${W} --text="Errore durante la rimozione di <b>astroberry.list</b>\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+				exit 1
+			fi
 		fi
 
-		   # 1. Pulizia repository APT
-		   echo "==> Pulizia repository APT…"
-		   sudo find /etc/apt/sources.list.d/ -type f -name "*.list" -exec rm -v {} \;
-		   if [ $? -ne 0 ]; then
-			   zenity --error --width=${W} --text="Errore durante la pulizia di /etc/apt/sources.list.d/*.list" --title=${W_Title}
-			   exit 1
-		   fi
-		   sudo find /etc/apt/sources.list.d/ -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
-		   sudo find /etc/apt/ -maxdepth 1 -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
+		# 1. Pulizia repository APT
+		echo "==> Pulizia repository APT…"
+		sudo find /etc/apt/sources.list.d/ -type f -name "*.list" -exec rm -v {} \;
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la pulizia di /etc/apt/sources.list.d/*.list" --title=${W_Title}
+			exit 1
+		fi
+		sudo find /etc/apt/sources.list.d/ -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
+		sudo find /etc/apt/ -maxdepth 1 -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
 
-		   # 2. Ricostruzione sources.list
-		   echo "==> Ricostruzione sources.list…"
-		   sudo bash -c 'cat > /etc/apt/sources.list <<EOF
+		# 2. Ricostruzione sources.list
+		echo "==> Ricostruzione sources.list…"
+		sudo bash -c 'cat > /etc/apt/sources.list <<EOF
 deb http://legacy.raspbian.org/raspbian/ buster main contrib non-free rpi
 EOF'
-		   if [ $? -ne 0 ]; then
-			   zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
-			   exit 1
-		   fi
-				   # 3. Creazione raspi.list
-				   echo "==> Creazione raspi.list…"
-				   sudo bash -c 'cat > /etc/apt/sources.list.d/raspi.list <<EOF
-		deb http://archive.raspberrypi.org/debian buster main
-		EOF'
-				   if [ $? -ne 0 ]; then
-					   zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list.d/raspi.list" --title=${W_Title}
-					   exit 1
-				   fi
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
+			exit 1
+		fi
 
-				   # 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
-				   echo "==> Pulizia cache APT…"
-				   sudo apt clean
-				   if [ $? -ne 0 ]; then
-					   zenity --error --width=${W} --text="Errore durante la pulizia della cache di APT" --title=${W_Title}
-					   exit 1
-				   fi
+		# 3. Creazione raspi.list
+		echo "==> Creazione raspi.list…"
+		sudo bash -c 'cat > /etc/apt/sources.list.d/raspi.list <<EOF
+deb http://archive.raspberrypi.org/debian buster main
+EOF'
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list.d/raspi.list" --title=${W_Title}
+			exit 1
+		fi
 
-				   echo "==> Completato."
+		# 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
+		echo "==> Pulizia cache APT…"
+		sudo apt clean
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la pulizia della cache di APT" --title=${W_Title}
+			exit 1
+		fi
+
+		echo "==> Completato."
 
 		# Implement USB memory dump
 		echo "# Preparing update"
 		sudo sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
-		
-		# Hold some update
-		echo "# Hold some update"
-		sudo apt-mark hold kstars-bleeding kstars-bleeding-data indi-full libindi-dev libindi1 indi-bin
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-	
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+
 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
-		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>
-		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 		exit 1
 		break
 	fi
