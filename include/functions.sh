@@ -248,11 +248,11 @@ function system_pre_update()
 		sudo find /etc/apt/sources.list.d/ -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
 		sudo find /etc/apt/ -maxdepth 1 -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
 
-		# 2. Ricostruzione sources.list con repository archiviati
+		# 2. Ricostruzione sources.list con repository archiviati (trusted=yes per evitare errore Release)
 		echo "==> Ricostruzione sources.list…"
 		sudo bash -c 'cat > /etc/apt/sources.list <<EOF
-deb http://archive.raspbian.org/raspbian/ buster main contrib non-free rpi
-EOF'
+	deb [trusted=yes] http://archive.raspbian.org/raspbian/ buster main contrib non-free rpi
+	EOF'
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
 			exit 1
