@@ -797,15 +797,28 @@ function chkINDI()
     if [ $? -ne 0 ]; then err_exit "Error downloading required sources for INDI/stellarsolver"; fi
 
     # =================================================================
-    # Update dependencies and libraries for INDI
-    (
-        steps=("Updating package list" "Installing packages")
-        percentages=(5 90)
-        commands=( "sudo apt-get update -y" "sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev" )
+	# Update dependencies and libraries for INDI, with improved error reporting
+	(
+		steps=("Updating package list" "Installing packages")
+		percentages=(5 90)
+		commands=( "sudo apt-get update -y" "sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev" )
 
-        run_steps "Installing dependencies for INDI" commands percentages
-    ) 
-    if [ $? -ne 0 ]; then err_exit "Error installing dependencies required for INDI build"; fi
+		# Run and capture output for debugging
+		LOGFILE="${HOME}/indi-deps-install.log"
+		{
+			echo "# apt-get update output:"
+			sudo apt-get update -y 2>&1
+			echo "# apt-get install output:"
+			sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev 2>&1
+		} | tee "$LOGFILE" | zenity --progress --title="Installing dependencies for INDI" --text="Installing dependencies..." --percentage=0 --auto-close --width="${Wprogress}"
+		status=${PIPESTATUS[0]}
+		if [ $status -ne 0 ]; then
+			# Show the log in a zenity text dialog for user review
+			zenity --error --width="${W}" --title="${W_Title}" --text="<b>Errore durante l'installazione delle dipendenze per INDI</b>\n\nVedi dettagli nel log:\n$LOGFILE"
+			zenity --text-info --width=900 --height=600 --title="Dettagli installazione dipendenze INDI" --filename="$LOGFILE"
+			err_exit "Error installing dependencies required for INDI build (see log above)"
+		fi
+	)
 
     # =================================================================
     # Build INDI Core
