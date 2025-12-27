@@ -250,6 +250,7 @@ function system_pre_update()
 
 		# 2. Ricostruzione sources.list con repository archiviati (trusted=yes per evitare errore Release)
 		echo "==> Ricostruzione sources.list…"
+		sudo sh -c ">/etc/apt/sources.list" # Svuota completamente il file
 		echo 'deb [trusted=yes] http://archive.raspbian.org/raspbian/ buster main contrib non-free rpi' | sudo tee /etc/apt/sources.list > /dev/null
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
