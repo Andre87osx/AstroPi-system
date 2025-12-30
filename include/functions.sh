@@ -353,6 +353,25 @@ function system_update()
 			zenity --error --width=${W} --text="<b>WARNING! Error installing VNC Server</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
 		fi
 	fi
+
+	# Install wmctrl if missing
+	if ! command -v wmctrl >/dev/null 2>&1; then
+		(
+			echo "# Installing wmctrl..."
+			echo "25"
+			if sudo apt-get install -y wmctrl 2>&1 | while read -r line; do echo "# $line"; done; then
+				echo "100"
+				echo "# wmctrl installed successfully"
+			else
+				echo "100"
+				echo "# Error: wmctrl installation failed"
+				exit 1
+			fi
+		) | zenity --progress --title="${W_Title}" --text="<b>Installing wmctrl...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="<b>WARNING! Error installing wmctrl</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		fi
+	fi
 }
 
 # Check if GSC exist for simulator solving
