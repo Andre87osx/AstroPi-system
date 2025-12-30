@@ -6994,6 +6994,18 @@ void Scheduler::setCaptureStatus(Ekos::CaptureState status)
                         startGuiding(true);
                         return;
                     }
+
+                    // NEW: capture aborts while guiding claims to be OK → force guide restart after N consecutive failures
+                    if (captureFailureCount >= MAX_FAILURE_ATTEMPTS && gStatus == Ekos::GUIDE_GUIDING)
+                    {
+                        appendLogText(i18n("Job '%1' failed %2 captures while guiding reported OK; forcing guide restart.",
+                                           currentJob->getName(), captureFailureCount));
+                        captureFailureCount = 0; // restart the capture failure counter after forcing a guide reset
+                        guideFailureCount = 0;   // reset guide retry counter
+                        currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+                        startGuiding(true);
+                        return;
+                    }
                 }
 
                 /* FIXME: it's not clear whether it is actually possible to continue capturing when capture fails this way */

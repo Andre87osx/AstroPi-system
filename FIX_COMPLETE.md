@@ -112,6 +112,30 @@ if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE) {
 // Now safe to continue monitoring capture
 ```
 
+### Fix 4: Break capture-abort loop when guide looks “OK” (Lines 6889-6966)
+**When captures vengono abortite ripetutamente ma la guida resta in stato GUIDING:**
+1. ✅ Dopo `MAX_FAILURE_ATTEMPTS` di abort consecutivi, si forza il riavvio della guida
+2. ✅ Si azzerano i contatori di failure e lo stage passa a GUIDING
+3. ✅ Evita loop infiniti di retry con guida degradata ma non marcata in errore
+
+**Prima:**
+```cpp
+// ❌ WRONG - Continuava a riaprire la posa, guida restava GUIDING
+startCapture(true); // loop infinito
+```
+
+**Dopo:**
+```cpp
+// ✅ CORRECT - Forza reset guida dopo N abort consecutivi con guida=GUIDING
+if (captureFailureCount >= MAX_FAILURE_ATTEMPTS && gStatus == Ekos::GUIDE_GUIDING) {
+    captureFailureCount = 0;
+    guideFailureCount = 0;
+    currentJob->setStage(SchedulerJob::STAGE_GUIDING);
+    startGuiding(true);
+    return;
+}
+```
+
 ---
 
 ## 📊 Impact Analysis
@@ -177,7 +201,8 @@ kstars-astropi/kstars/ekos/scheduler/scheduler.cpp
 ├─ Line 3450: Added guide health check in STAGE_CAPTURING
 ├─ Line 4765: Enhanced startCapture() with error state detection
 ├─ Line 6810: Complete rewrite of guide failure recovery logic
-└─ Total changes: ~150 lines
+├─ Line 6889: Added forced guide restart after MAX_FAILURE consecutive capture aborts with guide still GUIDING
+└─ Total changes: ~180 lines
 ```
 
 ### No Breaking Changes

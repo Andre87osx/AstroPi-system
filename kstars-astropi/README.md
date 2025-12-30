@@ -8,6 +8,10 @@ For students and teachers, it supports adjustable simulation speeds in order to 
 
 Included with KStars is Ekos astrophotography suite, a complete astrophotography solution that can control all INDI devices including numerous telescopes, CCDs, DSLRs, focusers, filters, and a lot more. Ekos supports highly accurate tracking using online and offline astrometry solver, autofocus and autoguiding capabilities, and capture of single or multiple images using the powerful built in sequence manager.
 
+## AstroPi scheduler note (Dec 2025)
+
+- Ekos Scheduler: dopo `MAX_FAILURE_ATTEMPTS` di catture abortite con guida ancora in stato GUIDING, forziamo il riavvio della guida (reset contatori, stage GUIDING) per evitare loop infiniti di retry quando la guida è degradata ma non segna errore.
+
 ## Copyright
 
 Copyright (c) 2001 - 2020 by The KStars Team:

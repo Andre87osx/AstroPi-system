@@ -153,29 +153,38 @@ STAGE_GUIDING
     │   │   ├─→ GUIDE_GUIDING ✓      │ (Health monitored)
     │   │   └─→ Complete ✓           │
     │   │                           │
-    │   └─→ ❌ GUIDE_ABORTED/ERROR   │
-    │       ↓                        │
-    │       Capture ABORTS           │
-    │       ↓                        │
-    │       RECOVERY #1: Focus       │
-    │           → Align → Guide      │
-    │       ├─→ GUIDE_GUIDING ✓      │
-    │       │   ↓ Resume Capture ✓  │
-    │       └─→ ❌ Still fails       │
-    │           ↓                    │
-    │           RECOVERY #2: Focus   │
-    │               → Align → Guide  │
-    │           ├─→ GUIDE_GUIDING ✓  │
-    │           │   ↓ Resume Capture │
-    │           └─→ ❌ Still fails   │
-    │               ↓                │
-    │               RECOVERY #3: Focus
-    │                   → Align → Guide
-    │               ├─→ GUIDE_GUIDING ✓
-    │               │   ↓ Resume Capture
-    │               └─→ ❌ Still fails (3/3)
-    │                   ↓
-    │                   JOB_ABORTED
+        │   ├─→ ❌ GUIDE_ABORTED/ERROR   │
+        │   │   ↓                        │
+        │   │   Capture ABORTS           │
+        │   │   ↓                        │
+        │   │   RECOVERY #1: Focus       │
+        │   │       → Align → Guide      │
+        │   │   ├─→ GUIDE_GUIDING ✓      │
+        │   │   │   ↓ Resume Capture ✓  │
+        │   │   └─→ ❌ Still fails       │
+        │   │       ↓                    │
+        │   │       RECOVERY #2: Focus   │
+        │   │           → Align → Guide  │
+        │   │       ├─→ GUIDE_GUIDING ✓  │
+        │   │       │   ↓ Resume Capture │
+        │   │       └─→ ❌ Still fails   │
+        │   │           ↓                │
+        │   │           RECOVERY #3: Focus
+        │   │               → Align → Guide
+        │   │           ├─→ GUIDE_GUIDING ✓
+        │   │           │   ↓ Resume Capture
+        │   │           └─→ ❌ Still fails (3/3)
+        │   │               ↓
+        │   │               JOB_ABORTED
+        │   │
+        │   └─→ ❌ CAPTURE_ABORTED while GUIDE_GUIDING
+        │       (deviazione elevata, guida non segnala errore)
+        │       ↓
+        │       Dopo MAX_FAILURE abort consecutivi → forza reset guida
+        │       ↓
+        │       STAGE_GUIDING + startGuiding(true)
+        │       ↓
+        │       Resume capture solo se guida torna GUIDING
     │
     └─→ ❌ GUIDE_ABORTED (before capture)
         ↓
