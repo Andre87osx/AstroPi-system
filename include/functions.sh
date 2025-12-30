@@ -179,36 +179,7 @@ function install_script()
 			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
 			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
 			exit 1
-		fi
-		if [[ -f ./VNC-Server-7.15.0-Linux-ARM.deb ]]; then
-            echo "# Update VNC Server"
-            echo "Update VNC Server"
-            # Try to install the local .deb with apt (handles dependencies). Fallback to dpkg + apt -f.
-            if sudo apt-get update -y >/dev/null 2>&1 && sudo apt install -y ./VNC-Server-7.15.0-Linux-ARM.deb >/dev/null 2>&1; then
-                echo "VNC Server installed/updated successfully"
-            else
-                echo "Primary install failed, trying dpkg + fix-deps..."
-                if sudo dpkg -i ./VNC-Server-7.15.0-Linux-ARM.deb >/dev/null 2>&1; then
-                    sudo apt-get install -f -y >/dev/null 2>&1
-                    if [ $? -ne 0 ]; then
-                        zenity --error --text="<b>WARNING! Error installing VNC Server (fixing dependencies failed)</b>
-                        \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-                        exit 1
-                    else
-                        echo "VNC Server installed with dependency fix"
-                    fi
-                else
-                    zenity --error --text="<b>WARNING! Error installing VNC Server</b>
-                    \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-                    exit 1
-                fi
-            fi
-        else
-            echo "Error in addigng AstroPi system files"
-            zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
-            \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-            exit 1
-        fi	
+		fi	
 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 }
 
@@ -248,26 +219,32 @@ function system_pre_update()
 		sudo find /etc/apt/sources.list.d/ -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
 		sudo find /etc/apt/ -maxdepth 1 -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
 
-		# 2. Ricostruzione sources.list con repository archiviati (trusted=yes per evitare errore Release)
-		echo "==> Ricostruzione sources.list…"
+		# 2. Ricostruzione sources.list con repository archiviati Debian 10 Buster (2025)
+		echo "==> Ricostruzione sources.list per Debian 10 Buster…"
 		sudo sh -c ">/etc/apt/sources.list" # Svuota completamente il file
-		echo 'deb [trusted=yes] http://archive.raspbian.org/raspbian/ buster main contrib non-free rpi' | sudo tee /etc/apt/sources.list > /dev/null
+		sudo bash -c 'cat > /etc/apt/sources.list <<EOF
+# Main repository
+deb http://archive.debian.org/debian/ buster main contrib non-free
+deb-src http://archive.debian.org/debian/ buster main contrib non-free
+
+# Updates
+deb http://archive.debian.org/debian/ buster-updates main contrib non-free
+deb-src http://archive.debian.org/debian/ buster-updates main contrib non-free
+
+# Security updates
+deb http://archive.debian.org/debian-security buster/updates main contrib non-free
+deb-src http://archive.debian.org/debian-security buster/updates main contrib non-free
+
+# Backports (archived, optional)
+deb http://archive.debian.org/debian/ buster-backports main contrib non-free
+deb-src http://archive.debian.org/debian/ buster-backports main contrib non-free
+EOF'
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
 			exit 1
 		fi
 
-		# 3. Creazione raspi.list con repository archiviati
-		echo "==> Creazione raspi.list…"
-		sudo bash -c 'cat > /etc/apt/sources.list.d/raspi.list <<EOF
-deb http://archive.raspberrypi.org/debian/ buster main
-EOF'
-		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list.d/raspi.list" --title=${W_Title}
-			exit 1
-		fi
-
-		# 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
+		# 3. Pulizia APT (l'aggiornamento viene eseguito da system_update)
 		echo "==> Pulizia cache APT…"
 		sudo apt clean
 		if [ $? -ne 0 ]; then
@@ -300,7 +277,7 @@ function system_update()
     			sudo apt-get install -y expect
 		fi
  	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
-  
+
  	# APT Default commands for up to date the system
 	apt_commands=(
 	'apt-get update'
@@ -333,6 +310,38 @@ function system_update()
 			break
 		fi
 	done	
+	
+	# Install VNC Server if available
+	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
+		(
+			echo "# Installing VNC Server..."
+			echo "30"
+			echo "# Attempting to install VNC Server via apt..."
+			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+				echo "70"
+				echo "# VNC Server installed successfully"
+			else
+				echo "70"
+				echo "# Fallback: trying dpkg + fix-deps..."
+				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+					echo "85"
+					echo "# Fixing dependencies..."
+					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
+					echo "100"
+					echo "# VNC Server installed with dependency fix"
+				else
+					echo "100"
+					echo "# Error: VNC Server installation failed"
+					exit 1
+				fi
+			fi
+			echo "100"
+			echo "# VNC Server installation complete"
+		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="<b>WARNING! Error installing VNC Server</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		fi
+	fi
 }
 
 # Check if GSC exist for simulator solving
