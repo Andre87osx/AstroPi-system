@@ -224,27 +224,38 @@ function system_pre_update()
 		sudo sh -c ">/etc/apt/sources.list" # Svuota completamente il file
 		sudo bash -c 'cat > /etc/apt/sources.list <<EOF
 # Main repository
-deb http://archive.debian.org/debian/ buster main contrib non-free
-deb-src http://archive.debian.org/debian/ buster main contrib non-free
+deb [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
 
 # Updates
-deb http://archive.debian.org/debian/ buster-updates main contrib non-free
-deb-src http://archive.debian.org/debian/ buster-updates main contrib non-free
+deb [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
 
 # Security updates
-deb http://archive.debian.org/debian-security buster/updates main contrib non-free
-deb-src http://archive.debian.org/debian-security buster/updates main contrib non-free
+deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
 
 # Backports (archived, optional)
-deb http://archive.debian.org/debian/ buster-backports main contrib non-free
-deb-src http://archive.debian.org/debian/ buster-backports main contrib non-free
+deb [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
 EOF'
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
 			exit 1
 		fi
 
-		# 3. Pulizia APT (l'aggiornamento viene eseguito da system_update)
+		# 3. Disabilita check validità e consente repo archiviati non firmati
+		sudo bash -c 'cat > /etc/apt/apt.conf.d/99archive-debian-buster <<EOF
+Acquire::Check-Valid-Until "false";
+Acquire::AllowInsecureRepositories "true";
+Acquire::AllowDowngradeToInsecureRepositories "true";
+EOF'
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/apt.conf.d/99archive-debian-buster" --title=${W_Title}
+			exit 1
+		fi
+
+		# 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
 		echo "==> Pulizia cache APT…"
 		sudo apt clean
 		if [ $? -ne 0 ]; then
