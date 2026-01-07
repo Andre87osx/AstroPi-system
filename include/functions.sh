@@ -179,36 +179,7 @@ function install_script()
 			zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
 			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
 			exit 1
-		fi
-		if [[ -f ./VNC-Server-7.15.0-Linux-ARM.deb ]]; then
-            echo "# Update VNC Server"
-            echo "Update VNC Server"
-            # Try to install the local .deb with apt (handles dependencies). Fallback to dpkg + apt -f.
-            if sudo apt-get update -y >/dev/null 2>&1 && sudo apt install -y ./VNC-Server-7.15.0-Linux-ARM.deb >/dev/null 2>&1; then
-                echo "VNC Server installed/updated successfully"
-            else
-                echo "Primary install failed, trying dpkg + fix-deps..."
-                if sudo dpkg -i ./VNC-Server-7.15.0-Linux-ARM.deb >/dev/null 2>&1; then
-                    sudo apt-get install -f -y >/dev/null 2>&1
-                    if [ $? -ne 0 ]; then
-                        zenity --error --text="<b>WARNING! Error installing VNC Server (fixing dependencies failed)</b>
-                        \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-                        exit 1
-                    else
-                        echo "VNC Server installed with dependency fix"
-                    fi
-                else
-                    zenity --error --text="<b>WARNING! Error installing VNC Server</b>
-                    \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-                    exit 1
-                fi
-            fi
-        else
-            echo "Error in addigng AstroPi system files"
-            zenity --error --text="<b>WARNING! Error in addigng AstroPi system files</b>
-            \n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
-            exit 1
-        fi	
+		fi	
 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 }
 
@@ -227,32 +198,82 @@ function make_executable()
 # Prepair fot update system
 function system_pre_update()
 {
-	(	
-		# Check APT Source and stops unwanted updates
+	(
+		# Rimuovi il repository astroberry se esiste
 		sources=/etc/apt/sources.list.d/astroberry.list
 		if [ -f ${sources} ]; then
-			echo -e "# Stop unwonted update # deb https://www.astroberry.io/repo/ buster main" | sudo tee ${sources}
-			(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>sources.list.d</b>
-			\n.Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+			sudo rm -f ${sources}
+			if [ $? -ne 0 ]; then
+				zenity --error --width=${W} --text="Errore durante la rimozione di <b>astroberry.list</b>\nContatta il supporto su <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+				exit 1
+			fi
 		fi
-		
+
+		# 1. Pulizia repository APT
+		echo "==> Pulizia repository APT…"
+		sudo find /etc/apt/sources.list.d/ -type f -name "*.list" -exec rm -v {} \;
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la pulizia di /etc/apt/sources.list.d/*.list" --title=${W_Title}
+			exit 1
+		fi
+		sudo find /etc/apt/sources.list.d/ -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
+		sudo find /etc/apt/ -maxdepth 1 -type f \( -name "*.bak*" -o -name "*.save" -o -name "*.old" \) -exec rm -v {} \;
+
+		# 2. Ricostruzione sources.list con repository archiviati Debian 10 Buster (2025)
+		echo "==> Ricostruzione sources.list per Debian 10 Buster…"
+		sudo sh -c ">/etc/apt/sources.list" # Svuota completamente il file
+		sudo bash -c 'cat > /etc/apt/sources.list <<EOF
+# Main repository
+deb [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
+
+# Updates
+deb [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
+
+# Security updates
+deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
+
+# Backports (archived, optional)
+deb [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
+deb-src [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
+EOF'
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
+			exit 1
+		fi
+
+		# 3. Disabilita check validità e consente repo archiviati non firmati
+		sudo bash -c 'cat > /etc/apt/apt.conf.d/99archive-debian-buster <<EOF
+Acquire::Check-Valid-Until "false";
+Acquire::AllowInsecureRepositories "true";
+Acquire::AllowDowngradeToInsecureRepositories "true";
+EOF'
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/apt.conf.d/99archive-debian-buster" --title=${W_Title}
+			exit 1
+		fi
+
+		# 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
+		echo "==> Pulizia cache APT…"
+		sudo apt clean
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="Errore durante la pulizia della cache di APT" --title=${W_Title}
+			exit 1
+		fi
+
+		echo "==> Completato."
+
 		# Implement USB memory dump
 		echo "# Preparing update"
 		sudo sh -c 'echo 1024 > /sys/module/usbcore/parameters/usbfs_memory_mb'
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
-		
-		# Hold some update
-		echo "# Hold some update"
-		sudo apt-mark hold kstars-bleeding kstars-bleeding-data indi-full libindi-dev libindi1 indi-bin
-		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>hold some application</b>
-		\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-	
+		(($? != 0)) && zenity --error --width=${W} --text="Something went wrong in <b>usbfs_memory_mb.</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title} && exit 1
+
 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then
-		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>
-		Contact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
+		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 		exit 1
 		break
 	fi
@@ -267,7 +288,7 @@ function system_update()
     			sudo apt-get install -y expect
 		fi
  	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
-  
+
  	# APT Default commands for up to date the system
 	apt_commands=(
 	'apt-get update'
@@ -300,6 +321,57 @@ function system_update()
 			break
 		fi
 	done	
+	
+	# Install VNC Server if available
+	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
+		(
+			echo "# Installing VNC Server..."
+			echo "30"
+			echo "# Attempting to install VNC Server via apt..."
+			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+				echo "70"
+				echo "# VNC Server installed successfully"
+			else
+				echo "70"
+				echo "# Fallback: trying dpkg + fix-deps..."
+				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+					echo "85"
+					echo "# Fixing dependencies..."
+					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
+					echo "100"
+					echo "# VNC Server installed with dependency fix"
+				else
+					echo "100"
+					echo "# Error: VNC Server installation failed"
+					exit 1
+				fi
+			fi
+			echo "100"
+			echo "# VNC Server installation complete"
+		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="<b>WARNING! Error installing VNC Server</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		fi
+	fi
+
+	# Install wmctrl if missing
+	if ! command -v wmctrl >/dev/null 2>&1; then
+		(
+			echo "# Installing wmctrl..."
+			echo "25"
+			if sudo apt-get install -y wmctrl 2>&1 | while read -r line; do echo "# $line"; done; then
+				echo "100"
+				echo "# wmctrl installed successfully"
+			else
+				echo "100"
+				echo "# Error: wmctrl installation failed"
+				exit 1
+			fi
+		) | zenity --progress --title="${W_Title}" --text="<b>Installing wmctrl...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="<b>WARNING! Error installing wmctrl</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		fi
+	fi
 }
 
 # Check if GSC exist for simulator solving
@@ -450,46 +522,181 @@ function sysClean()
  	zenity --info --width="${W}" --text="Cleaning was done correctly" --title="${W_Title}"
 }
 
-# Add WiFi SSID
-function setupWiFi()
+function ksBackup()
 {
-	# Setup WiFi in wpa_supplicant
-	# =========================================================================
+	# Percorsi principali
+	CONFIG_FILE="$HOME/.config/kstarsrc"
+	DATA_DIR="$HOME/.local/share/kstars"
+	INDI_DIR="$HOME/.indi"
+	BACKUP_DIR="$HOME/BCK_KStars"
+	RESTORE_SCRIPT="$BACKUP_DIR/ripristina_kstars.sh"
 
-	WIFI=$(zenity --forms --width=400 --height=300 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
-		--add-entry="Enter the SSID of the wifi network to be added." \
-		--add-password="Enter the password of selected wifi network")
-	SSID=$(echo "$WIFI" | cut -d'|' -f1)
-	PSK=$(echo "$WIFI" | cut -d'|' -f2)
-	PRIORITY=10
-	
-	case "$?" in
-	0)
-		if [ -n "$(grep 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf')" ]; then
-			sudo chmod 777 /etc/wpa_supplicant/wpa_supplicant.conf
-			echo -e "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev\nupdate_config=1\ncountry=IT\n\nnetwork={\n   ssid=\"$SSID\"\n   psk=\"$PSK\"\n   scan_ssid=1\n   priority=\"$PRIORITY\"\n}\n" | tee /etc/wpa_supplicant/wpa_supplicant.conf
-			case $? in
-			0)
-				zenity --info --width="${W}" --text "New WiFi has been added, reboot AstroPi." --title="${W_Title}"
-				sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
-			;;
-			1)
-				zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
-				sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
-			;;
-			esac
-		fi
-	;;
-	1)
-		zenity --info --width="${W}" --text "No changes have been made to your current configuration" --title="${W_Title}"
-		exit 0
-	;;
-	-1)
-		zenity --error --width="${W}" --text="Error in wpa_supplicant write. Contact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-		exit 0
-	;;
-	esac
+	mkdir -p "$BACKUP_DIR"
+
+	zenity --info --title="Backup KStars" --width="${W}" \
+	--text="Inizio backup dei file:\n\n• kstarsrc\n• kstarsData\n• INDIConfig\n• File .esl e .esq trovati nella home"
+
+	# Conta file totali
+	TOTAL_FILES=0
+	[ -f "$CONFIG_FILE" ] && TOTAL_FILES=$((TOTAL_FILES + 1))
+	[ -d "$DATA_DIR" ] && TOTAL_FILES=$((TOTAL_FILES + $(find "$DATA_DIR" -type f | wc -l)))
+	[ -d "$INDI_DIR" ] && TOTAL_FILES=$((TOTAL_FILES + $(find "$INDI_DIR" -type f | wc -l)))
+	ESL_FILES=($(find "$HOME" -type f -iname "*.esl"))
+	ESQ_FILES=($(find "$HOME" -type f -iname "*.esq"))
+	TOTAL_FILES=$((TOTAL_FILES + ${#ESL_FILES[@]} + ${#ESQ_FILES[@]}))
+
+	# Barra Zenity
+	(
+	COUNT=0
+
+	[ -f "$CONFIG_FILE" ] && cp "$CONFIG_FILE" "$BACKUP_DIR/kstarsrc" && COUNT=$((COUNT + 1)) && echo $((COUNT * 100 / TOTAL_FILES))
+
+	if [ -d "$DATA_DIR" ]; then
+		find "$DATA_DIR" -type f | while read FILE; do
+			DEST="$BACKUP_DIR/kstarsData/${FILE#$DATA_DIR/}"
+			mkdir -p "$(dirname "$DEST")"
+			cp "$FILE" "$DEST"
+			COUNT=$((COUNT + 1))
+			echo $((COUNT * 100 / TOTAL_FILES))
+		done
+	fi
+
+	if [ -d "$INDI_DIR" ]; then
+		find "$INDI_DIR" -type f | while read FILE; do
+			DEST="$BACKUP_DIR/INDIConfig/${FILE#$INDI_DIR/}"
+			mkdir -p "$(dirname "$DEST")"
+			cp "$FILE" "$DEST"
+			COUNT=$((COUNT + 1))
+			echo $((COUNT * 100 / TOTAL_FILES))
+		done
+	fi
+
+	for FILE in "${ESL_FILES[@]}"; do
+		REL="${FILE#$HOME/}"
+		DEST="$BACKUP_DIR/esl/$REL"
+		mkdir -p "$(dirname "$DEST")"
+		cp "$FILE" "$DEST"
+		COUNT=$((COUNT + 1))
+		echo $((COUNT * 100 / TOTAL_FILES))
+	done
+
+	for FILE in "${ESQ_FILES[@]}"; do
+		REL="${FILE#$HOME/}"
+		DEST="$BACKUP_DIR/esq/$REL"
+		mkdir -p "$(dirname "$DEST")"
+		cp "$FILE" "$DEST"
+		COUNT=$((COUNT + 1))
+		echo $((COUNT * 100 / TOTAL_FILES))
+	done
+
+	) | zenity --progress --title="Backup in corso..." --width="${W}" --percentage=0 --auto-close
+
+	# Script di ripristino
+	cat <<EOF > "$RESTORE_SCRIPT"
+	#!/bin/bash
+
+	W=500
+	zenity --info --title="Ripristino KStars" --width="\${W}" \
+	--text="Inizio ripristino dei file:\n\n• kstarsrc\n• kstarsData\n• INDIConfig\n• File .esl e .esq"
+
+	TOTAL=\$(find "$BACKUP_DIR" -type f | wc -l)
+	COUNT=0
+
+	(
+	cp -f "$BACKUP_DIR/kstarsrc" "\$HOME/.config/kstarsrc"
+	COUNT=\$((COUNT + 1))
+	echo \$((COUNT * 100 / TOTAL))
+
+	find "$BACKUP_DIR/kstarsData" -type f | while read FILE; do
+		DEST="\$HOME/.local/share/kstars/\${FILE#$BACKUP_DIR/kstarsData/}"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
+	done
+
+	find "$BACKUP_DIR/INDIConfig" -type f | while read FILE; do
+		DEST="\$HOME/.indi/\${FILE#$BACKUP_DIR/INDIConfig/}"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
+	done
+
+	find "$BACKUP_DIR/esl" -type f -iname "*.esl" | while read FILE; do
+		REL="\${FILE#$BACKUP_DIR/esl/}"
+		DEST="\$HOME/\$REL"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
+	done
+
+	find "$BACKUP_DIR/esq" -type f -iname "*.esq" | while read FILE; do
+		REL="\${FILE#$BACKUP_DIR/esq/}"
+		DEST="\$HOME/\$REL"
+		mkdir -p "\$(dirname "\$DEST")"
+		cp "\$FILE" "\$DEST"
+		COUNT=\$((COUNT + 1))
+		echo \$((COUNT * 100 / TOTAL))
+	done
+
+	) | zenity --progress --title="Ripristino in corso..." --width="\${W}" --percentage=0 --auto-close
+
+	zenity --info --title="Ripristino completato" --width="\${W}" \
+	--text="Tutti i file sono stati ripristinati correttamente."
+EOF
+
+	chmod +x "$RESTORE_SCRIPT"
+
+	zenity --info --title="Backup completato" --width="${W}" \
+	--text="Backup completato in:\n\n$BACKUP_DIR\n\nPer ripristinare, esegui:\n\n$RESTORE_SCRIPT"
+}	
+
+# Add WiFi SSID
+
+function setupWiFi() {
+    WIFI=$(zenity --forms --width=400 --height=300 --title="Setup WiFi in wpa_supplicant" --text="Add new WiFi network" \
+        --add-entry="Enter the SSID of the wifi network to be added." \
+        --add-password="Enter the password of selected wifi network")
+
+    SSID=$(echo "$WIFI" | cut -d'|' -f1)
+    PSK=$(echo "$WIFI" | cut -d'|' -f2)
+
+    case "$?" in
+    0)
+        if grep -q 'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev' '/etc/wpa_supplicant/wpa_supplicant.conf'; then
+            sudo chmod 600 /etc/wpa_supplicant/wpa_supplicant.conf
+
+            # Aggiunge la rete senza cancellare le altre
+            sudo bash -c "cat >> /etc/wpa_supplicant/wpa_supplicant.conf <<EOF
+
+network={
+    ssid=\"$SSID\"
+    psk=\"$PSK\"
+    key_mgmt=WPA-PSK
+    scan_ssid=1
 }
+EOF"
+
+            if [ $? -eq 0 ]; then
+                zenity --info --width=300 --text "Nuova rete WiFi aggiunta. Riavvia il Raspberry Pi." --title="Setup WiFi"
+            else
+                zenity --error --width=300 --text="Errore nella scrittura del file wpa_supplicant." --title="Setup WiFi"
+            fi
+
+            sudo chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
+        fi
+    ;;
+    1)
+        zenity --info --width=300 --text "Nessuna modifica effettuata." --title="Setup WiFi"
+    ;;
+    -1)
+        zenity --error --width=300 --text="Errore imprevisto." --title="Setup WiFi"
+    ;;
+    esac
+}
+
 
 # Enable / Disable HotSpot services
 function chkHotspot()
@@ -628,15 +835,28 @@ function chkINDI()
     if [ $? -ne 0 ]; then err_exit "Error downloading required sources for INDI/stellarsolver"; fi
 
     # =================================================================
-    # Update dependencies and libraries for INDI
-    (
-        steps=("Updating package list" "Installing packages")
-        percentages=(5 90)
-        commands=( "sudo apt-get update -y" "sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev" )
+	# Update dependencies and libraries for INDI, with improved error reporting
+	(
+		steps=("Updating package list" "Installing packages")
+		percentages=(5 90)
+		commands=( "sudo apt-get update -y" "sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev" )
 
-        run_steps "Installing dependencies for INDI" commands percentages
-    ) 
-    if [ $? -ne 0 ]; then err_exit "Error installing dependencies required for INDI build"; fi
+		# Run and capture output for debugging
+		LOGFILE="${HOME}/indi-deps-install.log"
+		{
+			echo "# apt-get update output:"
+			sudo apt-get update -y 2>&1
+			echo "# apt-get install output:"
+			sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev 2>&1
+		} | tee "$LOGFILE" | zenity --progress --title="Installing dependencies for INDI" --text="Installing dependencies..." --percentage=0 --auto-close --width="${Wprogress}"
+		status=${PIPESTATUS[0]}
+		if [ $status -ne 0 ]; then
+			# Show the log in a zenity text dialog for user review
+			zenity --error --width="${W}" --title="${W_Title}" --text="<b>Errore durante l'installazione delle dipendenze per INDI</b>\n\nVedi dettagli nel log:\n$LOGFILE"
+			zenity --text-info --width=900 --height=600 --title="Dettagli installazione dipendenze INDI" --filename="$LOGFILE"
+			err_exit "Error installing dependencies required for INDI build (see log above)"
+		fi
+	)
 
     # =================================================================
     # Build INDI Core

@@ -59,33 +59,87 @@ fi
 # if = 0 the user has closed KStars
 # if != 0 a crash has occurred
 #=========================================================================
+
+# Function to park the telescope safely
+park_telescope() {
+	local park_script="${Script_Dir}/parking.py"
+	local max_attempts=3
+	local attempt=0
+	
+	echo "EMERGENCY: Attempting to park telescope..."
+	
+	# Verify parking script exists
+	if [[ ! -f "$park_script" ]]; then
+		echo "ERROR: parking.py not found at $park_script"
+		return 1
+	fi
+	
+	# Try to execute parking script (parking.py uses DBUS, doesn't need GUI)
+	while [[ $attempt -lt $max_attempts ]]; do
+		((attempt++))
+		echo "Parking attempt $attempt/$max_attempts..."
+		
+		if python "$park_script" > /tmp/parking_log_$$.txt 2>&1; then
+			echo "SUCCESS: Telescope parked successfully"
+			return 0
+		else
+			# Check if error is due to kstars not running via DBUS
+			if grep -q "org.kde.kstars" /tmp/parking_log_$$.txt 2>/dev/null; then
+				echo "KStars DBUS service not accessible, attempt $attempt"
+				# Only try to restart kstars if we haven't exceeded attempts
+				if [[ $attempt -lt $max_attempts ]]; then
+					echo "Attempting to restart kstars for DBUS access..."
+					# Start kstars WITHOUT GUI in background (headless mode)
+					timeout 30 kstars --silent > /dev/null 2>&1 &
+					KSTARS_PID=$!
+					sleep 3  # Give kstars time to initialize DBUS service
+				fi
+			else
+				# Some other error in parking script
+				echo "ERROR in parking script:"
+				cat /tmp/parking_log_$$.txt
+			fi
+		fi
+		
+		if [[ $attempt -lt $max_attempts ]]; then
+			sleep 2
+		fi
+	done
+	
+	# Clean up temp log
+	rm -f /tmp/parking_log_$$.txt
+	
+	echo "ERROR: Failed to park telescope after $max_attempts attempts"
+	return 1
+}
+
+# Main execution
 if kstars > /dev/null 2>&1; then
 	# Close the script
 	echo "KStars - AstroPi is closed by user correctly"
 	exit 0
 else
-	echo "FAILURE: KStars- AstroPi crashed. The telescope will be parked and the INDI services stopped"
- 	time=$( date '+%F_%H:%M:%S' )			# Set current date and time
-	nohup zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
-	\nThe telescope will be parked and the INDI services stopped on ${time}.
- 	\nThis message will be closed after 60 second. The process go on to park safetly your mount
-	\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --timeout=60 &	
-	# Re-open KStars - AstroPi for use DBUS to control devices
- 	( kstars & )
- 	interval=5
-	while true; do
-    		if pgrep -x "kstars" > /dev/null; then
-        		echo "KStars is running."
-	  		cd ${HOME}/.local/share/astropi/bin		# Go to app directory
-  			python parking.py				# Launch parking script
-     			pkill kstars                     		# Close KStars after parking script
-			nohup zenity --warning --width=350 --title="KStars AstroPi" --text="<b>KStars AstroPi crashed...</b>
-			\nThe telescope will be parked and the INDI services stopped on ${time}.
-			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
-    		else
-        		echo "KStars is not running."
-    		fi
-    		sleep $interval
-	done		
-	exit 0
+	# KStars crashed - emergency procedure
+	echo "FAILURE: KStars crashed. Emergency telescope parking in progress..."
+	time=$( date '+%F_%H:%M:%S' )
+	
+	# Show warning dialog (non-blocking with timeout)
+	nohup zenity --warning --width=350 --title="KStars AstroPi - EMERGENCY" \
+		--text="<b>KStars AstroPi crashed!</b>
+\nEmergency parking sequence started at ${time}.
+\n<b>DO NOT POWER OFF THE SYSTEM!</b>
+\nThe telescope is being safely parked.
+\nThis message will close in 60 seconds.
+\nContact support: <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
+		--timeout=60 > /dev/null 2>&1 &
+	
+	# Attempt to park the telescope
+	if park_telescope; then
+		echo "Parking sequence completed successfully at $(date '+%F_%H:%M:%S')"
+		exit 0
+	else
+		echo "ERROR: Parking sequence failed. Check system status manually."
+		echo "Mount position may be unsafe. Verify hardware status."
+		exit 1
+	fi
 fi
