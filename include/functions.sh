@@ -332,7 +332,20 @@ EOF'
 	if [[ -f "${appDir}"/bin/quick-fix-indi.sh ]]; then
 		zenity --question --width=${W} --text="<b>INDI Dependencies Fix</b>\n\nIl sistema è ora configurato con i repository corretti.\n\nVuoi pre-risolvere le dipendenze di INDI?\n(Consigliato prima di compilare INDI)" --title=${W_Title} --ok-label="Si, esegui fix" --cancel-label="No, dopo"
 		if [ $? -eq 0 ]; then
-			sudo bash "${appDir}"/bin/quick-fix-indi.sh
+			# Run quick-fix-indi.sh with progress bar
+			(
+				echo "# Avvio pre-risoluzione dipendenze INDI..."
+				echo "5"
+				sudo bash "${appDir}"/bin/quick-fix-indi.sh 2>&1 | while IFS= read -r line; do
+					echo "# $line"
+				done
+				echo "100"
+				echo "# Pre-risoluzione completata!"
+			) | zenity --progress --title="Pre-risoluzione Dipendenze INDI" --text="Installazione pacchetti critici..." --percentage=0 --auto-close --width=${Wprogress}
+			
+			if [ $? -eq 0 ]; then
+				zenity --info --width=${W} --text="<b>Pre-risoluzione Completata</b>\n\nLe dipendenze INDI sono state pre-risolte.\n\nPuoi ora procedere con 'Check INDI' per compilare INDI." --title=${W_Title}
+			fi
 		fi
 	fi
 }
