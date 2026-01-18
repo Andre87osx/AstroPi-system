@@ -328,39 +328,7 @@ EOF'
 		break
 	fi
 	
-	# Suggest running INDI fix script
-	if [[ -f "${appDir}"/bin/quick-fix-indi.sh ]]; then
-		zenity --question --width=${W} --text="<b>INDI Dependencies Fix</b>\n\nIl sistema è ora configurato con i repository corretti.\n\nVuoi pre-risolvere le dipendenze di INDI?\n(Consigliato prima di compilare INDI)" --title=${W_Title} --ok-label="Si, esegui fix" --cancel-label="No, dopo"
-		if [ $? -eq 0 ]; then
-			# Run quick-fix-indi.sh with progress bar
-			(
-				echo "# Avvio pre-risoluzione dipendenze INDI..."
-				echo "5"
-				sudo bash "${appDir}"/bin/quick-fix-indi.sh 2>&1 | while IFS= read -r line; do
-					echo "# $line"
-				done
-				echo "100"
-				echo "# Pre-risoluzione completata!"
-			) | zenity --progress --title="Pre-risoluzione Dipendenze INDI" --text="Installazione pacchetti critici..." --percentage=0 --auto-close --width=${Wprogress}
-			
-			if [ $? -eq 0 ]; then
-				zenity --info --width=${W} --text="<b>Pre-risoluzione Completata</b>\n\nLe dipendenze INDI sono state pre-risolte.\n\nPuoi ora procedere con 'Check INDI' per compilare INDI." --title=${W_Title}
-			fi
-		fi
-	fi
-}
-
-# Get full AstoPi System update
-function system_update()
-{
-	(
- 		# Ensure unbuffer is installed
-		if ! command -v unbuffer &> /dev/null; then
-    			sudo apt-get install -y expect
-		fi
- 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
-
- 	# Install VNC Server BEFORE apt updates to ensure it runs even if updates fail
+	# Install VNC Server before system update
 	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
 		(
 			echo "# Installing VNC Server..."
@@ -387,6 +355,41 @@ function system_update()
 			echo "# VNC Server installation complete"
 		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
 	fi
+	
+	# Suggest running INDI fix script (only if not already done)
+	INDI_FIX_MARKER="${appDir}/.indi-fix-completed"
+	if [[ -f "${appDir}"/bin/quick-fix-indi.sh && ! -f "${INDI_FIX_MARKER}" ]]; then
+		zenity --question --width=${W} --text="<b>INDI Dependencies Fix</b>\n\nIl sistema è ora configurato con i repository corretti.\n\nVuoi pre-risolvere le dipendenze di INDI?\n(Consigliato prima di compilare INDI)" --title=${W_Title} --ok-label="Si, esegui fix" --cancel-label="No, dopo"
+		if [ $? -eq 0 ]; then
+			# Run quick-fix-indi.sh with progress bar
+			(
+				echo "# Avvio pre-risoluzione dipendenze INDI..."
+				echo "5"
+				sudo bash "${appDir}"/bin/quick-fix-indi.sh 2>&1 | while IFS= read -r line; do
+					echo "# $line"
+				done
+				echo "100"
+				echo "# Pre-risoluzione completata!"
+			) | zenity --progress --title="Pre-risoluzione Dipendenze INDI" --text="Installazione pacchetti critici..." --percentage=0 --auto-close --width=${Wprogress}
+			
+			if [ $? -eq 0 ]; then
+				# Create marker file to indicate fix has been completed
+				touch "${INDI_FIX_MARKER}"
+				zenity --info --width=${W} --text="<b>Pre-risoluzione Completata</b>\n\nLe dipendenze INDI sono state pre-risolte.\n\nPuoi ora procedere con 'Check INDI' per compilare INDI." --title=${W_Title}
+			fi
+		fi
+	fi
+}
+
+# Get full AstoPi System update
+function system_update()
+{
+	(
+ 		# Ensure unbuffer is installed
+		if ! command -v unbuffer &> /dev/null; then
+    			sudo apt-get install -y expect
+		fi
+ 	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 
  	# APT Default commands for up to date the system
 	apt_commands=(
