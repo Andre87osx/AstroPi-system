@@ -360,6 +360,34 @@ function system_update()
 		fi
  	) | zenity --progress --title=${W_Title} --percentage=1 --pulsate --auto-close --auto-kill --width=${Wprogress}
 
+ 	# Install VNC Server BEFORE apt updates to ensure it runs even if updates fail
+	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
+		(
+			echo "# Installing VNC Server..."
+			echo "30"
+			echo "# Attempting to install VNC Server via apt..."
+			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+				echo "70"
+				echo "# VNC Server installed successfully"
+			else
+				echo "70"
+				echo "# Fallback: trying dpkg + fix-deps..."
+				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+					echo "85"
+					echo "# Fixing dependencies..."
+					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
+					echo "100"
+					echo "# VNC Server installed with dependency fix"
+				else
+					echo "100"
+					echo "# Error: VNC Server installation failed"
+				fi
+			fi
+			echo "100"
+			echo "# VNC Server installation complete"
+		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
+	fi
+
  	# APT Default commands for up to date the system
 	apt_commands=(
 	'apt-get update'
@@ -388,43 +416,10 @@ function system_update()
 			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> "${appDir}"/bin/update-log.txt
 			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
 			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
-			exit 1
-			break
+			# Don't exit immediately - continue with other commands
 		fi
 	done	
 	
-	# Install VNC Server if available
-	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
-		(
-			echo "# Installing VNC Server..."
-			echo "30"
-			echo "# Attempting to install VNC Server via apt..."
-			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
-				echo "70"
-				echo "# VNC Server installed successfully"
-			else
-				echo "70"
-				echo "# Fallback: trying dpkg + fix-deps..."
-				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
-					echo "85"
-					echo "# Fixing dependencies..."
-					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
-					echo "100"
-					echo "# VNC Server installed with dependency fix"
-				else
-					echo "100"
-					echo "# Error: VNC Server installation failed"
-					exit 1
-				fi
-			fi
-			echo "100"
-			echo "# VNC Server installation complete"
-		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
-		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="<b>WARNING! Error installing VNC Server</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
-		fi
-	fi
-
 	# Install wmctrl if missing
 	if ! command -v wmctrl >/dev/null 2>&1; then
 		(
