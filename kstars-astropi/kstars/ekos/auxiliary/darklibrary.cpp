@@ -794,7 +794,7 @@ void DarkLibrary::closeEvent(QCloseEvent *ev)
 {
     Q_UNUSED(ev);
     Options::setUseFITSViewer(m_RememberFITSViewer);
-    Options::setUseFITSViewer(m_RememberSummaryView);
+    Options::setUseSummaryPreview(m_RememberSummaryView);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -806,7 +806,7 @@ void DarkLibrary::setCompleted()
     stopB->setEnabled(false);
 
     Options::setUseFITSViewer(m_RememberFITSViewer);
-    Options::setUseFITSViewer(m_RememberSummaryView);
+    Options::setUseSummaryPreview(m_RememberSummaryView);
 
     m_CurrentCamera->disconnect(this);
     m_CaptureModule->disconnect(this);
