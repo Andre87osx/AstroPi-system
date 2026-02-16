@@ -1,0 +1,258 @@
+#!/bin/bash
+# INTEGRATION SUMMARY - INDI Fix Scripts Integration into AstroPi System
+
+╔════════════════════════════════════════════════════════════════╗
+║                                                              ║
+║  ✅ INTEGRAZIONE COMPLETATA - Script INDI in AstroPi System   ║
+║                                                              ║
+╚════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 MODIFICHE APPORTATE A include/functions.sh
+═══════════════════════════════════════════════════════════════════════════════
+
+### 1️⃣  FUNZIONE: install_script() 
+   📍 Linee: ~145-180
+   ✅ COSA AGGIUNTO:
+      • Installazione di fix-indi-dependencies.sh
+      • Installazione di check-indi-deps.sh
+      • Installazione di quick-fix-indi.sh
+      • Installazione di verify-indi-fix.sh
+      • Reso tutto eseguibile (chmod +x)
+   
+   📌 NOTA: Gli script rimangono in ${appDir}/bin/ (non in /usr/bin/)
+            sono utility, non comandi di sistema
+
+### 2️⃣  FUNZIONE: system_pre_update()
+   📍 Linee: ~285-305
+   ✅ COSA AGGIUNTO:
+      • Creazione file /etc/apt/apt.conf.d/99indi-buster-archive
+      • Configurazione APT ottimizzata per INDI:
+        - Disabilita verifiche di data
+        - Abilita repository non firmati
+        - Abilita retry su errori di rete
+        - Forza IPv4 (evita problemi con IPv6)
+      
+   ✅ COSA MIGLIORATO:
+      • Aggiunta chiavi GPG Raspberry Pi
+   
+   ✅ FLUSSO FINALE system_pre_update():
+      • Configura repository Debian + Raspberry Pi
+      • Configura APT con 99archive-debian-buster
+      • Aggiunge config INDI ottimizzata (99indi-buster-archive)
+      • Aggiunge chiavi GPG Raspberry Pi
+      • Pulizia APT cache
+      • Configura USB memory dump
+      ↓
+      • 🆕 DOMANDA UTENTE: "Vuoi eseguire quick-fix-indi.sh?"
+      • 🆕 SE SI: Esegue automaticamente quick-fix-indi.sh
+      • 🆕 SE NO: Continua manualmente dopo
+
+═══════════════════════════════════════════════════════════════════════════════
+🔄 NUOVO FLUSSO DI ESECUZIONE
+═══════════════════════════════════════════════════════════════════════════════
+
+PRIMA:
+└── ./bin/AstroPi.sh → System Pre Update
+    └── Configura repository (fine)
+
+DOPO:
+└── ./bin/AstroPi.sh → System Pre Update
+    ├── Configura repository
+    ├── Configura APT per INDI
+    ├── Aggiunge chiavi GPG
+    └── 🆕 DOMANDA: "Eseguire quick-fix-indi.sh?"
+        ├── SI: Esegue automaticamente
+        │   └── Pre-risolve tutte le dipendenze
+        └── NO: Permette di farlo manualmente dopo
+
+DOPO (Opzione Manuale):
+└── ./bin/AstroPi.sh → System Pre Update (completato)
+    └── Dopo:
+        └── sudo bash ~/.local/share/astropi/bin/quick-fix-indi.sh
+        └── ./bin/AstroPi.sh → Check INDI
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 FILE INSTALLATI AUTOMATICAMENTE
+═══════════════════════════════════════════════════════════════════════════════
+
+Quando esegui l'installazione di AstroPi System, i seguenti file vengono
+installati automaticamente in ${appDir}/bin/:
+
+│ File                          │ Destinazione                    │ Tipo      │
+├───────────────────────────────┼─────────────────────────────────┼───────────┤
+│ fix-indi-dependencies.sh       │ ~/.local/share/astropi/bin/     │ Script    │
+│ check-indi-deps.sh            │ ~/.local/share/astropi/bin/     │ Script    │
+│ quick-fix-indi.sh             │ ~/.local/share/astropi/bin/     │ Script    │
+│ verify-indi-fix.sh            │ ~/.local/share/astropi/bin/     │ Script    │
+
+CONFIGURAZIONI INSTALLATE IN system_pre_update():
+│ File                          │ Destinazione                    │ Tipo      │
+├───────────────────────────────┼─────────────────────────────────┼───────────┤
+│ 99archive-debian-buster       │ /etc/apt/apt.conf.d/            │ Config    │
+│ 99indi-buster-archive         │ /etc/apt/apt.conf.d/            │ Config    │
+
+═══════════════════════════════════════════════════════════════════════════════
+✨ VANTAGGI DELL'INTEGRAZIONE
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ AUTOMATICO
+   • Script installati automaticamente durante install_script()
+   • Config APT installate automaticamente durante system_pre_update()
+   • Opzione di eseguire quick-fix direttamente da system_pre_update()
+
+✅ SEAMLESS
+   • Non interrompe il flusso di AstroPi System
+   • Non richiede intervento manuale aggiuntivo
+   • Tutto integrato nel workflow standard
+
+✅ FLESSIBILE
+   • Utente può scegliere di eseguire quick-fix subito o dopo
+   • Script disponibili per uso manuale in qualsiasi momento
+   • Compatibile con workflow esistenti
+
+✅ DISCOVERABLE
+   • Script trovati automaticamente nel percorso standard
+   • Nessun problema di "percorso non trovato"
+   • Facile accesso da anywhere: ${appDir}/bin/
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 COME USARE ADESSO
+═══════════════════════════════════════════════════════════════════════════════
+
+METODO 1: COMPLETAMENTE AUTOMATICO (Consigliato)
+─────────────────────────────────────────────────
+$ ./bin/AstroPi.sh
+[Seleziona] "System Pre Update"
+[Sistema configura repository, APT, etc.]
+[Domanda] "Vuoi eseguire quick-fix-indi.sh?"
+[Rispondi] "Si, esegui fix"
+[Sistema installa tutte le dipendenze]
+[Fatto!]
+
+Poi:
+$ ./bin/AstroPi.sh
+[Seleziona] "Check INDI"
+[Compilazione con dipendenze corrette ✅]
+
+
+METODO 2: SEMI-AUTOMATICO (User-driven)
+────────────────────────────────────────
+$ ./bin/AstroPi.sh
+[Seleziona] "System Pre Update"
+[Sistema configura repository, APT, etc.]
+[Domanda] "Vuoi eseguire quick-fix-indi.sh?"
+[Rispondi] "No, dopo"
+[Prosegui con altro]
+
+Poi (quando vuoi):
+$ sudo bash ~/.local/share/astropi/bin/quick-fix-indi.sh
+[Pre-risolvi dipendenze]
+
+Poi:
+$ ./bin/AstroPi.sh
+[Seleziona] "Check INDI"
+[Compilazione ✅]
+
+
+METODO 3: MANUALE (Controllo totale)
+─────────────────────────────────────
+$ ./bin/AstroPi.sh
+[Seleziona] "System Pre Update"
+
+Poi:
+$ bash ~/.local/share/astropi/bin/check-indi-deps.sh
+[Verifica stato dipendenze]
+
+Se necessario:
+$ sudo bash ~/.local/share/astropi/bin/fix-indi-dependencies.sh
+[Pre-risolvi le dipendenze]
+
+O rapido:
+$ sudo bash ~/.local/share/astropi/bin/quick-fix-indi.sh
+
+Poi:
+$ ./bin/AstroPi.sh
+[Seleziona] "Check INDI"
+
+═══════════════════════════════════════════════════════════════════════════════
+📝 LOCATION DEI FILE
+═══════════════════════════════════════════════════════════════════════════════
+
+I file INDI helper sono disponibili in:
+   ~/.local/share/astropi/bin/
+
+Per accedervi da ovunque nel sistema:
+   $ bash ~/.local/share/astropi/bin/quick-fix-indi.sh
+   $ bash ~/.local/share/astropi/bin/check-indi-deps.sh
+   $ bash ~/.local/share/astropi/bin/fix-indi-dependencies.sh
+   $ bash ~/.local/share/astropi/bin/verify-indi-fix.sh
+
+Per accedervi più facilmente, puoi aggiungere un alias:
+   alias quick-fix-indi='sudo bash ~/.local/share/astropi/bin/quick-fix-indi.sh'
+   alias check-indi-deps='bash ~/.local/share/astropi/bin/check-indi-deps.sh'
+
+═══════════════════════════════════════════════════════════════════════════════
+🔍 VERIFICA DELL'INTEGRAZIONE
+═══════════════════════════════════════════════════════════════════════════════
+
+Dopo aver eseguito install_script(), verifica che i file siano al posto giusto:
+
+$ bash ~/.local/share/astropi/bin/verify-indi-fix.sh
+
+Questo script verificherà che:
+   ✓ fix-indi-dependencies.sh sia presente e eseguibile
+   ✓ check-indi-deps.sh sia presente e eseguibile
+   ✓ quick-fix-indi.sh sia presente e eseguibile
+   ✓ verify-indi-fix.sh sia presente e eseguibile
+   ✓ Configurazioni APT siano installate correttamente
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 CHECKLIST DI IMPLEMENTAZIONE
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ integrate-indi-fix.sh in install_script()
+   └─ fix-indi-dependencies.sh → chmod +x
+   └─ check-indi-deps.sh → chmod +x
+   └─ quick-fix-indi.sh → chmod +x
+   └─ verify-indi-fix.sh → chmod +x
+
+✅ Aggiunto config in system_pre_update()
+   └─ 99indi-buster-archive in /etc/apt/apt.conf.d/
+
+✅ Aggiunto prompt opzionale in system_pre_update()
+   └─ "Vuoi eseguire quick-fix-indi.sh?"
+   └─ Se SI: esegue automaticamente
+   └─ Se NO: permette esecuzione manuale dopo
+
+✅ Documentazione aggiornata
+   └─ README_INDI_QUICK_START.md
+   └─ INDI_DEPENDENCIES_FIX.md
+   └─ TECHNICAL_DATASHEET.md
+   └─ IMPLEMENTATION_SUMMARY.txt
+
+═══════════════════════════════════════════════════════════════════════════════
+📞 SUPPORTO E TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Se i file INDI non vengono trovati dopo install_script():
+
+1. Verifica che install_script() sia stato eseguito:
+   $ ls -la ~/.local/share/astropi/bin/ | grep indi
+
+2. Se mancano, esegui verify:
+   $ bash ~/.local/share/astropi/bin/verify-indi-fix.sh
+
+3. Se continuano a mancare, installa manualmente:
+   $ sudo bash include/functions.sh (e seleziona install_script)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ INTEGRAZIONE COMPLETATA E TESTATA
+
+I script INDI sono ora completamente integrati nel sistema AstroPi.
+Verranno installati automaticamente e saranno disponibili nel percorso standard.
+
+Data: 18 Gennaio 2026
+Status: READY FOR PRODUCTION
+═══════════════════════════════════════════════════════════════════════════════

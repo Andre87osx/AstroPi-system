@@ -12,9 +12,9 @@
 
 # Create version of AstroPi
 majorRelease=1								# Major Release
-minorRelease=7.7							# Minor Release
+minorRelease=7								# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
-KStars_v=3.5.4_v1.7.7						# Based on KDE Kstrs v.3.5.4
+KStars_v=3.5.4_v1.7							# Based on KDE Kstrs v.3.5.4
 Indi_v=1.9.7								# Based on INDI 1.9.7 Core
 StellarSolver_v=1.9							# From Rlancaste GitHub
 
@@ -149,35 +149,6 @@ function install_script()
 			\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --width=${W} --title="${W_Title}"
 			exit 1
 		fi
-		# Install INDI Helper Scripts
-		if [[ -f ./fix-indi-dependencies.sh ]]; then
-			echo "# Install fix-indi-dependencies.sh in ${appDir}/bin/"
-			echo "Install fix-indi-dependencies.sh in ${appDir}/bin/"
-			sudo chmod +x "${appDir}"/bin/fix-indi-dependencies.sh
-		else
-			echo "Warning: fix-indi-dependencies.sh not found (optional)"
-		fi
-		if [[ -f ./check-indi-deps.sh ]]; then
-			echo "# Install check-indi-deps.sh in ${appDir}/bin/"
-			echo "Install check-indi-deps.sh in ${appDir}/bin/"
-			sudo chmod +x "${appDir}"/bin/check-indi-deps.sh
-		else
-			echo "Warning: check-indi-deps.sh not found (optional)"
-		fi
-		if [[ -f ./quick-fix-indi.sh ]]; then
-			echo "# Install quick-fix-indi.sh in ${appDir}/bin/"
-			echo "Install quick-fix-indi.sh in ${appDir}/bin/"
-			sudo chmod +x "${appDir}"/bin/quick-fix-indi.sh
-		else
-			echo "Warning: quick-fix-indi.sh not found (optional)"
-		fi
-		if [[ -f ./verify-indi-fix.sh ]]; then
-			echo "# Install verify-indi-fix.sh in ${appDir}/bin/"
-			echo "Install verify-indi-fix.sh in ${appDir}/bin/"
-			sudo chmod +x "${appDir}"/bin/verify-indi-fix.sh
-		else
-			echo "Warning: verify-indi-fix.sh not found (optional)"
-		fi
 		cd "${appDir}"/include || exit 1
 		if [[ -f ./solar-system-dark.svg ]]; then
 			echo "# Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
@@ -252,26 +223,21 @@ function system_pre_update()
 		echo "==> Ricostruzione sources.list per Debian 10 Buster…"
 		sudo sh -c ">/etc/apt/sources.list" # Svuota completamente il file
 		sudo bash -c 'cat > /etc/apt/sources.list <<EOF
-# Main repository - Debian Archived
+# Main repository
 deb [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
 deb-src [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
 
-# Updates - Debian Archived
+# Updates
 deb [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
 deb-src [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
 
-# Security updates - Debian Archived
+# Security updates
 deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
 deb-src [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
 
 # Backports (archived, optional)
 deb [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
 deb-src [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
-
-# Raspberry Pi OS (for ARM-specific packages on Buster)
-# This helps find ARM-specific packages like libgphoto2 with correct dependencies
-deb [trusted=yes] http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi
-deb [trusted=yes] http://archive.raspberrypi.org/debian/ buster main
 EOF'
 		if [ $? -ne 0 ]; then
 			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/sources.list" --title=${W_Title}
@@ -284,26 +250,10 @@ Acquire::Check-Valid-Until "false";
 Acquire::AllowInsecureRepositories "true";
 Acquire::AllowDowngradeToInsecureRepositories "true";
 EOF'
-
-		# 3.5 Aggiungi configurazione ottimizzata per INDI su Buster archiviato
-		echo "==> Aggiunta configurazione APT ottimizzata per INDI…"
-		sudo bash -c 'cat > /etc/apt/apt.conf.d/99indi-buster-archive <<EOF
-Acquire::Check-Valid-Until "false";
-Acquire::AllowInsecureRepositories "true";
-Acquire::AllowDowngradeToInsecureRepositories "true";
-Acquire::Retries "3";
-APT::Acquire::Retries "3";
-Acquire::ForceIPv4 "true";
-EOF'
 		if [ $? -ne 0 ]; then
-			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/apt.conf.d/99indi-buster-archive" --title=${W_Title}
+			zenity --error --width=${W} --text="Errore durante la creazione di /etc/apt/apt.conf.d/99archive-debian-buster" --title=${W_Title}
 			exit 1
 		fi
-
-		# 3b. Aggiungi chiavi per Raspberry Pi (opzionale, per ARM packages)
-		echo "==> Aggiunta chiavi GPG per Raspberry Pi…"
-		sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 9120CD33B31B0AE418D00D6B47BB525DC65406FA >/dev/null 2>&1 || true
-		sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys CF8A1AF3A26997E3 >/dev/null 2>&1 || true
 
 		# 4. Pulizia APT (l'aggiornamento viene eseguito da system_update)
 		echo "==> Pulizia cache APT…"
@@ -326,58 +276,6 @@ EOF'
 		zenity --error --width=${W} --text="Something went wrong in <b>System PRE Update</b>\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
 		exit 1
 		break
-	fi
-	
-	# Install VNC Server before system update
-	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
-		(
-			echo "# Installing VNC Server..."
-			echo "30"
-			echo "# Attempting to install VNC Server via apt..."
-			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
-				echo "70"
-				echo "# VNC Server installed successfully"
-			else
-				echo "70"
-				echo "# Fallback: trying dpkg + fix-deps..."
-				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
-					echo "85"
-					echo "# Fixing dependencies..."
-					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
-					echo "100"
-					echo "# VNC Server installed with dependency fix"
-				else
-					echo "100"
-					echo "# Error: VNC Server installation failed"
-				fi
-			fi
-			echo "100"
-			echo "# VNC Server installation complete"
-		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
-	fi
-	
-	# Suggest running INDI fix script (only if not already done)
-	INDI_FIX_MARKER="${appDir}/.indi-fix-completed"
-	if [[ -f "${appDir}"/bin/quick-fix-indi.sh && ! -f "${INDI_FIX_MARKER}" ]]; then
-		zenity --question --width=${W} --text="<b>INDI Dependencies Fix</b>\n\nIl sistema è ora configurato con i repository corretti.\n\nVuoi pre-risolvere le dipendenze di INDI?\n(Consigliato prima di compilare INDI)" --title=${W_Title} --ok-label="Si, esegui fix" --cancel-label="No, dopo"
-		if [ $? -eq 0 ]; then
-			# Run quick-fix-indi.sh with progress bar
-			(
-				echo "# Avvio pre-risoluzione dipendenze INDI..."
-				echo "5"
-				sudo bash "${appDir}"/bin/quick-fix-indi.sh 2>&1 | while IFS= read -r line; do
-					echo "# $line"
-				done
-				echo "100"
-				echo "# Pre-risoluzione completata!"
-			) | zenity --progress --title="Pre-risoluzione Dipendenze INDI" --text="Installazione pacchetti critici..." --percentage=0 --auto-close --width=${Wprogress}
-			
-			if [ $? -eq 0 ]; then
-				# Create marker file to indicate fix has been completed
-				touch "${INDI_FIX_MARKER}"
-				zenity --info --width=${W} --text="<b>Pre-risoluzione Completata</b>\n\nLe dipendenze INDI sono state pre-risolte.\n\nPuoi ora procedere con 'Check INDI' per compilare INDI." --title=${W_Title}
-			fi
-		fi
 	fi
 }
 
@@ -419,10 +317,43 @@ function system_update()
 			echo "Error running $CMD on $(date), exit status code: ${exit_stat}" >> "${appDir}"/bin/update-log.txt
 			zenity --error --width=${W} --text="Something went wrong in <b>System Update ${CMD}</b>
 			\nContact support at <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title=${W_Title}
-			# Don't exit immediately - continue with other commands
+			exit 1
+			break
 		fi
 	done	
 	
+	# Install VNC Server if available
+	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
+		(
+			echo "# Installing VNC Server..."
+			echo "30"
+			echo "# Attempting to install VNC Server via apt..."
+			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+				echo "70"
+				echo "# VNC Server installed successfully"
+			else
+				echo "70"
+				echo "# Fallback: trying dpkg + fix-deps..."
+				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+					echo "85"
+					echo "# Fixing dependencies..."
+					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
+					echo "100"
+					echo "# VNC Server installed with dependency fix"
+				else
+					echo "100"
+					echo "# Error: VNC Server installation failed"
+					exit 1
+				fi
+			fi
+			echo "100"
+			echo "# VNC Server installation complete"
+		) | zenity --progress --title="${W_Title}" --text="<b>Installing VNC Server...</b>" --percentage=0 --auto-close --auto-kill --width=${Wprogress}
+		if [ $? -ne 0 ]; then
+			zenity --error --width=${W} --text="<b>WARNING! Error installing VNC Server</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		fi
+	fi
+
 	# Install wmctrl if missing
 	if ! command -v wmctrl >/dev/null 2>&1; then
 		(
@@ -915,50 +846,15 @@ function chkINDI()
 		{
 			echo "# apt-get update output:"
 			sudo apt-get update -y 2>&1
-			
-			# Try to install all packages
 			echo "# apt-get install output:"
-			if ! sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev 2>&1; then
-				echo ""
-				echo "# Tentativo di risoluzione delle dipendenze rotte..."
-				sudo apt-get install -f -y 2>&1
-				echo ""
-				echo "# Tentativo di autoremozione di pacchetti problematici..."
-				sudo apt-get autoremove -y 2>&1
-				echo ""
-				echo "# Secondo tentativo di installazione delle dipendenze..."
-				sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev 2>&1 || true
-			fi
-			
-			# Installa in modo più permissivo i pacchetti che potrebbero mancare in Buster
-			echo ""
-			echo "# Installazione permissiva di pacchetti opzionali..."
-			for pkg in liblimesuite-dev libavcodec-dev libavdevice-dev libtheora-dev; do
-				echo "# Tentativo di installare: $pkg"
-				sudo apt-get install -y "$pkg" 2>&1 || echo "# Pacchetto $pkg non disponibile, continuo..."
-			done 2>&1
-			
+			sudo apt-get -y install git cdbs dkms cmake fxload libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev librtlsdr-dev libcfitsio-dev libgphoto2-dev build-essential libdc1394-22-dev libboost-dev libboost-regex-dev libcurl4-gnutls-dev libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev 2>&1
 		} | tee "$LOGFILE" | zenity --progress --title="Installing dependencies for INDI" --text="Installing dependencies..." --percentage=0 --auto-close --width="${Wprogress}"
 		status=${PIPESTATUS[0]}
 		if [ $status -ne 0 ]; then
-			# Check if critical packages are installed
-			critical_pkgs=("cmake" "make" "build-essential" "git" "libev-dev" "libgsl-dev")
-			missing=()
-			for pkg in "${critical_pkgs[@]}"; do
-				if ! dpkg -l | grep -q "^ii.*$pkg"; then
-					missing+=("$pkg")
-				fi
-			done
-			
-			if [ ${#missing[@]} -gt 0 ]; then
-				zenity --error --width="${W}" --title="${W_Title}" --text="<b>Errore durante l'installazione delle dipendenze per INDI</b>\n\nPacchetti critici mancanti: ${missing[*]}\n\nVedi dettagli nel log:\n$LOGFILE"
-				zenity --text-info --width=900 --height=600 --title="Dettagli installazione dipendenze INDI" --filename="$LOGFILE"
-				err_exit "Error installing dependencies required for INDI build (see log above)"
-			else
-				# Se i pacchetti critici sono ok, continuiamo anche se alcuni pacchetti opzionali mancano
-				echo "# I pacchetti critici sono stati installati. Alcuni pacchetti opzionali potrebbero mancare." | tee -a "$LOGFILE"
-				zenity --warning --width="${W}" --title="${W_Title}" --text="<b>Installazione parziale delle dipendenze INDI</b>\n\nI pacchetti critici sono stati installati, ma alcuni pacchetti opzionali potrebbero mancare.\n\nVedi dettagli nel log:\n$LOGFILE\n\nContinuo con la compilazione..."
-			fi
+			# Show the log in a zenity text dialog for user review
+			zenity --error --width="${W}" --title="${W_Title}" --text="<b>Errore durante l'installazione delle dipendenze per INDI</b>\n\nVedi dettagli nel log:\n$LOGFILE"
+			zenity --text-info --width=900 --height=600 --title="Dettagli installazione dipendenze INDI" --filename="$LOGFILE"
+			err_exit "Error installing dependencies required for INDI build (see log above)"
 		fi
 	)
 
@@ -966,11 +862,6 @@ function chkINDI()
     # Build INDI Core
     if [ ! -d "${WorkDir}/indi-cmake" ]; then mkdir -p "${WorkDir}/indi-cmake"; fi
     cd "${WorkDir}/indi-cmake" || err_exit "Cannot cd to indi-cmake dir"
-    
-    # Ensure critical packages are present before building
-    echo "# Checking critical packages for INDI build..."
-    sudo apt-get install -y --no-install-recommends cmake make build-essential >/dev/null 2>&1 || err_exit "Failed to ensure critical build packages"
-    
     commands_core=(
         "cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug ${WorkDir}/indi-${Indi_v}"
         "make -j $(expr $(nproc) + 2)"
