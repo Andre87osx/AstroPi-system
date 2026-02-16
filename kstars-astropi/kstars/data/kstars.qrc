@@ -64,6 +64,7 @@
         <file>icons/indihub.svg</file>
         <file>icons/indihub_logo.svg</file>
         <file>icons/StellarSolverIcon.png</file>
+        <file>icons/astropi_scheduler_logo.png</file>
     </qresource>
     <qresource prefix="/kconfig">
         <file>kstars.knsrc</file>

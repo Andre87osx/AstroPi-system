@@ -32,6 +32,11 @@
 #include <KNotifications/KNotification>
 #include <KConfigDialog>
 
+#include <QCoreApplication>
+#include <QDialog>
+#include <QStandardPaths>
+#include <QTextBrowser>
+#include <QVBoxLayout>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -234,10 +239,72 @@ Scheduler::Scheduler()
     // Connect geographical location - when it is available
     //connect(KStarsData::Instance()..., &LocationDialog::locationChanged..., this, &Scheduler::simClockTimeChanged);
 
-    // restore default values for error handling strategy
-    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(Options::errorHandlingStrategy()));
-    errorHandlingRescheduleErrorsCB->setChecked(Options::rescheduleErrors());
-    errorHandlingDelaySB->setValue(Options::errorHandlingStrategyDelay());
+    // Force fixed error handling policy for AstroPi UI profile:
+    // - No scheduler-level retry/reschedule management
+    // - No delay
+    setErrorHandlingStrategy(ERROR_DONT_RESTART);
+    errorHandlingRescheduleErrorsCB->setChecked(false);
+    errorHandlingDelaySB->setValue(0);
+    errorHandlingRescheduleErrorsCB->setEnabled(false);
+    errorHandlingDelaySB->setEnabled(false);
+    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
+    Options::setRescheduleErrors(false);
+    Options::setErrorHandlingStrategyDelay(0);
+
+    if (astroPiLogoLabel != nullptr)
+    {
+        QPixmap logoPixmap;
+        logoPixmap.load(":/icons/astropi_scheduler_logo.png");
+
+        const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        const QString appLogoPath = appDataPath + "/astropi_scheduler_logo.png";
+
+        const QStringList candidatePaths
+        {
+            appLogoPath,
+            QCoreApplication::applicationDirPath() + "/AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../../AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../include/AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../../include/AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../../../include/AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../Loghi&background/AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../../Loghi&background/AstroPi_wallpaper.png",
+            QCoreApplication::applicationDirPath() + "/../../../Loghi&background/AstroPi_wallpaper.png"
+        };
+
+        if (logoPixmap.isNull())
+        {
+            for (const QString &candidate : candidatePaths)
+            {
+                if (logoPixmap.load(candidate))
+                    break;
+            }
+        }
+
+        if (!logoPixmap.isNull())
+            astroPiLogoLabel->setPixmap(logoPixmap.scaledToWidth(260, Qt::SmoothTransformation));
+        else
+            astroPiLogoLabel->setText(i18n("AstroPi"));
+    }
+
+    if (showGuideButton != nullptr && schedulerGuideLabel != nullptr)
+    {
+        connect(showGuideButton, &QPushButton::clicked, this, [this]()
+        {
+            QDialog guideDialog(this);
+            guideDialog.setWindowTitle(i18n("Guida Tecnica Scheduler AstroPi"));
+            guideDialog.resize(820, 600);
+
+            auto *layout = new QVBoxLayout(&guideDialog);
+            auto *textBrowser = new QTextBrowser(&guideDialog);
+            textBrowser->setOpenExternalLinks(true);
+            textBrowser->setHtml(schedulerGuideLabel->text());
+            layout->addWidget(textBrowser);
+
+            guideDialog.exec();
+        });
+    }
 
     // save new default values for error handling strategy
 
@@ -3466,6 +3533,24 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_ALIGNING:
+            if (currentOperationAttemptTime.isValid() &&
+                    currentOperationAttemptTime.elapsed() > static_cast<int>(ALIGN_ATTEMPT_HARD_TIMEOUT_MS))
+            {
+                appendLogText(i18n("Warning: job '%1' alignment attempt exceeded 5 minutes.", currentJob->getName()));
+                if (alignFailureCount++ < MAX_FAILURE_ATTEMPTS)
+                {
+                    qCDebug(KSTARS_EKOS_SCHEDULER) << "Align module hard-timeout. Restarting request...";
+                    startAstrometry();
+                }
+                else
+                {
+                    appendLogText(i18n("Warning: job '%1' alignment procedure failed, marking aborted.", currentJob->getName()));
+                    currentJob->setState(SchedulerJob::JOB_ABORTED);
+                    findNextJob();
+                }
+                break;
+            }
+
             // Let's make sure align module does not become unresponsive
             if (currentOperationTime.elapsed() > static_cast<int>(ALIGN_INACTIVITY_TIMEOUT))
             {
@@ -3554,6 +3639,24 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_FOCUSING:
+            if (currentOperationAttemptTime.isValid() &&
+                    currentOperationAttemptTime.elapsed() > static_cast<int>(FOCUS_ATTEMPT_HARD_TIMEOUT_MS))
+            {
+                appendLogText(i18n("Warning: job '%1' focusing attempt exceeded 5 minutes.", currentJob->getName()));
+                if (focusFailureCount++ < MAX_FAILURE_ATTEMPTS)
+                {
+                    qCDebug(KSTARS_EKOS_SCHEDULER) << "Focus module hard-timeout. Restarting request...";
+                    startFocusing();
+                }
+                else
+                {
+                    appendLogText(i18n("Warning: job '%1' focusing procedure failed, marking aborted.", currentJob->getName()));
+                    currentJob->setState(SchedulerJob::JOB_ABORTED);
+                    findNextJob();
+                }
+                break;
+            }
+
             // Let's make sure focus module does not become unresponsive
             if (currentOperationTime.elapsed() > static_cast<int>(FOCUS_INACTIVITY_TIMEOUT))
             {
@@ -3588,6 +3691,24 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_GUIDING:
+            if (currentOperationAttemptTime.isValid() &&
+                    currentOperationAttemptTime.elapsed() > static_cast<int>(GUIDE_ATTEMPT_HARD_TIMEOUT_MS))
+            {
+                appendLogText(i18n("Warning: job '%1' guide preparation attempt exceeded 5 minutes.", currentJob->getName()));
+                if (guideFailureCount++ < MAX_FAILURE_ATTEMPTS)
+                {
+                    qCDebug(KSTARS_EKOS_SCHEDULER) << "Guide preparation hard-timeout. Restarting request...";
+                    startGuiding();
+                }
+                else
+                {
+                    appendLogText(i18n("Warning: job '%1' guiding procedure failed, marking aborted.", currentJob->getName()));
+                    currentJob->setState(SchedulerJob::JOB_ABORTED);
+                    findNextJob();
+                }
+                break;
+            }
+
             // Let's make sure guide module does not become unresponsive
             if (currentOperationTime.elapsed() > GUIDE_INACTIVITY_TIMEOUT)
             {
@@ -3957,15 +4078,18 @@ bool Scheduler::appendEkosScheduleList(const QString &fileURL)
                 }
                 else if (!strcmp(tag, "ErrorHandlingStrategy"))
                 {
-                    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(cLocale.toInt(findXMLAttValu(ep, "value"))));
+                    setErrorHandlingStrategy(ERROR_DONT_RESTART);
 
                     subEP = findXMLEle(ep, "delay");
                     if (subEP)
                     {
-                        errorHandlingDelaySB->setValue(cLocale.toInt(pcdataXMLEle(subEP)));
+                        errorHandlingDelaySB->setValue(0);
+                        Options::setErrorHandlingStrategyDelay(0);
                     }
                     subEP = findXMLEle(ep, "RescheduleErrors");
-                    errorHandlingRescheduleErrorsCB->setChecked(subEP != nullptr);
+                    Q_UNUSED(subEP)
+                    errorHandlingRescheduleErrorsCB->setChecked(false);
+                    Options::setRescheduleErrors(false);
                 }
                 else if (!strcmp(tag, "StartupProcedure"))
                 {
@@ -4330,10 +4454,8 @@ bool Scheduler::saveScheduler(const QUrl &fileURL)
         outstream << "</Job>" << endl;
     }
 
-    outstream << "<ErrorHandlingStrategy value='" << getErrorHandlingStrategy() << "'>" << endl;
-    if (errorHandlingRescheduleErrorsCB->isChecked())
-        outstream << "<RescheduleErrors />" << endl;
-    outstream << "<delay>" << errorHandlingDelaySB->value() << "</delay>" << endl;
+    outstream << "<ErrorHandlingStrategy value='" << ERROR_DONT_RESTART << "'>" << endl;
+    outstream << "<delay>0</delay>" << endl;
     outstream << "</ErrorHandlingStrategy>" << endl;
 
     outstream << "<StartupProcedure>" << endl;
@@ -4514,6 +4636,7 @@ void Scheduler::startFocusing()
     currentJob->setStage(SchedulerJob::STAGE_FOCUSING);
     appendLogText(i18n("Job '%1' is focusing.", currentJob->getName()));
     currentOperationTime.restart();
+    currentOperationAttemptTime.restart();
 }
 
 void Scheduler::findNextJob()
@@ -4845,6 +4968,7 @@ void Scheduler::startAstrometry()
     /* FIXME: not supposed to modify the job */
     currentJob->setStage(SchedulerJob::STAGE_ALIGNING);
     currentOperationTime.restart();
+    currentOperationAttemptTime.restart();
 }
 
 void Scheduler::startGuiding(bool resetCalibration)
@@ -4865,6 +4989,7 @@ void Scheduler::startGuiding(bool resetCalibration)
         appendLogText(i18n("Guiding already running for %1 ...", currentJob->getName()));
         currentJob->setStage(SchedulerJob::STAGE_GUIDING);
         currentOperationTime.restart();
+        currentOperationAttemptTime.restart();
         return;
     }
 
@@ -4887,6 +5012,7 @@ void Scheduler::startGuiding(bool resetCalibration)
     appendLogText(i18n("Starting guiding procedure for %1 ...", currentJob->getName()));
 
     currentOperationTime.restart();
+    currentOperationAttemptTime.restart();
 }
 
 void Scheduler::startCapture(bool restart)
@@ -6250,9 +6376,16 @@ Scheduler::ErrorHandlingStrategy Scheduler::getErrorHandlingStrategy()
 
 void Scheduler::setErrorHandlingStrategy(Scheduler::ErrorHandlingStrategy strategy)
 {
-    errorHandlingDelaySB->setEnabled(strategy != ERROR_DONT_RESTART);
+    Q_UNUSED(strategy)
+    errorHandlingRescheduleErrorsCB->setChecked(false);
+    errorHandlingRescheduleErrorsCB->setEnabled(false);
+    errorHandlingDelaySB->setEnabled(false);
+    errorHandlingDelaySB->setValue(0);
+    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
+    Options::setRescheduleErrors(false);
+    Options::setErrorHandlingStrategyDelay(0);
 
-    switch (strategy)
+    switch (ERROR_DONT_RESTART)
     {
         case ERROR_RESTART_AFTER_TERMINATION:
             errorHandlingRestartAfterAllButton->setChecked(true);

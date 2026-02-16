@@ -890,6 +890,8 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
         /// Generic time to track timeout of current operation in progress
         QElapsedTimer currentOperationTime;
+     /// Generic time to enforce max duration of one operation attempt.
+     QElapsedTimer currentOperationAttemptTime;
 
         QUrl dirPath;
 
@@ -900,12 +902,14 @@ class Scheduler : public QWidget, public Ui::Scheduler
         bool m_DomeReady { false };
         bool m_CapReady { false };
 
-        // When a module is commanded to perform an action, wait this many milliseconds
-        // before check its state again. If State is still IDLE, then it either didn't received the command
-        // or there is another problem.
-        static const uint32_t ALIGN_INACTIVITY_TIMEOUT      = 120000;
-        static const uint32_t FOCUS_INACTIVITY_TIMEOUT      = 120000;
+     // When a module is commanded to perform an action, a single attempt must complete within this timeout.
+     // If the attempt times out, scheduler retries up to MAX_FAILURE_ATTEMPTS, then aborts the job.
+     static const uint32_t ALIGN_INACTIVITY_TIMEOUT      = 300000;
+     static const uint32_t FOCUS_INACTIVITY_TIMEOUT      = 300000;
         static const uint32_t CAPTURE_INACTIVITY_TIMEOUT    = 120000;
-        static const uint16_t GUIDE_INACTIVITY_TIMEOUT      = 60000;
+     static const uint32_t GUIDE_INACTIVITY_TIMEOUT      = 300000;
+       static const uint32_t ALIGN_ATTEMPT_HARD_TIMEOUT_MS = 300000;
+       static const uint32_t FOCUS_ATTEMPT_HARD_TIMEOUT_MS = 300000;
+       static const uint32_t GUIDE_ATTEMPT_HARD_TIMEOUT_MS = 300000;
 };
 }
