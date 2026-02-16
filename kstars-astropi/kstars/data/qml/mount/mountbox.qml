@@ -7,6 +7,10 @@ Rectangle {
     id: rectangle
     objectName: "mountControlObject"
 
+    function xi18n(text) {
+        return qsTr(text)
+    }
+
     color: "#000000"
 
     property color buttonColor: "silver"
@@ -21,8 +25,12 @@ Rectangle {
         font.pointSize: 12
     }
 
-    width:  (Qt.platform.os === "osx") ? fontMetrics.height * 13.5 /.75 : fontMetrics.height * 13.5
-    height: (Qt.platform.os === "osx") ? fontMetrics.height * 29.5 /.75 : fontMetrics.height * 29.5
+    property real contentMargins: fontMetrics.height * 0.25
+    property real baseWidth: (Qt.platform.os === "osx") ? fontMetrics.height * 13.5 /.75 : fontMetrics.height * 13.5
+    property real baseHeight: (Qt.platform.os === "osx") ? fontMetrics.height * 29.5 /.75 : fontMetrics.height * 29.5
+
+    width: Math.ceil(Math.max(baseWidth, mainVerticalLayout.implicitWidth + (contentMargins * 2)))
+    height: Math.ceil(Math.max(baseHeight, mainVerticalLayout.implicitHeight + (contentMargins * 2)))
 
     MouseArea {
         anchors.fill: parent
@@ -31,7 +39,7 @@ Rectangle {
         ColumnLayout {
             id: mainVerticalLayout
             anchors.fill: parent
-            anchors.margins: fontMetrics.height * 0.25
+            anchors.margins: contentMargins
 
             GridLayout {
                 id: mountMotionLayout
