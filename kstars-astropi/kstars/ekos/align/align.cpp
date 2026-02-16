@@ -2967,6 +2967,26 @@ bool Align::captureAndSolve()
 
 void Align::processData(const QSharedPointer<FITSData> &data)
 {
+    if (data.isNull())
+    {
+        appendLogText(i18n("Failed to receive a valid image frame (possible low-memory condition)."));
+
+        if (++m_CaptureErrorCounter == 3 && m_PAHStage != PAH_REFRESH)
+        {
+            appendLogText(i18n("Capture error. Aborting..."));
+            abort();
+            return;
+        }
+
+        if (Options::solverBinningIndex() < 3)
+            Options::setSolverBinningIndex(Options::solverBinningIndex() + 1);
+
+        appendLogText(i18n("Restarting capture attempt #%1 with increased binning/downsampling.", m_CaptureErrorCounter));
+        setAlignTableResult(ALIGN_RESULT_FAILED);
+        captureAndSolve();
+        return;
+    }
+
     if (data->property("chip").toInt() == ISD::CCDChip::GUIDE_CCD)
         return;
 
@@ -3044,6 +3064,27 @@ void Align::prepareCapture(ISD::CCDChip *targetChip)
     targetChip->setFrameType(FRAME_LIGHT);
 
     int bin = Options::solverBinningIndex() + 1;
+    const double availableRAM = KSUtils::getAvailableRAM();
+    if (availableRAM > 0 && ccd_width > 0 && ccd_height > 0)
+    {
+        const double estimatedColorFrameBytes = static_cast<double>(ccd_width) * static_cast<double>(ccd_height) * 4.0;
+        const double ratio = estimatedColorFrameBytes / availableRAM;
+
+        if (ratio > 0.25)
+            bin = qMax(bin, 4);
+        else if (ratio > 0.15)
+            bin = qMax(bin, 3);
+        else if (ratio > 0.08)
+            bin = qMax(bin, 2);
+    }
+
+    int maxBinX = 1, maxBinY = 1;
+    targetChip->getMaxBin(&maxBinX, &maxBinY);
+    bin = qBound(1, bin, qMin(maxBinX, maxBinY));
+
+    if (bin > Options::solverBinningIndex() + 1)
+        appendLogText(i18n("Low available memory detected. Increasing capture binning to %1x%1.", bin));
+
     targetChip->setBinning(bin, bin);
 
     // Set gain if applicable
@@ -3305,6 +3346,26 @@ void Align::startSolving()
     QStringList astrometryDataDirs = KSUtils::getAstrometryDataDirs();
     const QSharedPointer<FITSData> &data = alignView->imageData();
     disconnect(alignView, &FITSView::loaded, this, &Align::startSolving);
+
+    if (data.isNull())
+    {
+        appendLogText(i18n("No image data available for plate solving. Retrying capture."));
+
+        if (++m_CaptureErrorCounter == 3 && m_PAHStage != PAH_REFRESH)
+        {
+            appendLogText(i18n("Capture error. Aborting..."));
+            abort();
+            return;
+        }
+
+        if (Options::solverBinningIndex() < 3)
+            Options::setSolverBinningIndex(Options::solverBinningIndex() + 1);
+
+        appendLogText(i18n("Restarting capture attempt #%1 with increased binning/downsampling.", m_CaptureErrorCounter));
+        setAlignTableResult(ALIGN_RESULT_FAILED);
+        captureAndSolve();
+        return;
+    }
 
     if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
     {

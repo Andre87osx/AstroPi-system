@@ -3420,6 +3420,15 @@ void Scheduler::checkJobStage()
             // Let's make sure align module does not become unresponsive
             if (currentOperationTime.elapsed() > static_cast<int>(ALIGN_INACTIVITY_TIMEOUT))
             {
+                if (alignInterface.isNull())
+                {
+                    appendLogText(i18n("Warning: job '%1' lost connection to the align module, attempting to reconnect.",
+                                       currentJob->getName()));
+                    if (!manageConnectionLoss())
+                        currentJob->setState(SchedulerJob::JOB_ERROR);
+                    return;
+                }
+
                 QVariant const status = alignInterface->property("status");
                 Ekos::AlignState alignStatus = static_cast<Ekos::AlignState>(status.toInt());
 
@@ -3453,7 +3462,8 @@ void Scheduler::checkJobStage()
                 {
                     appendLogText(i18n("Warning: job '%1' guide failed during capture. Aborting capture and restarting guide.", 
                                        currentJob->getName()));
-                    captureInterface->call(QDBus::AutoDetect, "abort");
+                    if (!captureInterface.isNull())
+                        captureInterface->call(QDBus::AutoDetect, "abort");
                     
                     // Trigger guide recovery through setGuideStatus
                     setGuideStatus(guideStatus);
@@ -3464,6 +3474,15 @@ void Scheduler::checkJobStage()
             // Let's make sure capture module does not become unresponsive
             if (currentOperationTime.elapsed() > static_cast<int>(CAPTURE_INACTIVITY_TIMEOUT))
             {
+                if (captureInterface.isNull())
+                {
+                    appendLogText(i18n("Warning: job '%1' lost connection to the capture module, attempting to reconnect.",
+                                       currentJob->getName()));
+                    if (!manageConnectionLoss())
+                        currentJob->setState(SchedulerJob::JOB_ERROR);
+                    return;
+                }
+
                 QVariant const status = captureInterface->property("status");
                 Ekos::CaptureState captureStatus = static_cast<Ekos::CaptureState>(status.toInt());
 
@@ -3489,6 +3508,15 @@ void Scheduler::checkJobStage()
             // Let's make sure focus module does not become unresponsive
             if (currentOperationTime.elapsed() > static_cast<int>(FOCUS_INACTIVITY_TIMEOUT))
             {
+                if (focusInterface.isNull())
+                {
+                    appendLogText(i18n("Warning: job '%1' lost connection to the focus module, attempting to reconnect.",
+                                       currentJob->getName()));
+                    if (!manageConnectionLoss())
+                        currentJob->setState(SchedulerJob::JOB_ERROR);
+                    return;
+                }
+
                 QVariant const status = focusInterface->property("status");
                 Ekos::FocusState focusStatus = static_cast<Ekos::FocusState>(status.toInt());
 
@@ -3538,6 +3566,14 @@ void Scheduler::checkJobStage()
         case SchedulerJob::STAGE_RESLEWING:
             // While slewing or re-slewing, check slew status can still be obtained
         {
+            if (mountInterface.isNull())
+            {
+                appendLogText(i18n("Warning: job '%1' lost connection to the mount, attempting to reconnect.", currentJob->getName()));
+                if (!manageConnectionLoss())
+                    currentJob->setState(SchedulerJob::JOB_ERROR);
+                return;
+            }
+
             QVariant const slewStatus = mountInterface->property("status");
 
             if (slewStatus.isValid())
@@ -3562,6 +3598,14 @@ void Scheduler::checkJobStage()
             // When done slewing or re-slewing and we use a dome, only shift to the next action when the dome is done moving
             if (m_DomeReady)
             {
+                if (domeInterface.isNull())
+                {
+                    appendLogText(i18n("Warning: job '%1' lost connection to the dome, attempting to reconnect.", currentJob->getName()));
+                    if (!manageConnectionLoss())
+                        currentJob->setState(SchedulerJob::JOB_ERROR);
+                    return;
+                }
+
                 QVariant const isDomeMoving = domeInterface->property("isMoving");
 
                 if (!isDomeMoving.isValid())
@@ -4274,6 +4318,14 @@ void Scheduler::startSlew()
 {
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting slewing must be valid");
 
+    if (mountInterface.isNull())
+    {
+        appendLogText(i18n("Warning: job '%1' cannot slew because mount module is unavailable.", currentJob->getName()));
+        if (!manageConnectionLoss())
+            currentJob->setState(SchedulerJob::JOB_ERROR);
+        return;
+    }
+
     // If the mount was parked by a pause or the end-user, unpark
     if (isMountParked())
     {
@@ -4307,6 +4359,14 @@ void Scheduler::startSlew()
 void Scheduler::startFocusing()
 {
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting focusing must be valid");
+
+    if (focusInterface.isNull() || captureInterface.isNull())
+    {
+        appendLogText(i18n("Warning: job '%1' cannot focus because focus/capture module is unavailable.", currentJob->getName()));
+        if (!manageConnectionLoss())
+            currentJob->setState(SchedulerJob::JOB_ERROR);
+        return;
+    }
 
     // 2017-09-30 Jasem: We're skipping post align focusing now as it can be performed
     // when first focus request is made in capture module
@@ -4654,6 +4714,14 @@ void Scheduler::startAstrometry()
 {
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting aligning must be valid");
 
+    if (alignInterface.isNull())
+    {
+        appendLogText(i18n("Warning: job '%1' cannot align because align module is unavailable.", currentJob->getName()));
+        if (!manageConnectionLoss())
+            currentJob->setState(SchedulerJob::JOB_ERROR);
+        return;
+    }
+
     QDBusMessage reply;
     setSolverAction(Align::GOTO_SLEW);
 
@@ -4730,6 +4798,14 @@ void Scheduler::startGuiding(bool resetCalibration)
 {
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting guiding must be valid");
 
+    if (guideInterface.isNull())
+    {
+        appendLogText(i18n("Warning: job '%1' cannot guide because guide module is unavailable.", currentJob->getName()));
+        if (!manageConnectionLoss())
+            currentJob->setState(SchedulerJob::JOB_ERROR);
+        return;
+    }
+
     // avoid starting the guider twice
     if (resetCalibration == false && getGuidingStatus() == GUIDE_GUIDING)
     {
@@ -4763,6 +4839,14 @@ void Scheduler::startGuiding(bool resetCalibration)
 void Scheduler::startCapture(bool restart)
 {
     Q_ASSERT_X(nullptr != currentJob, __FUNCTION__, "Job starting capturing must be valid");
+
+    if (captureInterface.isNull())
+    {
+        appendLogText(i18n("Warning: job '%1' cannot capture because capture module is unavailable.", currentJob->getName()));
+        if (!manageConnectionLoss())
+            currentJob->setState(SchedulerJob::JOB_ERROR);
+        return;
+    }
 
     // ensure that guiding is running before we start capturing
     if (currentJob->getStepPipeline() & SchedulerJob::USE_GUIDE)
@@ -4914,6 +4998,9 @@ void Scheduler::stopGuiding()
 
 void Scheduler::setSolverAction(Align::GotoMode mode)
 {
+    if (alignInterface.isNull())
+        return;
+
     QVariant gotoMode(static_cast<int>(mode));
     alignInterface->call(QDBus::AutoDetect, "setSolverAction", gotoMode);
 }
@@ -4922,6 +5009,9 @@ void Scheduler::disconnectINDI()
 {
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Disconnecting INDI...";
     indiState = INDI_DISCONNECTING;
+    if (ekosInterface.isNull())
+        return;
+
     ekosInterface->call(QDBus::AutoDetect, "disconnectDevices");
 }
 
@@ -4930,6 +5020,9 @@ void Scheduler::stopEkos()
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Stopping Ekos...";
     ekosState               = EKOS_STOPPING;
     ekosConnectFailureCount = 0;
+    if (ekosInterface.isNull())
+        return;
+
     ekosInterface->call(QDBus::AutoDetect, "stop");
     m_MountReady = m_CapReady = m_CaptureReady = m_DomeReady = false;
 }
@@ -5381,6 +5474,14 @@ int Scheduler::timeHeuristics(const SchedulerJob *schedJob)
 
 void Scheduler::parkMount()
 {
+    if (mountInterface.isNull())
+    {
+        appendLogText(i18n("Warning: mount interface is unavailable while attempting to park."));
+        if (!manageConnectionLoss())
+            parkWaitState = PARKWAIT_ERROR;
+        return;
+    }
+
     QVariant parkingStatus = mountInterface->property("parkStatus");
 
     if (parkingStatus.isValid() == false)
@@ -6395,14 +6496,16 @@ void Scheduler::runStartupProcedure()
                 break;
 
             case STARTUP_UNPARKING_DOME:
-                domeInterface->call(QDBus::AutoDetect, "abort");
+                if (!domeInterface.isNull())
+                    domeInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case STARTUP_UNPARK_MOUNT:
                 break;
 
             case STARTUP_UNPARKING_MOUNT:
-                mountInterface->call(QDBus::AutoDetect, "abort");
+                if (!mountInterface.isNull())
+                    mountInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case STARTUP_UNPARK_CAP:
@@ -6480,14 +6583,16 @@ void Scheduler::runShutdownProcedure()
                 break;
 
             case SHUTDOWN_PARKING_DOME:
-                domeInterface->call(QDBus::AutoDetect, "abort");
+                if (!domeInterface.isNull())
+                    domeInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case SHUTDOWN_PARK_MOUNT:
                 break;
 
             case SHUTDOWN_PARKING_MOUNT:
-                mountInterface->call(QDBus::AutoDetect, "abort");
+                if (!mountInterface.isNull())
+                    mountInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case SHUTDOWN_PARK_CAP:
@@ -6512,6 +6617,9 @@ void Scheduler::runShutdownProcedure()
 void Scheduler::loadProfiles()
 {
     QString currentProfile = schedulerProfileCombo->currentText();
+
+    if (ekosInterface.isNull())
+        return;
 
     QDBusReply<QStringList> profiles = ekosInterface->call(QDBus::AutoDetect, "getProfiles");
 
@@ -6836,7 +6944,8 @@ void Scheduler::setAlignStatus(Ekos::AlignState status)
                 {
                     appendLogText(i18n("Warning: job '%1' forcing mount model reset after failing alignment #%2.", currentJob->getName(),
                                        alignFailureCount));
-                    mountInterface->call(QDBus::AutoDetect, "resetModel");
+                    if (!mountInterface.isNull())
+                        mountInterface->call(QDBus::AutoDetect, "resetModel");
                 }
                 appendLogText(i18n("Restarting %1 alignment procedure...", currentJob->getName()));
                 startAstrometry();
@@ -6951,7 +7060,19 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
 
 GuideState Scheduler::getGuidingStatus()
 {
+    if (guideInterface.isNull())
+    {
+        qCWarning(KSTARS_EKOS_SCHEDULER) << "Guide interface is null while requesting guiding status.";
+        return Ekos::GUIDE_DISCONNECTED;
+    }
+
     QVariant guideStatus = guideInterface->property("status");
+    if (!guideStatus.isValid())
+    {
+        qCWarning(KSTARS_EKOS_SCHEDULER) << "Guide status property is invalid.";
+        return Ekos::GUIDE_DISCONNECTED;
+    }
+
     Ekos::GuideState gStatus = static_cast<Ekos::GuideState>(guideStatus.toInt());
 
     return gStatus;
@@ -7094,7 +7215,8 @@ void Scheduler::setFocusStatus(Ekos::FocusState status)
             {
                 appendLogText(i18n("Job '%1' is restarting its focusing procedure.", currentJob->getName()));
                 // Reset frame to original size.
-                focusInterface->call(QDBus::AutoDetect, "resetFrame");
+                if (!focusInterface.isNull())
+                    focusInterface->call(QDBus::AutoDetect, "resetFrame");
                 // Restart focusing
                 qCDebug(KSTARS_EKOS_SCHEDULER) << "startFocusing on 6883";
                 startFocusing();
