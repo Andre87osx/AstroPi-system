@@ -2527,13 +2527,16 @@ void Scheduler::executeJob(SchedulerJob *job)
 
     if (job->getCompletionCondition() == SchedulerJob::FINISH_SEQUENCE && Options::rememberJobProgress())
     {
-        QString sanitized = job->getName();
-        sanitized = sanitized.replace( QRegularExpression("\\s|/|\\(|\\)|:|\\*|~|\"" ), "_" )
-                    // Remove any two or more __
-                    .replace( QRegularExpression("_{2,}"), "_")
-                    // Remove any _ at the end
-                    .replace( QRegularExpression("_$"), "");
-        captureInterface->setProperty("targetName", sanitized);
+        if (!captureInterface.isNull())
+        {
+            QString sanitized = job->getName();
+            sanitized = sanitized.replace( QRegularExpression("\\s|/|\\(|\\)|:|\\*|~|\"" ), "_" )
+                        // Remove any two or more __
+                        .replace( QRegularExpression("_{2,}"), "_")
+                        // Remove any _ at the end
+                        .replace( QRegularExpression("_$"), "");
+            captureInterface->setProperty("targetName", sanitized);
+        }
     }
 
     calculateDawnDusk();
@@ -2560,6 +2563,12 @@ bool Scheduler::checkEkosState()
     if (state == SCHEDULER_PAUSED)
         return false;
 
+    if (ekosInterface.isNull())
+    {
+        qCWarning(KSTARS_EKOS_SCHEDULER) << "Ekos interface is unavailable.";
+        return false;
+    }
+
     switch (ekosState)
     {
         case EKOS_IDLE:
@@ -2571,6 +2580,12 @@ bool Scheduler::checkEkosState()
             }
             else
             {
+                if (ekosInterface.isNull())
+                {
+                    appendLogText(i18n("Warning: Ekos interface is unavailable while starting Ekos."));
+                    stop();
+                    return false;
+                }
                 ekosInterface->call(QDBus::AutoDetect, "start");
                 ekosState = EKOS_STARTING;
                 currentOperationTime.start();
@@ -2595,6 +2610,11 @@ bool Scheduler::checkEkosState()
                 if (ekosConnectFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
                     appendLogText(i18n("Starting Ekos failed. Retrying..."));
+                    if (ekosInterface.isNull())
+                    {
+                        stop();
+                        return false;
+                    }
                     ekosInterface->call(QDBus::AutoDetect, "start");
                     return false;
                 }
@@ -2611,10 +2631,16 @@ bool Scheduler::checkEkosState()
                 if (ekosConnectFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
                     appendLogText(i18n("Starting Ekos timed out. Retrying..."));
+                    if (ekosInterface.isNull())
+                    {
+                        stop();
+                        return false;
+                    }
                     ekosInterface->call(QDBus::AutoDetect, "stop");
                     QTimer::singleShot(1000, this, [&]()
                     {
-                        ekosInterface->call(QDBus::AutoDetect, "start");
+                        if (!ekosInterface.isNull())
+                            ekosInterface->call(QDBus::AutoDetect, "start");
                         currentOperationTime.restart();
                     });
                     return false;
@@ -2655,6 +2681,12 @@ bool Scheduler::checkINDIState()
     if (state == SCHEDULER_PAUSED)
         return false;
 
+    if (ekosInterface.isNull())
+    {
+        qCWarning(KSTARS_EKOS_SCHEDULER) << "Ekos interface is unavailable while checking INDI state.";
+        return false;
+    }
+
     //qCDebug(KSTARS_EKOS_SCHEDULER) << "Checking INDI State" << indiState;
 
     switch (indiState)
@@ -2670,6 +2702,12 @@ bool Scheduler::checkINDIState()
             else
             {
                 qCDebug(KSTARS_EKOS_SCHEDULER) << "Connecting INDI devices...";
+                if (ekosInterface.isNull())
+                {
+                    appendLogText(i18n("Warning: Ekos interface is unavailable while connecting INDI devices."));
+                    stop();
+                    return false;
+                }
                 ekosInterface->call(QDBus::AutoDetect, "connectDevices");
                 indiState = INDI_CONNECTING;
 
@@ -2690,6 +2728,11 @@ bool Scheduler::checkINDIState()
                 if (indiConnectFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
                     appendLogText(i18n("One or more INDI devices failed to connect. Retrying..."));
+                    if (ekosInterface.isNull())
+                    {
+                        stop();
+                        return false;
+                    }
                     ekosInterface->call(QDBus::AutoDetect, "connectDevices");
                 }
                 else
@@ -2704,6 +2747,11 @@ bool Scheduler::checkINDIState()
                 if (indiConnectFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
                     appendLogText(i18n("One or more INDI devices timed out. Retrying..."));
+                    if (ekosInterface.isNull())
+                    {
+                        stop();
+                        return false;
+                    }
                     ekosInterface->call(QDBus::AutoDetect, "connectDevices");
                     currentOperationTime.restart();
                 }
@@ -2841,7 +2889,8 @@ bool Scheduler::checkStartupState()
             {
                 QList<QVariant> profile;
                 profile.append(schedulerProfileCombo->currentText());
-                ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
+                if (!ekosInterface.isNull())
+                    ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
             }
 
             if (startupScriptURL.isEmpty() == false)
@@ -3738,19 +3787,23 @@ void Scheduler::stopCurrentJobAction()
                 break;
 
             case SchedulerJob::STAGE_SLEWING:
-                mountInterface->call(QDBus::AutoDetect, "abort");
+                if (!mountInterface.isNull())
+                    mountInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case SchedulerJob::STAGE_FOCUSING:
-                focusInterface->call(QDBus::AutoDetect, "abort");
+                if (!focusInterface.isNull())
+                    focusInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case SchedulerJob::STAGE_ALIGNING:
-                alignInterface->call(QDBus::AutoDetect, "abort");
+                if (!alignInterface.isNull())
+                    alignInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             case SchedulerJob::STAGE_CAPTURING:
-                captureInterface->call(QDBus::AutoDetect, "abort");
+                if (!captureInterface.isNull())
+                    captureInterface->call(QDBus::AutoDetect, "abort");
                 break;
 
             default:
