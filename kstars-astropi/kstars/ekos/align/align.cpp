@@ -2993,10 +2993,25 @@ void Align::processData(const QSharedPointer<FITSData> &data)
     disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
     disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
 
+    const bool keepPAAReferenceImage =
+        (m_PAHStage == PAH_STAR_SELECT || m_PAHStage == PAH_PRE_REFRESH || m_PAHStage == PAH_REFRESH);
+    if (!keepPAAReferenceImage)
+        alignView->releaseImage();
+
+    m_ImageData.reset();
     if (data)
         m_ImageData = data;
     else
         m_ImageData.reset();
+
+    const auto keptImage = alignView->keptImage();
+    int retainedImages = m_ImageData.isNull() ? 0 : 1;
+    if (!keptImage.isNull() && keptImage.data() != m_ImageData.data())
+        retainedImages++;
+    qCDebug(KSTARS_EKOS_ALIGN) << "Align image retention:" << retainedImages
+                              << "(current:" << !m_ImageData.isNull()
+                              << ", kept:" << !keptImage.isNull()
+                              << ", stage:" << m_PAHStage << ")";
     //    blobType     = *(static_cast<ISD::CCD::BlobType *>(bp->aux1));
     //    blobFileName = QString(static_cast<char *>(bp->aux2));
 
