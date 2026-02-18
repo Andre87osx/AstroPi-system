@@ -3087,17 +3087,30 @@ bool Scheduler::checkStartupState()
                     ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
             }
 
+            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
+            {
+                constexpr double startupCoolingTemperatureC = -10.0;
+                if (!captureInterface.isNull())
+                {
+                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
+                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
+                    {
+                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
+                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
+                        captureInterface->setProperty("coolerControl", true);
+                    }
+                    else
+                    {
+                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
+                    }
+                }
+            }
+
             if (startupScriptURL.isEmpty() == false)
             {
                 startupState = STARTUP_SCRIPT;
                 executeScript(startupScriptURL.toString(QUrl::PreferLocalFile));
                 return false;
-            }
-
-            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
-            {
-                appendLogText(i18n("Cooling up CCD..."));
-                captureInterface->setProperty("coolerControl", true);
             }
 
             startupState = STARTUP_UNPARK_DOME;
