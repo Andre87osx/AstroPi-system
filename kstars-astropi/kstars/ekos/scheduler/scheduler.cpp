@@ -283,7 +283,17 @@ Scheduler::Scheduler()
         }
 
         if (!logoPixmap.isNull())
-            astroPiLogoLabel->setPixmap(logoPixmap.scaledToWidth(260, Qt::SmoothTransformation));
+        {
+            const int logicalLogoWidth = 260;
+            const qreal devicePixelRatio = astroPiLogoLabel->devicePixelRatioF();
+            int physicalLogoWidth = qRound(logicalLogoWidth * devicePixelRatio);
+            if (physicalLogoWidth < 1)
+                physicalLogoWidth = 1;
+
+            QPixmap scaledLogo = logoPixmap.scaledToWidth(physicalLogoWidth, Qt::SmoothTransformation);
+            scaledLogo.setDevicePixelRatio(devicePixelRatio);
+            astroPiLogoLabel->setPixmap(scaledLogo);
+        }
         else
             astroPiLogoLabel->setText(i18n("AstroPi"));
     }
