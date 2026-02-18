@@ -1,5 +1,9 @@
 # ✨ IMPROVED EKOS SCHEDULER - SMARTER GUIDE RECOVERY
 
+## 📌 Registro Unico Progressi
+
+Questo file è la fonte unica e ufficiale per stato avanzamento, decisioni tecniche, recovery logic e timeline operative AstroPi.
+
 ## 🎯 What Changed (Your Suggestion Implemented!)
 
 You said: *"Se la guida fallisce sospendi cattura, e riprovi per il valore predefinito di tentativi mi pare 3. Se dopo i 3 tentativi non va fai ripartire fuoco, allineamento e guida. Se uno di questi si interrompe passi a oggetto successivo oppure shutdown e parcheggi montatura."*
@@ -306,3 +310,115 @@ Ora il Scheduler è:
 - 📊 Intelligente (capisce quando arrendersi)
 
 **Sistema di observazione automatica pronto per una notte di imaging! 🌌**
+
+---
+
+## 🧩 Integrazione Completa Guida Scheduler (ex popup)
+
+Questa sezione integra i punti operativi che prima erano nella popup dello Scheduler, mantenendoli qui come riferimento unico analitico.
+
+### Parametri Globali Scheduler
+
+- `MAX_FAILURE_ATTEMPTS = 3`
+- `UPDATE_PERIOD_MS = 1000`
+- `RESTART_GUIDING_DELAY_MS = 5000`
+- Policy UI AstroPi: `ERROR_DONT_RESTART`, `RescheduleErrors = false`, `Delay = 0s`
+
+### Pipeline Operativa End-to-End
+
+1. Validazione vincoli job (tempo, altitudine, meteo, priorità)
+2. Startup sequence (script + connessioni)
+3. Preparazione osservatorio (unpark mount/dome/cap)
+4. Slew + tracking target
+5. Stage scientifici (Focus, Align, Guide, Capture)
+6. Monitor runtime (meteo, guida, timeout moduli)
+7. Chiusura job: `findNextJob()` oppure shutdown/parcheggio
+
+### Timeout/Retry per Modulo (Integrato)
+
+| Modulo | Controllo | Retry | Esito su fail persistente |
+|--------|-----------|-------|---------------------------|
+| ALIGN | hard timeout + inactivity | 3 | abort job → next job/shutdown |
+| FOCUS | hard timeout + inactivity | 3 | abort job → next job/shutdown |
+| GUIDE setup/calibrazione | hard timeout + inactivity | 3 quick + 3 deep | next job/shutdown |
+| CAPTURE | inactivity timeout | 3 | abort job → next job/shutdown |
+| INDI/device link | check periodico stato | retry interni | failover operativo |
+| Startup/Shutdown scripts | exit status + timeout stage | retry controllati | stato safe/error |
+| Park/Unpark | conferma stato device | retry controllati | abort procedura + safe state |
+
+### Tabella Eventi Integrata (Operativa)
+
+| Evento/Sintomo | Azione Scheduler |
+|----------------|------------------|
+| Finestra target non valida | skip job, `findNextJob()` |
+| Meteo unsafe | sospensione/stop acquisizioni, eventuale park |
+| Startup script fail | retry stage, poi errore/fallback |
+| INDI non connesso | retry connessione entro limiti |
+| Unpark fail | retry preparazione, poi stop sicuro |
+| Slew fail | retry slew/sync, poi abort job |
+| ALIGN timeout/inattivo | retry align fino a 3 |
+| FOCUS timeout/inattivo | retry focus fino a 3 |
+| GUIDE fail temporaneo | quick retry guida-only #1/#2/#3 |
+| GUIDE fail dopo quick x3 | deep recovery focus→align→guide #1/#2/#3 |
+| Focus/Align fail durante deep | stop recovery su target, next job |
+| GUIDE fail dopo 3+3 | reset contatori, next job |
+| CAPTURE timeout/inattività | retry capture fino a 3, poi abort |
+| Meridian flip runtime | gestione flip + reacquire align/guide |
+| Nessun job residuo | shutdown/parcheggi finali |
+| Park finale fail | retry park + mantenimento stato safe |
+
+---
+
+## 🧠 ALIGN: Variabili OOM/RAM e Gestione Migliorata
+
+### Variabili/Segnali usati per evitare OOM
+
+- `m_CaptureErrorCounter`: contatore errori acquisizione frame in Align
+- `Options::solverBinningIndex()`: binning solver corrente
+- `KSUtils::getAvailableRAM()`: RAM disponibile runtime
+- `ccd_width`, `ccd_height`: dimensione frame camera
+- `estimatedColorFrameBytes = ccd_width * ccd_height * 4.0`
+- `ratio = estimatedColorFrameBytes / availableRAM`
+
+### Politica adattiva anti-OOM (prepareCapture)
+
+- Se `ratio > 0.08` → almeno binning `2x2`
+- Se `ratio > 0.15` → almeno binning `3x3`
+- Se `ratio > 0.25` → almeno binning `4x4`
+- Clamping finale con `targetChip->getMaxBin()` + `qBound()`
+
+Log operativo atteso:
+
+`Low available memory detected. Increasing capture binning to NxN.`
+
+### Gestione frame null (low-memory condition)
+
+Quando `data.isNull()` in `Align::processData()`:
+
+1. Log: `Failed to receive a valid image frame (possible low-memory condition).`
+2. Incremento `m_CaptureErrorCounter`
+3. Incremento progressivo `solverBinningIndex` (fino a soglia)
+4. Retry capture con downsampling aumentato
+5. Al 3° errore (`m_CaptureErrorCounter == 3`, fuori `PAH_REFRESH`) → abort
+
+### Gestione RAM immagini migliorata (keep-last-image policy)
+
+Miglioria integrata nel flusso Align:
+
+- Fuori dagli stage PAA che richiedono riferimento (`PAH_STAR_SELECT`, `PAH_PRE_REFRESH`, `PAH_REFRESH`), viene eseguito `alignView->releaseImage()`.
+- `m_ImageData` viene resettata prima di assegnare la nuova frame.
+- Conteggio debug immagini trattenute:
+  - tipicamente `1` (solo corrente) in modalità normale
+  - massimo `2` durante PAA (corrente + riferimento kept)
+
+Log debug atteso:
+
+`Align image retention: <N> (current: <0/1>, kept: <0/1>, stage: <PAHStage>)`
+
+---
+
+## ✅ Esito Integrazione Documentale
+
+- Popup Scheduler allineata ai contenuti tecnici centrali.
+- `SUMMARY_V2_IMPROVED.md` resta il registro unico per recovery, eventi e gestione risorse.
+- Le logiche RAM/OOM di Align sono ora documentate con variabili e soglie reali del codice.

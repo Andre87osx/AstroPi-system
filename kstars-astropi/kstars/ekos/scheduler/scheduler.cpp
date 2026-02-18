@@ -34,8 +34,11 @@
 
 #include <QCoreApplication>
 #include <QDialog>
+#include <QDir>
+#include <QFile>
 #include <QStandardPaths>
 #include <QTextBrowser>
+#include <QTextStream>
 #include <QVBoxLayout>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
@@ -300,6 +303,85 @@ Scheduler::Scheduler()
 
     if (showGuideButton != nullptr && schedulerGuideLabel != nullptr)
     {
+        const QString embeddedGuideHtml = QStringLiteral(R"GUIDE(
+<html><head/><body>
+<p><b>GUIDA TECNICA SCHEDULER ASTROPI (OPERATIVA COMPLETA)</b></p>
+
+<p><b>Policy globali (profilo AstroPi)</b><br/>
+• <b>MAX_FAILURE_ATTEMPTS</b> = 3 (retry standard per modulo/stage).<br/>
+• <b>UPDATE_PERIOD_MS</b> = 1000 ms (monitoring loop).<br/>
+• <b>ErrorHandlingStrategy</b> forzato a <b>ERROR_DONT_RESTART</b>.<br/>
+• <b>RescheduleErrors</b> forzato a <b>false</b>.<br/>
+• <b>Delay</b> scheduler forzato a <b>0 s</b>.<br/>
+• In uscita da errore: priorità a <b>findNextJob()</b>; se non esistono job eseguibili → procedure di chiusura/parcheggio.</p>
+
+<p><b>Pipeline completa per job</b><br/>
+1) Validazione finestra temporale/altitudine/meteo.<br/>
+2) Startup sequence (script + connessioni dispositivi).<br/>
+3) Preparazione osservatorio (unpark mount/dome/cap quando richiesto).<br/>
+4) Slew target + tracking.<br/>
+5) Stage scientifici (Focus, Align, Guide, Capture secondo vincoli del job).<br/>
+6) Monitor runtime (weather, guiding health, inattività moduli, sicurezza).<br/>
+7) Completamento job → prossimo target oppure shutdown/parcheggio.</p>
+
+<p><b>Timeout/Retry per moduli principali</b></p>
+<table border="1" cellspacing="0" cellpadding="3">
+<tr><th>Modulo</th><th>Controllo</th><th>Policy</th><th>Esito su fail persistente</th></tr>
+<tr><td>ALIGN</td><td>Hard timeout + inactivity (5 min)</td><td>Retry fino a 3</td><td>Abort job corrente → next job/shutdown</td></tr>
+<tr><td>FOCUS</td><td>Hard timeout + inactivity (5 min)</td><td>Retry fino a 3</td><td>Abort job corrente → next job/shutdown</td></tr>
+<tr><td>GUIDE (setup/calibrazione)</td><td>Hard timeout + inactivity (5 min)</td><td>Quick 3 (guida-only) + Deep 3 (focus→align→guide)</td><td>Cambio job (next target) o shutdown</td></tr>
+<tr><td>CAPTURE</td><td>Inactivity timeout (120 s)</td><td>Retry capture fino a 3</td><td>Abort job corrente → next job/shutdown</td></tr>
+<tr><td>INDI/Device link</td><td>Check stato connessione periodico</td><td>Retry connessione entro limiti interni</td><td>Errore operativo → failover su next job/shutdown</td></tr>
+<tr><td>Startup/Shutdown scripts</td><td>Exit status + timeout stage</td><td>Retry controllato</td><td>Transizione a stato errore sicuro</td></tr>
+<tr><td>Park/Unpark mount-dome-cap</td><td>Conferma stato device</td><td>Retry controllato</td><td>Abort procedura corrente + safe state</td></tr>
+</table>
+
+<p><b>Tabella eventi integrata (Sintomo → Azione Scheduler → Log atteso)</b></p>
+<table border="1" cellspacing="0" cellpadding="3">
+<tr><th>Evento/Sintomo</th><th>Azione Scheduler</th><th>Log/Traccia attesa</th></tr>
+
+<tr><td>Finestra target non valida (orario/altitudine/vincoli)</td><td>Skip job, valuta successivo</td><td>Messaggi di valutazione + findNextJob()</td></tr>
+<tr><td>Meteo unsafe (vento/pioggia/cloud safety)</td><td>Sospensione o stop acquisizioni; attesa recovery o transizione safe</td><td>Weather unsafe / parking / waiting for safe weather</td></tr>
+
+<tr><td>Startup script fallisce</td><td>Retry stage, poi errore job/sessione</td><td>startup procedure failed / retry startup</td></tr>
+<tr><td>Connessione INDI non disponibile</td><td>Retry connessione entro limiti; se persiste passa a fallback</td><td>INDI connection failed / retry connection</td></tr>
+
+<tr><td>Unpark mount/dome/cap fallisce</td><td>Retry procedura preparazione; se persiste stop sicuro</td><td>unpark failed / aborting startup sequence</td></tr>
+<tr><td>Slew target fallisce</td><td>Nuovo tentativo slew/sync secondo stato; poi abort job</td><td>slew failed / retrying slew / marking aborted</td></tr>
+
+<tr><td>ALIGN oltre timeout o inattivo</td><td>Retry align fino a 3</td><td>alignment attempt exceeded / alignment failed</td></tr>
+<tr><td>FOCUS oltre timeout o inattivo</td><td>Retry focus fino a 3</td><td>focusing attempt exceeded / focusing failed</td></tr>
+
+<tr><td>GUIDE fallisce (nuvola/seeing temporaneo)</td><td>Quick recovery: guida-only #1/#2/#3 (backoff breve)</td><td>quick recovery attempt #N</td></tr>
+<tr><td>GUIDE ancora KO dopo quick x3</td><td>Deep recovery: focus→align→guide #1/#2/#3</td><td>deep recovery attempt #N</td></tr>
+<tr><td>FOCUS/ALIGN falliscono durante deep recovery</td><td>Stop recovery su job corrente; passa a next job o shutdown</td><td>failed during guide recovery. Moving to next job...</td></tr>
+<tr><td>GUIDE fallisce dopo 3 quick + 3 deep</td><td>Abbandona target corrente, reset contatori, next target</td><td>guiding recovery failed after 3+3 attempts</td></tr>
+
+<tr><td>CAPTURE in timeout/inattività</td><td>Retry capture fino a 3; poi abort job</td><td>capture module timed out. Restarting request...</td></tr>
+<tr><td>Errore durante sequenza capture (modulo non pronto)</td><td>Ripartenza stage coerente con stato corrente</td><td>module timed out / restarting stage</td></tr>
+
+<tr><td>Meridian flip richiesto durante runtime</td><td>Gestione flip + riacquisizione (align/guide) secondo policy</td><td>meridian flip requested / reacquiring guiding</td></tr>
+
+<tr><td>Nessun job eseguibile residuo</td><td>Esegue shutdown/parcheggi finali se configurati</td><td>No jobs left / shutdown procedure</td></tr>
+<tr><td>Park finale fallisce</td><td>Retry park, notifica errore e mantiene stato sicuro</td><td>parking failed / retry parking</td></tr>
+</table>
+
+<p><b>Regole pratiche di continuità</b><br/>
+• Lo scheduler privilegia la continuità: quando possibile <b>passa al prossimo job</b> invece di fermare tutta la sessione.<br/>
+• I retry locali (modulo) sono limitati; oltre soglia si evita loop infinito.<br/>
+• Le procedure di sicurezza (meteo/park/shutdown) hanno priorità sulle acquisizioni.<br/>
+• In recovery guida avanzata: contatore unico progressivo (3 quick + 3 deep).</p>
+
+<p><b>Checklist rapida operatore</b><br/>
+1. Verifica profilo INDI e stato mount/dome/camera prima dello start.<br/>
+2. In caso di fail guida, attendi i 3 quick retry prima di intervento manuale.<br/>
+3. Se parte deep recovery, controlla focus/align logs per root-cause hardware.<br/>
+4. Se il sistema passa a next job, non è crash: è failover controllato.<br/>
+5. Se non restano target validi, attendere shutdown/parcheggio automatico.</p>
+</body></html>
+)GUIDE");
+    schedulerGuideLabel->setText(embeddedGuideHtml);
+
         connect(showGuideButton, &QPushButton::clicked, this, [this]()
         {
             QDialog guideDialog(this);
@@ -309,7 +391,42 @@ Scheduler::Scheduler()
             auto *layout = new QVBoxLayout(&guideDialog);
             auto *textBrowser = new QTextBrowser(&guideDialog);
             textBrowser->setOpenExternalLinks(true);
-            textBrowser->setHtml(schedulerGuideLabel->text());
+
+            QString guideMarkdown;
+            QString loadedPath;
+            const QStringList candidateGuidePaths
+            {
+                QCoreApplication::applicationDirPath() + "/SUMMARY_V2_IMPROVED.md",
+                QCoreApplication::applicationDirPath() + "/../SUMMARY_V2_IMPROVED.md",
+                QCoreApplication::applicationDirPath() + "/../../SUMMARY_V2_IMPROVED.md",
+                QCoreApplication::applicationDirPath() + "/../../../SUMMARY_V2_IMPROVED.md",
+                QDir::currentPath() + "/SUMMARY_V2_IMPROVED.md"
+            };
+
+            for (const QString &candidate : candidateGuidePaths)
+            {
+                QFile guideFile(candidate);
+                if (guideFile.open(QIODevice::ReadOnly | QIODevice::Text))
+                {
+                    QTextStream in(&guideFile);
+                    guideMarkdown = in.readAll();
+                    loadedPath = candidate;
+                    break;
+                }
+            }
+
+            if (!guideMarkdown.isEmpty())
+            {
+                textBrowser->setPlainText(guideMarkdown);
+                guideDialog.setWindowTitle(i18n("Guida Tecnica Scheduler AstroPi - SUMMARY_V2_IMPROVED.md"));
+                qCInfo(KSTARS_EKOS_SCHEDULER) << "Guide loaded from" << loadedPath;
+            }
+            else
+            {
+                textBrowser->setHtml(schedulerGuideLabel->text());
+                qCWarning(KSTARS_EKOS_SCHEDULER) << "SUMMARY_V2_IMPROVED.md not found. Using embedded scheduler guide.";
+            }
+
             layout->addWidget(textBrowser);
 
             guideDialog.exec();
