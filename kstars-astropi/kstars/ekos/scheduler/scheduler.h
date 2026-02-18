@@ -572,6 +572,12 @@ class Scheduler : public QWidget, public Ui::Scheduler
         bool manageConnectionLoss();
 
         /**
+             * @brief handleMountConnectionLoss Mitigate mount disconnection with bounded retries and safe shutdown fallback.
+             * @param context human-readable context where the disconnection was detected.
+             */
+        void handleMountConnectionLoss(const QString &context);
+
+        /**
              * @brief readProcessOutput read running script process output and display it in Ekos
              */
         void readProcessOutput();
@@ -875,8 +881,12 @@ class Scheduler : public QWidget, public Ui::Scheduler
         uint8_t alignFailureCount { 0 };
         /// Keep track of Ekos capture module failures
         uint8_t captureFailureCount { 0 };
+     /// Keep track of mount reconnection attempts after disconnection
+     uint8_t mountDisconnectFailureCount { 0 };
         /// Counter to keep debug logging in check
         uint8_t checkJobStageCounter { 0 };
+     /// Avoid repeated emergency shutdown requests for the same mount disconnection event
+     bool mountEmergencyShutdownIssued { false };
         /// Call checkWeather when weatherTimer time expires. It is equal to the UpdatePeriod time in INDI::Weather device.
         //QTimer weatherTimer;
         /// Timer to put the scheduler into sleep mode until a job is ready
@@ -892,6 +902,8 @@ class Scheduler : public QWidget, public Ui::Scheduler
         QElapsedTimer currentOperationTime;
      /// Generic time to enforce max duration of one operation attempt.
      QElapsedTimer currentOperationAttemptTime;
+     /// Throttle mount reconnection attempts to avoid rapid retries on unstable links.
+     QElapsedTimer mountRecoveryAttemptTime;
 
         QUrl dirPath;
 

@@ -3575,6 +3575,30 @@ void Scheduler::checkJobStage()
         if (now < currentJob->getStartupTime())
             return;
 
+    // Global mount health check: if mount drops during an active light-frames job,
+    // trigger connection recovery and eventually safe shutdown.
+    if (currentJob->getLightFramesRequired() && !mountEmergencyShutdownIssued)
+    {
+        if (mountInterface.isNull())
+        {
+            handleMountConnectionLoss(i18n("mount interface unavailable"));
+            return;
+        }
+
+        QVariant const mountStatus = mountInterface->property("status");
+        if (!mountStatus.isValid())
+        {
+            handleMountConnectionLoss(i18n("mount status unavailable"));
+            return;
+        }
+
+        if (static_cast<ISD::Telescope::Status>(mountStatus.toInt()) == ISD::Telescope::MOUNT_ERROR)
+        {
+            handleMountConnectionLoss(i18n("mount reported error status"));
+            return;
+        }
+    }
+
     // #1 Check if we need to stop at some point
     if (currentJob->getCompletionCondition() == SchedulerJob::FINISH_AT &&
             currentJob->getState() == SchedulerJob::JOB_BUSY)
@@ -4130,6 +4154,46 @@ bool Scheduler::manageConnectionLoss()
 
     // Let the Scheduler attempt to connect INDI again
     return true;
+}
+
+void Scheduler::handleMountConnectionLoss(const QString &context)
+{
+    if (state != SCHEDULER_RUNNING || mountEmergencyShutdownIssued)
+        return;
+
+    if (shutdownState > SHUTDOWN_IDLE)
+        return;
+
+    if (mountRecoveryAttemptTime.isValid() && mountRecoveryAttemptTime.elapsed() < RESTART_GUIDING_DELAY_MS)
+        return;
+    mountRecoveryAttemptTime.restart();
+
+    const uint8_t attemptNumber = mountDisconnectFailureCount + 1;
+    appendLogText(i18n("Warning: mount disconnected (%1). Recovery attempt %2/%3...",
+                       context, attemptNumber, MAX_FAILURE_ATTEMPTS));
+
+    mountDisconnectFailureCount++;
+    const bool recoveryTriggered = manageConnectionLoss();
+    if (!recoveryTriggered)
+        qCWarning(KSTARS_EKOS_SCHEDULER) << "Mount disconnection recovery could not be triggered.";
+
+    if (mountDisconnectFailureCount < MAX_FAILURE_ATTEMPTS)
+        return;
+
+    mountEmergencyShutdownIssued = true;
+    appendLogText(i18n("Mount recovery failed after %1 attempts. Starting emergency shutdown with parking.",
+                       MAX_FAILURE_ATTEMPTS));
+
+    if (currentJob)
+    {
+        currentJob->setState(SchedulerJob::JOB_ABORTED);
+        stopCurrentJobAction();
+        jobTimer.stop();
+    }
+
+    setCurrentJob(nullptr);
+    shutdownState = SHUTDOWN_IDLE;
+    checkShutdownState();
 }
 
 void Scheduler::load(bool clearQueue)
@@ -7048,6 +7112,14 @@ void Scheduler::setINDICommunicationStatus(Ekos::CommunicationStatus status)
     qCDebug(KSTARS_EKOS_SCHEDULER) << "Scheduler INDI status is" << status;
 
     m_INDICommunicationStatus = status;
+
+    if (status == Ekos::Success && mountDisconnectFailureCount > 0)
+    {
+        appendLogText(i18n("INDI connection recovered after mount disconnect."));
+        mountDisconnectFailureCount = 0;
+        mountEmergencyShutdownIssued = false;
+        mountRecoveryAttemptTime.invalidate();
+    }
 }
 
 void Scheduler::setEkosCommunicationStatus(Ekos::CommunicationStatus status)
@@ -7565,6 +7637,20 @@ void Scheduler::setMountStatus(ISD::Telescope::Status status)
         return;
 
     qCDebug(KSTARS_EKOS_SCHEDULER) << "Mount State changed to" << status;
+
+    if (status == ISD::Telescope::MOUNT_ERROR)
+    {
+        handleMountConnectionLoss(i18n("mount status changed to error"));
+        return;
+    }
+
+    if (mountDisconnectFailureCount > 0)
+    {
+        appendLogText(i18n("Mount connection restored."));
+        mountDisconnectFailureCount = 0;
+        mountEmergencyShutdownIssued = false;
+        mountRecoveryAttemptTime.invalidate();
+    }
 
     /* If current job is scheduled and has not started yet, wait */
     if (SchedulerJob::JOB_SCHEDULED == currentJob->getState())
