@@ -1,0 +1,49 @@
+name: Build Raspbian Buster Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'kstars-astropi/**'
+      - '.github/workflows/raspbian-buster-artifacts.yml'
+      - '.github/scripts/build_raspbian_buster_artifacts.sh'
+
+jobs:
+  build-buster-armhf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup QEMU (arm emulation)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build in Debian Buster armhf container
+        run: |
+          docker run --rm --platform linux/arm/v7 \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            arm32v7/debian:buster \
+            bash .github/scripts/build_raspbian_buster_artifacts.sh
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kstars-astropi-buster-deb
+          path: artifacts/*.deb
+          if-no-files-found: error
+
+      - name: Upload rootfs archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kstars-astropi-buster-rootfs
+          path: artifacts/*_rootfs.tar.gz
+          if-no-files-found: error
