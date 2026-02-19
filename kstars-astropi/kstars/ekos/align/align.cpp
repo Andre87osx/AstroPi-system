@@ -1948,9 +1948,23 @@ void Align::checkCCD(int ccdNum)
             return;
     }
 
+    if (ccdNum < 0 || ccdNum >= CCDs.count())
+    {
+        currentCCD = nullptr;
+        return;
+    }
+
     currentCCD = CCDs.at(ccdNum);
 
     ISD::CCDChip *targetChip = currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
+    if (!targetChip)
+    {
+        ISOCombo->clear();
+        ISOCombo->setEnabled(false);
+        syncCCDInfo();
+        syncTelescopeInfo();
+        return;
+    }
     if (targetChip && targetChip->isCapturing())
         return;
 
@@ -3611,6 +3625,13 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     double elapsed = solverTimer.elapsed() / 1000.0;
     appendLogText(i18n("Solver completed after %1 seconds.", QString::number(elapsed, 'f', 2)));
 
+    if (!currentCCD)
+    {
+        appendLogText(i18n("Solver completed but camera is no longer connected. Ignoring solution."));
+        solverFailed();
+        return;
+    }
+
     // Reset Telescope Type to remembered value
     if (rememberTelescopeType != ISD::CCD::TELESCOPE_UNKNOWN)
     {
@@ -3627,6 +3648,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
 
     int binx, biny;
     ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+    if (!targetChip)
+    {
+        appendLogText(i18n("Solver completed but no CCD chip is available. Ignoring solution."));
+        solverFailed();
+        return;
+    }
     targetChip->getBinning(&binx, &biny);
 
     if (Options::alignmentLogging())
@@ -3708,9 +3735,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
                         i18n("WCS information updated. Images captured from this point forward shall have valid WCS."));
 
                     // Just send telescope info in case the CCD driver did not pick up before.
-                    auto telescopeInfo = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
-                    if (telescopeInfo)
-                        clientManager->sendNewNumber(telescopeInfo);
+                    if (currentTelescope)
+                    {
+                        auto telescopeInfo = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
+                        if (telescopeInfo)
+                            clientManager->sendNewNumber(telescopeInfo);
+                    }
 
                     m_wcsSynced = true;
                 }
@@ -4010,7 +4040,8 @@ void Align::stop(AlignState mode)
     // Reset Telescope Type to remembered value
     if (rememberTelescopeType != ISD::CCD::TELESCOPE_UNKNOWN)
     {
-        currentCCD->setTelescopeType(rememberTelescopeType);
+        if (currentCCD)
+            currentCCD->setTelescopeType(rememberTelescopeType);
         rememberTelescopeType = ISD::CCD::TELESCOPE_UNKNOWN;
     }
 
@@ -4024,36 +4055,42 @@ void Align::stop(AlignState mode)
     m_SlewErrorCounter = 0;
     m_AlignTimer.stop();
 
-    disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
-    disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
-
-    if (rememberUploadMode != currentCCD->getUploadMode())
-        currentCCD->setUploadMode(rememberUploadMode);
-
-    if (rememberCCDExposureLooping)
-        currentCCD->setExposureLoopingEnabled(true);
-
-    ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
-
-    // If capture is still in progress, let's stop that.
-    if (m_PAHStage == PAH_REFRESH)
+    if (currentCCD)
     {
-        if (targetChip->isCapturing())
-            targetChip->abortExposure();
+        disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
+        disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
 
-        appendLogText(i18n("Refresh is complete."));
-    }
-    else
-    {
-        if (targetChip->isCapturing())
+        if (rememberUploadMode != currentCCD->getUploadMode())
+            currentCCD->setUploadMode(rememberUploadMode);
+
+        if (rememberCCDExposureLooping)
+            currentCCD->setExposureLoopingEnabled(true);
+
+        ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+
+        if (targetChip)
         {
-            targetChip->abortExposure();
-            appendLogText(i18n("Capture aborted."));
-        }
-        else
-        {
-            double elapsed = solverTimer.elapsed() / 1000.0;
-            appendLogText(i18n("Solver aborted after %1 seconds.", QString::number(elapsed, 'f', 2)));
+            // If capture is still in progress, let's stop that.
+            if (m_PAHStage == PAH_REFRESH)
+            {
+                if (targetChip->isCapturing())
+                    targetChip->abortExposure();
+
+                appendLogText(i18n("Refresh is complete."));
+            }
+            else
+            {
+                if (targetChip->isCapturing())
+                {
+                    targetChip->abortExposure();
+                    appendLogText(i18n("Capture aborted."));
+                }
+                else
+                {
+                    double elapsed = solverTimer.elapsed() / 1000.0;
+                    appendLogText(i18n("Solver aborted after %1 seconds.", QString::number(elapsed, 'f', 2)));
+                }
+            }
         }
     }
 
@@ -5286,8 +5323,16 @@ void Align::checkFilter(int filterNum)
         return;
     }
 
-    if (filterNum <= Filters.count())
-        currentFilter = Filters.at(filterNum - 1);
+    if (filterNum < 0 || filterNum > Filters.count())
+    {
+        currentFilter = nullptr;
+        currentFilterPosition = -1;
+        FilterPosCombo->clear();
+        syncSettings();
+        return;
+    }
+
+    currentFilter = Filters.at(filterNum - 1);
 
     FilterPosCombo->clear();
 
