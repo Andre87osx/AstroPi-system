@@ -79,6 +79,16 @@ const QMap<Align::PAHStage, QString> Align::PAHStages =
     {PAH_ERROR, I18N_NOOP("Error")},
 };
 
+namespace
+{
+bool keepPAAReferenceImage(const Ekos::Align::PAHStage pahStage)
+{
+    return (pahStage == Ekos::Align::PAH_STAR_SELECT ||
+            pahStage == Ekos::Align::PAH_PRE_REFRESH ||
+            pahStage == Ekos::Align::PAH_REFRESH);
+}
+}
+
 Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
 {
     setupUi(this);
@@ -528,6 +538,10 @@ Align::~Align()
 {
     if (alignWidget->parent() == nullptr)
         toggleAlignWidgetFullScreen();
+
+    if (alignView)
+        alignView->releaseImage();
+    m_ImageData.reset();
 
     // Remove temporary FITS files left before by the solver
     QDir dir(QDir::tempPath());
@@ -2840,8 +2854,8 @@ bool Align::captureAndSolve()
 
     alignView->setBaseSize(alignWidget->size());
 
-    connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
-    connect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
+    connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData, Qt::UniqueConnection);
+    connect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress, Qt::UniqueConnection);
 
     // In case of remote solver, check if we need to update active CCD
     if (solverModeButtonGroup->checkedId() == SOLVER_REMOTE && remoteParser.get() != nullptr)
@@ -2967,6 +2981,12 @@ bool Align::captureAndSolve()
 
 void Align::processData(const QSharedPointer<FITSData> &data)
 {
+    if (currentCCD)
+    {
+        disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
+        disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
+    }
+
     if (data.isNull())
     {
         appendLogText(i18n("Failed to receive a valid image frame (possible low-memory condition)."));
@@ -2990,12 +3010,7 @@ void Align::processData(const QSharedPointer<FITSData> &data)
     if (data->property("chip").toInt() == ISD::CCDChip::GUIDE_CCD)
         return;
 
-    disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
-    disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
-
-    const bool keepPAAReferenceImage =
-        (m_PAHStage == PAH_STAR_SELECT || m_PAHStage == PAH_PRE_REFRESH || m_PAHStage == PAH_REFRESH);
-    if (!keepPAAReferenceImage)
+    if (!keepPAAReferenceImage(m_PAHStage))
         alignView->releaseImage();
 
     m_ImageData.reset();
@@ -3359,10 +3374,16 @@ void Align::startSolving()
     // This is needed because they might have directories stored in the config file.
     // So we can't just use the options folder list.
     QStringList astrometryDataDirs = KSUtils::getAstrometryDataDirs();
-    const QSharedPointer<FITSData> &data = alignView->imageData();
+    QSharedPointer<FITSData> solverData = alignView->imageData();
     disconnect(alignView, &FITSView::loaded, this, &Align::startSolving);
 
-    if (data.isNull())
+    if (solverData.isNull() && !m_ImageData.isNull())
+    {
+        qCWarning(KSTARS_EKOS_ALIGN) << "AlignView imageData is null, using retained capture frame for solving.";
+        solverData = m_ImageData;
+    }
+
+    if (solverData.isNull())
     {
         appendLogText(i18n("No image data available for plate solving. Retrying capture."));
 
@@ -3381,6 +3402,8 @@ void Align::startSolving()
         captureAndSolve();
         return;
     }
+
+    const QSharedPointer<FITSData> &data = solverData;
 
     if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
     {
@@ -3911,6 +3934,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     emit newStatus(state);
     solverIterations = 0;
 
+    if (m_PAHStage == PAH_IDLE)
+    {
+        alignView->releaseImage();
+        m_ImageData.reset();
+    }
+
     solverFOV->setProperty("visible", true);
 
     if (m_PAHStage != PAH_IDLE)
@@ -3953,6 +3982,12 @@ void Align::solverFailed()
 
     state = ALIGN_FAILED;
     emit newStatus(state);
+
+    if (!keepPAAReferenceImage(m_PAHStage))
+    {
+        alignView->releaseImage();
+        m_ImageData.reset();
+    }
 
     solverFOV->setProperty("visible", false);
 
@@ -4024,6 +4059,12 @@ void Align::stop(AlignState mode)
 
     state = mode;
     emit newStatus(state);
+
+    if (!keepPAAReferenceImage(m_PAHStage))
+    {
+        alignView->releaseImage();
+        m_ImageData.reset();
+    }
 
     setAlignTableResult(ALIGN_RESULT_FAILED);
 }
@@ -5586,6 +5627,7 @@ void Align::stopPAHProcess()
 
     alignView->reset();
     alignView->setRefreshEnabled(false);
+    m_ImageData.reset();
 
     emit newFrame(alignView);
     disconnect(alignView, &AlignView::trackingStarSelected, this, &Ekos::Align::setPAHCorrectionOffset);

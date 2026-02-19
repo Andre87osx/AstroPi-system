@@ -3704,6 +3704,8 @@ void Scheduler::checkJobStage()
                 if (alignFailureCount++ < MAX_FAILURE_ATTEMPTS)
                 {
                     qCDebug(KSTARS_EKOS_SCHEDULER) << "Align module hard-timeout. Restarting request...";
+                    if (!alignInterface.isNull())
+                        alignInterface->call(QDBus::AutoDetect, "abort");
                     startAstrometry();
                 }
                 else
@@ -3735,6 +3737,8 @@ void Scheduler::checkJobStage()
                     if (alignFailureCount++ < MAX_FAILURE_ATTEMPTS)
                     {
                         qCDebug(KSTARS_EKOS_SCHEDULER) << "Align module timed out. Restarting request...";
+                        if (!alignInterface.isNull())
+                            alignInterface->call(QDBus::AutoDetect, "abort");
                         startAstrometry();
                     }
                     else
@@ -7346,6 +7350,8 @@ void Scheduler::setAlignStatus(Ekos::AlignState status)
                         mountInterface->call(QDBus::AutoDetect, "resetModel");
                 }
                 appendLogText(i18n("Restarting %1 alignment procedure...", currentJob->getName()));
+                if (!alignInterface.isNull())
+                    alignInterface->call(QDBus::AutoDetect, "abort");
                 startAstrometry();
             }
             else
