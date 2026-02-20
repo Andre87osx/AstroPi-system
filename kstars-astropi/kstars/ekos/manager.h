@@ -434,6 +434,7 @@ class Manager : public QDialog, public Ui::Manager
         void updateDownloadProgress(double timeLeft);
         void updateExposureProgress(SequenceJob *job);
         void updateCaptureCountDown();
+        void updateRAMProgress();
 
         // Focus summary
         void setFocusStatus(FocusState status);
@@ -567,6 +568,7 @@ class Manager : public QDialog, public Ui::Manager
         QTime overallCountDown;
         QTime sequenceCountDown;
         QTimer countdownTimer;
+        QTimer ramUpdateTimer;
         QTimer settleTimer;
         QProgressIndicator *capturePI { nullptr };
         // Preview Frame
