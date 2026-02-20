@@ -5444,6 +5444,16 @@ bool Capture::setCoolerControl(bool enable)
     return false;
 }
 
+bool Capture::setCCDTemperature(double temperature)
+{
+    setTargetTemperature(temperature);
+
+    if (currentCCD && currentCCD->hasCooler())
+        return currentCCD->setTemperature(temperature);
+
+    return false;
+}
+
 void Capture::clearAutoFocusHFR()
 {
     // If HFR limit was set from file, we cannot override it.

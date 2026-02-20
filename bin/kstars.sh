@@ -123,15 +123,15 @@ else
 	echo "FAILURE: KStars crashed. Emergency telescope parking in progress..."
 	time=$( date '+%F_%H:%M:%S' )
 	
-	# Show warning dialog (non-blocking with timeout)
+	# Show warning dialog (non-blocking and persistent)
 	nohup zenity --warning --width=350 --title="KStars AstroPi - EMERGENCY" \
 		--text="<b>KStars AstroPi crashed!</b>
 \nEmergency parking sequence started at ${time}.
 \n<b>DO NOT POWER OFF THE SYSTEM!</b>
 \nThe telescope is being safely parked.
-\nThis message will close in 60 seconds.
+\nPlease keep this warning visible until the situation is verified.
 \nContact support: <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
-		--timeout=60 > /dev/null 2>&1 &
+		> /dev/null 2>&1 &
 	
 	# Attempt to park the telescope
 	if park_telescope; then

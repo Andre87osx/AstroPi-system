@@ -134,7 +134,7 @@ Comment[x-test]=xxAutofocus operation completed successfullyxx
 Comment[zh_CN]=自动对焦操作成功完成
 Comment[zh_TW]=自動對焦操作成功完成
 Sound=KDE-KStars-Finish-Success.ogg
-Action=Sound
+Action=None
 [Event/FocusFailed]
 Name=Autofocus Failure
 Name[ar]=فشل التّركيز الآليّ
@@ -187,7 +187,7 @@ Comment[x-test]=xxAutofocus operation failed with errorsxx
 Comment[zh_CN]=自动对焦操作失败，出现错误
 Comment[zh_TW]=自動對焦操作發生錯誤
 Sound=KDE-KStars-Sys-App-Error-Serious.ogg
-Action=Sound
+Action=None
 [Event/AlignSuccessful]
 Name=Alignment Success
 Name[ar]=نجحت المحاذاة
@@ -241,7 +241,7 @@ Comment[x-test]=xxAstrometry alignment completed successfullyxx
 Comment[zh_CN]=Astrometry 对准成功完成
 Comment[zh_TW]=對準夜空成功
 Sound=KDE-KStars-Finish-Success.ogg
-Action=Sound
+Action=None
 [Event/AlignFailed]
 Name=Alignment Failure
 Name[ar]=فشلت المحاذاة
@@ -296,7 +296,7 @@ Comment[x-test]=xxAstrometry alignment failed with errorsxx
 Comment[zh_CN]=Ast 对准失败，发生错误
 Comment[zh_TW]=對準夜空失敗
 Sound=KDE-KStars-Sys-App-Error-Serious.ogg
-Action=Sound
+Action=None
 [Event/CalibrationSuccessful]
 Name=Calibration Success
 Name[ar]=نجحت المعايرة
@@ -352,7 +352,7 @@ Comment[x-test]=xxGuiding calibration completed successfullyxx
 Comment[zh_CN]=已成功完成导星校准
 Comment[zh_TW]=校正已成功完成
 Sound=KDE-KStars-Finish-Success.ogg
-Action=Sound
+Action=None
 [Event/CalibrationFailed]
 Name=Calibration Failure
 Name[ar]=فشلت المعايرة
@@ -406,7 +406,7 @@ Comment[x-test]=xxGuiding calibration failed with errorsxx
 Comment[zh_CN]=导星校准失败，出现错误
 Comment[zh_TW]=校正時發生錯誤
 Sound=KDE-KStars-Sys-App-Error-Serious.ogg
-Action=Sound
+Action=None
 [Event/GuideFailed]
 Name=Guiding Failure
 Name[ar]=فشل التّوجيه
@@ -459,7 +459,7 @@ Comment[x-test]=xxAutoguiding failed with errorsxx
 Comment[zh_CN]=自动导星失败，出现错误
 Comment[zh_TW]=自動導引時發生錯誤
 Sound=KDE-KStars-Sys-App-Error-Serious.ogg
-Action=Sound
+Action=None
 [Event/CaptureSuccessful]
 Name=Capture Success
 Name[ar]=نجح الالتقاط
@@ -512,7 +512,7 @@ Comment[x-test]=xxCCD Capture completed successfullyxx
 Comment[zh_CN]=CCD 拍摄完毕
 Comment[zh_TW]=CCD 擷取已成功完成
 Sound=KDE-KStars-Finish-Success.ogg
-Action=Sound
+Action=None
 [Event/CaptureFailed]
 Name=Capture Failure
 Name[ar]=فشل الالتقاط
@@ -565,7 +565,7 @@ Comment[x-test]=xxCCD capture failed with errorsxx
 Comment[zh_CN]=CCD 拍摄失败，出现错误
 Comment[zh_TW]=CCD 擷取時發生錯誤
 Sound=KDE-KStars-Sys-App-Error-Serious.ogg
-Action=Sound
+Action=None
 [Event/FITSReceived]
 Name=FITS Received
 Name[ar]=استُقبل FITS
@@ -618,7 +618,7 @@ Comment[x-test]=xxFITS file is receivedxx
 Comment[zh_CN]=收到 FITS 文件
 Comment[zh_TW]=FITS 檔已接收
 Sound=KDE-KStars-FITS-Received.ogg
-Action=Sound
+Action=None
 [Event/WeatherWarning]
 Name=Weather Warning
 Name[ar]=تحذير بشأن الطّقس
@@ -671,7 +671,7 @@ Comment[x-test]=xxWeather conditions in warning zonexx
 Comment[zh_CN]=天气条件在警戒区
 Comment[zh_TW]=天氣條件在警告範圍內
 Sound=KDE-KStars-Warning.ogg
-Action=Sound
+Action=None
 [Event/WeatherAlert]
 Name=Weather Alert
 Name[ar]=إنذار بشأن الطّقس
@@ -724,7 +724,7 @@ Comment[x-test]=xxWeather conditions are critical. Observatory shutdown is immin
 Comment[zh_CN]=天气恶劣。立即关闭天文台
 Comment[zh_TW]=天氣條件極不佳。天文台將即刻關閉。
 Sound=KDE-KStars-Alert.ogg
-Action=Sound
+Action=None
 [Event/ObservatoryStartup]
 Name=Observatory Startup
 Name[ar]=إعداد المرصد
@@ -852,7 +852,7 @@ Name[x-test]=xxScheduler Abortedxx
 Name[zh_CN]=调度器中止
 Name[zh_TW]=排程器已中止
 Sound=KDE-KStars-Alert.ogg
-Action=Sound
+Action=None
 [Event/SlewStarted]
 Name=Slew Started
 Name[ar]=بدأ تدوير الحامل
@@ -1611,7 +1611,7 @@ Comment[tr]=INDI Sunucu Mesajı (Ayarların INDI bölümünden aktif hale getiri
 Comment[uk]=Повідомлення сервера INDI (має бути увімкнено у розділі INDI параметрів програми)
 Comment[x-test]=xxINDI Server Message (it must be enabled in INDI section of Settings)xx
 Comment[zh_CN]=INDI 服务器消息 （须在INDI 设置中启用）
-Action=Popup
+Action=None
 [Event/EkosSchedulerJobStart]
 Name=Scheduled Ekos job started
 Name[ar]=بدأت مهمّة «إيكوس» مجدولة
@@ -1850,7 +1850,7 @@ Name[uk]=Отримано захоплене зображення
 Name[x-test]=xxCaptured image receivedxx
 Name[zh_CN]=收到拍摄的图像
 Sound=KDE-KStars-Sys-App-Message.ogg
-Action=Sound
+Action=None
 [Event/KnownIssue]
 Name=Known Issue
 Name[ca]=Problema conegut
@@ -1861,4 +1861,4 @@ Name[nl]=Bekend probleem
 Name[sv]=Känt problem
 Name[uk]=Відома проблема
 Name[x-test]=xxKnown Issuexx
-Action=Popup
+Action=None

@@ -1637,9 +1637,7 @@ void CCD::processBLOB(IBLOB *bp)
     }
 #endif
 
-    // Load FITS if either:
-    // #1 FITS Viewer is set to enabled.
-    // #2 This is a preview, so we MUST open FITS Viewer even if disabled.
+    // Load FITS if FITS Viewer is enabled.
     //    if (BType == BLOB_FITS)
     //    {
     // Don't display image if the following conditions are met:
@@ -1678,10 +1676,8 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
 {
     FITSMode captureMode = targetChip->getCaptureMode();
 
-    // Get or Create FITSViewer if we are using FITSViewer
-    // or if capture mode is calibrate since for now we are forced to open the file in the viewer
-    // this should be fixed in the future and should only use FITSData
-    if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
+    // Get or Create FITSViewer only if FITS Viewer is enabled.
+    if (Options::useFITSViewer())
     {
         if (m_FITSViewerWindow.isNull() && (captureMode == FITS_NORMAL || captureMode == FITS_CALIBRATE))
             setupFITSViewerWindows();
@@ -1698,7 +1694,7 @@ void CCD::handleImage(CCDChip *targetChip, const QString &filename, IBLOB *bp, Q
         case FITS_NORMAL:
         case FITS_CALIBRATE:
         {
-            if (Options::useFITSViewer() || targetChip->isBatchMode() == false)
+            if (Options::useFITSViewer())
             {
                 bool success = false;
                 int tabIndex = -1;
@@ -1770,11 +1766,8 @@ void CCD::loadImageInView(IBLOB *bp, ISD::CCDChip *targetChip, const QSharedPoin
             return;
 
         }
-        // FITSViewer is shown if:
-        // Image in preview mode, or useFITSViewer is true; AND
-        // Image type is either NORMAL or CALIBRATION since the rest have their dedicated windows.
-        // NORMAL is used for raw INDI drivers without Ekos.
-        if ( (Options::useFITSViewer() || targetChip->isBatchMode() == false) &&
+        // FITSViewer is shown only when enabled, and for NORMAL/CALIBRATION types.
+        if (Options::useFITSViewer() &&
                 (mode == FITS_NORMAL || mode == FITS_CALIBRATE))
             m_FITSViewerWindow->show();
 

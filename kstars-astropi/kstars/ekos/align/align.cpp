@@ -79,6 +79,16 @@ const QMap<Align::PAHStage, QString> Align::PAHStages =
     {PAH_ERROR, I18N_NOOP("Error")},
 };
 
+namespace
+{
+bool keepPAAReferenceImage(const Ekos::Align::PAHStage pahStage)
+{
+    return (pahStage == Ekos::Align::PAH_STAR_SELECT ||
+            pahStage == Ekos::Align::PAH_PRE_REFRESH ||
+            pahStage == Ekos::Align::PAH_REFRESH);
+}
+}
+
 Align::Align(ProfileInfo *activeProfile) : m_ActiveProfile(activeProfile)
 {
     setupUi(this);
@@ -528,6 +538,10 @@ Align::~Align()
 {
     if (alignWidget->parent() == nullptr)
         toggleAlignWidgetFullScreen();
+
+    if (alignView)
+        alignView->releaseImage();
+    m_ImageData.reset();
 
     // Remove temporary FITS files left before by the solver
     QDir dir(QDir::tempPath());
@@ -1934,9 +1948,23 @@ void Align::checkCCD(int ccdNum)
             return;
     }
 
+    if (ccdNum < 0 || ccdNum >= CCDs.count())
+    {
+        currentCCD = nullptr;
+        return;
+    }
+
     currentCCD = CCDs.at(ccdNum);
 
     ISD::CCDChip *targetChip = currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
+    if (!targetChip)
+    {
+        ISOCombo->clear();
+        ISOCombo->setEnabled(false);
+        syncCCDInfo();
+        syncTelescopeInfo();
+        return;
+    }
     if (targetChip && targetChip->isCapturing())
         return;
 
@@ -2840,8 +2868,8 @@ bool Align::captureAndSolve()
 
     alignView->setBaseSize(alignWidget->size());
 
-    connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
-    connect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
+    connect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData, Qt::UniqueConnection);
+    connect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress, Qt::UniqueConnection);
 
     // In case of remote solver, check if we need to update active CCD
     if (solverModeButtonGroup->checkedId() == SOLVER_REMOTE && remoteParser.get() != nullptr)
@@ -2967,16 +2995,52 @@ bool Align::captureAndSolve()
 
 void Align::processData(const QSharedPointer<FITSData> &data)
 {
+    if (currentCCD)
+    {
+        disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
+        disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
+    }
+
+    if (data.isNull())
+    {
+        appendLogText(i18n("Failed to receive a valid image frame (possible low-memory condition)."));
+
+        if (++m_CaptureErrorCounter == 3 && m_PAHStage != PAH_REFRESH)
+        {
+            appendLogText(i18n("Capture error. Aborting..."));
+            abort();
+            return;
+        }
+
+        if (Options::solverBinningIndex() < 3)
+            Options::setSolverBinningIndex(Options::solverBinningIndex() + 1);
+
+        appendLogText(i18n("Restarting capture attempt #%1 with increased binning/downsampling.", m_CaptureErrorCounter));
+        setAlignTableResult(ALIGN_RESULT_FAILED);
+        captureAndSolve();
+        return;
+    }
+
     if (data->property("chip").toInt() == ISD::CCDChip::GUIDE_CCD)
         return;
 
-    disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
-    disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
+    if (!keepPAAReferenceImage(m_PAHStage))
+        alignView->releaseImage();
 
+    m_ImageData.reset();
     if (data)
         m_ImageData = data;
     else
         m_ImageData.reset();
+
+    const auto keptImage = alignView->keptImage();
+    int retainedImages = m_ImageData.isNull() ? 0 : 1;
+    if (!keptImage.isNull() && keptImage.data() != m_ImageData.data())
+        retainedImages++;
+    qCDebug(KSTARS_EKOS_ALIGN) << "Align image retention:" << retainedImages
+                              << "(current:" << !m_ImageData.isNull()
+                              << ", kept:" << !keptImage.isNull()
+                              << ", stage:" << m_PAHStage << ")";
     //    blobType     = *(static_cast<ISD::CCD::BlobType *>(bp->aux1));
     //    blobFileName = QString(static_cast<char *>(bp->aux2));
 
@@ -3044,6 +3108,11 @@ void Align::prepareCapture(ISD::CCDChip *targetChip)
     targetChip->setFrameType(FRAME_LIGHT);
 
     int bin = Options::solverBinningIndex() + 1;
+
+    int maxBinX = 1, maxBinY = 1;
+    targetChip->getMaxBin(&maxBinX, &maxBinY);
+    bin = qBound(1, bin, qMin(maxBinX, maxBinY));
+
     targetChip->setBinning(bin, bin);
 
     // Set gain if applicable
@@ -3280,7 +3349,15 @@ void Align::setCaptureComplete()
 
     emit newImage(alignView);
 
-    solverFOV->setImage(alignView->getDisplayImage());
+    const double availableRAM = KSUtils::getAvailableRAM();
+    const bool lowMemorySolverPreview = (availableRAM > 0) &&
+                                        (availableRAM < (1.5 * 1024.0 * 1024.0 * 1024.0));
+
+    if (!lowMemorySolverPreview)
+        solverFOV->setImage(alignView->getDisplayImage());
+    else
+        qCWarning(KSTARS_EKOS_ALIGN) << "Low available RAM" << availableRAM
+                                     << "bytes: skipping solver preview image copy to reduce memory pressure.";
 
     startSolving();
 }
@@ -3303,8 +3380,36 @@ void Align::startSolving()
     // This is needed because they might have directories stored in the config file.
     // So we can't just use the options folder list.
     QStringList astrometryDataDirs = KSUtils::getAstrometryDataDirs();
-    const QSharedPointer<FITSData> &data = alignView->imageData();
+    QSharedPointer<FITSData> solverData = alignView->imageData();
     disconnect(alignView, &FITSView::loaded, this, &Align::startSolving);
+
+    if (solverData.isNull() && !m_ImageData.isNull())
+    {
+        qCWarning(KSTARS_EKOS_ALIGN) << "AlignView imageData is null, using retained capture frame for solving.";
+        solverData = m_ImageData;
+    }
+
+    if (solverData.isNull())
+    {
+        appendLogText(i18n("No image data available for plate solving. Retrying capture."));
+
+        if (++m_CaptureErrorCounter == 3 && m_PAHStage != PAH_REFRESH)
+        {
+            appendLogText(i18n("Capture error. Aborting..."));
+            abort();
+            return;
+        }
+
+        if (Options::solverBinningIndex() < 3)
+            Options::setSolverBinningIndex(Options::solverBinningIndex() + 1);
+
+        appendLogText(i18n("Restarting capture attempt #%1 with increased binning/downsampling.", m_CaptureErrorCounter));
+        setAlignTableResult(ALIGN_RESULT_FAILED);
+        captureAndSolve();
+        return;
+    }
+
+    const QSharedPointer<FITSData> &data = solverData;
 
     if (solverModeButtonGroup->checkedId() == SOLVER_LOCAL)
     {
@@ -3512,6 +3617,13 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     double elapsed = solverTimer.elapsed() / 1000.0;
     appendLogText(i18n("Solver completed after %1 seconds.", QString::number(elapsed, 'f', 2)));
 
+    if (!currentCCD)
+    {
+        appendLogText(i18n("Solver completed but camera is no longer connected. Ignoring solution."));
+        solverFailed();
+        return;
+    }
+
     // Reset Telescope Type to remembered value
     if (rememberTelescopeType != ISD::CCD::TELESCOPE_UNKNOWN)
     {
@@ -3528,6 +3640,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
 
     int binx, biny;
     ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+    if (!targetChip)
+    {
+        appendLogText(i18n("Solver completed but no CCD chip is available. Ignoring solution."));
+        solverFailed();
+        return;
+    }
     targetChip->getBinning(&binx, &biny);
 
     if (Options::alignmentLogging())
@@ -3609,9 +3727,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
                         i18n("WCS information updated. Images captured from this point forward shall have valid WCS."));
 
                     // Just send telescope info in case the CCD driver did not pick up before.
-                    auto telescopeInfo = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
-                    if (telescopeInfo)
-                        clientManager->sendNewNumber(telescopeInfo);
+                    if (currentTelescope)
+                    {
+                        auto telescopeInfo = currentTelescope->getBaseDevice()->getNumber("TELESCOPE_INFO");
+                        if (telescopeInfo)
+                            clientManager->sendNewNumber(telescopeInfo);
+                    }
 
                     m_wcsSynced = true;
                 }
@@ -3835,6 +3956,12 @@ void Align::solverFinished(double orientation, double ra, double dec, double pix
     emit newStatus(state);
     solverIterations = 0;
 
+    if (m_PAHStage == PAH_IDLE)
+    {
+        alignView->releaseImage();
+        m_ImageData.reset();
+    }
+
     solverFOV->setProperty("visible", true);
 
     if (m_PAHStage != PAH_IDLE)
@@ -3878,6 +4005,12 @@ void Align::solverFailed()
     state = ALIGN_FAILED;
     emit newStatus(state);
 
+    if (!keepPAAReferenceImage(m_PAHStage))
+    {
+        alignView->releaseImage();
+        m_ImageData.reset();
+    }
+
     solverFOV->setProperty("visible", false);
 
     setAlignTableResult(ALIGN_RESULT_FAILED);
@@ -3899,7 +4032,8 @@ void Align::stop(AlignState mode)
     // Reset Telescope Type to remembered value
     if (rememberTelescopeType != ISD::CCD::TELESCOPE_UNKNOWN)
     {
-        currentCCD->setTelescopeType(rememberTelescopeType);
+        if (currentCCD)
+            currentCCD->setTelescopeType(rememberTelescopeType);
         rememberTelescopeType = ISD::CCD::TELESCOPE_UNKNOWN;
     }
 
@@ -3913,41 +4047,53 @@ void Align::stop(AlignState mode)
     m_SlewErrorCounter = 0;
     m_AlignTimer.stop();
 
-    disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
-    disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
-
-    if (rememberUploadMode != currentCCD->getUploadMode())
-        currentCCD->setUploadMode(rememberUploadMode);
-
-    if (rememberCCDExposureLooping)
-        currentCCD->setExposureLoopingEnabled(true);
-
-    ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
-
-    // If capture is still in progress, let's stop that.
-    if (m_PAHStage == PAH_REFRESH)
+    if (currentCCD)
     {
-        if (targetChip->isCapturing())
-            targetChip->abortExposure();
+        disconnect(currentCCD, &ISD::CCD::newImage, this, &Ekos::Align::processData);
+        disconnect(currentCCD, &ISD::CCD::newExposureValue, this, &Ekos::Align::checkCCDExposureProgress);
 
-        appendLogText(i18n("Refresh is complete."));
-    }
-    else
-    {
-        if (targetChip->isCapturing())
+        if (rememberUploadMode != currentCCD->getUploadMode())
+            currentCCD->setUploadMode(rememberUploadMode);
+
+        if (rememberCCDExposureLooping)
+            currentCCD->setExposureLoopingEnabled(true);
+
+        ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+
+        if (targetChip)
         {
-            targetChip->abortExposure();
-            appendLogText(i18n("Capture aborted."));
-        }
-        else
-        {
-            double elapsed = solverTimer.elapsed() / 1000.0;
-            appendLogText(i18n("Solver aborted after %1 seconds.", QString::number(elapsed, 'f', 2)));
+            // If capture is still in progress, let's stop that.
+            if (m_PAHStage == PAH_REFRESH)
+            {
+                if (targetChip->isCapturing())
+                    targetChip->abortExposure();
+
+                appendLogText(i18n("Refresh is complete."));
+            }
+            else
+            {
+                if (targetChip->isCapturing())
+                {
+                    targetChip->abortExposure();
+                    appendLogText(i18n("Capture aborted."));
+                }
+                else
+                {
+                    double elapsed = solverTimer.elapsed() / 1000.0;
+                    appendLogText(i18n("Solver aborted after %1 seconds.", QString::number(elapsed, 'f', 2)));
+                }
+            }
         }
     }
 
     state = mode;
     emit newStatus(state);
+
+    if (!keepPAAReferenceImage(m_PAHStage))
+    {
+        alignView->releaseImage();
+        m_ImageData.reset();
+    }
 
     setAlignTableResult(ALIGN_RESULT_FAILED);
 }
@@ -5169,8 +5315,16 @@ void Align::checkFilter(int filterNum)
         return;
     }
 
-    if (filterNum <= Filters.count())
-        currentFilter = Filters.at(filterNum - 1);
+    if (filterNum < 0 || filterNum > Filters.count())
+    {
+        currentFilter = nullptr;
+        currentFilterPosition = -1;
+        FilterPosCombo->clear();
+        syncSettings();
+        return;
+    }
+
+    currentFilter = Filters.at(filterNum - 1);
 
     FilterPosCombo->clear();
 
@@ -5510,6 +5664,7 @@ void Align::stopPAHProcess()
 
     alignView->reset();
     alignView->setRefreshEnabled(false);
+    m_ImageData.reset();
 
     emit newFrame(alignView);
     disconnect(alignView, &AlignView::trackingStarSelected, this, &Ekos::Align::setPAHCorrectionOffset);

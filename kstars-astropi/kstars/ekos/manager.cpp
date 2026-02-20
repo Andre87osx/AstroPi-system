@@ -21,6 +21,7 @@
 #include "auxiliary/darklibrary.h"
 #include "auxiliary/QProgressIndicator.h"
 #include "auxiliary/ksmessagebox.h"
+#include "auxiliary/ksutils.h"
 #include "capture/sequencejob.h"
 #include "fitsviewer/fitstab.h"
 #include "fitsviewer/fitsview.h"
@@ -47,6 +48,12 @@
 
 #include <QFutureWatcher>
 #include <QComboBox>
+
+#include <algorithm>
+
+#if defined(Q_OS_UNIX)
+#include <unistd.h>
+#endif
 
 #include <ekos_debug.h>
 
@@ -116,8 +123,15 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     imageProgress->setFormat("%v");
     imageProgress->setBarStyle(QRoundProgressBar::StyleLine);
     captureProgress->setDecimals(0);
+    ramProgress->setValue(0);
+    ramProgress->setDecimals(0);
+    ramProgress->setRange(0, 100);
     countdownTimer.setInterval(1000);
     connect(&countdownTimer, &QTimer::timeout, this, &Ekos::Manager::updateCaptureCountDown);
+    ramUpdateTimer.setInterval(2000);
+    connect(&ramUpdateTimer, &QTimer::timeout, this, &Ekos::Manager::updateRAMProgress);
+    ramUpdateTimer.start();
+    updateRAMProgress();
 
     toolsWidget->setIconSize(QSize(48, 48));
     connect(toolsWidget, &QTabWidget::currentChanged, this, &Ekos::Manager::processTabChange, Qt::UniqueConnection);
@@ -3293,6 +3307,39 @@ void Manager::updateCaptureCountDown()
     };
 
     ekosLiveClient.get()->message()->updateCaptureStatus(status);
+}
+
+void Manager::updateRAMProgress()
+{
+    const double availableRAM = KSUtils::getAvailableRAM();
+
+    qint64 totalRAM = 0;
+#if defined(Q_OS_UNIX)
+    const long pages = sysconf(_SC_PHYS_PAGES);
+    const long pageSize = sysconf(_SC_PAGE_SIZE);
+    if (pages > 0 && pageSize > 0)
+        totalRAM = static_cast<qint64>(pages) * static_cast<qint64>(pageSize);
+#endif
+
+    if (availableRAM <= 0 || totalRAM <= 0)
+    {
+        ramProgress->setEnabled(false);
+        ramUsageLabel->setText("--");
+        return;
+    }
+
+    const double freeRAM = std::min(availableRAM, static_cast<double>(totalRAM));
+    const double usedRAM = std::max(0.0, static_cast<double>(totalRAM) - freeRAM);
+    const int usedPercent = static_cast<int>((usedRAM * 100.0) / static_cast<double>(totalRAM));
+
+    ramProgress->setEnabled(true);
+    ramProgress->setValue(usedPercent);
+
+    constexpr double GIB = 1024.0 * 1024.0 * 1024.0;
+    ramUsageLabel->setText(i18nc("RAM usage summary: used and free GiB",
+                                 "%1 GiB used / %2 GiB free",
+                                 QString::number(usedRAM / GIB, 'f', 1),
+                                 QString::number(freeRAM / GIB, 'f', 1)));
 }
 
 void Manager::updateFocusStarPixmap(QPixmap &starPixmap)

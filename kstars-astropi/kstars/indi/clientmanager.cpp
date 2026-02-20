@@ -18,6 +18,13 @@
 #include "servermanager.h"
 
 #include <indi_debug.h>
+#include <QTimer>
+
+ClientManager::ClientManager()
+{
+    connect(this, &ClientManager::newINDIProperty, this, &ClientManager::processNewProperty, Qt::UniqueConnection);
+    connect(this, &ClientManager::removeBLOBManager, this, &ClientManager::processRemoveBLOBManager, Qt::UniqueConnection);
+}
 
 bool ClientManager::isDriverManaged(DriverInfo *di)
 {
@@ -101,16 +108,38 @@ void ClientManager::newProperty(INDI::Property *pprop)
     emit newINDIProperty(prop);
 
     // Only handle RW and RO BLOB properties
+}
+
+void ClientManager::processNewProperty(INDI::Property prop)
+{
+    // Only handle RW and RO BLOB properties
     if (prop.getType() == INDI_BLOB && prop.getPermission() != IP_WO)
     {
-        QPointer<BlobManager> bm = new BlobManager(getHost(), getPort(), prop.getBaseDevice()->getDeviceName(), prop.getName());
-        connect(bm.data(), &BlobManager::newINDIBLOB, this, &ClientManager::newINDIBLOB);
-        connect(bm.data(), &BlobManager::connected, this, [prop, this]()
+        BlobManager *bm = new BlobManager(this, getHost(), getPort(), prop.getBaseDevice()->getDeviceName(), prop.getName());
+        connect(bm, &BlobManager::newINDIBLOB, this, &ClientManager::newINDIBLOB);
+        connect(bm, &BlobManager::connected, this, [prop, this]()
         {
             if (prop && prop.getRegistered())
                 emit newBLOBManager(prop->getBaseDevice()->getDeviceName(), prop);
         });
         blobManagers.append(bm);
+    }
+}
+
+void ClientManager::processRemoveBLOBManager(const QString &device, const QString &property)
+{
+    auto manager = std::find_if(blobManagers.begin(), blobManagers.end(), [device, property](auto & oneManager)
+    {
+        const auto bProperty = oneManager->property("property").toString();
+        const auto bDevice = oneManager->property("device").toString();
+        return (device == bDevice && property == bProperty);
+    });
+
+    if (manager != blobManagers.end())
+    {
+        (*manager)->disconnectServer();
+        (*manager)->deleteLater();
+        blobManagers.removeOne(*manager);
     }
 }
 
@@ -122,20 +151,7 @@ void ClientManager::removeProperty(INDI::Property *prop)
 
     // If BLOB property is removed, remove its corresponding property if one exists.
     if (blobManagers.empty() == false && prop->getType() == INDI_BLOB && prop->getPermission() != IP_WO)
-    {
-        for (QPointer<BlobManager> bm : blobManagers)
-        {
-            const QString bProperty = bm.data()->property("property").toString();
-            const QString bDevice = bm.data()->property("device").toString();
-            if (bDevice == device && bProperty == name)
-            {
-                blobManagers.removeOne(bm);
-                bm.data()->disconnectServer();
-                bm->deleteLater();
-                break;
-            }
-        }
-    }
+        emit removeBLOBManager(device, name);
 }
 
 void ClientManager::disconnectAll()

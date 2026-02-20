@@ -207,6 +207,12 @@ class Capture : public QWidget, public Ui::Capture
         Q_SCRIPTABLE bool setCoolerControl(bool enable);
 
         /** DBUS interface function.
+             * Set the target CCD temperature immediately.
+             *
+             */
+        Q_SCRIPTABLE bool setCCDTemperature(double temperature);
+
+        /** DBUS interface function.
              * @return Returns the percentage of completed captures in all active jobs
              */
         Q_SCRIPTABLE double getProgressPercentage();

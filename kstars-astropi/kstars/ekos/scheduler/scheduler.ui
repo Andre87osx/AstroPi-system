@@ -1929,10 +1929,10 @@ font-weight:bold;
      <item row="1" column="1">
       <widget class="QGroupBox" name="errorHandlingGroup">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Define what should happen when a job steps into an error or aborts:&lt;/p&gt;&lt;ul style=&quot;margin-top: 0px; margin-bottom: 0px; margin-left: 0px; margin-right: 0px; -qt-list-indent: 1;&quot;&gt;&lt;li style=&quot; margin-top:12px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Don't re-schedule&lt;/span&gt;: Don't restart the job in case of an error or an abort.&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Re-schedule after all terminated&lt;/span&gt;: If a job gets aborted, the scheduler will only re-schedule it if when all jobs are finished or aborted. If this is the case, the scheduler re-schedules all aborted jobs and sleeps for the given delay.&lt;/li&gt;&lt;li style=&quot; margin-top:0px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Re-schedule immediately&lt;/span&gt;: As soon as a job gets aborted, the scheduler will re-schedule it and waits the given delay.&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;If the option for re-scheduling errors is selected, errors are handled like aborts. Otherwise, jobs that step into an error are never re-scheduled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>AstroPi Scheduler quick guide.</string>
        </property>
        <property name="title">
-        <string>Aborted Job Management</string>
+          <string>AstroPi Scheduler Guide</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_9">
         <property name="spacing">
@@ -1950,6 +1950,42 @@ font-weight:bold;
         <property name="bottomMargin">
          <number>3</number>
         </property>
+        <item>
+         <widget class="QLabel" name="astroPiLogoLabel">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>64</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>AstroPi</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="showGuideButton">
+          <property name="text">
+           <string>Mostra Guida Tecnica</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="schedulerGuideLabel">
+          <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;b&gt;GUIDA TECNICA SCHEDULER ASTROPI&lt;/b&gt;&lt;/p&gt;&lt;p&gt;&lt;b&gt;Parametri nascosti globali&lt;/b&gt;&lt;br/&gt;• &lt;b&gt;MAX_FAILURE_ATTEMPTS&lt;/b&gt; = 3 (retry max per modulo).&lt;br/&gt;• &lt;b&gt;UPDATE_PERIOD_MS&lt;/b&gt; = 1000 ms (loop check status/stage).&lt;br/&gt;• &lt;b&gt;ErrorHandlingStrategy&lt;/b&gt; forzato a &lt;b&gt;ERROR_DONT_RESTART&lt;/b&gt;.&lt;br/&gt;• &lt;b&gt;RescheduleErrors&lt;/b&gt; forzato a &lt;b&gt;false&lt;/b&gt;.&lt;br/&gt;• &lt;b&gt;Delay&lt;/b&gt; forzato a &lt;b&gt;0 s&lt;/b&gt;.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Modulo ALIGN&lt;/b&gt;&lt;br/&gt;• &lt;b&gt;ALIGN_ATTEMPT_HARD_TIMEOUT_MS&lt;/b&gt; = 300000 ms (5 min per tentativo).&lt;br/&gt;• &lt;b&gt;ALIGN_INACTIVITY_TIMEOUT&lt;/b&gt; = 300000 ms.&lt;br/&gt;• Se non completa entro i limiti: retry fino a 3, poi &lt;b&gt;JOB_ABORTED&lt;/b&gt;.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Modulo FOCUS&lt;/b&gt;&lt;br/&gt;• &lt;b&gt;FOCUS_ATTEMPT_HARD_TIMEOUT_MS&lt;/b&gt; = 300000 ms (5 min per tentativo).&lt;br/&gt;• &lt;b&gt;FOCUS_INACTIVITY_TIMEOUT&lt;/b&gt; = 300000 ms.&lt;br/&gt;• Se non completa entro i limiti: retry fino a 3, poi &lt;b&gt;JOB_ABORTED&lt;/b&gt;.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Modulo GUIDE (solo preparazione/calibrazione)&lt;/b&gt;&lt;br/&gt;• &lt;b&gt;GUIDE_ATTEMPT_HARD_TIMEOUT_MS&lt;/b&gt; = 300000 ms (5 min per tentativo).&lt;br/&gt;• &lt;b&gt;GUIDE_INACTIVITY_TIMEOUT&lt;/b&gt; = 300000 ms.&lt;br/&gt;• Retry stage base fino a 3; in recovery avanzata: 3 quick + 3 deep, poi prossimo job.&lt;br/&gt;• La guida durante capture non viene limitata da questo timeout stage.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Modulo CAPTURE&lt;/b&gt;&lt;br/&gt;• &lt;b&gt;CAPTURE_INACTIVITY_TIMEOUT&lt;/b&gt; = 120000 ms.&lt;br/&gt;• Su timeout/fail: retry fino a 3, poi abort del job.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Startup/Shutdown/Parcheggi&lt;/b&gt;&lt;br/&gt;• Procedure monitorate con retry (counter interni) fino a limite massimo.&lt;br/&gt;• Se il recupero fallisce: passaggio a errore/abort secondo stato corrente.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Regola di uscita job&lt;/b&gt;&lt;br/&gt;• Quando un modulo supera i retry: stato job =&amp;gt; &lt;b&gt;JOB_ABORTED&lt;/b&gt;.&lt;br/&gt;• Scheduler esegue &lt;b&gt;findNextJob()&lt;/b&gt;: target successivo o chiusura sessione se non restano job eseguibili.&lt;/p&gt;&lt;p&gt;&lt;b&gt;Tabella operativa (Sintomo → Azione → Log atteso)&lt;/b&gt;&lt;/p&gt;&lt;table border=&quot;1&quot; cellspacing=&quot;0&quot; cellpadding=&quot;3&quot;&gt;&lt;tr&gt;&lt;th&gt;Sintomo&lt;/th&gt;&lt;th&gt;Azione Scheduler&lt;/th&gt;&lt;th&gt;Log atteso&lt;/th&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;ALIGN oltre 5 min&lt;/td&gt;&lt;td&gt;Retry attempt fino a 3, poi abort job&lt;/td&gt;&lt;td&gt;&quot;alignment attempt exceeded 5 minutes&quot;, poi &quot;alignment procedure failed, marking aborted&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;FOCUS oltre 5 min&lt;/td&gt;&lt;td&gt;Retry attempt fino a 3, poi abort job&lt;/td&gt;&lt;td&gt;&quot;focusing attempt exceeded 5 minutes&quot;, poi &quot;focusing procedure failed, marking aborted&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Preparazione GUIDE oltre 5 min&lt;/td&gt;&lt;td&gt;Retry fino a 3 nello stage guida, poi abort o next job secondo recovery&lt;/td&gt;&lt;td&gt;&quot;guide preparation attempt exceeded 5 minutes&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;CAPTURE idle/timeout&lt;/td&gt;&lt;td&gt;Retry capture fino a 3, poi abort job&lt;/td&gt;&lt;td&gt;&quot;capture module timed out. Restarting request...&quot;&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;Errore/Abort job&lt;/td&gt;&lt;td&gt;Nessun reschedule globale (policy fissa a none), passa a next job&lt;/td&gt;&lt;td&gt;Messaggi di abort + transizione a findNextJob()&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="visible">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_4">
           <property name="spacing">
@@ -1969,6 +2005,9 @@ font-weight:bold;
             <property name="text">
              <string>&amp;None</string>
             </property>
+              <property name="visible">
+               <bool>false</bool>
+              </property>
             <attribute name="buttonGroup">
              <string notr="true">errorHandlingButtonGroup</string>
             </attribute>
@@ -1988,6 +2027,9 @@ font-weight:bold;
             <property name="text">
              <string>&amp;Queue</string>
             </property>
+              <property name="visible">
+               <bool>false</bool>
+              </property>
             <attribute name="buttonGroup">
              <string notr="true">errorHandlingButtonGroup</string>
             </attribute>
@@ -2007,6 +2049,9 @@ font-weight:bold;
             <property name="text">
              <string>I&amp;mmediate</string>
             </property>
+              <property name="visible">
+               <bool>false</bool>
+              </property>
             <attribute name="buttonGroup">
              <string notr="true">errorHandlingButtonGroup</string>
             </attribute>
@@ -2033,6 +2078,9 @@ font-weight:bold;
             <property name="text">
              <string>Re-schedule errors</string>
             </property>
+              <property name="visible">
+               <bool>false</bool>
+              </property>
            </widget>
           </item>
           <item>
@@ -2054,6 +2102,9 @@ font-weight:bold;
             </property>
             <property name="singleStep">
              <number>10</number>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
             </property>
            </widget>
           </item>

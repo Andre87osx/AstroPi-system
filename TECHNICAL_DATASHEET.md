@@ -1,326 +1,182 @@
-# 📊 Scheda Tecnica - INDI Dependencies Fix
+# 📊 TECHNICAL DATASHEET — Scheduler & Align (AstroPi)
 
-## Informazioni Generali
+## Scopo
 
-| Aspetto | Dettaglio |
-|---------|-----------|
-| **Nome Soluzione** | INDI Dependencies Fix for Debian Buster |
-| **Versione** | 1.7.1 |
-| **Data Implementazione** | 18 Gennaio 2026 |
-| **Target Sistema** | Debian 10 Buster (Archiviato) |
-| **Target Hardware** | ARM (Raspberry Pi 3/4+) |
-| **Status** | ✅ Completato e Testato |
+Documento operativo unico, leggibile “per moduli”, con:
+- azioni principali
+- tempi/timeout
+- tentativi/retry
+- esito su fallimento persistente
 
 ---
 
-## Problema Affrontato
+## Parametri Globali
 
-### Sintomo
-```
-chkINDI() fallisce con errori di dipendenze mancanti
-Messaggio: "E: Unable to locate package [X]"
-O: "E: Depends: [X] but it is not installable"
-```
-
-### Causa Radice
-1. Debian Buster è archiviata (EOL: 30 Giugno 2024)
-2. Repository di Buster non contengono tutti i pacchetti
-3. Su ARM, alcuni pacchetti hanno dipendenze mancanti
-4. APT non risolve automaticamente le dipendenze rotte
-
-### Impatto
-- ❌ Compilazione di INDI fallisce
-- ❌ Sistema bloccato
-- ❌ Nessuna possibilità di fallback
+| Parametro | Valore | Significato |
+|----------|--------|-------------|
+| `MAX_FAILURE_ATTEMPTS` | `3` | Retry standard per modulo/stage |
+| `UPDATE_PERIOD_MS` | `1000 ms` | Ciclo monitor scheduler/job |
+| `RESTART_GUIDING_DELAY_MS` | `5000 ms` | Delay base quick retry guida |
+| Policy error handling UI | `ERROR_DONT_RESTART`, `RescheduleErrors=false`, `Delay=0` | No reschedule globale automatico |
 
 ---
 
-## Soluzione Implementata
+## Moduli Scheduler (azioni, tempi, tentativi)
 
-### 1. Repository Multipli
+### 1) Startup & Connessioni
 
-#### Aggiunto
-```bash
-# Repository Raspberry Pi - ARM packages
-deb [trusted=yes] http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi
-deb [trusted=yes] http://archive.raspberrypi.org/debian/ buster main
-```
+| Azione | Tempo | Tentativi | Esito fail persistente |
+|-------|-------|-----------|------------------------|
+| Startup script | stage-driven | fino a `3` | transizione a stato errore/safe |
+| Connect Ekos/INDI | monitor periodico `1s` | fino a `3` | fallback: next job / shutdown |
+| Unpark mount/dome/cap | stage-driven | fino a `3` | stop preparazione, stato sicuro |
 
-#### Benefici
-- Accesso a pacchetti ARM ottimizzati
-- Dipendenze corrette per architettura
-- Fallback automatico per pacchetti Debian
+### 2) Slew & Tracking
 
-### 2. Gestione Intelligente Dipendenze
+| Azione | Tempo | Tentativi | Esito fail persistente |
+|-------|-------|-----------|------------------------|
+| Slew target + tracking verify | dipende setup | retry controllato | abort job corrente |
 
-#### Flusso
-```
-Tentativo 1: apt-get install [tutti pacchetti]
-   ├─ OK → Procedi
-   └─ FALLISCE:
-      ├─ Passo 1: apt-get install -f (ripara rotte)
-      ├─ Passo 2: apt-get autoremove (rimuovi conflitti)
-      └─ Tentativo 2: apt-get install [nuovamente]
-         ├─ OK → Procedi
-         └─ FALLISCE:
-            └─ Installa permissivamente pacchetti opzionali
-```
+### 3) ALIGN
 
-#### Classificazione
-| Tipo | Comportamento se Mancante |
-|------|---------------------------|
-| **Critico** | Blocca compilazione |
-| **Opzionale** | Avviso ma continua |
+| Azione | Timeout/Tempo | Tentativi | Esito fail persistente |
+|-------|----------------|-----------|------------------------|
+| Plate solve / align stage | `ALIGN_ATTEMPT_HARD_TIMEOUT_MS` + inactivity | `3` | job aborted → `findNextJob()` |
 
-### 3. Script Helper Specializzati
+### 4) FOCUS
 
-| Script | Scopo | Tempo |
-|--------|-------|-------|
-| `quick-fix-indi.sh` | Fix veloce e completo | 5-10 min |
-| `fix-indi-dependencies.sh` | Pre-risoluzione dettagliata | 10-15 min |
-| `check-indi-deps.sh` | Verifica stato (no changes) | <1 min |
+| Azione | Timeout/Tempo | Tentativi | Esito fail persistente |
+|-------|----------------|-----------|------------------------|
+| Focus stage | `FOCUS_ATTEMPT_HARD_TIMEOUT_MS` + inactivity | `3` | job aborted → `findNextJob()` |
 
-### 4. Configurazione APT Ottimizzata
+### 5) GUIDE (logica a due livelli)
 
-```bash
-Acquire::Check-Valid-Until "false"     # Ignora date archiviate
-Acquire::AllowInsecureRepositories "true"  # Consenti non firmati
-Acquire::Retries "3"                   # Retry su errori rete
-APT::Solver "3.0"                      # Solver avanzato
-```
+| Livello | Azione | Tempo | Tentativi | Esito |
+|--------|--------|-------|-----------|-------|
+| Quick | retry guide-only | delay 5s/10s/15s | `3` | se ok: resume; se no: deep |
+| Deep | `focus → align → guide` | ~2-3 min per ciclo | `3` | se fallisce: next job/shutdown |
 
----
+Nota operativa:
+- Se focus/align falliscono durante deep recovery guida, il flusso passa direttamente a next job (niente loop estesi).
 
-## File Modificati e Creati
+### 6) CAPTURE
 
-### 📝 Modificati
+| Azione | Timeout/Tempo | Tentativi | Esito fail persistente |
+|-------|----------------|-----------|------------------------|
+| Capture stage monitor | `CAPTURE_INACTIVITY_TIMEOUT` | `3` | abort job → next job/shutdown |
 
-#### `include/functions.sh`
-- **Linee Modificate**: ~100+
-- **Funzioni Cambiate**: 2 (`system_pre_update`, `chkINDI`)
-- **Breaking Changes**: ❌ Nessuno
-- **Compatibilità**: ✅ Retrocompatibile
+Gestione extra:
+- Se guide cade durante capture: capture viene abortita e si entra in recovery guida.
 
-### 📦 Creati
+### 7) Meridian Flip
 
-| File | Tipo | Linee | Descrizione |
-|------|------|-------|-------------|
-| `bin/fix-indi-dependencies.sh` | Script | 230+ | Pre-risoluzione completa |
-| `bin/check-indi-deps.sh` | Script | 160+ | Verifica rapida |
-| `bin/quick-fix-indi.sh` | Script | 180+ | Fix veloce |
-| `bin/99-indi-buster-archive.conf` | Config | 30+ | Config APT |
-| `bin/verify-indi-fix.sh` | Script | 150+ | Verifica installazione |
-| `INDI_DEPENDENCIES_FIX.md` | Doc | 400+ | Guida completa |
-| `FIX_INDI_DEPENDENCIES_v1_7_1.md` | Doc | 300+ | Riepilogo v1.7.1 |
-| `README_INDI_QUICK_START.md` | Doc | 200+ | Quick start |
-| `CHANGELOG_INDI_FIX.md` | Doc | 500+ | Dettagli tecnici |
-| `IMPLEMENTATION_SUMMARY.txt` | Doc | 350+ | Riepilogo totale |
-| `CHECKLIST_IMPLEMENTAZIONE.md` | Doc | 300+ | Checklist |
+| Azione | Tempo | Tentativi | Esito fail persistente |
+|-------|-------|-----------|------------------------|
+| Flip + reacquire align/guide | dipende mount | retry per stage | fallback su stato errore controllato |
+
+### 8) Shutdown & Parking
+
+| Azione | Tempo | Tentativi | Esito fail persistente |
+|-------|-------|-----------|------------------------|
+| Park mount/dome/cap | stage-driven | `3` | stato safe + log errore |
+| Shutdown script | stage-driven | `3` | stato errore finale controllato |
 
 ---
 
-## Architettura della Soluzione
+## Eventi Chiave (modello rapido)
 
-```
-┌─────────────────────────────────────────────────┐
-│         AstroPi System (v1.7.1+)                │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  ┌────────────────────────────────────────┐    │
-│  │  system_pre_update()                   │    │
-│  │  • Repository Raspberry Pi             │    │
-│  │  • Chiavi GPG                          │    │
-│  │  • Config APT ottimizzata              │    │
-│  └────────────────────────────────────────┘    │
-│           ↓                                     │
-│  ┌────────────────────────────────────────┐    │
-│  │  [Opzionale] quick-fix-indi.sh         │    │
-│  │  • Installa dipendenze critiche        │    │
-│  │  • Ripara dipendenze rotte             │    │
-│  │  • Pulizia pacchetti                   │    │
-│  └────────────────────────────────────────┘    │
-│           ↓                                     │
-│  ┌────────────────────────────────────────┐    │
-│  │  chkINDI()                             │    │
-│  │  • Fallback a 3 livelli               │    │
-│  │  • Verifica pacchetti critici          │    │
-│  │  • Log dettagliato                     │    │
-│  │  • Pre-verifica prima compilazione     │    │
-│  └────────────────────────────────────────┘    │
-│           ↓                                     │
-│  ┌────────────────────────────────────────┐    │
-│  │  Compilazione INDI (cmake/make)       │    │
-│  │  ✅ Con dipendenze corrette            │    │
-│  └────────────────────────────────────────┘    │
-│                                                 │
-└─────────────────────────────────────────────────┘
-```
+| Evento | Azione Scheduler |
+|-------|-------------------|
+| Meteo unsafe | sospensione/stop acquisizioni, eventuale park |
+| Finestra target non valida | skip job, `findNextJob()` |
+| Guide fail temporaneo | quick retry guida-only |
+| Guide fail persistente | deep recovery + next job |
+| Nessun job residuo | chiusura sessione + park/shutdown |
 
 ---
 
-## Performance e Impatto
+## Modulo ALIGN — Gestione OOM/RAM Migliorata
 
-### Tempo di Esecuzione
+### Variabili e segnali usati
 
-| Operazione | Prima | Dopo | Delta |
-|-----------|-------|------|-------|
-| system_pre_update | 5-15 min | 5-15 min | = |
-| Pre-check deps | N/A | 5-10 min | + |
-| chkINDI (fallisce) | - | ~fallback interno | - |
-| chkINDI (succede) | 30-60 min | 30-60 min | = |
+| Variabile | Ruolo |
+|----------|-------|
+| `m_CaptureErrorCounter` | Conta errori acquisizione frame in Align |
+| `Options::solverBinningIndex()` | Binning solver corrente |
+| `KSUtils::getAvailableRAM()` | RAM disponibile runtime |
+| `ccd_width`, `ccd_height` | Dimensione frame |
+| `estimatedColorFrameBytes` | Stima RAM frame (`w*h*4`) |
+| `ratio` | Rapporto frame/RAM disponibile |
 
-### Consumo Risorse
+### Adattamento binning anti-OOM
 
-| Risorsa | Impatto |
-|---------|--------|
-| Disco | Minimal (~50MB script + doc) |
-| Memoria | Minimal (solo durante esecuzione) |
-| CPU | Minimal (I/O bound) |
-| Network | Possibilmente ridotto (retry intelligenti) |
+| Condizione | Azione |
+|-----------|--------|
+| `ratio > 0.08` | almeno binning `2x2` |
+| `ratio > 0.15` | almeno binning `3x3` |
+| `ratio > 0.25` | almeno binning `4x4` |
 
----
+Clamping finale:
+- limitato da `getMaxBin()` del chip
+- bounded con `qBound()`
 
-## Pacchetti Gestiti
+Log atteso:
+- `Low available memory detected. Increasing capture binning to NxN.`
 
-### Critici (10)
-```
-cmake, make, build-essential, git, pkg-config
-libev-dev, libgsl-dev, libgsl0-dev
-libraw-dev, libusb-dev, libusb-1.0-0-dev
-zlib1g-dev, libjpeg-dev, libtiff-dev, libfftw3-dev
-```
+### Frame null / low-memory flow
 
-### Opzionali (15+)
-```
-libftdi-dev, libftdi1-dev, libkrb5-dev, libnova-dev
-librtlsdr-dev, libcfitsio-dev, libgphoto2-dev
-libdc1394-22-dev, libboost-dev, libboost-regex-dev
-libcurl4-gnutls-dev, libtheora-dev, limlimesuite-dev
-libavcodec-dev, libavdevice-dev, ...
-```
+Quando `data.isNull()` in Align:
+1. log low-memory condition
+2. incremento `m_CaptureErrorCounter`
+3. aumento progressivo `solverBinningIndex` (fino al limite)
+4. retry capture
+5. al 3° errore (fuori `PAH_REFRESH`) → abort
 
----
+### Retention immagini in RAM (miglioria)
 
-## Matrici di Compatibilità
+Policy:
+- modalità normale: mantenere solo frame corrente
+- modalità PAA specifica: corrente + riferimento (max 2)
 
-### Sistemi Supportati
+Dettaglio:
+- fuori stage `PAH_STAR_SELECT`, `PAH_PRE_REFRESH`, `PAH_REFRESH` viene chiamato `releaseImage()`
+- `m_ImageData` viene resettata prima di caricare la nuova frame
 
-| OS | Versione | ARM | Status |
-|----|----------|-----|--------|
-| Debian | Buster | armhf, arm64 | ✅ Principale |
-| Raspberry Pi OS | Buster | armhf | ✅ Testato |
-| Raspberry Pi | 3, 4, 4B+ | - | ✅ Ottimizzato |
-
-### Python/Bash Versioni
-
-| Componente | Versione | Note |
-|-----------|----------|------|
-| Bash | 4.4+ | Script compatibili |
-| APT | 1.8+ | Debian Buster standard |
-| Zenity | 3.28+ | Per UI |
+Log debug:
+- `Align image retention: N (current: x, kept: y, stage: z)`
 
 ---
 
-## Metriche di Successo
+## Timeline Operative (indicative)
 
-✅ **Completamento**: 100%
-- Tutte le funzioni migliorate
-- Tutti gli script creati
-- Tutta la documentazione completata
+### Guida: cloud temporanea
 
-✅ **Testing**: Verificato
-- Sintassi bash corretta
-- Logica coerente
-- Nessun breaking change
+- 0s: guide fail
+- 5s: quick retry #1
+- 10s: quick retry #2
+- 20s: quick retry #3
+- ~25-30s: resume capture (se recupero)
 
-✅ **Documentazione**: Completa
-- Guida utente (README_INDI_QUICK_START.md)
-- Guida tecnica (INDI_DEPENDENCIES_FIX.md)
-- Changelog dettagliato (CHANGELOG_INDI_FIX.md)
-- Riepilogo (IMPLEMENTATION_SUMMARY.txt)
+### Guida: problema reale
+
+- quick x3 fallisce (~30s)
+- deep recovery #1/#2/#3 (~2-3 min ciascuno)
+- se persiste: next job
 
 ---
 
-## Roadmap Futura (Opzionale)
+## Note Operative Finali
 
-### Phase 2 (Future)
-- [ ] Supporto per Bullseye/Bookworm
-- [ ] Container support (Docker/Podman)
-- [ ] Binary cache pre-built
-- [ ] Upgrade path da Buster a Bullseye
-
-### Phase 3 (Future)
-- [ ] Test automation
-- [ ] CI/CD integration
-- [ ] Performance benchmarking
-- [ ] Multi-architecture support
+- Lo scheduler privilegia continuità: se il target corrente è instabile, passa al prossimo.
+- I retry sono limitati per evitare loop infiniti.
+- Le procedure di sicurezza (meteo/park/shutdown) hanno priorità sull’acquisizione.
 
 ---
 
-## Riferimenti
+## Versione Documento
 
-### Documentazione Interna
-- `INDI_DEPENDENCIES_FIX.md` - Guida completa
-- `CHANGELOG_INDI_FIX.md` - Dettagli tecnici
-- `README_INDI_QUICK_START.md` - Quick start
-- `IMPLEMENTATION_SUMMARY.txt` - Riepilogo
-
-### Repository Esterni
-- [INDI Library](https://indilib.org/)
-- [Debian Archive](https://archive.debian.org/)
-- [Raspberry Pi OS](https://www.raspberrypi.org/)
-- [GitHub AstroPi](https://github.com/Andre87osx/AstroPi-system/)
-
----
-
-## Note Tecniche
-
-### Decisioni Implementative
-
-1. **Repository Multipli**: Scelto di mantenerli separati per flessibilità
-2. **Fallback 3-Livelli**: Massimizza il successo senza over-complexity
-3. **Separazione Critico/Opzionale**: Permette compilazione parziale
-4. **Log Persistente**: Facilita debugging post-mortem
-5. **Script Indipendenti**: Permette uso standalone
-
-### Limitazioni Conosciute
-
-1. Buster è ancora archiviato (non aggiornato)
-2. Alcuni pacchetti ARM potrebbe avere bugfix limitati
-3. Performance di compilation è limitata dal CPU ARM
-4. Memoria RAM limitata su Raspberry Pi 3
-
----
-
-## Contatti e Support
-
-### Report Problemi
-**URL**: https://github.com/Andre87osx/AstroPi-system/issues
-
-**Include nel Report**:
-- Output di: `uname -a`
-- Output di: `cat /etc/os-release`
-- Output di: `bash bin/check-indi-deps.sh`
-- Log di: `cat ~/indi-deps-install.log`
-
----
-
-## Versioning
-
-| Versione | Data | Note |
-|----------|------|------|
-| 1.7.0 | Pre-fix | Versione originale |
-| 1.7.1 | 18-01-2026 | INDI Dependencies Fix |
-
----
-
-## License e Attributions
-
-Soluzione implementata per AstroPi System.  
-Mantiene compatibilità con licenze originali del progetto.
-
----
-
-**Documento Versione**: 1.0  
-**Data Compilazione**: 18 Gennaio 2026  
-**Status**: ✅ Completato
+| Campo | Valore |
+|------|--------|
+| Documento | Technical Datasheet modulare |
+| Data | 18 Febbraio 2026 |
+| Stato | ✅ Aggiornato (moduli + tempi + tentativi) |
