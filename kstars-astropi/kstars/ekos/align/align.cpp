@@ -3108,26 +3108,10 @@ void Align::prepareCapture(ISD::CCDChip *targetChip)
     targetChip->setFrameType(FRAME_LIGHT);
 
     int bin = Options::solverBinningIndex() + 1;
-    const double availableRAM = KSUtils::getAvailableRAM();
-    if (availableRAM > 0 && ccd_width > 0 && ccd_height > 0)
-    {
-        const double estimatedColorFrameBytes = static_cast<double>(ccd_width) * static_cast<double>(ccd_height) * 4.0;
-        const double ratio = estimatedColorFrameBytes / availableRAM;
-
-        if (ratio > 0.25)
-            bin = qMax(bin, 4);
-        else if (ratio > 0.15)
-            bin = qMax(bin, 3);
-        else if (ratio > 0.08)
-            bin = qMax(bin, 2);
-    }
 
     int maxBinX = 1, maxBinY = 1;
     targetChip->getMaxBin(&maxBinX, &maxBinY);
     bin = qBound(1, bin, qMin(maxBinX, maxBinY));
-
-    if (bin > Options::solverBinningIndex() + 1)
-        appendLogText(i18n("Low available memory detected. Increasing capture binning to %1x%1.", bin));
 
     targetChip->setBinning(bin, bin);
 
@@ -3365,7 +3349,15 @@ void Align::setCaptureComplete()
 
     emit newImage(alignView);
 
-    solverFOV->setImage(alignView->getDisplayImage());
+    const double availableRAM = KSUtils::getAvailableRAM();
+    const bool lowMemorySolverPreview = (availableRAM > 0) &&
+                                        (availableRAM < (1.5 * 1024.0 * 1024.0 * 1024.0));
+
+    if (!lowMemorySolverPreview)
+        solverFOV->setImage(alignView->getDisplayImage());
+    else
+        qCWarning(KSTARS_EKOS_ALIGN) << "Low available RAM" << availableRAM
+                                     << "bytes: skipping solver preview image copy to reduce memory pressure.";
 
     startSolving();
 }

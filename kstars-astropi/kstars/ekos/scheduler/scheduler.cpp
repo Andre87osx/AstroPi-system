@@ -3060,6 +3060,12 @@ bool Scheduler::checkStartupState()
         {
             KNotification::event(QLatin1String("ObservatoryStartup"), i18n("Observatory is in the startup process"));
 
+            if (Options::useFITSViewer())
+            {
+                Options::setUseFITSViewer(false);
+                appendLogText(i18n("Disabling FITS Viewer for Scheduler startup."));
+            }
+
             qCDebug(KSTARS_EKOS_SCHEDULER) << "Startup Idle. Starting startup process...";
 
             // If Ekos is already started, we skip the script and move on to dome unpark step
@@ -7350,8 +7356,6 @@ void Scheduler::setAlignStatus(Ekos::AlignState status)
                         mountInterface->call(QDBus::AutoDetect, "resetModel");
                 }
                 appendLogText(i18n("Restarting %1 alignment procedure...", currentJob->getName()));
-                if (!alignInterface.isNull())
-                    alignInterface->call(QDBus::AutoDetect, "abort");
                 startAstrometry();
             }
             else
