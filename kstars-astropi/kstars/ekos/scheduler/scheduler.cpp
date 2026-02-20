@@ -2739,6 +2739,12 @@ void Scheduler::executeJob(SchedulerJob *job)
     // When the focus step is not checked, the capture module will eventually run focus periodically
     autofocusCompleted = false;
 
+    // Clear memory from previous job's align and focus modules to prevent memory leak
+    if (!alignInterface.isNull())
+        alignInterface->call(QDBus::AutoDetect, "abort");
+    if (!focusInterface.isNull())
+        focusInterface->call(QDBus::AutoDetect, "resetFrame");
+
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Executing Job " << currentJob->getName();
 
     currentJob->setState(SchedulerJob::JOB_BUSY);
