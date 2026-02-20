@@ -19,7 +19,7 @@
 
 #include <indi_debug.h>
 
-BlobManager::BlobManager(const QString &host, int port, const QString &device, const QString &prop) : m_Device(device), m_Property(prop)
+BlobManager::BlobManager(QObject *parent, const QString &host, int port, const QString &device, const QString &prop) : QObject(parent), m_Device(device), m_Property(prop)
 {
     // Set INDI server params
     setServer(host.toLatin1().constData(), port);
@@ -47,6 +47,10 @@ void BlobManager::newDevice(INDI::BaseDevice *device)
     if (QString(device->getDeviceName()) == m_Device)
     {
         setBLOBMode(B_ONLY, m_Device.toLatin1().constData(), m_Property.toLatin1().constData());
+        // enable Direct Blob Access for faster BLOB loading.
+#if INDI_VERSION_MAJOR >= 1 && INDI_VERSION_MINOR >= 9 && INDI_VERSION_RELEASE >= 7
+        enableDirectBlobAccess(m_Device.toLatin1().constData(), m_Property.toLatin1().constData());
+#endif
         emit connected();
     }
 }
