@@ -22,10 +22,27 @@ StellarSolver_v=1.9							# From Rlancaste GitHub
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
-# GUI windows width and height
-W=$(( SCREEN_WIDTH / 5 ))
-H=$(( SCREEN_HEIGHT / 3 ))
-Wprogress=$(( SCREEN_WIDTH / 4 ))
+# GUI windows width and height - responsive sizes for different dialog types
+# Small: confirmations, quick info (yes/no dialogs)
+W_SMALL=$((SCREEN_WIDTH / 4))
+H_SMALL=$((SCREEN_HEIGHT / 4))
+
+# Medium: standard info dialogs, forms (typical messages)
+W_MEDIUM=$((SCREEN_WIDTH / 3))
+H_MEDIUM=$((SCREEN_HEIGHT / 2))
+
+# Large: log viewers, detailed error messages, text-info dialogs
+W_LARGE=$((SCREEN_WIDTH / 5))
+H_LARGE=$((SCREEN_HEIGHT / 3))
+
+# Legacy variables for backward compatibility (defaults to medium)
+W=${W_MEDIUM}
+H=${H_MEDIUM}
+Wprogress=$((SCREEN_WIDTH / 2))
+
+# Cap main window size to avoid huge dialogs on scaled displays
+if [ ${W} -gt 900 ]; then W=900; fi
+if [ ${H} -gt 600 ]; then H=600; fi
 
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
@@ -37,6 +54,94 @@ sysinfo=$(uname -sonmr)
 # Disk usage
 diskUsagePerc=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $5}')
 diskUsageFree=$(df -h --type=ext4 | awk '$1=="/dev/root"{print $4}')
+
+# Helper function: Auto-detect optimal dialog size based on text length
+# Usage: size=$(get_dialog_size "text content") -> returns "WIDTH HEIGHT"
+function get_dialog_size()
+{
+	local text="$1"
+	local num_lines=$(echo -e "$text" | wc -l)
+	local max_chars=$(echo -e "$text" | awk '{print length}' | sort -rn | head -1)
+	
+	# Estimate needed width: roughly 8 pixels per character (adjustable)
+	local est_width=$((max_chars * 8 + 40))
+	local est_height=$((num_lines * 25 + 80))
+	
+	# Constrain to available presets
+	local final_width=$W_MEDIUM
+	local final_height=$H_MEDIUM
+	
+	# Use LARGE only when clearly needed; otherwise stay at MEDIUM
+	if [ $num_lines -gt 8 ] || [ $max_chars -gt 140 ] || [ $est_height -gt $H_LARGE ]; then
+		final_width=$W_LARGE
+		final_height=$H_LARGE
+	fi
+	
+	echo "$final_width $final_height"
+}
+
+# Smart wrapper for zenity command - automatically sizes dialogs
+# This intercepts all zenity calls from sourced scripts and applies intelligent sizing
+# No script modifications needed - backward compatible!
+function zenity()
+{
+	local -a args=("$@")
+	local text=""
+	local width_idx=-1
+	local text_idx=-1
+	local dialog_type=""
+	
+	# Parse arguments to find --text and --width
+	for i in "${!args[@]}"; do
+		case "${args[$i]}" in
+			--text=*)
+				text="${args[$i]#--text=}"
+				text_idx=$i
+				;;
+			--text)
+				# Handle --text as separate parameter
+				text="${args[$((i+1))]}"
+				text_idx=$i
+				;;
+			--width=*)
+				width_idx=$i
+				;;
+			--width)
+				width_idx=$i
+				;;
+			--error)
+				dialog_type="error"
+				;;
+			--info)
+				dialog_type="info"
+				;;
+			--warning)
+				dialog_type="warning"
+				;;
+			--question)
+				dialog_type="question"
+				;;
+		esac
+	done
+	
+	# If --text is found and --width exists, replace it with smart size
+	if [ $text_idx -ge 0 ] && [ $width_idx -ge 0 ] && [ ! -z "$text" ]; then
+		# Get optimal dimensions for this text
+		local dimensions=($(get_dialog_size "$text"))
+		local new_width=${dimensions[0]}
+		
+		# Replace the --width= parameter
+		if [[ "${args[$width_idx]}" =~ ^--width= ]]; then
+			args[$width_idx]="--width=$new_width"
+		elif [[ "${args[$width_idx]}" == "--width" ]]; then
+			args[$((width_idx+1))]=$new_width
+		fi
+	fi
+	
+	# Call the actual zenity with processed arguments
+	/usr/bin/zenity "${args[@]}"
+}
+
 
 # Chk USER and create path
 function chkUser()
@@ -329,18 +434,18 @@ EOF'
 	fi
 	
 	# Install VNC Server before system update
-	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
+	if [[ -f "${appDir}/bin/VNC-Server-7.16.0-Linux-ARM.deb" ]]; then
 		(
 			echo "# Installing VNC Server..."
 			echo "30"
 			echo "# Attempting to install VNC Server via apt..."
-			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+			if sudo apt install -y "${appDir}/bin/VNC-Server-7.16.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
 				echo "70"
 				echo "# VNC Server installed successfully"
 			else
 				echo "70"
 				echo "# Fallback: trying dpkg + fix-deps..."
-				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.16.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
 					echo "85"
 					echo "# Fixing dependencies..."
 					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
@@ -808,6 +913,12 @@ function chkINDI()
         exit 1
     }
 
+    # Clean previous build artifacts if they exist
+    echo "# Cleaning previous INDI build artifacts..."
+    if [ -d "${WorkDir}" ]; then
+        sudo rm -rf "${WorkDir}" || err_exit "Failed to remove old WorkDir: ${WorkDir}"
+    fi
+
     # Ensure unbuffer is installed
     if ! command -v unbuffer &> /dev/null; then
         sudo apt-get update -y >/dev/null 2>&1 || err_exit "Failed to update apt before installing 'expect'"
@@ -1031,12 +1142,34 @@ function chkINDI()
 # Install / Update KStars AstroPi 
 function chkKStars()
 {
-	
+	# Fail on pipeline errors and catch unexpected errors to show zenity message
+	set -o pipefail
+	trap 'err_exit_kstars "An error occurred while building KStars AstroPi (line ${LINENO})."' ERR
+
+	err_exit_kstars() {
+		# Cleanup workspace on any error so build artifacts are removed
+		echo "# Cleaning CMake Project..."
+		if [ -d "${WorkDir}" ]; then
+			sudo rm -rf "${WorkDir}"
+		fi
+		# Show error message and exit
+		zenity --error --width="${W}" --text="$1\n\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		trap - ERR
+		exit 1
+	}
+
+	# Clean previous build artifacts if they exist
+	echo "# Cleaning previous KStars build artifacts..."
+	if [ -d "${WorkDir}" ]; then
+		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove old WorkDir: ${WorkDir}"
+	fi
+
 	echo "# Check KStars AstroPi"
 	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
 	if [ ! -d "${HOME}"/.indi/logs ]; then mkdir -p "${HOME}"/.indi/logs; fi
 	if [ ! -d "${HOME}"/.local/share/kstars/logs ]; then mkdir -p "${HOME}"/.local/share/kstars/logs; fi
-	cd "${WorkDir}"/kstars-cmake || exit 1	
+	cd "${WorkDir}"/kstars-cmake || err_exit_kstars "Cannot change directory to ${WorkDir}/kstars-cmake"
+	
 	# =================================================================
 	# Build KStar AstroPi
 	commands=(
@@ -1055,35 +1188,36 @@ function chkKStars()
 			for i in "${!commands[@]}"; do
 				echo "${percentages[$i]}"
 				echo "# ${steps[$i]}..."
-				${commands[$i]} 2>&1 | while IFS= read -r line; do
+				
+				# Execute command with output streaming, capture exit status
+				stdbuf -oL -eL bash -c "${commands[$i]} 2>&1" | while IFS= read -r line; do
             		echo "# $line"
         		done
-				{
-					status=$?
-					if (( status != 0 )); then
-						zenity --error --width=${W} \
-							--text="Error during <b>${steps[$i]}</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
-							--title="${W_Title}"
-						echo "# Cleaning CMake Project..."
-						if [ -d "${WorkDir}" ]; then 
-							sudo rm -rf "${WorkDir}"
-						fi	
-						exit 1
-					fi
-				}
+				
+				# Capture exit status from the command (first element of PIPESTATUS)
+				status=${PIPESTATUS[0]}
+				
+				if [ ${status} -ne 0 ]; then
+					echo "# ERROR: ${steps[$i]} failed with exit code ${status}"
+					exit ${status}
+				fi
 			done
     		echo "100"
     		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-
-	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>KStars AstroPi</b>
-	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	exit_stat=$?
+	if [ ${exit_stat} -ne 0 ]; then 
+		err_exit_kstars "Error during KStars AstroPi build and installation"
+	fi
   	
    	echo "# Cleaning CMake Project..."
 	if [ -d "${WorkDir}" ]; then 
-		sudo rm -rf "${WorkDir}"
+		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove WorkDir during cleanup"
 	fi
 
-	zenity --info --width=${W} --text="KStars AstroPi $KStars_v allredy installed" --title="${W_Title}"
+	zenity --info --width=${W} --text="KStars AstroPi $KStars_v successfully installed" --title="${W_Title}"
+	
+	# restore trap
+	trap - ERR
 }
