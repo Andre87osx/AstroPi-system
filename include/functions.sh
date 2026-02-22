@@ -22,10 +22,13 @@ StellarSolver_v=1.9							# From Rlancaste GitHub
 SCREEN_WIDTH=$(xwininfo -root | awk '$1=="Width:" {print $2}')
 SCREEN_HEIGHT=$(xwininfo -root | awk '$1=="Height:" {print $2}')
 
-# GUI windows width and height
-W=$(( SCREEN_WIDTH / 5 ))
-H=$(( SCREEN_HEIGHT / 3 ))
-Wprogress=$(( SCREEN_WIDTH / 4 ))
+# GUI windows width and height - optimized for better text wrapping
+# W: main dialog width (increased from /5 to /3 for better text display)
+# H: main dialog height
+# Wprogress: progress bar width (increased from /4 to /2 for better readability)
+W=$(( SCREEN_WIDTH / 3 ))
+H=$(( SCREEN_HEIGHT / 2 ))
+Wprogress=$(( SCREEN_WIDTH / 2 ))
 
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
@@ -1031,12 +1034,28 @@ function chkINDI()
 # Install / Update KStars AstroPi 
 function chkKStars()
 {
-	
+	# Fail on pipeline errors and catch unexpected errors to show zenity message
+	set -o pipefail
+	trap 'err_exit_kstars "An error occurred while building KStars AstroPi (line ${LINENO})."' ERR
+
+	err_exit_kstars() {
+		# Cleanup workspace on any error so build artifacts are removed
+		echo "# Cleaning CMake Project..."
+		if [ -d "${WorkDir}" ]; then
+			sudo rm -rf "${WorkDir}"
+		fi
+		# Show error message and exit
+		zenity --error --width="${W}" --text="$1\n\nContact support at\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}"
+		trap - ERR
+		exit 1
+	}
+
 	echo "# Check KStars AstroPi"
 	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
 	if [ ! -d "${HOME}"/.indi/logs ]; then mkdir -p "${HOME}"/.indi/logs; fi
 	if [ ! -d "${HOME}"/.local/share/kstars/logs ]; then mkdir -p "${HOME}"/.local/share/kstars/logs; fi
-	cd "${WorkDir}"/kstars-cmake || exit 1	
+	cd "${WorkDir}"/kstars-cmake || err_exit_kstars "Cannot change directory to ${WorkDir}/kstars-cmake"
+	
 	# =================================================================
 	# Build KStar AstroPi
 	commands=(
@@ -1055,35 +1074,36 @@ function chkKStars()
 			for i in "${!commands[@]}"; do
 				echo "${percentages[$i]}"
 				echo "# ${steps[$i]}..."
-				${commands[$i]} 2>&1 | while IFS= read -r line; do
+				
+				# Execute command with output streaming, capture exit status
+				stdbuf -oL -eL bash -c "${commands[$i]} 2>&1" | while IFS= read -r line; do
             		echo "# $line"
         		done
-				{
-					status=$?
-					if (( status != 0 )); then
-						zenity --error --width=${W} \
-							--text="Error during <b>${steps[$i]}</b>\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
-							--title="${W_Title}"
-						echo "# Cleaning CMake Project..."
-						if [ -d "${WorkDir}" ]; then 
-							sudo rm -rf "${WorkDir}"
-						fi	
-						exit 1
-					fi
-				}
+				
+				# Capture exit status from the command (first element of PIPESTATUS)
+				status=${PIPESTATUS[0]}
+				
+				if [ ${status} -ne 0 ]; then
+					echo "# ERROR: ${steps[$i]} failed with exit code ${status}"
+					exit ${status}
+				fi
 			done
     		echo "100"
     		echo "# Installation complete!"
 	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
 
-
-	(($? != 0)) && zenity --error --width=${W} --text="Error build and install <b>KStars AstroPi</b>
-	\n<b>https://github.com/Andre87osx/AstroPi-system/issues</b>" --title="${W_Title}" && exit 1
+	exit_stat=$?
+	if [ ${exit_stat} -ne 0 ]; then 
+		err_exit_kstars "Error during KStars AstroPi build and installation"
+	fi
   	
    	echo "# Cleaning CMake Project..."
 	if [ -d "${WorkDir}" ]; then 
-		sudo rm -rf "${WorkDir}"
+		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove WorkDir during cleanup"
 	fi
 
-	zenity --info --width=${W} --text="KStars AstroPi $KStars_v allredy installed" --title="${W_Title}"
+	zenity --info --width=${W} --text="KStars AstroPi $KStars_v successfully installed" --title="${W_Title}"
+	
+	# restore trap
+	trap - ERR
 }
