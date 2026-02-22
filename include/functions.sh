@@ -32,8 +32,8 @@ W_MEDIUM=$((SCREEN_WIDTH / 3))
 H_MEDIUM=$((SCREEN_HEIGHT / 2))
 
 # Large: log viewers, detailed error messages, text-info dialogs
-W_LARGE=$((SCREEN_WIDTH / 2))
-H_LARGE=$((SCREEN_HEIGHT / 1.5))
+W_LARGE=$((SCREEN_WIDTH / 5))
+H_LARGE=$((SCREEN_HEIGHT / 3))
 
 # Legacy variables for backward compatibility (defaults to medium)
 W=${W_MEDIUM}
