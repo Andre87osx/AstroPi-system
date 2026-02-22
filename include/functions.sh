@@ -67,8 +67,8 @@ function get_dialog_size()
 	local final_width=$W_MEDIUM
 	local final_height=$H_MEDIUM
 	
-	# Use LARGE only when needed; otherwise stay at MEDIUM
-	if [ $num_lines -gt 5 ] || [ $max_chars -gt 100 ] || [ $est_height -gt $H_MEDIUM ]; then
+	# Use LARGE only when clearly needed; otherwise stay at MEDIUM
+	if [ $num_lines -gt 8 ] || [ $max_chars -gt 140 ] || [ $est_height -gt $H_LARGE ]; then
 		final_width=$W_LARGE
 		final_height=$H_LARGE
 	fi
