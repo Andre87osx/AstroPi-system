@@ -434,18 +434,18 @@ EOF'
 	fi
 	
 	# Install VNC Server before system update
-	if [[ -f "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" ]]; then
+	if [[ -f "${appDir}/bin/VNC-Server-7.16.0-Linux-ARM.deb" ]]; then
 		(
 			echo "# Installing VNC Server..."
 			echo "30"
 			echo "# Attempting to install VNC Server via apt..."
-			if sudo apt install -y "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+			if sudo apt install -y "${appDir}/bin/VNC-Server-7.16.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
 				echo "70"
 				echo "# VNC Server installed successfully"
 			else
 				echo "70"
 				echo "# Fallback: trying dpkg + fix-deps..."
-				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.15.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
+				if sudo dpkg -i "${appDir}/bin/VNC-Server-7.16.0-Linux-ARM.deb" 2>&1 | while read -r line; do echo "# $line"; done; then
 					echo "85"
 					echo "# Fixing dependencies..."
 					sudo apt-get install -f -y 2>&1 | while read -r line; do echo "# $line"; done
