@@ -913,6 +913,12 @@ function chkINDI()
         exit 1
     }
 
+    # Clean previous build artifacts if they exist
+    echo "# Cleaning previous INDI build artifacts..."
+    if [ -d "${WorkDir}" ]; then
+        sudo rm -rf "${WorkDir}" || err_exit "Failed to remove old WorkDir: ${WorkDir}"
+    fi
+
     # Ensure unbuffer is installed
     if ! command -v unbuffer &> /dev/null; then
         sudo apt-get update -y >/dev/null 2>&1 || err_exit "Failed to update apt before installing 'expect'"
@@ -1151,6 +1157,12 @@ function chkKStars()
 		trap - ERR
 		exit 1
 	}
+
+	# Clean previous build artifacts if they exist
+	echo "# Cleaning previous KStars build artifacts..."
+	if [ -d "${WorkDir}" ]; then
+		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove old WorkDir: ${WorkDir}"
+	fi
 
 	echo "# Check KStars AstroPi"
 	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
