@@ -40,6 +40,10 @@ W=${W_MEDIUM}
 H=${H_MEDIUM}
 Wprogress=$((SCREEN_WIDTH / 2))
 
+# Cap main window size to avoid huge dialogs on scaled displays
+if [ ${W} -gt 900 ]; then W=900; fi
+if [ ${H} -gt 600 ]; then H=600; fi
+
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
 <b>https://github.com/Andre87osx/AstroPi-system/issues</b>"
