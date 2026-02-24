@@ -257,7 +257,6 @@ Scheduler::Scheduler()
     if (astroPiLogoLabel != nullptr)
     {
         QPixmap logoPixmap;
-        logoPixmap.load(":/icons/astropi_scheduler_logo.png");
 
         const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         const QString appLogoPath = appDataPath + "/astropi_scheduler_logo.png";
@@ -276,14 +275,14 @@ Scheduler::Scheduler()
             QCoreApplication::applicationDirPath() + "/../../../Loghi&background/AstroPi_wallpaper.png"
         };
 
-        if (logoPixmap.isNull())
+        for (const QString &candidate : candidatePaths)
         {
-            for (const QString &candidate : candidatePaths)
-            {
-                if (logoPixmap.load(candidate))
-                    break;
-            }
+            if (logoPixmap.load(candidate))
+                break;
         }
+
+        if (logoPixmap.isNull())
+            logoPixmap.load(":/icons/astropi_scheduler_logo.png");
 
         if (!logoPixmap.isNull())
         {
