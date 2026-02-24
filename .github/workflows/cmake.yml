@@ -14,120 +14,105 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: debian:buster
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Configure Debian Buster archived repositories
-      run: |
-        set -eux
-        rm -f /etc/apt/sources.list.d/*.list || true
-        cat > /etc/apt/sources.list <<'EOF'
-        deb [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
-        deb-src [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
-        deb [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
-        deb-src [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
-        deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
-        deb-src [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
-        deb [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
-        deb-src [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
-        deb [trusted=yes] http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi
-        deb [trusted=yes] http://archive.raspberrypi.org/debian/ buster main
-        EOF
+    - name: Build on Debian Buster armhf (emulated)
+      uses: uraimo/run-on-arch-action@v2
+      with:
+        arch: armv7
+        distro: debian_buster
+        githubToken: ${{ github.token }}
+        run: |
+          set -eux
 
-        cat > /etc/apt/apt.conf.d/99archive-debian-buster <<'EOF'
-        Acquire::Check-Valid-Until "false";
-        Acquire::AllowInsecureRepositories "true";
-        Acquire::AllowDowngradeToInsecureRepositories "true";
-        EOF
+          rm -f /etc/apt/sources.list.d/*.list || true
+          cat > /etc/apt/sources.list <<'EOF'
+          deb [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
+          deb-src [trusted=yes] http://archive.debian.org/debian/ buster main contrib non-free
+          deb [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
+          deb-src [trusted=yes] http://archive.debian.org/debian/ buster-updates main contrib non-free
+          deb [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
+          deb-src [trusted=yes] http://archive.debian.org/debian-security buster/updates main contrib non-free
+          deb [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
+          deb-src [trusted=yes] http://archive.debian.org/debian/ buster-backports main contrib non-free
+          deb [trusted=yes] http://raspbian.raspberrypi.org/raspbian/ buster main contrib non-free rpi
+          deb [trusted=yes] http://archive.raspberrypi.org/debian/ buster main
+          EOF
 
-        cat > /etc/apt/apt.conf.d/99indi-buster-archive <<'EOF'
-        Acquire::Check-Valid-Until "false";
-        Acquire::AllowInsecureRepositories "true";
-        Acquire::AllowDowngradeToInsecureRepositories "true";
-        Acquire::Retries "3";
-        APT::Acquire::Retries "3";
-        Acquire::ForceIPv4 "true";
-        EOF
+          cat > /etc/apt/apt.conf.d/99archive-debian-buster <<'EOF'
+          Acquire::Check-Valid-Until "false";
+          Acquire::AllowInsecureRepositories "true";
+          Acquire::AllowDowngradeToInsecureRepositories "true";
+          EOF
 
-    - name: Install build dependencies (INDI + KStars)
-      run: |
-        set -eux
-        apt-get update -y
-        apt-get install -y --no-install-recommends \
-          ca-certificates wget gnupg dirmngr pkg-config cdbs dkms fxload \
-          build-essential cmake make git gettext extra-cmake-modules \
-          libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev \
-          libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev \
-          libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev \
-          librtlsdr-dev libcfitsio-dev libgphoto2-dev libdc1394-22-dev \
-          libboost-dev libboost-regex-dev libcurl4-gnutls-dev \
-          libeigen3-dev libkf5doctools-dev libqt5datavisualization5-dev \
-          libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev \
-          kinit-dev libkf5newstuff-dev libkf5notifications-dev \
-          qtdeclarative5-dev libkf5crash-dev libkf5notifyconfig-dev wcslib-dev \
-          libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev \
-          libsecret-1-dev breeze-icon-theme
+          cat > /etc/apt/apt.conf.d/99indi-buster-archive <<'EOF'
+          Acquire::Check-Valid-Until "false";
+          Acquire::AllowInsecureRepositories "true";
+          Acquire::AllowDowngradeToInsecureRepositories "true";
+          Acquire::Retries "3";
+          APT::Acquire::Retries "3";
+          Acquire::ForceIPv4 "true";
+          EOF
 
-        apt-get install -f -y || true
-        apt-get autoremove -y || true
+          apt-get update -y
+          test "$(dpkg --print-architecture)" = "armhf"
 
-        for optional_pkg in libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev ffmpeg gsc; do
-          apt-get install -y --no-install-recommends "${optional_pkg}" || true
-        done
+          apt-get install -y --no-install-recommends \
+            ca-certificates wget gnupg dirmngr pkg-config cdbs dkms fxload \
+            build-essential cmake make git gettext extra-cmake-modules \
+            libev-dev libgps-dev libgsl-dev libgsl0-dev libraw-dev \
+            libusb-dev libusb-1.0-0-dev zlib1g-dev libftdi-dev libftdi1-dev \
+            libjpeg-dev libkrb5-dev libnova-dev libtiff-dev libfftw3-dev \
+            librtlsdr-dev libcfitsio-dev libgphoto2-dev libdc1394-22-dev \
+            libboost-dev libboost-regex-dev libcurl4-gnutls-dev \
+            libeigen3-dev libkf5doctools-dev libqt5datavisualization5-dev \
+            libkf5plotting-dev libqt5svg5-dev libkf5xmlgui-dev libkf5kio-dev \
+            kinit-dev libkf5newstuff-dev libkf5notifications-dev \
+            qtdeclarative5-dev libkf5crash-dev libkf5notifyconfig-dev wcslib-dev \
+            libqt5websockets5-dev xplanet xplanet-images qt5keychain-dev \
+            libsecret-1-dev breeze-icon-theme
 
-    - name: Download INDI, INDI 3rdparty and StellarSolver
-      run: |
-        set -eux
-        mkdir -p /tmp/astropi-build
-        cd /tmp/astropi-build
-        wget -qO- "https://github.com/indilib/indi/archive/refs/tags/v${INDI_VERSION}.tar.gz" | tar -xz
-        wget -qO- "https://github.com/indilib/indi-3rdparty/archive/refs/tags/v${INDI_VERSION}.tar.gz" | tar -xz
-        git clone -b "${STELLARSOLVER_VERSION}" https://github.com/rlancaste/stellarsolver.git
+          apt-get install -f -y || true
+          apt-get autoremove -y || true
 
-    - name: Build and install INDI Core
-      run: |
-        set -eux
-        mkdir -p /tmp/astropi-build/indi-cmake
-        cd /tmp/astropi-build/indi-cmake
-        cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug /tmp/astropi-build/indi-${INDI_VERSION}
-        make -j "$(expr "$(nproc)" + 2)"
-        make install
+          for optional_pkg in libtheora-dev liblimesuite-dev libavcodec-dev libavdevice-dev ffmpeg gsc; do
+            apt-get install -y --no-install-recommends "${optional_pkg}" || true
+          done
 
-    - name: Build and install INDI 3rdparty libraries
-      run: |
-        set -eux
-        mkdir -p /tmp/astropi-build/indi3rd-lib-cmake
-        cd /tmp/astropi-build/indi3rd-lib-cmake
-        cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 /tmp/astropi-build/indi-3rdparty-${INDI_VERSION}
-        make -j "$(expr "$(nproc)" + 2)"
-        make install
+          mkdir -p /tmp/astropi-build
+          cd /tmp/astropi-build
+          wget -qO- "https://github.com/indilib/indi/archive/refs/tags/v${INDI_VERSION}.tar.gz" | tar -xz
+          wget -qO- "https://github.com/indilib/indi-3rdparty/archive/refs/tags/v${INDI_VERSION}.tar.gz" | tar -xz
+          git clone -b "${STELLARSOLVER_VERSION}" https://github.com/rlancaste/stellarsolver.git
 
-    - name: Build and install INDI 3rdparty drivers
-      run: |
-        set -eux
-        mkdir -p /tmp/astropi-build/indi3rd-driver-cmake
-        cd /tmp/astropi-build/indi3rd-driver-cmake
-        cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 /tmp/astropi-build/indi-3rdparty-${INDI_VERSION}
-        make -j "$(expr "$(nproc)" + 2)"
-        make install
+          mkdir -p /tmp/astropi-build/indi-cmake
+          cd /tmp/astropi-build/indi-cmake
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug /tmp/astropi-build/indi-${INDI_VERSION}
+          make -j "$(expr "$(nproc)" + 2)"
+          make install
 
-    - name: Build and install StellarSolver
-      run: |
-        set -eux
-        mkdir -p /tmp/astropi-build/solver-cmake
-        cd /tmp/astropi-build/solver-cmake
-        cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=Off /tmp/astropi-build/stellarsolver
-        make -j "$(expr "$(nproc)" + 2)"
-        make install
+          mkdir -p /tmp/astropi-build/indi3rd-lib-cmake
+          cd /tmp/astropi-build/indi3rd-lib-cmake
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_LIBS=1 /tmp/astropi-build/indi-3rdparty-${INDI_VERSION}
+          make -j "$(expr "$(nproc)" + 2)"
+          make install
 
-    - name: Build and install KStars AstroPi
-      run: |
-        set -eux
-        mkdir -p /tmp/astropi-build/kstars-cmake
-        cd /tmp/astropi-build/kstars-cmake
-        cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off "${GITHUB_WORKSPACE}/kstars-astropi"
-        make -j "$(expr "$(nproc)" + 2)"
-        make install
+          mkdir -p /tmp/astropi-build/indi3rd-driver-cmake
+          cd /tmp/astropi-build/indi3rd-driver-cmake
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_FXLOAD=1 /tmp/astropi-build/indi-3rdparty-${INDI_VERSION}
+          make -j "$(expr "$(nproc)" + 2)"
+          make install
+
+          mkdir -p /tmp/astropi-build/solver-cmake
+          cd /tmp/astropi-build/solver-cmake
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=Off /tmp/astropi-build/stellarsolver
+          make -j "$(expr "$(nproc)" + 2)"
+          make install
+
+          mkdir -p /tmp/astropi-build/kstars-cmake
+          cd /tmp/astropi-build/kstars-cmake
+          cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off "${GITHUB_WORKSPACE}/kstars-astropi"
+          make -j "$(expr "$(nproc)" + 2)"
+          make install
