@@ -1865,19 +1865,6 @@ font-weight:bold;
             </property>
            </spacer>
           </item>
-          <item>
-           <widget class="QPushButton" name="shutdownB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
         <item>
@@ -1895,10 +1882,16 @@ font-weight:bold;
           <item>
            <widget class="QLineEdit" name="shutdownScript">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>260</width>
+              <height>16777215</height>
+             </size>
             </property>
             <property name="readOnly">
              <bool>false</bool>
@@ -1921,23 +1914,36 @@ font-weight:bold;
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="shutdownB">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QGroupBox" name="errorHandlingGroup">
-       <property name="toolTip">
-          <string>AstroPi Scheduler quick guide.</string>
-       </property>
-       <property name="title">
-          <string>AstroPi Scheduler Guide</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_9">
-        <property name="spacing">
-         <number>1</number>
-        </property>
+        </widget>
+        </item>
+        <item row="1" column="1">
+        <widget class="QGroupBox" name="errorHandlingGroup">
+         <property name="toolTip">
+           <string>AstroPi Scheduler quick guide.</string>
+         </property>
+         <property name="title">
+           <string>AstroPi Scheduler Guide</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_9">
+          <property name="spacing">
+          <number>1</number>
+          </property>
         <property name="leftMargin">
          <number>3</number>
         </property>
@@ -2243,19 +2249,6 @@ font-weight:bold;
             </property>
            </spacer>
           </item>
-          <item>
-           <widget class="QPushButton" name="startupB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
         <item>
@@ -2273,10 +2266,16 @@ font-weight:bold;
           <item>
            <widget class="QLineEdit" name="startupScript">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>260</width>
+              <height>16777215</height>
+             </size>
             </property>
             <property name="readOnly">
              <bool>false</bool>
@@ -2299,22 +2298,35 @@ font-weight:bold;
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QPushButton" name="startupB">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
-      </widget>
-     </item>
-    </layout>
-   </item>
-  </layout>
- </widget>
- <customwidgets>
-  <customwidget>
-   <class>dmsBox</class>
-   <extends>QLineEdit</extends>
-   <header>widgets/dmsbox.h</header>
-   <container>1</container>
-  </customwidget>
+          </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+         <customwidgets>
+          <customwidget>
+           <class>dmsBox</class>
+           <extends>QLineEdit</extends>
+           <header>widgets/dmsbox.h</header>
+           <container>1</container>
+          </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>nameEdit</tabstop>
