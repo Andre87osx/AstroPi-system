@@ -213,6 +213,12 @@ class Capture : public QWidget, public Ui::Capture
         Q_SCRIPTABLE bool setCCDTemperature(double temperature);
 
         /** DBUS interface function.
+             * Set CCD temperature regulation (ramp in C/min, threshold in C).
+             * If threshold is negative, the current threshold is preserved.
+             */
+        Q_SCRIPTABLE bool setTemperatureRegulation(double ramp, double threshold = -1.0);
+
+        /** DBUS interface function.
              * @return Returns the percentage of completed captures in all active jobs
              */
         Q_SCRIPTABLE double getProgressPercentage();

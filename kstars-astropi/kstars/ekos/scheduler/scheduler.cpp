@@ -195,6 +195,9 @@ Scheduler::Scheduler()
     connect(startupB, &QPushButton::clicked, this, &Scheduler::runStartupProcedure);
     connect(shutdownB, &QPushButton::clicked, this, &Scheduler::runShutdownProcedure);
 
+    warmCCDCheck->setEnabled(false);
+    coolingCCDCheck->setEnabled(false);
+
     connect(selectObjectB, &QPushButton::clicked, this, &Scheduler::selectObject);
     connect(selectFITSB, &QPushButton::clicked, this, &Scheduler::selectFITS);
     connect(loadSequenceB, &QPushButton::clicked, this, &Scheduler::selectSequence);
@@ -3025,9 +3028,14 @@ bool Scheduler::checkINDIState()
                 QVariant hasCoolerControl = captureInterface->property("coolerControl");
                 if (hasCoolerControl.isValid())
                 {
-                    warmCCDCheck->setEnabled(hasCoolerControl.toBool());
-                    m_CaptureReady = true;
-                    coolingCCDCheck->setEnabled(hasCoolerControl.toBool());
+                    const bool coolerAvailable = hasCoolerControl.toBool();
+                    warmCCDCheck->setEnabled(coolerAvailable);
+                    coolingCCDCheck->setEnabled(coolerAvailable);
+                    if (!coolerAvailable)
+                    {
+                        warmCCDCheck->setChecked(false);
+                        coolingCCDCheck->setChecked(false);
+                    }
                     m_CaptureReady = true;
                 }
                 else
@@ -3057,6 +3065,39 @@ bool Scheduler::checkStartupState()
     {
         case STARTUP_IDLE:
         {
+            auto triggerStartupCooling = [this]()
+            {
+                if (!coolingCCDCheck->isEnabled() || !coolingCCDCheck->isChecked())
+                    return;
+
+                constexpr double startupCoolingTemperatureC = -10.0;
+                constexpr double defaultRampCPerMinute = 1.0;
+
+                if (captureInterface.isNull())
+                {
+                    appendLogText(i18n("Cooling CCD skipped: capture module is not available yet."));
+                    return;
+                }
+
+                captureInterface->call(QDBus::AutoDetect, "setTemperatureRegulation", defaultRampCPerMinute, -1.0);
+
+                QDBusReply<bool> coolerReply = captureInterface->call(QDBus::AutoDetect, "setCoolerControl", true);
+                if (!coolerReply.isValid() || coolerReply.value() == false)
+                {
+                    appendLogText(i18n("Cooling CCD skipped: unable to enable cooler control on current camera."));
+                    return;
+                }
+
+                QDBusReply<bool> temperatureReply = captureInterface->call(QDBus::AutoDetect, "setCCDTemperature",
+                                                     startupCoolingTemperatureC);
+                if (temperatureReply.isValid() && temperatureReply.value())
+                    appendLogText(i18n("Cooling CCD to %1 °C (ramp %2 °C/min)...", startupCoolingTemperatureC,
+                                       defaultRampCPerMinute));
+                else
+                    appendLogText(i18n("Cooling CCD skipped: unable to set target temperature to %1 °C.",
+                                       startupCoolingTemperatureC));
+            };
+
             KNotification::event(QLatin1String("ObservatoryStartup"), i18n("Observatory is in the startup process"));
 
             if (Options::useFITSViewer())
@@ -3074,6 +3115,8 @@ bool Scheduler::checkStartupState()
             //if (isEkosStarted.value() == Ekos::Success)
             if (m_EkosCommunicationStatus == Ekos::Success)
             {
+                triggerStartupCooling();
+
                 if (startupScriptURL.isEmpty() == false)
                     appendLogText(i18n("Ekos is already started, skipping startup script..."));
 
@@ -3092,24 +3135,7 @@ bool Scheduler::checkStartupState()
                     ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
             }
 
-            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
-            {
-                constexpr double startupCoolingTemperatureC = -10.0;
-                if (!captureInterface.isNull())
-                {
-                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
-                    {
-                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
-                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
-                        captureInterface->setProperty("coolerControl", true);
-                    }
-                    else
-                    {
-                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
-                    }
-                }
-            }
+            triggerStartupCooling();
 
             if (startupScriptURL.isEmpty() == false)
             {
@@ -3214,12 +3240,18 @@ bool Scheduler::checkShutdownState()
 
             if (warmCCDCheck->isEnabled() && warmCCDCheck->isChecked())
             {
-                appendLogText(i18n("Warming up CCD..."));
+                constexpr double defaultRampCPerMinute = 1.0;
 
-                // Turn it off
-                //QVariant arg(false);
-                //captureInterface->call(QDBus::AutoDetect, "setCoolerControl", arg);
-                captureInterface->setProperty("coolerControl", false);
+                if (!captureInterface.isNull())
+                {
+                    captureInterface->call(QDBus::AutoDetect, "setTemperatureRegulation", defaultRampCPerMinute, -1.0);
+
+                    QDBusReply<bool> coolerOffReply = captureInterface->call(QDBus::AutoDetect, "setCoolerControl", false);
+                    if (coolerOffReply.isValid() && coolerOffReply.value())
+                        appendLogText(i18n("Disabling CCD cooler (regulation ramp set to %1 °C/min).", defaultRampCPerMinute));
+                    else
+                        appendLogText(i18n("Cooler shutdown skipped: unable to control cooler on current camera."));
+                }
             }
 
             // The following steps require a connection to the INDI server
@@ -7299,8 +7331,15 @@ void Scheduler::syncProperties()
     }
     else if (iface == captureInterface)
     {
-        QVariant hasCoolerControl = captureInterface->property("coolerControl");
-        warmCCDCheck->setEnabled(hasCoolerControl.toBool());
+        const QVariant hasCoolerControl = captureInterface->property("coolerControl");
+        const bool coolerAvailable = hasCoolerControl.isValid() && hasCoolerControl.toBool();
+        warmCCDCheck->setEnabled(coolerAvailable);
+        coolingCCDCheck->setEnabled(coolerAvailable);
+        if (!coolerAvailable)
+        {
+            warmCCDCheck->setChecked(false);
+            coolingCCDCheck->setChecked(false);
+        }
         m_CaptureReady = true;
     }
 }
