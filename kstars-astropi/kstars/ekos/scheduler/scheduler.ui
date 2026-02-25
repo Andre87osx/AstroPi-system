@@ -1762,31 +1762,6 @@ font-weight:bold;
            <number>1</number>
           </property>
           <item>
-           <widget class="QCheckBox" name="warmCCDCheck">
-            <property name="enabled">
-             <bool>true</bool>
-            </property>
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Turn off CCD cooler.</string>
-            </property>
-            <property name="text">
-             <string>Warm CCD</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">shutdownProcedureGroup</string>
-            </attribute>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QCheckBox" name="capCheck">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
@@ -2228,28 +2203,6 @@ font-weight:bold;
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="coolingCCDCheck">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="toolTip">
-             <string>Start cooling CCD if enabled in CCD settings</string>
-            </property>
-            <property name="text">
-             <string>CoolingCCD</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">startupProcedureButtonGroup</string>
-            </attribute>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <spacer name="horizontalSpacer_10">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -2351,7 +2304,6 @@ font-weight:bold;
   <tabstop>uncapCheck</tabstop>
   <tabstop>startupB</tabstop>
   <tabstop>selectStartupScriptB</tabstop>
-  <tabstop>warmCCDCheck</tabstop>
   <tabstop>capCheck</tabstop>
   <tabstop>parkMountCheck</tabstop>
   <tabstop>parkDomeCheck</tabstop>

@@ -195,9 +195,6 @@ Scheduler::Scheduler()
     connect(startupB, &QPushButton::clicked, this, &Scheduler::runStartupProcedure);
     connect(shutdownB, &QPushButton::clicked, this, &Scheduler::runShutdownProcedure);
 
-    warmCCDCheck->setEnabled(false);
-    coolingCCDCheck->setEnabled(false);
-
     connect(selectObjectB, &QPushButton::clicked, this, &Scheduler::selectObject);
     connect(selectFITSB, &QPushButton::clicked, this, &Scheduler::selectFITS);
     connect(loadSequenceB, &QPushButton::clicked, this, &Scheduler::selectSequence);
@@ -3025,21 +3022,7 @@ bool Scheduler::checkINDIState()
 
             if (m_CaptureReady == false)
             {
-                QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                if (hasCoolerControl.isValid())
-                {
-                    const bool coolerAvailable = hasCoolerControl.toBool();
-                    warmCCDCheck->setEnabled(coolerAvailable);
-                    coolingCCDCheck->setEnabled(coolerAvailable);
-                    if (!coolerAvailable)
-                    {
-                        warmCCDCheck->setChecked(false);
-                        coolingCCDCheck->setChecked(false);
-                    }
-                    m_CaptureReady = true;
-                }
-                else
-                    qCWarning(KSTARS_EKOS_SCHEDULER) << "Capture module is not ready yet...";
+                m_CaptureReady = true;
             }
 
             indiState = INDI_READY;
@@ -3065,39 +3048,6 @@ bool Scheduler::checkStartupState()
     {
         case STARTUP_IDLE:
         {
-            auto triggerStartupCooling = [this]()
-            {
-                if (!coolingCCDCheck->isEnabled() || !coolingCCDCheck->isChecked())
-                    return;
-
-                constexpr double startupCoolingTemperatureC = -10.0;
-                constexpr double defaultRampCPerMinute = 1.0;
-
-                if (captureInterface.isNull())
-                {
-                    appendLogText(i18n("Cooling CCD skipped: capture module is not available yet."));
-                    return;
-                }
-
-                captureInterface->call(QDBus::AutoDetect, "setTemperatureRegulation", defaultRampCPerMinute, -1.0);
-
-                QDBusReply<bool> coolerReply = captureInterface->call(QDBus::AutoDetect, "setCoolerControl", true);
-                if (!coolerReply.isValid() || coolerReply.value() == false)
-                {
-                    appendLogText(i18n("Cooling CCD skipped: unable to enable cooler control on current camera."));
-                    return;
-                }
-
-                QDBusReply<bool> temperatureReply = captureInterface->call(QDBus::AutoDetect, "setCCDTemperature",
-                                                     startupCoolingTemperatureC);
-                if (temperatureReply.isValid() && temperatureReply.value())
-                    appendLogText(i18n("Cooling CCD to %1 °C (ramp %2 °C/min)...", startupCoolingTemperatureC,
-                                       defaultRampCPerMinute));
-                else
-                    appendLogText(i18n("Cooling CCD skipped: unable to set target temperature to %1 °C.",
-                                       startupCoolingTemperatureC));
-            };
-
             KNotification::event(QLatin1String("ObservatoryStartup"), i18n("Observatory is in the startup process"));
 
             if (Options::useFITSViewer())
@@ -3115,8 +3065,6 @@ bool Scheduler::checkStartupState()
             //if (isEkosStarted.value() == Ekos::Success)
             if (m_EkosCommunicationStatus == Ekos::Success)
             {
-                triggerStartupCooling();
-
                 if (startupScriptURL.isEmpty() == false)
                     appendLogText(i18n("Ekos is already started, skipping startup script..."));
 
@@ -3134,8 +3082,6 @@ bool Scheduler::checkStartupState()
                 if (!ekosInterface.isNull())
                     ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
             }
-
-            triggerStartupCooling();
 
             if (startupScriptURL.isEmpty() == false)
             {
@@ -3236,22 +3182,6 @@ bool Scheduler::checkShutdownState()
             {
                 sleepTimer.stop();
                 //sleepTimer.disconnect();
-            }
-
-            if (warmCCDCheck->isEnabled() && warmCCDCheck->isChecked())
-            {
-                constexpr double defaultRampCPerMinute = 1.0;
-
-                if (!captureInterface.isNull())
-                {
-                    captureInterface->call(QDBus::AutoDetect, "setTemperatureRegulation", defaultRampCPerMinute, -1.0);
-
-                    QDBusReply<bool> coolerOffReply = captureInterface->call(QDBus::AutoDetect, "setCoolerControl", false);
-                    if (coolerOffReply.isValid() && coolerOffReply.value())
-                        appendLogText(i18n("Disabling CCD cooler (regulation ramp set to %1 °C/min).", defaultRampCPerMinute));
-                    else
-                        appendLogText(i18n("Cooler shutdown skipped: unable to control cooler on current camera."));
-                }
             }
 
             // The following steps require a connection to the INDI server
@@ -4182,19 +4112,30 @@ bool Scheduler::manageConnectionLoss()
         {
             // If both Ekos and INDI are assumed up, and are actually up, no mitigation needed, this is a DBus interface error
             qCDebug(KSTARS_EKOS_SCHEDULER) << QString("INDI is currently connected, no connection loss mitigation needed.");
+            connectionLossConfirmationCount = 0;
+            connectionLossConfirmationTime.invalidate();
             return false;
         }
     }
 
-    // Stop actions of the current job
-    stopCurrentJobAction();
+    if (!connectionLossConfirmationTime.isValid() ||
+            connectionLossConfirmationTime.elapsed() > static_cast<int>(CONNECTION_LOSS_CONFIRMATION_WINDOW_MS))
+    {
+        connectionLossConfirmationCount = 0;
+        connectionLossConfirmationTime.restart();
+    }
 
-    // Acknowledge INDI and Ekos disconnections
-    disconnectINDI();
-    stopEkos();
+    if (++connectionLossConfirmationCount < MAX_FAILURE_ATTEMPTS)
+    {
+        appendLogText(i18n("Transient connection glitch detected (%1/%2). Waiting for recovery...",
+                           connectionLossConfirmationCount, MAX_FAILURE_ATTEMPTS));
+        return true;
+    }
 
-    // Let the Scheduler attempt to connect INDI again
-    return true;
+    connectionLossConfirmationCount = 0;
+    connectionLossConfirmationTime.invalidate();
+    appendLogText(i18n("Persistent connection loss detected. Automatic global reconnect remains disabled to preserve camera mapping."));
+    return false;
 }
 
 void Scheduler::handleMountConnectionLoss(const QString &context)
@@ -4214,9 +4155,7 @@ void Scheduler::handleMountConnectionLoss(const QString &context)
                        context, attemptNumber, MAX_FAILURE_ATTEMPTS));
 
     mountDisconnectFailureCount++;
-    const bool recoveryTriggered = manageConnectionLoss();
-    if (!recoveryTriggered)
-        qCWarning(KSTARS_EKOS_SCHEDULER) << "Mount disconnection recovery could not be triggered.";
+    appendLogText(i18n("Automatic global reconnect disabled: preserving camera-role assignment."));
 
     if (mountDisconnectFailureCount < MAX_FAILURE_ATTEMPTS)
         return;
@@ -4365,7 +4304,6 @@ bool Scheduler::appendEkosScheduleList(const QString &fileURL)
                 {
                     XMLEle *procedure;
                     shutdownScript->clear();
-                    warmCCDCheck->setChecked(false);
                     parkDomeCheck->setChecked(false);
                     parkMountCheck->setChecked(false);
                     capCheck->setChecked(false);
@@ -4385,8 +4323,6 @@ bool Scheduler::appendEkosScheduleList(const QString &fileURL)
                             parkMountCheck->setChecked(true);
                         else if (!strcmp(proc, "ParkCap"))
                             capCheck->setChecked(true);
-                        else if (!strcmp(proc, "WarmCCD"))
-                            warmCCDCheck->setChecked(true);
                     }
                 }
             }
@@ -4715,8 +4651,6 @@ bool Scheduler::saveScheduler(const QUrl &fileURL)
     outstream << "</StartupProcedure>" << endl;
 
     outstream << "<ShutdownProcedure>" << endl;
-    if (warmCCDCheck->isChecked())
-        outstream << "<Procedure>WarmCCD</Procedure>" << endl;
     if (capCheck->isChecked())
         outstream << "<Procedure>ParkCap</Procedure>" << endl;
     if (parkMountCheck->isChecked())
@@ -7154,6 +7088,12 @@ void Scheduler::setINDICommunicationStatus(Ekos::CommunicationStatus status)
 
     m_INDICommunicationStatus = status;
 
+    if (status == Ekos::Success)
+    {
+        connectionLossConfirmationCount = 0;
+        connectionLossConfirmationTime.invalidate();
+    }
+
     if (status == Ekos::Success && mountDisconnectFailureCount > 0)
     {
         appendLogText(i18n("INDI connection recovered after mount disconnect."));
@@ -7168,6 +7108,12 @@ void Scheduler::setEkosCommunicationStatus(Ekos::CommunicationStatus status)
     qCDebug(KSTARS_EKOS_SCHEDULER) << "Scheduler Ekos status is" << status;
 
     m_EkosCommunicationStatus = status;
+
+    if (status == Ekos::Success)
+    {
+        connectionLossConfirmationCount = 0;
+        connectionLossConfirmationTime.invalidate();
+    }
 }
 
 void Scheduler::simClockScaleChanged(float newScale)
@@ -7331,15 +7277,6 @@ void Scheduler::syncProperties()
     }
     else if (iface == captureInterface)
     {
-        const QVariant hasCoolerControl = captureInterface->property("coolerControl");
-        const bool coolerAvailable = hasCoolerControl.isValid() && hasCoolerControl.toBool();
-        warmCCDCheck->setEnabled(coolerAvailable);
-        coolingCCDCheck->setEnabled(coolerAvailable);
-        if (!coolerAvailable)
-        {
-            warmCCDCheck->setChecked(false);
-            coolingCCDCheck->setChecked(false);
-        }
         m_CaptureReady = true;
     }
 }

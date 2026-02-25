@@ -412,6 +412,38 @@ bool CCDChip::capture(double exposure)
     if (expProp == nullptr)
         return false;
 
+    const double requestedExposure = exposure;
+    const double propertyMin = expProp->np[0].min;
+    const double propertyMax = expProp->np[0].max;
+    const double minimumPositiveExposure = 0.001;
+
+    double minExposure = propertyMin;
+    if (minExposure <= 0)
+        minExposure = minimumPositiveExposure;
+
+    if (exposure <= 0)
+    {
+        qCWarning(KSTARS_INDI) << "Invalid exposure requested:" << requestedExposure
+                               << "forcing to" << minExposure;
+        exposure = minExposure;
+    }
+
+    if (propertyMax > 0 && propertyMax >= minExposure && exposure > propertyMax)
+    {
+        qCWarning(KSTARS_INDI) << "Exposure above camera max:" << requestedExposure
+                               << "max:" << propertyMax
+                               << "clamping.";
+        exposure = propertyMax;
+    }
+
+    if (exposure < minExposure)
+    {
+        qCWarning(KSTARS_INDI) << "Exposure below camera min:" << requestedExposure
+                               << "min:" << minExposure
+                               << "clamping.";
+        exposure = minExposure;
+    }
+
     // If we have exposure presets, let's limit the exposure value
     // to the preset values if it falls within their range of max/min
     if (Options::forceDSLRPresets())

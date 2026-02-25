@@ -883,6 +883,8 @@ class Scheduler : public QWidget, public Ui::Scheduler
         uint8_t captureFailureCount { 0 };
      /// Keep track of mount reconnection attempts after disconnection
      uint8_t mountDisconnectFailureCount { 0 };
+       /// Number of consecutive connection-loss detections before considering it persistent.
+       uint8_t connectionLossConfirmationCount { 0 };
         /// Counter to keep debug logging in check
         uint8_t checkJobStageCounter { 0 };
      /// Avoid repeated emergency shutdown requests for the same mount disconnection event
@@ -904,6 +906,8 @@ class Scheduler : public QWidget, public Ui::Scheduler
      QElapsedTimer currentOperationAttemptTime;
      /// Throttle mount reconnection attempts to avoid rapid retries on unstable links.
      QElapsedTimer mountRecoveryAttemptTime;
+     /// Time window used to confirm repeated connection-loss before escalating.
+     QElapsedTimer connectionLossConfirmationTime;
 
         QUrl dirPath;
 
@@ -923,5 +927,6 @@ class Scheduler : public QWidget, public Ui::Scheduler
        static const uint32_t ALIGN_ATTEMPT_HARD_TIMEOUT_MS = 300000;
        static const uint32_t FOCUS_ATTEMPT_HARD_TIMEOUT_MS = 300000;
        static const uint32_t GUIDE_ATTEMPT_HARD_TIMEOUT_MS = 300000;
+           static const uint32_t CONNECTION_LOSS_CONFIRMATION_WINDOW_MS = 10000;
 };
 }

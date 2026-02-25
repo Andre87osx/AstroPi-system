@@ -5449,14 +5449,7 @@ bool Capture::setCCDTemperature(double temperature)
     setTargetTemperature(temperature);
 
     if (currentCCD && currentCCD->hasCooler())
-    {
-        double currentRamp = 0.0;
-        double currentThreshold = 0.0;
-        if (currentCCD->getTemperatureRegulation(currentRamp, currentThreshold) && currentRamp <= 0)
-            currentCCD->setTemperatureRegulation(1.0, currentThreshold);
-
         return currentCCD->setTemperature(temperature);
-    }
 
     return false;
 }
