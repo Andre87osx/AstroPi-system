@@ -33,12 +33,12 @@ H_MEDIUM=$((SCREEN_HEIGHT / 2))
 
 # Large: log viewers, detailed error messages, text-info dialogs
 W_LARGE=$((SCREEN_WIDTH / 5))
-H_LARGE=$((SCREEN_HEIGHT / 3))
+H_LARGE=$((SCREEN_HEIGHT / 4))
 
 # Legacy variables for backward compatibility (defaults to medium)
 W=${W_MEDIUM}
 H=${H_MEDIUM}
-Wprogress=$((SCREEN_WIDTH / 2))
+Wprogress=$((SCREEN_WIDTH / 3))
 
 # Cap main window size to avoid huge dialogs on scaled displays
 if [ ${W} -gt 900 ]; then W=900; fi
