@@ -4651,9 +4651,21 @@ QPixmap Focus::getProfileViewPixmap() const
     {
         // Force replot to ensure the widget is rendered, even if empty
         HFRPlot->replot();
+        
+        // Temporarily set margins to 0 to eliminate white borders
+        QMargins originalMargins = HFRPlot->axisRect()->margins();
+        HFRPlot->axisRect()->setMargins(QMargins(0, 0, 0, 0));
+        HFRPlot->replot();
+        
         // Use render() instead of grab() to work on non-visible widgets
         QPixmap pixmap(HFRPlot->size());
+        pixmap.fill(Qt::black);  // Fill with black background
         HFRPlot->render(&pixmap);
+        
+        // Restore original margins
+        HFRPlot->axisRect()->setMargins(originalMargins);
+        HFRPlot->replot();
+        
         return pixmap;
     }
 

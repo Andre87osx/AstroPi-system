@@ -4270,9 +4270,21 @@ QPixmap Guide::getProfileViewPixmap() const
     {
         // Force replot to ensure the widget is rendered, even if empty
         driftGraph->replot();
+        
+        // Temporarily set margins to 0 to eliminate white borders
+        QMargins originalMargins = driftGraph->axisRect()->margins();
+        driftGraph->axisRect()->setMargins(QMargins(0, 0, 0, 0));
+        driftGraph->replot();
+        
         // Use render() instead of grab() to work on non-visible widgets
         QPixmap pixmap(driftGraph->size());
+        pixmap.fill(Qt::black);  // Fill with black background
         driftGraph->render(&pixmap);
+        
+        // Restore original margins
+        driftGraph->axisRect()->setMargins(originalMargins);
+        driftGraph->replot();
+        
         return pixmap;
     }
 
@@ -4285,9 +4297,21 @@ QPixmap Guide::getDriftPlotViewPixmap() const
     {
         // Force replot to ensure the widget is rendered, even if empty
         driftPlot->replot();
+        
+        // Temporarily set margins to 0 to eliminate white borders
+        QMargins originalMargins = driftPlot->axisRect()->margins();
+        driftPlot->axisRect()->setMargins(QMargins(0, 0, 0, 0));
+        driftPlot->replot();
+        
         // Use render() instead of grab() to work on non-visible widgets
         QPixmap pixmap(driftPlot->size());
+        pixmap.fill(Qt::black);  // Fill with black background
         driftPlot->render(&pixmap);
+        
+        // Restore original margins
+        driftPlot->axisRect()->setMargins(originalMargins);
+        driftPlot->replot();
+        
         return pixmap;
     }
 

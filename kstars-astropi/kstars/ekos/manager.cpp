@@ -2505,7 +2505,7 @@ void Manager::updateFocusDetailView()
             QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap();
             if (!fallbackPixmap.isNull())
                 focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
-                                          Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                                          Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         }
     }
 }
@@ -2544,7 +2544,7 @@ void Manager::updateGuideDetailView()
                 
             if (!fallbackPixmap.isNull())
                 guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
-                                          Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                                          Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
         }
     }
 }
