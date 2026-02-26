@@ -581,7 +581,7 @@ font-weight:bold;
            <number>3</number>
           </property>
           <property name="minimum">
-           <double>0.001000000000000</double>
+           <double>0.00000000001</double>
           </property>
           <property name="maximum">
            <double>3600.000000000000000</double>

@@ -1194,6 +1194,9 @@ void Capture::updateFrameProperties(int reset)
             captureExposureN->setDecimals(6);
         else
             captureExposureN->setDecimals(3);
+        // Forza il minimo a 1e-11 sec
+        if (min < 0.00000000001)
+            min = 0.00000000001;
         for(int i = 0; i < exposureValues.count(); i++)
         {
             double value = exposureValues.at(i);
