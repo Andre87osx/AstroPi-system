@@ -2499,15 +2499,14 @@ void Manager::updateFocusDetailView()
     }
     else
     {
-        QPixmap fallbackPixmap;
+        // Always show the plot widget, even if empty, to display axes and grid
         if (focusProcess && currentFocusPixmapIndex == 0)
-            fallbackPixmap = focusProcess->getProfileViewPixmap();
-
-        if (!fallbackPixmap.isNull())
-            focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
-                                      Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        else
-            focusDetailView->clear();
+        {
+            QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap();
+            if (!fallbackPixmap.isNull())
+                focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
+                                          Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        }
     }
 }
 
@@ -2534,20 +2533,19 @@ void Manager::updateGuideDetailView()
                                    Qt::KeepAspectRatio, Qt::SmoothTransformation));
     else
     {
-        QPixmap fallbackPixmap;
+        // Always show the plot widget, even if empty, to display axes and grid
         if (guideProcess)
         {
+            QPixmap fallbackPixmap;
             if (currentGuidePixmapIndex == 1)
                 fallbackPixmap = guideProcess->getDriftPlotViewPixmap();
             else if (currentGuidePixmapIndex == 0)
                 fallbackPixmap = guideProcess->getProfileViewPixmap();
+                
+            if (!fallbackPixmap.isNull())
+                guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
+                                          Qt::KeepAspectRatio, Qt::SmoothTransformation));
         }
-
-        if (!fallbackPixmap.isNull())
-            guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
-                                      Qt::KeepAspectRatio, Qt::SmoothTransformation));
-        else
-            guideDetailView->clear();
     }
 }
 

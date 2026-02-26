@@ -4648,7 +4648,11 @@ bool Focus::syncControl(const QJsonObject &settings, const QString &key, QWidget
 QPixmap Focus::getProfileViewPixmap() const
 {
     if (HFRPlot)
+    {
+        // Force replot to ensure the widget is rendered, even if empty
+        HFRPlot->replot();
         return HFRPlot->grab();
+    }
 
     return QPixmap();
 }

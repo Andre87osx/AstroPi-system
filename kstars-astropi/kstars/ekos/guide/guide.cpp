@@ -4267,7 +4267,11 @@ void Guide::loop()
 QPixmap Guide::getProfileViewPixmap() const
 {
     if (driftGraph)
+    {
+        // Force replot to ensure the widget is rendered, even if empty
+        driftGraph->replot();
         return driftGraph->grab();
+    }
 
     return QPixmap();
 }
@@ -4275,7 +4279,11 @@ QPixmap Guide::getProfileViewPixmap() const
 QPixmap Guide::getDriftPlotViewPixmap() const
 {
     if (driftPlot)
+    {
+        // Force replot to ensure the widget is rendered, even if empty
+        driftPlot->replot();
         return driftPlot->grab();
+    }
 
     return QPixmap();
 }
