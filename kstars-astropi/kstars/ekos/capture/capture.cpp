@@ -7086,6 +7086,16 @@ void Capture::setCoolerToggled(bool enabled)
     coolerOffB->blockSignals(false);
 
     appendLogText(enabled ? i18n("Cooler is on") : i18n("Cooler is off"));
+
+    // Se il cooler viene spento, aggiorna la temperatura con il valore reale del sensore (ambiente)
+    if (!enabled && currentCCD)
+    {
+        double temperature = 0;
+        if (currentCCD->getTemperature(&temperature))
+            temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
+        else
+            temperatureOUT->clear();
+    }
 }
 
 void Capture::processCaptureTimeout()
