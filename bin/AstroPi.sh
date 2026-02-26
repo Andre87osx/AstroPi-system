@@ -51,7 +51,7 @@ function AdminSystem() {
 		--width=$((W+220)) \
 		--height=$((H+30)) \
 		--title="${W_Title}" \
-		--cancel-label="Main" \
+		--cancel-label="Home" \
 		--hide-header \
 		--text "${textS}" \
 		--radiolist \
@@ -121,7 +121,7 @@ function AdminSystem() {
 function AdminKStars() {
 	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team"
 
-	ansK=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	ansK=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Update INDI and Driver	" "=> Update INDI core and Driver" \
 		FALSE "Update KStars AstroPi	" "=> Update KStars AstroPi" \
 		FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" \
@@ -159,7 +159,7 @@ function Extra()
 	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 	\n<small>Aimone A. | Ing Ostorero R. | Dr. Leali R. R. | Dr. Ghio G.</small>"
 
-	ansE=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	ansE=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Credits	" "=> Authors and more" \
 		FALSE "AstroPi Handbook	" "=> Complete AstroPi guidelines" \
 		FALSE "KDE KStars guide	" "=> Original tutorial (not AstroPi ver.)" )	
