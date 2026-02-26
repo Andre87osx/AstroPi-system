@@ -4647,8 +4647,8 @@ bool Focus::syncControl(const QJsonObject &settings, const QString &key, QWidget
 
 QPixmap Focus::getProfileViewPixmap() const
 {
-    if (profilePlot)
-        return profilePlot->grab();
+    if (HFRPlot)
+        return HFRPlot->grab();
 
     return QPixmap();
 }
