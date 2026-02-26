@@ -966,8 +966,6 @@ void Capture::checkCCD(int ccdNum)
             if (currentCCD->getTemperature(&temperature))
             {
                 temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
-                if (cameraTemperatureN->cleanText().isEmpty())
-                    cameraTemperatureN->setValue(temperature);
             }
         }
         else
@@ -2582,8 +2580,6 @@ void Capture::updateCCDTemperature(double value)
     if (currentCCD && currentCCD->hasCooler())
     {
         temperatureOUT->setText(QString("%L1").arg(value, 0, 'f', 2));
-        if (cameraTemperatureN->cleanText().isEmpty())
-            cameraTemperatureN->setValue(value);
         if (activeJob)
             activeJob->setCurrentTemperature(value);
     }
@@ -7091,6 +7087,15 @@ void Capture::setCoolerToggled(bool enabled)
     coolerOffB->blockSignals(false);
 
     appendLogText(enabled ? i18n("Cooler is on") : i18n("Cooler is off"));
+
+    if (currentCCD && currentCCD->hasCooler())
+    {
+        double temperature = 0;
+        if (currentCCD->getTemperature(&temperature))
+            temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
+    }
+    else
+        temperatureOUT->setText("N/A");
 }
 
 void Capture::processCaptureTimeout()
