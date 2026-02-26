@@ -29,7 +29,7 @@ H_SMALL=$((SCREEN_HEIGHT / 4))
 
 # Medium: standard info dialogs, forms (typical messages)
 W_MEDIUM=$((SCREEN_WIDTH / 3))
-H_MEDIUM=$((SCREEN_HEIGHT / 2))
+H_MEDIUM=$((SCREEN_HEIGHT * 2 / 5))
 
 # Large: log viewers, detailed error messages, text-info dialogs
 W_LARGE=$((SCREEN_WIDTH / 5))
@@ -42,7 +42,7 @@ Wprogress=$((SCREEN_WIDTH / 3))
 
 # Cap main window size to avoid huge dialogs on scaled displays
 if [ ${W} -gt 900 ]; then W=900; fi
-if [ ${H} -gt 600 ]; then H=600; fi
+if [ ${H} -gt 520 ]; then H=520; fi
 
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at

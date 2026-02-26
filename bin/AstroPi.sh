@@ -48,8 +48,8 @@ function AdminSystem() {
 	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage details:\nMain disk used at <b>${diskUsagePerc}</b>	|	Free disk space: <b>${diskUsageFree}</b>"
 
 	ansS=$(zenity --list \
-		--width=$((W+220)) \
-		--height=$((H+30)) \
+		--width=${W} \
+		--height=${H} \
 		--title="${W_Title}" \
 		--cancel-label="Home" \
 		--hide-header \
@@ -121,7 +121,7 @@ function AdminSystem() {
 function AdminKStars() {
 	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team"
 
-	ansK=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	ansK=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Update INDI and Driver	" "=> Update INDI core and Driver" \
 		FALSE "Update KStars AstroPi	" "=> Update KStars AstroPi" \
 		FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" \
