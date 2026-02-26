@@ -4651,7 +4651,10 @@ QPixmap Focus::getProfileViewPixmap() const
     {
         // Force replot to ensure the widget is rendered, even if empty
         HFRPlot->replot();
-        return HFRPlot->grab();
+        // Use render() instead of grab() to work on non-visible widgets
+        QPixmap pixmap(HFRPlot->size());
+        HFRPlot->render(&pixmap);
+        return pixmap;
     }
 
     return QPixmap();

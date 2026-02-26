@@ -4270,7 +4270,10 @@ QPixmap Guide::getProfileViewPixmap() const
     {
         // Force replot to ensure the widget is rendered, even if empty
         driftGraph->replot();
-        return driftGraph->grab();
+        // Use render() instead of grab() to work on non-visible widgets
+        QPixmap pixmap(driftGraph->size());
+        driftGraph->render(&pixmap);
+        return pixmap;
     }
 
     return QPixmap();
@@ -4282,7 +4285,10 @@ QPixmap Guide::getDriftPlotViewPixmap() const
     {
         // Force replot to ensure the widget is rendered, even if empty
         driftPlot->replot();
-        return driftPlot->grab();
+        // Use render() instead of grab() to work on non-visible widgets
+        QPixmap pixmap(driftPlot->size());
+        driftPlot->render(&pixmap);
+        return pixmap;
     }
 
     return QPixmap();
