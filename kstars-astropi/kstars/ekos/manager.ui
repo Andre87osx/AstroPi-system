@@ -1554,8 +1554,7 @@
                     <bool>false</bool>
                    </property>
                    <property name="styleSheet">
-                    <string notr="true">background-color: qlineargradient(x1:0, y1:0, x2:0, y2:0.5,
-                                      stop:0 darkgray, stop:1 black);</string>
+                    <string notr="true"/>
                    </property>
                    <property name="frameShape">
                     <enum>QFrame::Panel</enum>
@@ -1921,8 +1920,7 @@
                     <bool>false</bool>
                    </property>
                    <property name="styleSheet">
-                    <string notr="true">background-color: qlineargradient(x1:0, y1:0, x2:0, y2:0.5,
-                                      stop:0 darkgray, stop:1 black);</string>
+                    <string notr="true"/>
                    </property>
                    <property name="frameShape">
                     <enum>QFrame::Panel</enum>
