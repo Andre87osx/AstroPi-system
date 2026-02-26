@@ -4263,4 +4263,20 @@ void Guide::loop()
     else if (guiderType == GUIDE_INTERNAL)
         capture();
 }
+
+QPixmap Guide::getProfileViewPixmap() const
+{
+    if (driftGraph)
+        return driftGraph->grab();
+
+    return QPixmap();
+}
+
+QPixmap Guide::getDriftPlotViewPixmap() const
+{
+    if (driftPlot)
+        return driftPlot->grab();
+
+    return QPixmap();
+}
 }

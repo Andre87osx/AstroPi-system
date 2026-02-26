@@ -4645,4 +4645,12 @@ bool Focus::syncControl(const QJsonObject &settings, const QString &key, QWidget
     return false;
 };
 
+QPixmap Focus::getProfileViewPixmap() const
+{
+    if (profilePlot)
+        return profilePlot->grab();
+
+    return QPixmap();
+}
+
 }

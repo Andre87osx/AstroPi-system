@@ -133,6 +133,9 @@ class Guide : public QWidget, public Ui::Guide
             return exposureIN->value();
         }
 
+          QPixmap getProfileViewPixmap() const;
+          QPixmap getDriftPlotViewPixmap() const;
+
         /** DBUS interface function.
              * Set image filter to apply to the image after capture.
              * @param value Image filter (Auto Stretch, High Contrast, Equalize, High Pass)

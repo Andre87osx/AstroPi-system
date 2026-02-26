@@ -2497,6 +2497,18 @@ void Manager::updateFocusDetailView()
         focusDetailView->setPixmap(focusStarPixmap.get()->scaled(focusDetailView->width(), focusDetailView->height(),
                                    Qt::KeepAspectRatio, Qt::SmoothTransformation));
     }
+    else
+    {
+        QPixmap fallbackPixmap;
+        if (focusProcess && currentFocusPixmapIndex == 0)
+            fallbackPixmap = focusProcess->getProfileViewPixmap();
+
+        if (!fallbackPixmap.isNull())
+            focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
+                                      Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        else
+            focusDetailView->clear();
+    }
 }
 
 void Manager::updateSigmas(double ra, double de)
@@ -2520,6 +2532,23 @@ void Manager::updateGuideDetailView()
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
         guideDetailView->setPixmap(guideStarPixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
                                    Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    else
+    {
+        QPixmap fallbackPixmap;
+        if (guideProcess)
+        {
+            if (currentGuidePixmapIndex == 1)
+                fallbackPixmap = guideProcess->getDriftPlotViewPixmap();
+            else if (currentGuidePixmapIndex == 0)
+                fallbackPixmap = guideProcess->getProfileViewPixmap();
+        }
+
+        if (!fallbackPixmap.isNull())
+            guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
+                                      Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        else
+            guideDetailView->clear();
+    }
 }
 
 void Manager::initMount()
