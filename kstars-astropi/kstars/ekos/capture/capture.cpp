@@ -2579,7 +2579,6 @@ void Capture::updateCCDTemperature(double value)
             checkCCD();
     }
 
-    temperatureOUT->setText(QString("%L1").arg(value, 0, 'f', 2));
 
     if (cameraTemperatureN->cleanText().isEmpty())
         cameraTemperatureN->setValue(value);
@@ -2587,10 +2586,28 @@ void Capture::updateCCDTemperature(double value)
     //if (activeJob && (activeJob->getStatus() == SequenceJob::JOB_ABORTED || activeJob->getStatus() == SequenceJob::JOB_IDLE))
     if (activeJob)
         activeJob->setCurrentTemperature(value);
+    // Mostra sempre la temperatura reale se la camera ha il cooler, altrimenti mostra N/A
+    if (currentCCD && currentCCD->hasCooler()) {
+        temperatureOUT->setText(QString("%L1").arg(value, 0, 'f', 2));
+        if (cameraTemperatureN->cleanText().isEmpty())
+            cameraTemperatureN->setValue(value);
+        if (activeJob)
+            activeJob->setCurrentTemperature(value);
+    } else {
+        temperatureOUT->setText("N/A");
+        cameraTemperatureN->clear();
+        if (activeJob)
+            activeJob->setCurrentTemperature(std::numeric_limits<double>::quiet_NaN());
+    }
 }
-
-void Capture::updateRotatorNumber(INumberVectorProperty * nvp)
-{
+                if (currentCCD->hasCooler()) {
+                    temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
+                    if (cameraTemperatureN->cleanText().isEmpty())
+                        cameraTemperatureN->setValue(temperature);
+                } else {
+                    temperatureOUT->setText("N/A");
+                    cameraTemperatureN->clear();
+                }
     if (!strcmp(nvp->name, "ABS_ROTATOR_ANGLE"))
     {
         // Update widget rotator position
@@ -7086,16 +7103,6 @@ void Capture::setCoolerToggled(bool enabled)
     coolerOffB->blockSignals(false);
 
     appendLogText(enabled ? i18n("Cooler is on") : i18n("Cooler is off"));
-
-    // Se il cooler viene spento, aggiorna la temperatura con il valore reale del sensore (ambiente)
-    if (!enabled && currentCCD)
-    {
-        double temperature = 0;
-        if (currentCCD->getTemperature(&temperature))
-            temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
-        else
-            temperatureOUT->clear();
-    }
 }
 
 void Capture::processCaptureTimeout()
