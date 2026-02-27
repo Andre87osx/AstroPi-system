@@ -48,7 +48,7 @@ function AdminSystem() {
 	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage details:\nMain disk used at <b>${diskUsagePerc}</b>	|	Free disk space: <b>${diskUsageFree}</b>"
 
 	ansS=$(zenity --list \
-		--width=${W} \
+		--width=$((W+220)) \
 		--height=${H} \
 		--title="${W_Title}" \
 		--cancel-label="Home" \
