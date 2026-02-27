@@ -60,6 +60,13 @@ enum DRIFT_GRAPH_INDECES
 
 namespace Ekos
 {
+static bool isPlotDiagEnabled()
+{
+    static const bool enabled = qEnvironmentVariableIntValue("ASTROPI_CAPTURE_DIAG") > 0
+                                || qEnvironmentVariableIntValue("ASTROPI_PLOT_DIAG") > 0;
+    return enabled;
+}
+
 Guide::Guide() : QWidget()
 {
     // #1 Setup UI
@@ -1543,7 +1550,13 @@ void Guide::setCaptureComplete()
     }
 
     emit newImage(guideView);
-    emit newStarPixmap(guideView->getTrackingBoxPixmap(10));
+    QPixmap starPixmap = guideView->getTrackingBoxPixmap(10);
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::setCaptureComplete emit newStarPixmap"
+                                  << "null=" << starPixmap.isNull()
+                                  << "size=" << starPixmap.size()
+                                  << "state=" << state;
+    emit newStarPixmap(starPixmap);
 }
 
 void Guide::appendLogText(const QString &text)
@@ -2737,9 +2750,31 @@ void Guide::setAxisDelta(double ra, double de)
     emit newAxisDelta(ra, de);
 
     profilePixmap = driftGraph->grab();
+    if (isPlotDiagEnabled())
+    {
+        static int profileEmitCounter = 0;
+        profileEmitCounter++;
+        if (profileEmitCounter <= 10 || profileEmitCounter % 50 == 0)
+            qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide emit newProfilePixmap"
+                                      << "count=" << profileEmitCounter
+                                      << "null=" << profilePixmap.isNull()
+                                      << "size=" << profilePixmap.size()
+                                      << "driftGraphSize=" << driftGraph->size();
+    }
     emit newProfilePixmap(profilePixmap);
 
     driftPlotPixmap = driftPlot->grab();
+    if (isPlotDiagEnabled())
+    {
+        static int driftEmitCounter = 0;
+        driftEmitCounter++;
+        if (driftEmitCounter <= 10 || driftEmitCounter % 50 == 0)
+            qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide emit newDriftPlotPixmap"
+                                      << "count=" << driftEmitCounter
+                                      << "null=" << driftPlotPixmap.isNull()
+                                      << "size=" << driftPlotPixmap.size()
+                                      << "driftPlotSize=" << driftPlot->size();
+    }
     emit newDriftPlotPixmap(driftPlotPixmap);
 }
 
@@ -4264,57 +4299,67 @@ void Guide::loop()
         capture();
 }
 
-QPixmap Guide::getProfileViewPixmap() const
+QPixmap Guide::getProfileViewPixmap(const QSize &sizeHint) const
 {
-    if (driftGraph)
-    {
-        // Force replot to ensure the widget is rendered, even if empty
-        driftGraph->replot();
-        
-        // Temporarily set margins to 0 to eliminate white borders
-        QMargins originalMargins = driftGraph->axisRect()->margins();
-        driftGraph->axisRect()->setMargins(QMargins(0, 0, 0, 0));
-        driftGraph->replot();
-        
-        // Use render() instead of grab() to work on non-visible widgets
-        QPixmap pixmap(driftGraph->size());
-        pixmap.fill(Qt::black);  // Fill with black background
-        driftGraph->render(&pixmap);
-        
-        // Restore original margins
-        driftGraph->axisRect()->setMargins(originalMargins);
-        driftGraph->replot();
-        
-        return pixmap;
-    }
+    if (!driftGraph)
+        return QPixmap();
 
-    return QPixmap();
+    int targetWidth = sizeHint.width();
+    int targetHeight = sizeHint.height();
+
+    if (targetWidth <= 1)
+        targetWidth = driftGraph->width();
+    if (targetHeight <= 1)
+        targetHeight = driftGraph->height();
+
+    if (targetWidth <= 1)
+        targetWidth = 640;
+    if (targetHeight <= 1)
+        targetHeight = 360;
+
+    driftGraph->replot();
+    const QPixmap pixmap = driftGraph->toPixmap(targetWidth, targetHeight, 1.0);
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::getProfileViewPixmap"
+                                  << "plotVisible=" << driftGraph->isVisible()
+                                  << "plotSize=" << driftGraph->size()
+                                  << "target=" << QSize(targetWidth, targetHeight)
+                                  << "pixmapNull=" << pixmap.isNull()
+                                  << "pixmapSize=" << pixmap.size();
+
+    return pixmap;
 }
 
-QPixmap Guide::getDriftPlotViewPixmap() const
+QPixmap Guide::getDriftPlotViewPixmap(const QSize &sizeHint) const
 {
-    if (driftPlot)
-    {
-        // Force replot to ensure the widget is rendered, even if empty
-        driftPlot->replot();
-        
-        // Temporarily set margins to 0 to eliminate white borders
-        QMargins originalMargins = driftPlot->axisRect()->margins();
-        driftPlot->axisRect()->setMargins(QMargins(0, 0, 0, 0));
-        driftPlot->replot();
-        
-        // Use render() instead of grab() to work on non-visible widgets
-        QPixmap pixmap(driftPlot->size());
-        pixmap.fill(Qt::black);  // Fill with black background
-        driftPlot->render(&pixmap);
-        
-        // Restore original margins
-        driftPlot->axisRect()->setMargins(originalMargins);
-        driftPlot->replot();
-        
-        return pixmap;
-    }
+    if (!driftPlot)
+        return QPixmap();
 
-    return QPixmap();
+    int targetWidth = sizeHint.width();
+    int targetHeight = sizeHint.height();
+
+    if (targetWidth <= 1)
+        targetWidth = driftPlot->width();
+    if (targetHeight <= 1)
+        targetHeight = driftPlot->height();
+
+    if (targetWidth <= 1)
+        targetWidth = 640;
+    if (targetHeight <= 1)
+        targetHeight = 360;
+
+    driftPlot->replot();
+    const QPixmap pixmap = driftPlot->toPixmap(targetWidth, targetHeight, 1.0);
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::getDriftPlotViewPixmap"
+                                  << "plotVisible=" << driftPlot->isVisible()
+                                  << "plotSize=" << driftPlot->size()
+                                  << "target=" << QSize(targetWidth, targetHeight)
+                                  << "pixmapNull=" << pixmap.isNull()
+                                  << "pixmapSize=" << pixmap.size();
+
+    return pixmap;
 }
 }

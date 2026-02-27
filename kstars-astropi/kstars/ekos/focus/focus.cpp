@@ -45,6 +45,13 @@
 
 namespace Ekos
 {
+static bool isPlotDiagEnabled()
+{
+    static const bool enabled = qEnvironmentVariableIntValue("ASTROPI_CAPTURE_DIAG") > 0
+                                || qEnvironmentVariableIntValue("ASTROPI_PLOT_DIAG") > 0;
+    return enabled;
+}
+
 Focus::Focus()
 {
     // #1 Set the UI
@@ -1823,7 +1830,14 @@ void Focus::setCaptureComplete()
     // Emit the whole image
     emit newImage(focusView);
     // Emit the tracking (bounding) box view. Used in Summary View
-    emit newStarPixmap(focusView->getTrackingBoxPixmap(10));
+    QPixmap starPixmap = focusView->getTrackingBoxPixmap(10);
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::setCaptureComplete emit newStarPixmap"
+                                  << "null=" << starPixmap.isNull()
+                                  << "size=" << starPixmap.size()
+                                  << "inFocusLoop=" << inFocusLoop
+                                  << "inAutoFocus=" << inAutoFocus;
+    emit newStarPixmap(starPixmap);
 
     // If we are not looping; OR
     // If we are looping but we already have tracking box enabled; OR
@@ -2216,6 +2230,11 @@ void Focus::drawProfilePlot()
     lastGausFrequencies = currentFrequencies;
 
     profilePixmap = profilePlot->grab(); //.scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::drawProfilePlot emit newProfilePixmap"
+                                  << "null=" << profilePixmap.isNull()
+                                  << "size=" << profilePixmap.size()
+                                  << "plotSize=" << profilePlot->size();
     emit newProfilePixmap(profilePixmap);
 }
 
@@ -4645,31 +4664,36 @@ bool Focus::syncControl(const QJsonObject &settings, const QString &key, QWidget
     return false;
 };
 
-QPixmap Focus::getProfileViewPixmap() const
+QPixmap Focus::getProfileViewPixmap(const QSize &sizeHint) const
 {
-    if (HFRPlot)
-    {
-        // Force replot to ensure the widget is rendered, even if empty
-        HFRPlot->replot();
-        
-        // Temporarily set margins to 0 to eliminate white borders
-        QMargins originalMargins = HFRPlot->axisRect()->margins();
-        HFRPlot->axisRect()->setMargins(QMargins(0, 0, 0, 0));
-        HFRPlot->replot();
-        
-        // Use render() instead of grab() to work on non-visible widgets
-        QPixmap pixmap(HFRPlot->size());
-        pixmap.fill(Qt::black);  // Fill with black background
-        HFRPlot->render(&pixmap);
-        
-        // Restore original margins
-        HFRPlot->axisRect()->setMargins(originalMargins);
-        HFRPlot->replot();
-        
-        return pixmap;
-    }
+    if (!HFRPlot)
+        return QPixmap();
 
-    return QPixmap();
+    int targetWidth = sizeHint.width();
+    int targetHeight = sizeHint.height();
+
+    if (targetWidth <= 1)
+        targetWidth = HFRPlot->width();
+    if (targetHeight <= 1)
+        targetHeight = HFRPlot->height();
+
+    if (targetWidth <= 1)
+        targetWidth = 640;
+    if (targetHeight <= 1)
+        targetHeight = 360;
+
+    HFRPlot->replot();
+    const QPixmap pixmap = HFRPlot->toPixmap(targetWidth, targetHeight, 1.0);
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::getProfileViewPixmap"
+                                  << "plotVisible=" << HFRPlot->isVisible()
+                                  << "plotSize=" << HFRPlot->size()
+                                  << "target=" << QSize(targetWidth, targetHeight)
+                                  << "pixmapNull=" << pixmap.isNull()
+                                  << "pixmapSize=" << pixmap.size();
+
+    return pixmap;
 }
 
 }

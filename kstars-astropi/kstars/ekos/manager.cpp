@@ -63,6 +63,13 @@
 namespace Ekos
 {
 
+static bool isPlotDiagEnabled()
+{
+    static const bool enabled = qEnvironmentVariableIntValue("ASTROPI_CAPTURE_DIAG") > 0
+                                || qEnvironmentVariableIntValue("ASTROPI_PLOT_DIAG") > 0;
+    return enabled;
+}
+
 Manager *Manager::_Manager = nullptr;
 
 Manager *Manager::Instance()
@@ -2487,6 +2494,19 @@ void Manager::updateCurrentHFR(double newHFR, int position)
 
 void Manager::updateFocusDetailView()
 {
+    if (focusDetailView->width() <= 1 || focusDetailView->height() <= 1)
+    {
+        QTimer::singleShot(100, this, &Ekos::Manager::updateFocusDetailView);
+        return;
+    }
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateFocusDetailView(entry)"
+                            << "index=" << currentFocusPixmapIndex
+                            << "viewSize=" << focusDetailView->size()
+                            << "hasProfile=" << (focusProfilePixmap.get() != nullptr)
+                            << "hasStar=" << (focusStarPixmap.get() != nullptr);
+
     if (currentFocusPixmapIndex == 0 && focusProfilePixmap.get() != nullptr)
     {
         focusDetailView->setPixmap(focusProfilePixmap.get()->scaled(focusDetailView->width(), focusDetailView->height(),
@@ -2502,10 +2522,13 @@ void Manager::updateFocusDetailView()
         // Always show the plot widget, even if empty, to display axes and grid
         if (focusProcess && currentFocusPixmapIndex == 0)
         {
-            QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap();
+            QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap(focusDetailView->size());
+            if (isPlotDiagEnabled())
+                qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Focus fallback"
+                                    << "null=" << fallbackPixmap.isNull()
+                                    << "size=" << fallbackPixmap.size();
             if (!fallbackPixmap.isNull())
-                focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
-                                          Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+                focusDetailView->setPixmap(fallbackPixmap);
         }
     }
 }
@@ -2522,6 +2545,20 @@ void Manager::updateSigmas(double ra, double de)
 
 void Manager::updateGuideDetailView()
 {
+    if (guideDetailView->width() <= 1 || guideDetailView->height() <= 1)
+    {
+        QTimer::singleShot(100, this, &Ekos::Manager::updateGuideDetailView);
+        return;
+    }
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideDetailView(entry)"
+                            << "index=" << currentGuidePixmapIndex
+                            << "viewSize=" << guideDetailView->size()
+                            << "hasProfile=" << (guideProfilePixmap.get() != nullptr)
+                            << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
+                            << "hasStar=" << (guideStarPixmap.get() != nullptr);
+
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
         guideDetailView->setPixmap(guideProfilePixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
                                    Qt::KeepAspectRatio, Qt::SmoothTransformation));
@@ -2538,13 +2575,18 @@ void Manager::updateGuideDetailView()
         {
             QPixmap fallbackPixmap;
             if (currentGuidePixmapIndex == 1)
-                fallbackPixmap = guideProcess->getDriftPlotViewPixmap();
+                fallbackPixmap = guideProcess->getDriftPlotViewPixmap(guideDetailView->size());
             else if (currentGuidePixmapIndex == 0)
-                fallbackPixmap = guideProcess->getProfileViewPixmap();
+                fallbackPixmap = guideProcess->getProfileViewPixmap(guideDetailView->size());
+
+            if (isPlotDiagEnabled())
+                qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Guide fallback"
+                                    << "index=" << currentGuidePixmapIndex
+                                    << "null=" << fallbackPixmap.isNull()
+                                    << "size=" << fallbackPixmap.size();
                 
             if (!fallbackPixmap.isNull())
-                guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
-                                          Qt::IgnoreAspectRatio, Qt::SmoothTransformation));
+                guideDetailView->setPixmap(fallbackPixmap);
         }
     }
 }
@@ -3371,6 +3413,12 @@ void Manager::updateRAMProgress()
 
 void Manager::updateFocusStarPixmap(QPixmap &starPixmap)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateFocusStarPixmap"
+                            << "null=" << starPixmap.isNull()
+                            << "size=" << starPixmap.size()
+                            << "focusViewSize=" << focusDetailView->size();
+
     if (starPixmap.isNull())
         return;
 
@@ -3380,6 +3428,12 @@ void Manager::updateFocusStarPixmap(QPixmap &starPixmap)
 
 void Manager::updateFocusProfilePixmap(QPixmap &profilePixmap)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateFocusProfilePixmap"
+                            << "null=" << profilePixmap.isNull()
+                            << "size=" << profilePixmap.size()
+                            << "focusViewSize=" << focusDetailView->size();
+
     if (profilePixmap.isNull())
         return;
 
@@ -3470,6 +3524,12 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
 
 void Manager::updateGuideStarPixmap(QPixmap &starPix)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideStarPixmap"
+                            << "null=" << starPix.isNull()
+                            << "size=" << starPix.size()
+                            << "guideViewSize=" << guideDetailView->size();
+
     if (starPix.isNull())
         return;
 
@@ -3479,6 +3539,12 @@ void Manager::updateGuideStarPixmap(QPixmap &starPix)
 
 void Manager::updateGuideProfilePixmap(QPixmap &profilePix)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideProfilePixmap"
+                            << "null=" << profilePix.isNull()
+                            << "size=" << profilePix.size()
+                            << "guideViewSize=" << guideDetailView->size();
+
     if (profilePix.isNull())
         return;
 
@@ -3488,6 +3554,12 @@ void Manager::updateGuideProfilePixmap(QPixmap &profilePix)
 
 void Manager::updateGuidePlotPixmap(QPixmap &plotPix)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuidePlotPixmap"
+                            << "null=" << plotPix.isNull()
+                            << "size=" << plotPix.size()
+                            << "guideViewSize=" << guideDetailView->size();
+
     if (plotPix.isNull())
         return;
 

@@ -133,8 +133,8 @@ class Guide : public QWidget, public Ui::Guide
             return exposureIN->value();
         }
 
-          QPixmap getProfileViewPixmap() const;
-          QPixmap getDriftPlotViewPixmap() const;
+          QPixmap getProfileViewPixmap(const QSize &sizeHint = QSize()) const;
+          QPixmap getDriftPlotViewPixmap(const QSize &sizeHint = QSize()) const;
 
         /** DBUS interface function.
              * Set image filter to apply to the image after capture.
