@@ -4307,15 +4307,21 @@ QPixmap Guide::getProfileViewPixmap(const QSize &sizeHint) const
     int targetWidth = sizeHint.width();
     int targetHeight = sizeHint.height();
 
-    if (targetWidth <= 1)
-        targetWidth = driftGraph->width();
-    if (targetHeight <= 1)
-        targetHeight = driftGraph->height();
-
+    // Use fallback dimensions if sizeHint is invalid
     if (targetWidth <= 1)
         targetWidth = 640;
     if (targetHeight <= 1)
         targetHeight = 360;
+
+    // Ensure driftGraph has valid size, otherwise use fallback
+    if (driftGraph->width() > 1 && driftGraph->height() > 1)
+    {
+        // If sizeHint was valid but different from plot size, use plot size as base
+        if (sizeHint.width() <= 1)
+            targetWidth = driftGraph->width();
+        if (sizeHint.height() <= 1)
+            targetHeight = driftGraph->height();
+    }
 
     driftGraph->replot();
     const QPixmap pixmap = driftGraph->toPixmap(targetWidth, targetHeight, 1.0);
@@ -4324,6 +4330,7 @@ QPixmap Guide::getProfileViewPixmap(const QSize &sizeHint) const
         qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::getProfileViewPixmap"
                                   << "plotVisible=" << driftGraph->isVisible()
                                   << "plotSize=" << driftGraph->size()
+                                  << "sizeHint=" << sizeHint
                                   << "target=" << QSize(targetWidth, targetHeight)
                                   << "pixmapNull=" << pixmap.isNull()
                                   << "pixmapSize=" << pixmap.size();
@@ -4339,15 +4346,21 @@ QPixmap Guide::getDriftPlotViewPixmap(const QSize &sizeHint) const
     int targetWidth = sizeHint.width();
     int targetHeight = sizeHint.height();
 
-    if (targetWidth <= 1)
-        targetWidth = driftPlot->width();
-    if (targetHeight <= 1)
-        targetHeight = driftPlot->height();
-
+    // Use fallback dimensions if sizeHint is invalid
     if (targetWidth <= 1)
         targetWidth = 640;
     if (targetHeight <= 1)
         targetHeight = 360;
+
+    // Ensure driftPlot has valid size, otherwise use fallback
+    if (driftPlot->width() > 1 && driftPlot->height() > 1)
+    {
+        // If sizeHint was valid but different from plot size, use plot size as base
+        if (sizeHint.width() <= 1)
+            targetWidth = driftPlot->width();
+        if (sizeHint.height() <= 1)
+            targetHeight = driftPlot->height();
+    }
 
     driftPlot->replot();
     const QPixmap pixmap = driftPlot->toPixmap(targetWidth, targetHeight, 1.0);
@@ -4356,6 +4369,7 @@ QPixmap Guide::getDriftPlotViewPixmap(const QSize &sizeHint) const
         qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::getDriftPlotViewPixmap"
                                   << "plotVisible=" << driftPlot->isVisible()
                                   << "plotSize=" << driftPlot->size()
+                                  << "sizeHint=" << sizeHint
                                   << "target=" << QSize(targetWidth, targetHeight)
                                   << "pixmapNull=" << pixmap.isNull()
                                   << "pixmapSize=" << pixmap.size();

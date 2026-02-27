@@ -2522,13 +2522,17 @@ void Manager::updateFocusDetailView()
         // Always show the plot widget, even if empty, to display axes and grid
         if (focusProcess && currentFocusPixmapIndex == 0)
         {
-            QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap(focusDetailView->size());
+            QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap();
             if (isPlotDiagEnabled())
                 qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Focus fallback"
                                     << "null=" << fallbackPixmap.isNull()
-                                    << "size=" << fallbackPixmap.size();
+                                    << "size=" << fallbackPixmap.size()
+                                    << "viewSize=" << focusDetailView->size();
             if (!fallbackPixmap.isNull())
-                focusDetailView->setPixmap(fallbackPixmap);
+            {
+                focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
+                                           Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            }
         }
     }
 }
@@ -2575,18 +2579,22 @@ void Manager::updateGuideDetailView()
         {
             QPixmap fallbackPixmap;
             if (currentGuidePixmapIndex == 1)
-                fallbackPixmap = guideProcess->getDriftPlotViewPixmap(guideDetailView->size());
+                fallbackPixmap = guideProcess->getDriftPlotViewPixmap();
             else if (currentGuidePixmapIndex == 0)
-                fallbackPixmap = guideProcess->getProfileViewPixmap(guideDetailView->size());
+                fallbackPixmap = guideProcess->getProfileViewPixmap();
 
             if (isPlotDiagEnabled())
                 qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Guide fallback"
                                     << "index=" << currentGuidePixmapIndex
                                     << "null=" << fallbackPixmap.isNull()
-                                    << "size=" << fallbackPixmap.size();
+                                    << "size=" << fallbackPixmap.size()
+                                    << "viewSize=" << guideDetailView->size();
                 
             if (!fallbackPixmap.isNull())
-                guideDetailView->setPixmap(fallbackPixmap);
+            {
+                guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
+                                           Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            }
         }
     }
 }

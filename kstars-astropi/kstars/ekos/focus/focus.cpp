@@ -4672,15 +4672,21 @@ QPixmap Focus::getProfileViewPixmap(const QSize &sizeHint) const
     int targetWidth = sizeHint.width();
     int targetHeight = sizeHint.height();
 
-    if (targetWidth <= 1)
-        targetWidth = HFRPlot->width();
-    if (targetHeight <= 1)
-        targetHeight = HFRPlot->height();
-
+    // Use fallback dimensions if sizeHint is invalid
     if (targetWidth <= 1)
         targetWidth = 640;
     if (targetHeight <= 1)
         targetHeight = 360;
+
+    // Ensure HFRPlot has valid size, otherwise use fallback
+    if (HFRPlot->width() > 1 && HFRPlot->height() > 1)
+    {
+        // If sizeHint was valid but different from plot size, use plot size as base
+        if (sizeHint.width() <= 1)
+            targetWidth = HFRPlot->width();
+        if (sizeHint.height() <= 1)
+            targetHeight = HFRPlot->height();
+    }
 
     HFRPlot->replot();
     const QPixmap pixmap = HFRPlot->toPixmap(targetWidth, targetHeight, 1.0);
@@ -4689,6 +4695,7 @@ QPixmap Focus::getProfileViewPixmap(const QSize &sizeHint) const
         qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::getProfileViewPixmap"
                                   << "plotVisible=" << HFRPlot->isVisible()
                                   << "plotSize=" << HFRPlot->size()
+                                  << "sizeHint=" << sizeHint
                                   << "target=" << QSize(targetWidth, targetHeight)
                                   << "pixmapNull=" << pixmap.isNull()
                                   << "pixmapSize=" << pixmap.size();
