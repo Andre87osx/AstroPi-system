@@ -1164,6 +1164,11 @@ function chkKStars()
 		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove old WorkDir: ${WorkDir}"
 	fi
 
+	# Setup log directory with date structure
+	LOG_DIR="${appDir}/log/$(date +%Y-%m-%d)"
+	LOG_FILE="${LOG_DIR}/kstars-build-$(date +%H%M%S).log"
+	mkdir -p "${LOG_DIR}" || err_exit_kstars "Failed to create log directory: ${LOG_DIR}"
+
 	echo "# Check KStars AstroPi"
 	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
 	if [ ! -d "${HOME}"/.indi/logs ]; then mkdir -p "${HOME}"/.indi/logs; fi
@@ -1184,31 +1189,36 @@ function chkKStars()
 	(
     		echo "10"
     		echo "# Preparing to run cmake..."
+    		echo "=== KStars AstroPi Build Log ===" | tee -a "${LOG_FILE}"
+    		echo "Build started: $(date)" | tee -a "${LOG_FILE}"
+    		echo "" | tee -a "${LOG_FILE}"
 
 			for i in "${!commands[@]}"; do
 				echo "${percentages[$i]}"
 				echo "# ${steps[$i]}..."
 				
-				# Execute command with output streaming, capture exit status
+				# Execute command with output streaming and log file capture
+				echo "=== ${steps[$i]} ===" | tee -a "${LOG_FILE}"
 				stdbuf -oL -eL bash -c "${commands[$i]} 2>&1" | while IFS= read -r line; do
-            		echo "# $line"
+            		echo "# $line" | tee -a "${LOG_FILE}"
         		done
 				
 				# Capture exit status from the command (first element of PIPESTATUS)
 				status=${PIPESTATUS[0]}
 				
 				if [ ${status} -ne 0 ]; then
-					echo "# ERROR: ${steps[$i]} failed with exit code ${status}"
+					echo "# ERROR: ${steps[$i]} failed with exit code ${status}" | tee -a "${LOG_FILE}"
 					exit ${status}
 				fi
 			done
     		echo "100"
-    		echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+    		echo "# Installation complete!" | tee -a "${LOG_FILE}"
+    		echo "Build completed: $(date)" | tee -a "${LOG_FILE}"
+	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation...\n\nLog saved to:\n${LOG_FILE}" --percentage=0 --auto-close --width="${Wprogress}"
 
 	exit_stat=$?
 	if [ ${exit_stat} -ne 0 ]; then 
-		err_exit_kstars "Error during KStars AstroPi build and installation"
+		err_exit_kstars "Error during KStars AstroPi build and installation\n\nBuild log saved to:\n${LOG_FILE}"
 	fi
   	
    	echo "# Cleaning CMake Project..."
@@ -1216,7 +1226,7 @@ function chkKStars()
 		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove WorkDir during cleanup"
 	fi
 
-	zenity --info --width=${W} --text="KStars AstroPi $KStars_v successfully installed" --title="${W_Title}"
+	zenity --info --width=${W} --text="KStars AstroPi $KStars_v successfully installed\n\n<b>Build log saved to:</b>\n${LOG_FILE}" --title="${W_Title}"
 	
 	# restore trap
 	trap - ERR
