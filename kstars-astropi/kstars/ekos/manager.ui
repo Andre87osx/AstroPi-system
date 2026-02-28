@@ -1850,6 +1850,31 @@
                       </widget>
                      </item>
                      <item>
+                      <widget class="QLabel" name="totalRMSLabel">
+                       <property name="minimumSize">
+                        <size>
+                         <width>60</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>120</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="text">
+                        <string>RMS: --</string>
+                       </property>
+                       <property name="alignment">
+                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                       </property>
+                       <property name="margin">
+                        <number>1</number>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
                       <spacer name="horizontalSpacer">
                        <property name="orientation">
                         <enum>Qt::Horizontal</enum>

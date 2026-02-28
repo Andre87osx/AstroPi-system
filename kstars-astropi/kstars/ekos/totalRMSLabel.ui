@@ -1,0 +1,26 @@
+<ui version="4.0">
+ <!-- Only the relevant snippet for the new QLabel -->
+ <widget class="QLabel" name="totalRMSLabel">
+  <property name="minimumSize">
+   <size>
+    <width>60</width>
+    <height>20</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>120</width>
+    <height>20</height>
+   </size>
+  </property>
+  <property name="text">
+   <string>RMS: --</string>
+  </property>
+  <property name="alignment">
+   <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+  </property>
+  <property name="margin">
+   <number>1</number>
+  </property>
+ </widget>
+</ui>

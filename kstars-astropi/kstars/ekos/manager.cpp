@@ -107,6 +107,10 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
         setWindowFlags(Qt::Window);
 #endif
     setupUi(this);
+    // Collega QLabel totalRMSLabel
+    totalRMSLabel = findChild<QLabel*>("totalRMSLabel");
+    if (totalRMSLabel)
+        totalRMSLabel->setText("RMS: --");
 
     // position the vertical splitter by 2/3
     deviceSplitter->setSizes(QList<int>({20000, 10000}));
@@ -2553,8 +2557,12 @@ void Manager::updateSigmas(double ra, double de)
 {
     errRA->setText(QString::number(ra, 'f', 2) + "\"");
     errDEC->setText(QString::number(de, 'f', 2) + "\"");
+    // Calcola e mostra il valore totale RMS
+    double total = std::hypot(ra, de);
+    if (totalRMSLabel)
+        totalRMSLabel->setText(QString("RMS: %1\"").arg(QString::number(total, 'f', 2)));
 
-    QJsonObject cStatus = { {"rarms", ra}, {"derms", de} };
+    QJsonObject cStatus = { {"rarms", ra}, {"derms", de}, {"totalrms", total} };
 
     ekosLiveClient.get()->message()->updateGuideStatus(cStatus);
 }
