@@ -2618,61 +2618,123 @@ void Manager::updateGuideDetailView()
         }
     }
 }
-// Disegna un plot placeholder (assi e griglia) in una QLabel per la guida
+
+// Migliorato: Disegna un plot placeholder simile ai moduli veri (assi centrati, padding, font coerente)
+
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
-    int w = std::max(label->width(), 150);
-    int h = std::max(label->height(), 70);
+    int w = std::max(label->width(), 500);
+    int h = std::max(label->height(), 180);
+    int leftPad = 55, rightPad = 20, topPad = 18, bottomPad = 32;
     QPixmap pix(w, h);
     pix.fill(Qt::black);
     QPainter p(&pix);
     p.setRenderHint(QPainter::Antialiasing);
-    QPen gridPen(QColor(80,80,80));
+    // Griglia bianca tratteggiata
+    QPen gridPen(QColor(255,255,255));
     gridPen.setStyle(Qt::DotLine);
-    // Griglia verticale
-    for (int i = 1; i < 6; ++i)
-        p.drawLine(i*w/6, 0, i*w/6, h);
-    // Griglia orizzontale
-    for (int i = 1; i < 4; ++i)
-        p.drawLine(0, i*h/4, w, i*h/4);
+    gridPen.setWidth(1);
+    p.setPen(gridPen);
+    int gridCols = 4, gridRows = 6;
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        p.drawLine(x, topPad, x, h-bottomPad);
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        p.drawLine(leftPad, y, w-rightPad, y);
+    }
+    // Assi pieni
     p.setPen(QPen(Qt::white, 2));
-    // Assi
-    p.drawLine(0, h/2, w, h/2);
-    p.drawLine(w/2, 0, w/2, h);
+    int x0 = leftPad, x1 = w-rightPad, y0 = topPad, y1 = h-bottomPad;
+    int xMid = (x0 + x1)/2, yMid = (y0 + y1)/2;
+    p.drawLine(x0, yMid, x1, yMid); // asse orizzontale
+    p.drawLine(xMid, y0, xMid, y1); // asse verticale
     // Etichette
-    p.setPen(Qt::white);
-    p.setFont(QFont("Helvetica", 10));
-    p.drawText(10, 20, "Drift (arcsec)");
-    p.drawText(w-90, h-10, "Pulse (ms)");
+    QFont font("Arial", 12, QFont::Normal);
+    p.setFont(font);
+    // Label Y (verticale)
+    p.save();
+    p.translate(x0-38, (y0+y1)/2+40);
+    p.rotate(-90);
+    p.drawText(0, 0, "drift (arcsec)");
+    p.restore();
+    // Label X
+    p.drawText((x0+x1)/2-50, h-8, "Tempo");
+    // Numeri sugli assi
+    p.setFont(QFont("Arial", 10));
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        p.drawText(x-18, y1+18, QString("-%1:00").arg((gridCols-i)*0.5,0,'f',0));
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        double val = 3.0 - i*1.0;
+        p.drawText(x0-38, y+5, QString::number(val, 'f', 0));
+    }
     label->setPixmap(pix);
 }
 
-// Disegna un plot placeholder (assi e griglia) in una QLabel per il fuoco
+
 void Manager::drawFocusPlaceholderPlot(QLabel *label)
 {
-    int w = std::max(label->width(), 150);
-    int h = std::max(label->height(), 70);
+    int w = std::max(label->width(), 400);
+    int h = std::max(label->height(), 120);
+    int leftPad = 45, rightPad = 15, topPad = 10, bottomPad = 30;
     QPixmap pix(w, h);
     pix.fill(Qt::black);
     QPainter p(&pix);
     p.setRenderHint(QPainter::Antialiasing);
-    QPen gridPen(QColor(80,80,80));
+    // Griglia bianca tratteggiata
+    QPen gridPen(QColor(255,255,255));
     gridPen.setStyle(Qt::DotLine);
-    // Griglia verticale
-    for (int i = 1; i < 6; ++i)
-        p.drawLine(i*w/6, 0, i*w/6, h);
-    // Griglia orizzontale
-    for (int i = 1; i < 4; ++i)
-        p.drawLine(0, i*h/4, w, i*h/4);
+    gridPen.setWidth(1);
+    p.setPen(gridPen);
+    int gridCols = 5, gridRows = 5;
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        p.drawLine(x, topPad, x, h-bottomPad);
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        p.drawLine(leftPad, y, w-rightPad, y);
+    }
+    // Assi pieni
     p.setPen(QPen(Qt::white, 2));
-    // Assi
-    p.drawLine(0, h-20, w, h-20);
-    p.drawLine(40, 0, 40, h);
+    int x0 = leftPad, x1 = w-rightPad, y0 = topPad, y1 = h-bottomPad;
+    // X asse: orizzontale in basso
+    p.drawLine(x0, y1, x1, y1);
+    // Y asse: verticale a sinistra
+    p.drawLine(x0, y0, x0, y1);
     // Etichette
-    p.setPen(Qt::white);
-    p.setFont(QFont("Helvetica", 10));
-    p.drawText(10, 20, "HFR");
-    p.drawText(w-60, h-10, "Posizione");
+    QFont font("Arial", 12, QFont::Normal);
+    p.setFont(font);
+    // Label Y (verticale)
+    p.save();
+    p.translate(x0-30, (y0+y1)/2+40);
+    p.rotate(-90);
+    p.drawText(0, 0, "HFR");
+    p.restore();
+    // Label X
+    p.drawText((x0+x1)/2-30, h-8, "Posizione");
+    // Numeri sugli assi
+    p.setFont(QFont("Arial", 10));
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        p.drawText(x-6, y1+18, QString::number(i));
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        p.drawText(x0-28, y+5, QString::number(gridRows-i));
+    }
     label->setPixmap(pix);
 }
 
