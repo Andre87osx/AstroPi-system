@@ -399,6 +399,10 @@ class Manager : public QDialog, public Ui::Manager
         void deviceConnected();
         void deviceDisconnected();
 
+        // Placeholder plot
+        void drawGuidePlaceholderPlot(QLabel *label);
+        void drawFocusPlaceholderPlot(QLabel *label);
+
         //void processINDIModeChange();
         void checkINDITimeout();
 

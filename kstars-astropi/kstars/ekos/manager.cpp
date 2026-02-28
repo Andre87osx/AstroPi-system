@@ -51,6 +51,10 @@
 
 #include <algorithm>
 
+#include <QPainter>
+#include <QPen>
+#include <QBrush>
+
 #if defined(Q_OS_UNIX)
 #include <unistd.h>
 #endif
@@ -2533,6 +2537,14 @@ void Manager::updateFocusDetailView()
                 focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
                                            Qt::KeepAspectRatio, Qt::SmoothTransformation));
             }
+            else
+            {
+                drawFocusPlaceholderPlot(focusDetailView);
+            }
+        }
+        else
+        {
+            drawFocusPlaceholderPlot(focusDetailView);
         }
     }
 }
@@ -2595,8 +2607,73 @@ void Manager::updateGuideDetailView()
                 guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
                                            Qt::KeepAspectRatio, Qt::SmoothTransformation));
             }
+            else
+            {
+                drawGuidePlaceholderPlot(guideDetailView);
+            }
+        }
+        else
+        {
+            drawGuidePlaceholderPlot(guideDetailView);
         }
     }
+}
+// Disegna un plot placeholder (assi e griglia) in una QLabel per la guida
+void Manager::drawGuidePlaceholderPlot(QLabel *label)
+{
+    int w = std::max(label->width(), 150);
+    int h = std::max(label->height(), 70);
+    QPixmap pix(w, h);
+    pix.fill(Qt::black);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+    QPen gridPen(QColor(80,80,80));
+    gridPen.setStyle(Qt::DotLine);
+    // Griglia verticale
+    for (int i = 1; i < 6; ++i)
+        p.drawLine(i*w/6, 0, i*w/6, h);
+    // Griglia orizzontale
+    for (int i = 1; i < 4; ++i)
+        p.drawLine(0, i*h/4, w, i*h/4);
+    p.setPen(QPen(Qt::white, 2));
+    // Assi
+    p.drawLine(0, h/2, w, h/2);
+    p.drawLine(w/2, 0, w/2, h);
+    // Etichette
+    p.setPen(Qt::white);
+    p.setFont(QFont("Helvetica", 10));
+    p.drawText(10, 20, "Drift (arcsec)");
+    p.drawText(w-90, h-10, "Pulse (ms)");
+    label->setPixmap(pix);
+}
+
+// Disegna un plot placeholder (assi e griglia) in una QLabel per il fuoco
+void Manager::drawFocusPlaceholderPlot(QLabel *label)
+{
+    int w = std::max(label->width(), 150);
+    int h = std::max(label->height(), 70);
+    QPixmap pix(w, h);
+    pix.fill(Qt::black);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+    QPen gridPen(QColor(80,80,80));
+    gridPen.setStyle(Qt::DotLine);
+    // Griglia verticale
+    for (int i = 1; i < 6; ++i)
+        p.drawLine(i*w/6, 0, i*w/6, h);
+    // Griglia orizzontale
+    for (int i = 1; i < 4; ++i)
+        p.drawLine(0, i*h/4, w, i*h/4);
+    p.setPen(QPen(Qt::white, 2));
+    // Assi
+    p.drawLine(0, h-20, w, h-20);
+    p.drawLine(40, 0, 40, h);
+    // Etichette
+    p.setPen(Qt::white);
+    p.setFont(QFont("Helvetica", 10));
+    p.drawText(10, 20, "HFR");
+    p.drawText(w-60, h-10, "Posizione");
+    label->setPixmap(pix);
 }
 
 void Manager::initMount()
