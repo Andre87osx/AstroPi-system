@@ -3068,6 +3068,26 @@ bool Scheduler::checkStartupState()
 
             qCDebug(KSTARS_EKOS_SCHEDULER) << "Startup Idle. Starting startup process...";
 
+            // Start cooling CCD immediately if selected, regardless of Ekos state
+            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
+            {
+                constexpr double startupCoolingTemperatureC = -10.0;
+                if (!captureInterface.isNull())
+                {
+                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
+                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
+                    {
+                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
+                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
+                        captureInterface->setProperty("coolerControl", true);
+                    }
+                    else
+                    {
+                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
+                    }
+                }
+            }
+
             // If Ekos is already started, we skip the script and move on to dome unpark step
             // unless we do not have light frames, then we skip all
             //QDBusReply<int> isEkosStarted;
@@ -3091,25 +3111,6 @@ bool Scheduler::checkStartupState()
                 profile.append(schedulerProfileCombo->currentText());
                 if (!ekosInterface.isNull())
                     ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
-            }
-
-            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
-            {
-                constexpr double startupCoolingTemperatureC = -10.0;
-                if (!captureInterface.isNull())
-                {
-                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
-                    {
-                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
-                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
-                        captureInterface->setProperty("coolerControl", true);
-                    }
-                    else
-                    {
-                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
-                    }
-                }
             }
 
             if (startupScriptURL.isEmpty() == false)
