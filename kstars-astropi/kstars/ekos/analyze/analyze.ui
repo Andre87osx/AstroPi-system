@@ -66,6 +66,26 @@
        </property>
       </widget>
      </item>
+       <item>
+        <widget class="QPushButton" name="prevReportB">
+         <property name="toolTip">
+          <string>Open previous report in current folder</string>
+         </property>
+         <property name="text">
+          <string>&lt;</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="nextReportB">
+         <property name="toolTip">
+          <string>Open next report in current folder</string>
+         </property>
+         <property name="text">
+          <string>&gt;</string>
+         </property>
+        </widget>
+       </item>
      <item>
       <widget class="QCheckBox" name="fullWidthCB">
        <property name="toolTip">

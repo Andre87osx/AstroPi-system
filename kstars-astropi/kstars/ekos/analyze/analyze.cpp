@@ -10,7 +10,9 @@
 #include "analyze.h"
 
 #include <KNotifications/KNotification>
+#include <algorithm>
 #include <QDateTime>
+#include <QFileInfo>
 #include <QShortcut>
 #include <QtGlobal>
 
@@ -353,6 +355,8 @@ Analyze::Analyze()
     analyzeSB->setRange(0, MAX_SCROLL_VALUE);
     connect(helpB, &QPushButton::clicked, this, &Ekos::Analyze::helpMessage);
     connect(keepCurrentCB, &QCheckBox::stateChanged, this, &Ekos::Analyze::keepCurrent);
+    connect(prevReportB, &QPushButton::clicked, this, &Ekos::Analyze::onPrevReport);
+    connect(nextReportB, &QPushButton::clicked, this, &Ekos::Analyze::onNextReport);
 
     setupKeyboardShortcuts(timelinePlot);
 
@@ -393,6 +397,7 @@ void Analyze::initInputSelection()
     inputCombo->addItem(i18n("Read from File"));
     inputCombo->addItem(i18n("Set alternative image-file base directory"));
     inputValue->setText("");
+    refreshReportFiles();
     connect(inputCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, [&](int index)
     {
         if (index == 0)
@@ -408,6 +413,7 @@ void Analyze::initInputSelection()
             fullWidthCB->setChecked(true);
             fullWidthCB->setVisible(true);
             fullWidthCB->setDisabled(false);
+            updateReportNavButtons();
             replot();
         }
         else if (index == 1)
@@ -418,17 +424,24 @@ void Analyze::initInputSelection()
             if (inputURL.isEmpty())
                 return;
             dirPath = QUrl(inputURL.url(QUrl::RemoveFilename));
+            refreshReportFiles(inputURL.toLocalFile());
 
-            reset();
-            inputValue->setText(inputURL.fileName());
+            if (currentReportIndex >= 0)
+                loadReportByIndex(currentReportIndex);
+            else
+            {
+                reset();
+                inputValue->setText(inputURL.fileName());
 
-            // If we do this after the readData call below, it would animate the sequence.
-            runtimeDisplay = false;
+                // If we do this after the readData call below, it would animate the sequence.
+                runtimeDisplay = false;
 
-            maxXValue = readDataFromFile(inputURL.toLocalFile());
-            plotStart = 0;
-            plotWidth = maxXValue + 5;
-            replot();
+                maxXValue = readDataFromFile(inputURL.toLocalFile());
+                plotStart = 0;
+                plotWidth = maxXValue + 5;
+                replot();
+                updateReportNavButtons();
+            }
         }
         else if (index == 2)
         {
@@ -446,8 +459,83 @@ void Analyze::initInputSelection()
                 inputCombo->setCurrentIndex(0);
             else
                 inputCombo->setCurrentIndex(1);
+
+            updateReportNavButtons();
         }
     });
+}
+
+void Analyze::refreshReportFiles(const QString &selectedFilePath)
+{
+    reportFiles.clear();
+    currentReportIndex = -1;
+
+    QDir reportDir(dirPath.toLocalFile());
+    QFileInfoList files = reportDir.entryInfoList(QStringList() << "*.analyze", QDir::Files, QDir::NoSort);
+    std::sort(files.begin(), files.end(), [](const QFileInfo &a, const QFileInfo &b)
+    {
+        const QDateTime aTime = a.lastModified();
+        const QDateTime bTime = b.lastModified();
+        if (aTime == bTime)
+            return a.fileName() < b.fileName();
+        return aTime < bTime;
+    });
+
+    for (const QFileInfo &fileInfo : files)
+        reportFiles.push_back(fileInfo.fileName());
+
+    if (!selectedFilePath.isEmpty())
+    {
+        const QString selectedName = QFileInfo(selectedFilePath).fileName();
+        currentReportIndex = reportFiles.indexOf(selectedName);
+    }
+
+    updateReportNavButtons();
+}
+
+void Analyze::loadReportByIndex(int index)
+{
+    if (index < 0 || index >= reportFiles.size())
+        return;
+
+    const QString selectedReport = reportFiles.at(index);
+    const QString fullPath = QDir(dirPath.toLocalFile()).filePath(selectedReport);
+
+    reset();
+    inputValue->setText(selectedReport);
+    runtimeDisplay = false;
+
+    maxXValue = readDataFromFile(fullPath);
+    plotStart = 0;
+    plotWidth = maxXValue + 5;
+    replot();
+
+    currentReportIndex = index;
+    updateReportNavButtons();
+}
+
+void Analyze::onPrevReport()
+{
+    if (runtimeDisplay)
+        return;
+
+    loadReportByIndex(currentReportIndex - 1);
+}
+
+void Analyze::onNextReport()
+{
+    if (runtimeDisplay)
+        return;
+
+    loadReportByIndex(currentReportIndex + 1);
+}
+
+void Analyze::updateReportNavButtons()
+{
+    const bool canNavigate = !runtimeDisplay && !reportFiles.isEmpty();
+    prevReportB->setEnabled(canNavigate && currentReportIndex > 0);
+    nextReportB->setEnabled(canNavigate && currentReportIndex >= 0 &&
+                            currentReportIndex < reportFiles.size() - 1);
 }
 
 void Analyze::setupKeyboardShortcuts(QCustomPlot *plot)
