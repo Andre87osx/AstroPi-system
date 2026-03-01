@@ -489,6 +489,11 @@ void Analyze::refreshReportFiles(const QString &selectedFilePath)
         const QString selectedName = QFileInfo(selectedFilePath).fileName();
         currentReportIndex = reportFiles.indexOf(selectedName);
     }
+    else if (!reportFiles.isEmpty())
+        currentReportIndex = reportFiles.size() - 1;
+
+    if (currentReportIndex < 0 && !reportFiles.isEmpty())
+        currentReportIndex = reportFiles.size() - 1;
 
     updateReportNavButtons();
 }
@@ -517,7 +522,7 @@ void Analyze::loadReportByIndex(int index)
 void Analyze::onPrevReport()
 {
     if (runtimeDisplay)
-        return;
+        inputCombo->setCurrentIndex(1);
 
     loadReportByIndex(currentReportIndex - 1);
 }
@@ -525,16 +530,16 @@ void Analyze::onPrevReport()
 void Analyze::onNextReport()
 {
     if (runtimeDisplay)
-        return;
+        inputCombo->setCurrentIndex(1);
 
     loadReportByIndex(currentReportIndex + 1);
 }
 
 void Analyze::updateReportNavButtons()
 {
-    const bool canNavigate = !runtimeDisplay && !reportFiles.isEmpty();
-    prevReportB->setEnabled(canNavigate && currentReportIndex > 0);
-    nextReportB->setEnabled(canNavigate && currentReportIndex >= 0 &&
+    const bool hasReports = !reportFiles.isEmpty();
+    prevReportB->setEnabled(hasReports && currentReportIndex > 0);
+    nextReportB->setEnabled(hasReports && currentReportIndex >= 0 &&
                             currentReportIndex < reportFiles.size() - 1);
 }
 
