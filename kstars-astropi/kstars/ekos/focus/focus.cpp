@@ -2329,6 +2329,7 @@ void Focus::autoFocusLinear()
 
             polynomialGraph->data()->clear();
             focusPoint->data()->clear();
+            polynomialGraphIsShown = false;
         }
     }
 
