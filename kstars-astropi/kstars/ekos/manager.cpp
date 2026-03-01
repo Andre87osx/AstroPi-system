@@ -2583,15 +2583,21 @@ void Manager::updateGuideDetailView()
                             << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
                             << "hasStar=" << (guideStarPixmap.get() != nullptr);
 
+    const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
+    {
+        if (pixmap.isNull())
+            return QPixmap();
+
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+        return pixmap.scaledToHeight(targetHeight, Qt::SmoothTransformation);
+    };
+
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
-        guideDetailView->setPixmap(guideProfilePixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
-        guideDetailView->setPixmap(guidePlotPixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
-        guideDetailView->setPixmap(guideStarPixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap));
     else
     {
         // Always show the plot widget, even if empty, to display axes and grid
@@ -2612,8 +2618,7 @@ void Manager::updateGuideDetailView()
                 
             if (!fallbackPixmap.isNull())
             {
-                guideDetailView->setPixmap(fallbackPixmap.scaled(guideDetailView->width(), guideDetailView->height(),
-                                           Qt::KeepAspectRatio, Qt::SmoothTransformation));
+                guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap));
             }
             else
             {
