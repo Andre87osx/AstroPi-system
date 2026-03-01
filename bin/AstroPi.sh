@@ -45,7 +45,7 @@ function AdminSystem() {
 		StatHotSpot="Disable"  # Hotspot is disabled
 	fi
 
-	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage details:\nMain disk used at <b>${diskUsagePerc}</b>	|	Free disk space: <b>${diskUsageFree}</b>"
+	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage Main disk used at <b>${diskUsagePerc}</b>	Free disk space: <b>${diskUsageFree}</b>"
 
 	ansS=$(zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Hotspot Manager is ${StatHotSpot}" "=> AUTO/Off WiFi NETWORK Manager" \
