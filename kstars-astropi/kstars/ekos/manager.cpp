@@ -48,6 +48,8 @@
 
 #include <QFutureWatcher>
 #include <QComboBox>
+#include <QStorageInfo>
+#include <QGradient>
 
 #include <algorithm>
 
@@ -141,6 +143,9 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     ramProgress->setValue(0);
     ramProgress->setDecimals(0);
     ramProgress->setRange(0, 100);
+    diskProgress->setValue(0);
+    diskProgress->setDecimals(0);
+    diskProgress->setRange(0, 100);
     countdownTimer.setInterval(1000);
     connect(&countdownTimer, &QTimer::timeout, this, &Ekos::Manager::updateCaptureCountDown);
     ramUpdateTimer.setInterval(2000);
@@ -3554,21 +3559,68 @@ void Manager::updateRAMProgress()
     {
         ramProgress->setEnabled(false);
         ramUsageLabel->setText("--");
+    }
+
+    constexpr double GIB = 1024.0 * 1024.0 * 1024.0;
+    if (availableRAM > 0 && totalRAM > 0)
+    {
+        const double freeRAM = std::min(availableRAM, static_cast<double>(totalRAM));
+        const double usedRAM = std::max(0.0, static_cast<double>(totalRAM) - freeRAM);
+        const int usedPercent = static_cast<int>((usedRAM * 100.0) / static_cast<double>(totalRAM));
+
+        ramProgress->setEnabled(true);
+        ramProgress->setValue(usedPercent);
+        
+        // Change color to orange if usage exceeds 60%
+        QGradientStops stops;
+        if (usedPercent >= 60)
+        {
+            stops << QGradientStop(0.0, Qt::green) << QGradientStop(0.6, Qt::green) << QGradientStop(1.0, Qt::darkYellow);
+        }
+        else
+        {
+            stops << QGradientStop(0.0, Qt::blue) << QGradientStop(1.0, Qt::blue);
+        }
+        ramProgress->setDataColors(stops);
+        
+        ramUsageLabel->setText(i18nc("RAM usage summary: used and free GiB",
+                                     "%1 GiB used / %2 GiB free",
+                                     QString::number(usedRAM / GIB, 'f', 1),
+                                     QString::number(freeRAM / GIB, 'f', 1)));
+    }
+
+    const QStorageInfo rootStorage(QStorageInfo::root());
+    if (!rootStorage.isValid() || !rootStorage.isReady() || rootStorage.bytesTotal() <= 0)
+    {
+        diskProgress->setEnabled(false);
+        diskUsageLabel->setText("--");
         return;
     }
 
-    const double freeRAM = std::min(availableRAM, static_cast<double>(totalRAM));
-    const double usedRAM = std::max(0.0, static_cast<double>(totalRAM) - freeRAM);
-    const int usedPercent = static_cast<int>((usedRAM * 100.0) / static_cast<double>(totalRAM));
+    const qint64 totalDisk = rootStorage.bytesTotal();
+    const qint64 freeDisk = rootStorage.bytesAvailable();
+    const qint64 usedDisk = std::max<qint64>(0, totalDisk - freeDisk);
+    const int usedDiskPercent = static_cast<int>((usedDisk * 100.0) / static_cast<double>(totalDisk));
 
-    ramProgress->setEnabled(true);
-    ramProgress->setValue(usedPercent);
-
-    constexpr double GIB = 1024.0 * 1024.0 * 1024.0;
-    ramUsageLabel->setText(i18nc("RAM usage summary: used and free GiB",
-                                 "%1 GiB used / %2 GiB free",
-                                 QString::number(usedRAM / GIB, 'f', 1),
-                                 QString::number(freeRAM / GIB, 'f', 1)));
+    diskProgress->setEnabled(true);
+    diskProgress->setValue(usedDiskPercent);
+    
+    // Change color to orange if disk usage exceeds 85%
+    QGradientStops diskStops;
+    if (usedDiskPercent >= 85)
+    {
+        diskStops << QGradientStop(0.0, Qt::green) << QGradientStop(0.6, Qt::green) << QGradientStop(1.0, Qt::darkYellow);
+    }
+    else
+    {
+        diskStops << QGradientStop(0.0, Qt::blue) << QGradientStop(1.0, Qt::blue);
+    }
+    diskProgress->setDataColors(diskStops);
+    
+    diskUsageLabel->setText(i18nc("Disk usage summary: free and total GiB",
+                                  "%1 GiB free / %2 GiB total",
+                                  QString::number(static_cast<double>(freeDisk) / GIB, 'f', 1),
+                                  QString::number(static_cast<double>(totalDisk) / GIB, 'f', 1)));
 }
 
 void Manager::updateFocusStarPixmap(QPixmap &starPixmap)
