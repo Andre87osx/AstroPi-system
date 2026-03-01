@@ -965,7 +965,7 @@
            </layout>
           </widget>
           <widget class="QWidget" name="rightLayoutWidget">
-           <layout class="QVBoxLayout" name="rightLayout" stretch="0,1,1,0">
+           <layout class="QVBoxLayout" name="rightLayout" stretch="0,0,1,0,0">
             <property name="spacing">
              <number>6</number>
             </property>
@@ -1194,7 +1194,7 @@
               <property name="enabled">
                <bool>false</bool>
               </property>
-              <layout class="QVBoxLayout" name="focusGroupLayout" stretch="0,1">
+              <layout class="QVBoxLayout" name="focusGroupLayout" stretch="0,0">
                <property name="spacing">
                 <number>0</number>
                </property>
@@ -1766,21 +1766,24 @@
                       <widget class="QLabel" name="totalRMSLabel">
                        <property name="minimumSize">
                         <size>
-                         <width>60</width>
+                         <width>80</width>
                          <height>20</height>
                         </size>
                        </property>
                        <property name="maximumSize">
                         <size>
-                         <width>120</width>
+                         <width>150</width>
                          <height>20</height>
                         </size>
                        </property>
+                       <property name="styleSheet">
+                        <string notr="true">font-weight:bold;</string>
+                       </property>
                        <property name="text">
-                        <string>RMS: --</string>
+                        <string>Total RMS: --</string>
                        </property>
                        <property name="alignment">
-                        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                        <set>Qt::AlignRight|Qt::AlignVCenter</set>
                        </property>
                        <property name="margin">
                         <number>1</number>
@@ -1848,7 +1851,7 @@
                    <property name="minimumSize">
                     <size>
                      <width>150</width>
-                     <height>70</height>
+                     <height>180</height>
                     </size>
                    </property>
                    <property name="toolTip">
@@ -1912,10 +1915,20 @@
              </widget>
             </item>
             <item>
-             <widget class="QWidget" name="systemPropsGroup" native="true">
-              <property name="enabled">
-               <bool>false</bool>
+             <spacer name="spacer_before_props">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
               </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>10</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item>
+             <widget class="QWidget" name="systemPropsGroup" native="true">
               <layout class="QVBoxLayout" name="verticalLayout_ram">
                <property name="spacing">
                 <number>1</number>
@@ -1939,6 +1952,9 @@
                   <layout class="QVBoxLayout" name="verticalLayout_ram_column">
                   <property name="spacing">
                    <number>1</number>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignHCenter</set>
                   </property>
                   <item>
                    <widget class="QLabel" name="ramCircleLabel">
@@ -2002,6 +2018,9 @@
                    <layout class="QVBoxLayout" name="verticalLayout_disk_column">
                   <property name="spacing">
                    <number>1</number>
+                  </property>
+                  <property name="alignment">
+                   <set>Qt::AlignHCenter</set>
                   </property>
                   <item>
                    <widget class="QLabel" name="diskCircleLabel">
