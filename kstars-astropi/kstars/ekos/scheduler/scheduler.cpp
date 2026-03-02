@@ -40,6 +40,7 @@
 #include <QTextBrowser>
 #include <QTextStream>
 #include <QVBoxLayout>
+#include <QResizeEvent>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -256,15 +257,17 @@ Scheduler::Scheduler()
 
     if (astroPiLogoLabel != nullptr)
     {
-        QPixmap logoPixmap;
-        logoPixmap.load(":/icons/astropi_scheduler_logo.png");
-
+        // Prefer dedicated logo assets. Use wallpaper only as a last fallback.
         const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-        const QString appLogoPath = appDataPath + "/astropi_scheduler_logo.png";
-
         const QStringList candidatePaths
         {
-            appLogoPath,
+            ":/icons/astropi_scheduler_logo.png",
+            appDataPath + "/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../../astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../kstars/data/icons/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../../kstars/data/icons/astropi_scheduler_logo.png",
             QCoreApplication::applicationDirPath() + "/AstroPi_wallpaper.png",
             QCoreApplication::applicationDirPath() + "/../AstroPi_wallpaper.png",
             QCoreApplication::applicationDirPath() + "/../../AstroPi_wallpaper.png",
@@ -276,29 +279,18 @@ Scheduler::Scheduler()
             QCoreApplication::applicationDirPath() + "/../../../Loghi&background/AstroPi_wallpaper.png"
         };
 
-        if (logoPixmap.isNull())
+        for (const QString &candidate : candidatePaths)
         {
-            for (const QString &candidate : candidatePaths)
-            {
-                if (logoPixmap.load(candidate))
-                    break;
-            }
+            QPixmap candidatePixmap;
+            if (!candidatePixmap.load(candidate) || candidatePixmap.isNull())
+                continue;
+
+            m_AstroPiLogoSource = candidatePixmap;
+            break;
         }
 
-        if (!logoPixmap.isNull())
-        {
-            const int logicalLogoWidth = 260;
-            const qreal devicePixelRatio = astroPiLogoLabel->devicePixelRatioF();
-            int physicalLogoWidth = qRound(logicalLogoWidth * devicePixelRatio);
-            if (physicalLogoWidth < 1)
-                physicalLogoWidth = 1;
-
-            QPixmap scaledLogo = logoPixmap.scaledToWidth(physicalLogoWidth, Qt::SmoothTransformation);
-            scaledLogo.setDevicePixelRatio(devicePixelRatio);
-            astroPiLogoLabel->setPixmap(scaledLogo);
-        }
-        else
-            astroPiLogoLabel->setText(i18n("AstroPi"));
+        astroPiLogoLabel->setMinimumWidth(140);
+        updateAstroPiLogo();
     }
 
     if (showGuideButton != nullptr && schedulerGuideLabel != nullptr)
@@ -466,6 +458,30 @@ Scheduler::Scheduler()
     loadProfiles();
 
     watchJobChanges(true);
+}
+
+void Scheduler::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    updateAstroPiLogo();
+}
+
+void Scheduler::updateAstroPiLogo()
+{
+    if (astroPiLogoLabel == nullptr)
+        return;
+
+    if (m_AstroPiLogoSource.isNull())
+    {
+        astroPiLogoLabel->setText(i18n("AstroPi"));
+        return;
+    }
+
+    const int availableWidth = std::max(1, astroPiLogoLabel->contentsRect().width());
+    const int minReadableWidth = 140;
+    const int targetWidth = std::max(minReadableWidth, std::min(availableWidth, m_AstroPiLogoSource.width()));
+
+    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaledToWidth(targetWidth, Qt::SmoothTransformation));
 }
 
 QString Scheduler::getCurrentJobName()
