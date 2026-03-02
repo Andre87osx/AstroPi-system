@@ -2626,14 +2626,15 @@ void Manager::updateGuideDetailView()
                             << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
                             << "hasStar=" << (guideStarPixmap.get() != nullptr);
 
-    const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
+    const auto scaleGuidePixmap = [this](const QPixmap &pixmap, bool fillBox)
     {
         if (pixmap.isNull())
             return QPixmap();
 
         const int targetWidth = std::max(guideDetailView->width(), 1);
         const int targetHeight = std::max(guideDetailView->height(), 1);
-        return pixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        const auto aspectMode = fillBox ? Qt::IgnoreAspectRatio : Qt::KeepAspectRatio;
+        return pixmap.scaled(targetWidth, targetHeight, aspectMode, Qt::SmoothTransformation);
     };
 
     const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
@@ -2656,7 +2657,7 @@ void Manager::updateGuideDetailView()
         if (!viewPixmap.isNull())
         {
             guideDetailView->setScaledContents(false);
-            guideDetailView->setPixmap(scaleGuidePixmap(viewPixmap));
+            guideDetailView->setPixmap(scaleGuidePixmap(viewPixmap, true));
             return;
         }
     }
@@ -2664,17 +2665,17 @@ void Manager::updateGuideDetailView()
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap, true));
     }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap, true));
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap, false));
     }
     else
     {
@@ -2697,7 +2698,7 @@ void Manager::updateGuideDetailView()
             if (!fallbackPixmap.isNull())
             {
                 guideDetailView->setScaledContents(false);
-                guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap));
+                guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap, true));
             }
             else
             {
@@ -2715,9 +2716,8 @@ void Manager::updateGuideDetailView()
 
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
-    const QRect contentRect = label->contentsRect();
-    int w = std::max(contentRect.width(), 1);
-    int h = std::max(contentRect.height(), 1);
+    int w = std::max(label->width(), 1);
+    int h = std::max(label->height(), 1);
     int leftPad = std::max(42, w / 14);
     int rightPad = std::max(10, w / 40);
     int topPad = std::max(8, h / 25);
@@ -2726,8 +2726,8 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
     pix.fill(Qt::black);
     QPainter p(&pix);
     p.setRenderHint(QPainter::Antialiasing);
-    // Griglia bianca tratteggiata
-    QPen gridPen(QColor(255,255,255));
+    // Griglia tratteggiata tenue
+    QPen gridPen(QColor(185, 185, 185));
     gridPen.setStyle(Qt::DotLine);
     gridPen.setWidth(1);
     p.setPen(gridPen);
@@ -2743,7 +2743,7 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
         p.drawLine(leftPad, y, w-rightPad, y);
     }
     // Assi pieni
-    p.setPen(QPen(Qt::white, 2));
+    p.setPen(QPen(QColor(220, 220, 220), 1));
     int x0 = leftPad, x1 = w-rightPad, y0 = topPad, y1 = h-bottomPad;
     int xMid = (x0 + x1)/2, yMid = (y0 + y1)/2;
     p.drawLine(x0, yMid, x1, yMid); // asse orizzontale
@@ -2758,13 +2758,33 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
     p.drawText(0, 0, "drift (arcsec)");
     p.restore();
     // Label X
-    p.drawText((x0+x1)/2-50, h-8, "Tempo");
+    p.drawText((x0+x1)/2-32, h-8, "Tempo");
+
+    // Cardinal directions and orientation marks (match drift plot style)
+    p.setPen(QColor(0, 170, 255));
+    p.drawText(xMid - 6, y0 + 22, "N");
+    p.setPen(QColor(0, 255, 0));
+    p.drawText(x1 - 26, y0 + 22, "O");
+    p.setPen(QColor(0, 170, 255));
+    p.drawText(xMid - 6, y1 - 8, "S");
+    p.setPen(QColor(0, 255, 0));
+    p.drawText(x1 - 26, y1 - 8, "E");
     // Numeri sugli assi
     p.setFont(QFont("Arial", 10));
+    p.setPen(Qt::white);
     for (int i = 0; i <= gridCols; ++i)
     {
         int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
-        p.drawText(x-18, y1+18, QString("-%1:00").arg((gridCols-i)*0.5,0,'f',0));
+        if (i < gridCols)
+        {
+            const int minutes = (gridCols - i) * 30;
+            const int hoursPart = minutes / 60;
+            const int minsPart = minutes % 60;
+            const QString tickLabel = QString("-%1:%2")
+                                      .arg(hoursPart, 2, 10, QLatin1Char('0'))
+                                      .arg(minsPart, 2, 10, QLatin1Char('0'));
+            p.drawText(x - 24, y1 + 18, tickLabel);
+        }
     }
     for (int i = 0; i <= gridRows; ++i)
     {
@@ -2772,7 +2792,27 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
         double val = 3.0 - i*1.0;
         p.drawText(x0-38, y+5, QString::number(val, 'f', 0));
     }
-    label->setScaledContents(true);
+
+    // Bottom-left legend like live guide plot (RA / DE / SNR / RMS)
+    const int legendY = std::max(y1 - 8, topPad + 12);
+    int legendX = x0 + 14;
+    const auto drawLegendItem = [&p, &legendX, legendY](const QColor &color, const QString &name)
+    {
+        p.setPen(QPen(color, 2));
+        p.drawLine(legendX, legendY, legendX + 28, legendY);
+        legendX += 34;
+        p.setPen(color);
+        p.drawText(legendX, legendY + 4, name);
+        legendX += 36;
+    };
+
+    p.setFont(QFont("Arial", 9));
+    drawLegendItem(QColor(0, 255, 0), "RA");
+    drawLegendItem(QColor(0, 170, 255), "DE");
+    drawLegendItem(QColor(255, 215, 0), "SNR");
+    drawLegendItem(QColor(255, 0, 0), "RMS");
+
+    label->setScaledContents(false);
     label->setPixmap(pix);
 }
 
