@@ -453,6 +453,7 @@ class Manager : public QDialog, public Ui::Manager
         void updateGuideProfilePixmap(QPixmap &profilePix);
         void updateGuidePlotPixmap(QPixmap &plotPix);
         void updateSigmas(double ra, double de);
+        void updateGuideSNR(double snr);
         void updateGuideDetailView();
 
     private:

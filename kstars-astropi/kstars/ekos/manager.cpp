@@ -56,6 +56,9 @@
 #include <QPainter>
 #include <QPen>
 #include <QBrush>
+#include <QLocale>
+
+#include <cmath>
 
 #if defined(Q_OS_UNIX)
 #include <unistd.h>
@@ -140,6 +143,12 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     imageProgress->setFormat("%v");
     imageProgress->setBarStyle(QRoundProgressBar::StyleLine);
     captureProgress->setDecimals(0);
+    guideSNRProgress->setValue(0);
+    guideSNRProgress->setDecimals(2);
+    guideSNRProgress->setFormat("%v");
+    guideSNRProgress->setRange(0, 100);
+    guideSNRProgress->setEnabled(false);
+    guideSNRValueLabel->setText("---,--");
     ramProgress->setValue(0);
     ramProgress->setDecimals(0);
     ramProgress->setRange(0, 100);
@@ -599,6 +608,9 @@ void Manager::reset()
     overallRemainingTime->setText("--:--:--");
     sequenceRemainingTime->setText("--:--:--");
     imageRemainingTime->setText("--:--:--");
+    guideSNRProgress->setEnabled(false);
+    guideSNRProgress->setValue(0);
+    guideSNRValueLabel->setText("---,--");
     mountStatus->setText(i18n("Idle"));
     mountStatus->setStyleSheet(QString());
     captureStatus->setText(i18n("Idle"));
@@ -2572,6 +2584,25 @@ void Manager::updateSigmas(double ra, double de)
     ekosLiveClient.get()->message()->updateGuideStatus(cStatus);
 }
 
+void Manager::updateGuideSNR(double snr)
+{
+    if (!std::isfinite(snr) || snr < 0)
+    {
+        guideSNRProgress->setEnabled(false);
+        guideSNRProgress->setValue(0);
+        guideSNRValueLabel->setText("---,--");
+        return;
+    }
+
+    const double clampedSNR = std::max(0.0, snr);
+    const int rangeUpper = std::max(100, static_cast<int>(std::ceil(clampedSNR)));
+
+    guideSNRProgress->setEnabled(true);
+    guideSNRProgress->setRange(0, rangeUpper);
+    guideSNRProgress->setValue(clampedSNR);
+    guideSNRValueLabel->setText(QLocale().toString(clampedSNR, 'f', 2));
+}
+
 void Manager::updateGuideDetailView()
 {
     if (guideDetailView->width() <= 1 || guideDetailView->height() <= 1)
@@ -2895,6 +2926,11 @@ void Manager::initGuide()
         connect(guideProcess.get(), &Ekos::Guide::newProfilePixmap, this, &Ekos::Manager::updateGuideProfilePixmap);
         connect(guideProcess.get(), &Ekos::Guide::newDriftPlotPixmap, this, &Ekos::Manager::updateGuidePlotPixmap);
         connect(guideProcess.get(), &Ekos::Guide::newAxisSigma, this, &Ekos::Manager::updateSigmas);
+        connect(guideProcess.get(), &Ekos::Guide::guideStats, this,
+                [this](double, double, int, int, double snr, double, int)
+        {
+            updateGuideSNR(snr);
+        });
         connect(guideProcess.get(), &Ekos::Guide::newAxisDelta, [&](double ra, double de)
         {
             QJsonObject status = { { "drift_ra", ra}, {"drift_de", de} };
@@ -3725,6 +3761,9 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
         case Ekos::GUIDE_CALIBRATION_SUCESS:
             if (guidePI->isAnimated())
                 guidePI->stopAnimation();
+            guideSNRProgress->setEnabled(false);
+            guideSNRProgress->setValue(0);
+            guideSNRValueLabel->setText("---,--");
             break;
 
         case Ekos::GUIDE_CALIBRATING:
