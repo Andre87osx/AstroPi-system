@@ -156,6 +156,12 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     diskProgress->setDecimals(0);
     diskProgress->setRange(0, 100);
     guideDetailView->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    verticalLayout_ram_column->setAlignment(ramCircleLabel, Qt::AlignHCenter);
+    verticalLayout_ram_column->setAlignment(ramProgress, Qt::AlignHCenter);
+    verticalLayout_ram_column->setAlignment(ramUsageLabel, Qt::AlignHCenter);
+    verticalLayout_disk_column->setAlignment(diskCircleLabel, Qt::AlignHCenter);
+    verticalLayout_disk_column->setAlignment(diskProgress, Qt::AlignHCenter);
+    verticalLayout_disk_column->setAlignment(diskUsageLabel, Qt::AlignHCenter);
     countdownTimer.setInterval(1000);
     connect(&countdownTimer, &QTimer::timeout, this, &Ekos::Manager::updateCaptureCountDown);
     ramUpdateTimer.setInterval(2000);
@@ -2649,17 +2655,27 @@ void Manager::updateGuideDetailView()
         const QPixmap viewPixmap = renderGuidePixmapForView();
         if (!viewPixmap.isNull())
         {
+            guideDetailView->setScaledContents(false);
             guideDetailView->setPixmap(scaleGuidePixmap(viewPixmap));
             return;
         }
     }
 
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
+    {
+        guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
+    }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
+    {
+        guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
+    }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
+    {
+        guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap));
+    }
     else
     {
         // Always show the plot widget, even if empty, to display axes and grid
@@ -2680,6 +2696,7 @@ void Manager::updateGuideDetailView()
                 
             if (!fallbackPixmap.isNull())
             {
+                guideDetailView->setScaledContents(false);
                 guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap));
             }
             else
@@ -2698,8 +2715,9 @@ void Manager::updateGuideDetailView()
 
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
-    int w = std::max(label->width(), 1);
-    int h = std::max(label->height(), 1);
+    const QRect contentRect = label->contentsRect();
+    int w = std::max(contentRect.width(), 1);
+    int h = std::max(contentRect.height(), 1);
     int leftPad = std::max(42, w / 14);
     int rightPad = std::max(10, w / 40);
     int topPad = std::max(8, h / 25);
@@ -2754,6 +2772,7 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
         double val = 3.0 - i*1.0;
         p.drawText(x0-38, y+5, QString::number(val, 'f', 0));
     }
+    label->setScaledContents(true);
     label->setPixmap(pix);
 }
 
