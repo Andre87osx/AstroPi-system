@@ -155,6 +155,7 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     diskProgress->setValue(0);
     diskProgress->setDecimals(0);
     diskProgress->setRange(0, 100);
+    guideDetailView->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     countdownTimer.setInterval(1000);
     connect(&countdownTimer, &QTimer::timeout, this, &Ekos::Manager::updateCaptureCountDown);
     ramUpdateTimer.setInterval(2000);
