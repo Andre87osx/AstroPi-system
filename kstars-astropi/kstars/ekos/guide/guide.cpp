@@ -36,6 +36,7 @@
 
 #include "ui_manualdither.h"
 
+#include <cmath>
 #include <random>
 
 #define CAPTURE_TIMEOUT_THRESHOLD 30000
@@ -443,6 +444,7 @@ void Guide::slotAutoScaleGraphs()
     // This is only called when the autoScale button is pressed.
     driftGraph->graph(G_RA)->rescaleValueAxis(false, true);
     driftGraph->graph(G_DEC)->rescaleValueAxis(true, true);
+    normalizeDriftGraphYAxis();
     driftGraph->replot();
 
     driftPlot->xAxis->setRange(-accuracyRadius * 3, accuracyRadius * 3);
@@ -645,6 +647,41 @@ void Guide::setCorrectionGraphScale()
     driftGraph->yAxis2->setRange(driftGraph->yAxis->range().lower * correctionSlider->value(),
                                  driftGraph->yAxis->range().upper * correctionSlider->value());
     driftGraph->replot();
+}
+
+void Guide::normalizeDriftGraphYAxis()
+{
+    if (!driftGraph || !driftGraph->yAxis || !driftGraph->xAxis)
+        return;
+
+    constexpr double MIN_HALF_RANGE = 3.0;
+    constexpr double RANGE_MARGIN = 1.15;
+
+    const QCPRange visibleX = driftGraph->xAxis->range();
+
+    const auto maxAbsInVisibleRange = [this, &visibleX](int graphIndex)
+    {
+        const QCPGraph *graph = driftGraph->graph(graphIndex);
+        if (graph == nullptr || graph->data().isNull() || graph->data()->isEmpty())
+            return 0.0;
+
+        double maxAbs = 0.0;
+        const auto begin = graph->data()->findBegin(visibleX.lower, true);
+        const auto end = graph->data()->findEnd(visibleX.upper, true);
+        for (auto it = begin; it != end; ++it)
+            maxAbs = std::max(maxAbs, std::abs(it->value));
+
+        return maxAbs;
+    };
+
+    double halfRange = std::max(maxAbsInVisibleRange(G_RA), maxAbsInVisibleRange(G_DEC));
+    if (!std::isfinite(halfRange))
+        halfRange = MIN_HALF_RANGE;
+
+    halfRange = std::max(MIN_HALF_RANGE, std::ceil(halfRange * RANGE_MARGIN));
+
+    driftGraph->yAxis->setRange(-halfRange, halfRange);
+    setCorrectionGraphScale();
 }
 
 void Guide::exportGuideData()
@@ -2722,6 +2759,7 @@ void Guide::setAxisDelta(double ra, double de)
         driftGraph->graph(G_RA_HIGHLIGHT)->addData(key, ra); //Set highlighted RA point to latest point
         driftGraph->graph(G_DEC_HIGHLIGHT)->addData(key, de); //Set highlighted DEC point to latest point
     }
+    normalizeDriftGraphYAxis();
     driftGraph->replot();
 
     //Add to Drift Plot
@@ -2901,6 +2939,8 @@ void Guide::driftMouseClicked(QMouseEvent *event)
     if (event->buttons() & Qt::RightButton)
     {
         driftGraph->yAxis->setRange(-3, 3);
+        normalizeDriftGraphYAxis();
+        driftGraph->replot();
     }
 }
 
@@ -3556,6 +3596,11 @@ void Guide::initDriftGraph()
     timeTicker->setTimeFormat("%m:%s");
     driftGraph->xAxis->setTicker(timeTicker);
 
+    QSharedPointer<QCPAxisTickerFixed> driftYAxisTicker(new QCPAxisTickerFixed);
+    driftYAxisTicker->setTickStep(1.0);
+    driftYAxisTicker->setScaleStrategy(QCPAxisTickerFixed::ssMultiples);
+    driftGraph->yAxis->setTicker(driftYAxisTicker);
+
     //Vertical Axis Labels Settings
     driftGraph->yAxis2->setVisible(true);
     driftGraph->yAxis2->setTickLabels(true);
@@ -3684,6 +3729,7 @@ void Guide::initDriftGraph()
     driftGraph->graph(G_DEC_PULSE)->setVisible(Options::dECorrDisplayedOnGuideGraph()); //DEC Pulses
     driftGraph->graph(G_SNR)->setVisible(Options::sNRDisplayedOnGuideGraph()); //SNR
     setRMSVisibility();
+    normalizeDriftGraphYAxis();
 
     updateCorrectionsScaleVisibility();
 }

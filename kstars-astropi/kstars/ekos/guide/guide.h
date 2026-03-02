@@ -590,6 +590,7 @@ class Guide : public QWidget, public Ui::Guide
         void initCalibrationPlot();
         void initView();
         void initConnections();
+                    void normalizeDriftGraphYAxis();
 
         bool captureOneFrame();
 

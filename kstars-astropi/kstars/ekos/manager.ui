@@ -1944,7 +1944,7 @@
                 </widget>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="horizontalLayout_ram">
+                <layout class="QHBoxLayout" name="horizontalLayout_ram" stretch="1,1">
                  <property name="spacing">
                   <number>6</number>
                  </property>
@@ -1967,6 +1967,9 @@
                    </widget>
                   </item>
                   <item>
+                   <property name="alignment">
+                    <set>Qt::AlignHCenter</set>
+                   </property>
                    <widget class="QRoundProgressBar" name="ramProgress" native="true">
                     <property name="enabled">
                      <bool>false</bool>
@@ -2033,6 +2036,9 @@
                    </widget>
                   </item>
                   <item>
+                   <property name="alignment">
+                    <set>Qt::AlignHCenter</set>
+                   </property>
                    <widget class="QRoundProgressBar" name="diskProgress" native="true">
                     <property name="enabled">
                      <bool>false</bool>

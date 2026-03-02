@@ -2593,9 +2593,34 @@ void Manager::updateGuideDetailView()
         if (pixmap.isNull())
             return QPixmap();
 
+        const int targetWidth = std::max(guideDetailView->width(), 1);
         const int targetHeight = std::max(guideDetailView->height(), 1);
-        return pixmap.scaledToHeight(targetHeight, Qt::SmoothTransformation);
+        return pixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     };
+
+    const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+    const auto renderGuidePixmapForView = [this, &viewSize]()
+    {
+        if (!guideProcess)
+            return QPixmap();
+
+        if (currentGuidePixmapIndex == 0)
+            return guideProcess->getProfileViewPixmap(viewSize);
+        if (currentGuidePixmapIndex == 1)
+            return guideProcess->getDriftPlotViewPixmap(viewSize);
+
+        return QPixmap();
+    };
+
+    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
+    {
+        const QPixmap viewPixmap = renderGuidePixmapForView();
+        if (!viewPixmap.isNull())
+        {
+            guideDetailView->setPixmap(scaleGuidePixmap(viewPixmap));
+            return;
+        }
+    }
 
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
         guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
@@ -2641,9 +2666,12 @@ void Manager::updateGuideDetailView()
 
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
-    int w = std::max(label->width(), 500);
-    int h = std::max(label->height(), 180);
-    int leftPad = 55, rightPad = 20, topPad = 18, bottomPad = 32;
+    int w = std::max(label->width(), 1);
+    int h = std::max(label->height(), 1);
+    int leftPad = std::max(42, w / 14);
+    int rightPad = std::max(10, w / 40);
+    int topPad = std::max(8, h / 25);
+    int bottomPad = std::max(24, h / 6);
     QPixmap pix(w, h);
     pix.fill(Qt::black);
     QPainter p(&pix);
