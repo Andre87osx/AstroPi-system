@@ -2665,34 +2665,6 @@ void Manager::updateGuideDetailView()
         return fullBox;
     };
 
-    const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
-    const auto renderGuidePixmapForView = [this, &viewSize]()
-    {
-        if (!guideProcess)
-            return QPixmap();
-
-        if (currentGuidePixmapIndex == 0)
-            return guideProcess->getProfileViewPixmap(viewSize);
-        if (currentGuidePixmapIndex == 1)
-            return guideProcess->getDriftPlotViewPixmap(viewSize);
-
-        return QPixmap();
-    };
-
-    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
-    {
-        const QPixmap viewPixmap = renderGuidePixmapForView();
-        if (!viewPixmap.isNull())
-        {
-            guideDetailView->setScaledContents(false);
-            if (currentGuidePixmapIndex == 1)
-                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
-            else
-                guideDetailView->setPixmap(viewPixmap);
-            return;
-        }
-    }
-
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
@@ -2710,41 +2682,8 @@ void Manager::updateGuideDetailView()
     }
     else
     {
-        // Always show the plot widget, even if empty, to display axes and grid
-        if (guideProcess)
-        {
-            QPixmap fallbackPixmap;
-            if (currentGuidePixmapIndex == 1)
-                fallbackPixmap = guideProcess->getDriftPlotViewPixmap(viewSize);
-            else if (currentGuidePixmapIndex == 0)
-                fallbackPixmap = guideProcess->getProfileViewPixmap(viewSize);
-
-            if (isPlotDiagEnabled())
-                qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Guide fallback"
-                                    << "index=" << currentGuidePixmapIndex
-                                    << "null=" << fallbackPixmap.isNull()
-                                    << "size=" << fallbackPixmap.size()
-                                    << "viewSize=" << guideDetailView->size();
-                
-            if (!fallbackPixmap.isNull())
-            {
-                guideDetailView->setScaledContents(false);
-                if (currentGuidePixmapIndex == 1)
-                    guideDetailView->setPixmap(fitGuidePixmapInBlackBox(fallbackPixmap));
-                else if (currentGuidePixmapIndex == 0)
-                    guideDetailView->setPixmap(fallbackPixmap);
-                else
-                    guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap));
-            }
-            else
-            {
-                drawGuidePlaceholderPlot(guideDetailView);
-            }
-        }
-        else
-        {
-            drawGuidePlaceholderPlot(guideDetailView);
-        }
+        // Always show the plot widget with a locally-drawn placeholder
+        drawGuidePlaceholderPlot(guideDetailView);
     }
 }
 
@@ -2752,44 +2691,7 @@ void Manager::updateGuideDetailView()
 
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
-    if (guideProcess)
-    {
-        QPixmap viewPixmap;
-
-        if (currentGuidePixmapIndex == 1)
-        {
-            const QSize viewSize(std::max(label->width(), 1), std::max(label->height(), 1));
-            viewPixmap = guideProcess->getDriftPlotViewPixmap(viewSize);
-        }
-        else if (currentGuidePixmapIndex == 0)
-        {
-            const QSize viewSize(std::max(label->width(), 1), std::max(label->height(), 1));
-            viewPixmap = guideProcess->getProfileViewPixmap(viewSize);
-        }
-
-        if (!viewPixmap.isNull())
-        {
-            label->setScaledContents(false);
-            if (currentGuidePixmapIndex == 1)
-            {
-                const int targetWidth = std::max(label->width(), 1);
-                const int targetHeight = std::max(label->height(), 1);
-                QPixmap fullBox(targetWidth, targetHeight);
-                fullBox.fill(Qt::black);
-                const QPixmap scaled = viewPixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio,
-                                                         Qt::SmoothTransformation);
-                QPainter painter(&fullBox);
-                const int x = (targetWidth - scaled.width()) / 2;
-                const int y = (targetHeight - scaled.height()) / 2;
-                painter.drawPixmap(x, y, scaled);
-                label->setPixmap(fullBox);
-            }
-            else
-                label->setPixmap(viewPixmap);
-            return;
-        }
-    }
-
+    label->setScaledContents(false);
     int w = std::max(label->width(), 1);
     int h = std::max(label->height(), 1);
     int leftPad = std::max(42, w / 14);
