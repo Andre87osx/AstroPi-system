@@ -2682,8 +2682,14 @@ void Manager::updateGuideDetailView()
     }
     else
     {
-        // Always show the plot widget with a locally-drawn placeholder
-        drawGuidePlaceholderPlot(guideDetailView);
+        // Schedule placeholder drawing after widget is rendered with final dimensions
+        QTimer::singleShot(0, [this, label = guideDetailView]()
+        {
+            if (label && label->window()->isVisible())
+            {
+                drawGuidePlaceholderPlot(label);
+            }
+        });
     }
 }
 
@@ -2692,8 +2698,29 @@ void Manager::updateGuideDetailView()
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
     label->setScaledContents(false);
-    int w = std::max(label->width(), 1);
-    int h = std::max(label->height(), 1);
+    
+    // Get label dimensions, fallback to parent widget if label is too small
+    int w = label->width();
+    int h = label->height();
+    
+    if (w < 100 || h < 100)
+    {
+        // Label not yet sized, use parent widget dimensions
+        QWidget *parent = label->parentWidget();
+        while (parent && (w < 100 || h < 100))
+        {
+            if (parent->width() > 100 && parent->height() > 100)
+            {
+                w = parent->width();
+                h = parent->height();
+                break;
+            }
+            parent = parent->parentWidget();
+        }
+    }
+    
+    w = std::max(w, 200);  // Minimum fallback: 200x200
+    h = std::max(h, 200);
     int leftPad = std::max(42, w / 14);
     int rightPad = std::max(10, w / 40);
     int topPad = std::max(8, h / 25);
