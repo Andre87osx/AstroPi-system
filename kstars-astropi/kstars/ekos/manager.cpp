@@ -2674,7 +2674,7 @@ void Manager::updateGuideDetailView()
         if (currentGuidePixmapIndex == 0)
             return guideProcess->getProfileViewPixmap(viewSize);
         if (currentGuidePixmapIndex == 1)
-            return guideProcess->getDriftPlotViewPixmap();
+            return guideProcess->getDriftPlotViewPixmap(viewSize);
 
         return QPixmap();
     };
@@ -2715,7 +2715,7 @@ void Manager::updateGuideDetailView()
         {
             QPixmap fallbackPixmap;
             if (currentGuidePixmapIndex == 1)
-                fallbackPixmap = guideProcess->getDriftPlotViewPixmap();
+                fallbackPixmap = guideProcess->getDriftPlotViewPixmap(viewSize);
             else if (currentGuidePixmapIndex == 0)
                 fallbackPixmap = guideProcess->getProfileViewPixmap(viewSize);
 
@@ -2757,7 +2757,10 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
         QPixmap viewPixmap;
 
         if (currentGuidePixmapIndex == 1)
-            viewPixmap = guideProcess->getDriftPlotViewPixmap();
+        {
+            const QSize viewSize(std::max(label->width(), 1), std::max(label->height(), 1));
+            viewPixmap = guideProcess->getDriftPlotViewPixmap(viewSize);
+        }
         else if (currentGuidePixmapIndex == 0)
         {
             const QSize viewSize(std::max(label->width(), 1), std::max(label->height(), 1));
@@ -2943,6 +2946,7 @@ void Manager::drawFocusPlaceholderPlot(QLabel *label)
         int y = topPad + i*(h-topPad-bottomPad)/gridRows;
         p.drawText(x0-28, y+5, QString::number(gridRows-i));
     }
+    label->setScaledContents(false);
     label->setPixmap(pix);
 }
 
