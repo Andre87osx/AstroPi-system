@@ -156,6 +156,8 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     diskProgress->setDecimals(0);
     diskProgress->setRange(0, 100);
     guideDetailView->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    guideDetailNextButton->setEnabled(false);
+    guideDetailPrevButton->setEnabled(false);
     verticalLayout_ram_column->setAlignment(ramCircleLabel, Qt::AlignHCenter);
     verticalLayout_ram_column->setAlignment(ramProgress, Qt::AlignHCenter);
     verticalLayout_ram_column->setAlignment(ramUsageLabel, Qt::AlignHCenter);
@@ -2626,15 +2628,41 @@ void Manager::updateGuideDetailView()
                             << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
                             << "hasStar=" << (guideStarPixmap.get() != nullptr);
 
-    const auto scaleGuidePixmap = [this](const QPixmap &pixmap, bool fillBox)
+    const bool hasGuideTarget = (guideStarPixmap.get() != nullptr);
+    guideDetailNextButton->setEnabled(hasGuideTarget);
+    guideDetailPrevButton->setEnabled(hasGuideTarget);
+
+    if (!hasGuideTarget && currentGuidePixmapIndex == 2)
+        currentGuidePixmapIndex = 1;
+
+    const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
     {
         if (pixmap.isNull())
             return QPixmap();
 
         const int targetWidth = std::max(guideDetailView->width(), 1);
         const int targetHeight = std::max(guideDetailView->height(), 1);
-        const auto aspectMode = fillBox ? Qt::IgnoreAspectRatio : Qt::KeepAspectRatio;
-        return pixmap.scaled(targetWidth, targetHeight, aspectMode, Qt::SmoothTransformation);
+        return pixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    };
+
+    const auto fitGuidePixmapInBlackBox = [this](const QPixmap &pixmap)
+    {
+        if (pixmap.isNull())
+            return QPixmap();
+
+        const int targetWidth = std::max(guideDetailView->width(), 1);
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+
+        QPixmap fullBox(targetWidth, targetHeight);
+        fullBox.fill(Qt::black);
+
+        const QPixmap scaled = pixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QPainter painter(&fullBox);
+        const int x = (targetWidth - scaled.width()) / 2;
+        const int y = (targetHeight - scaled.height()) / 2;
+        painter.drawPixmap(x, y, scaled);
+
+        return fullBox;
     };
 
     const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
@@ -2646,7 +2674,7 @@ void Manager::updateGuideDetailView()
         if (currentGuidePixmapIndex == 0)
             return guideProcess->getProfileViewPixmap(viewSize);
         if (currentGuidePixmapIndex == 1)
-            return guideProcess->getDriftPlotViewPixmap(viewSize);
+            return guideProcess->getDriftPlotViewPixmap();
 
         return QPixmap();
     };
@@ -2657,7 +2685,10 @@ void Manager::updateGuideDetailView()
         if (!viewPixmap.isNull())
         {
             guideDetailView->setScaledContents(false);
-            guideDetailView->setPixmap(scaleGuidePixmap(viewPixmap, true));
+            if (currentGuidePixmapIndex == 1)
+                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
+            else
+                guideDetailView->setPixmap(viewPixmap);
             return;
         }
     }
@@ -2665,17 +2696,17 @@ void Manager::updateGuideDetailView()
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap, true));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
     }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap, true));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap, false));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap));
     }
     else
     {
@@ -2686,7 +2717,7 @@ void Manager::updateGuideDetailView()
             if (currentGuidePixmapIndex == 1)
                 fallbackPixmap = guideProcess->getDriftPlotViewPixmap();
             else if (currentGuidePixmapIndex == 0)
-                fallbackPixmap = guideProcess->getProfileViewPixmap();
+                fallbackPixmap = guideProcess->getProfileViewPixmap(viewSize);
 
             if (isPlotDiagEnabled())
                 qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Guide fallback"
@@ -2698,7 +2729,12 @@ void Manager::updateGuideDetailView()
             if (!fallbackPixmap.isNull())
             {
                 guideDetailView->setScaledContents(false);
-                guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap, true));
+                if (currentGuidePixmapIndex == 1)
+                    guideDetailView->setPixmap(fitGuidePixmapInBlackBox(fallbackPixmap));
+                else if (currentGuidePixmapIndex == 0)
+                    guideDetailView->setPixmap(fallbackPixmap);
+                else
+                    guideDetailView->setPixmap(scaleGuidePixmap(fallbackPixmap));
             }
             else
             {
@@ -2716,6 +2752,41 @@ void Manager::updateGuideDetailView()
 
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
+    if (guideProcess)
+    {
+        QPixmap viewPixmap;
+
+        if (currentGuidePixmapIndex == 1)
+            viewPixmap = guideProcess->getDriftPlotViewPixmap();
+        else if (currentGuidePixmapIndex == 0)
+        {
+            const QSize viewSize(std::max(label->width(), 1), std::max(label->height(), 1));
+            viewPixmap = guideProcess->getProfileViewPixmap(viewSize);
+        }
+
+        if (!viewPixmap.isNull())
+        {
+            label->setScaledContents(false);
+            if (currentGuidePixmapIndex == 1)
+            {
+                const int targetWidth = std::max(label->width(), 1);
+                const int targetHeight = std::max(label->height(), 1);
+                QPixmap fullBox(targetWidth, targetHeight);
+                fullBox.fill(Qt::black);
+                const QPixmap scaled = viewPixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio,
+                                                         Qt::SmoothTransformation);
+                QPainter painter(&fullBox);
+                const int x = (targetWidth - scaled.width()) / 2;
+                const int y = (targetHeight - scaled.height()) / 2;
+                painter.drawPixmap(x, y, scaled);
+                label->setPixmap(fullBox);
+            }
+            else
+                label->setPixmap(viewPixmap);
+            return;
+        }
+    }
+
     int w = std::max(label->width(), 1);
     int h = std::max(label->height(), 1);
     int leftPad = std::max(42, w / 14);
@@ -3811,6 +3882,15 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
 {
     guideStatus->setText(Ekos::getGuideStatusString(status));
 
+    const auto showGuidePlotInDetailView = [this]()
+    {
+        if (currentGuidePixmapIndex != 1)
+            currentGuidePixmapIndex = 1;
+
+        guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
+        updateGuideDetailView();
+    };
+
     switch (status)
     {
         case Ekos::GUIDE_IDLE:
@@ -3835,16 +3915,19 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
             guidePI->setColor(Qt::darkGreen);
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
+            showGuidePlotInDetailView();
             break;
         case Ekos::GUIDE_DITHERING:
             guidePI->setColor(QColor(KStarsData::Instance()->colorScheme()->colorNamed("TargetColor")));
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
+            showGuidePlotInDetailView();
             break;
         case Ekos::GUIDE_DITHERING_SUCCESS:
             guidePI->setColor(Qt::darkGreen);
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
+            showGuidePlotInDetailView();
             break;
 
         default:
