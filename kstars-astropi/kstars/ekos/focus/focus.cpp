@@ -2172,14 +2172,33 @@ void Focus::drawHFRPlot()
                                    0 : *std::min_element(hfr_position.constBegin(), hfr_position.constEnd());
         const double maxPosition = hfr_position.empty() ?
                                    1e6 : *std::max_element(hfr_position.constBegin(), hfr_position.constEnd());
-        HFRPlot->xAxis->setRange(minPosition - pulseDuration, maxPosition + pulseDuration);
+        
+        // Calculate range with 20% margin on both sides for better visibility
+        const double rangeWidth = maxPosition - minPosition;
+        const double margin = std::max(rangeWidth * 0.2, pulseDuration);
+        HFRPlot->xAxis->setRange(minPosition - margin, maxPosition + margin);
+        
         HFRPlot->yAxis->setRange(minHFRVal, maxHFR);
     }
     else
     {
         //HFRPlot->xAxis->setLabel(i18n("Iteration"));
-        HFRPlot->xAxis->setRange(1, hfr_value.count() + 1);
-        HFRPlot->yAxis->setRange(currentHFR / 2.5, maxHFR * 1.25);
+        if (hfr_value.count() > 0)
+        {
+            // Center the graph on the data with 20% margin
+            HFRPlot->xAxis->setRange(0, std::max(hfr_value.count() + 1, static_cast<int>(hfr_value.count() * 1.2)));
+        }
+        else
+        {
+            HFRPlot->xAxis->setRange(1, 2);
+        }
+        HFRPlot->yAxis->setRange(minHFRVal, maxHFR * 1.25);
+    }
+
+    // After setting range, redraw polynomial if needed
+    if (focusAlgorithm == FOCUS_POLYNOMIAL && polynomialGraph && polynomialFit)
+    {
+        polynomialFit->drawPolynomial(HFRPlot, polynomialGraph);
     }
 
     HFRPlot->replot();
