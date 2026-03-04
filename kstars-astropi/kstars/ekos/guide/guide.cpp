@@ -4359,16 +4359,6 @@ QPixmap Guide::getProfileViewPixmap(const QSize &sizeHint) const
     if (targetHeight <= 1)
         targetHeight = 360;
 
-    // Ensure driftGraph has valid size, otherwise use fallback
-    if (driftGraph->width() > 1 && driftGraph->height() > 1)
-    {
-        // If sizeHint was valid but different from plot size, use plot size as base
-        if (sizeHint.width() <= 1)
-            targetWidth = driftGraph->width();
-        if (sizeHint.height() <= 1)
-            targetHeight = driftGraph->height();
-    }
-
     driftGraph->replot();
     const QPixmap pixmap = driftGraph->toPixmap(targetWidth, targetHeight, 1.0);
 
@@ -4397,16 +4387,6 @@ QPixmap Guide::getDriftPlotViewPixmap(const QSize &sizeHint) const
         targetWidth = 640;
     if (targetHeight <= 1)
         targetHeight = 360;
-
-    // Ensure driftPlot has valid size, otherwise use fallback
-    if (driftPlot->width() > 1 && driftPlot->height() > 1)
-    {
-        // If sizeHint was valid but different from plot size, use plot size as base
-        if (sizeHint.width() <= 1)
-            targetWidth = driftPlot->width();
-        if (sizeHint.height() <= 1)
-            targetHeight = driftPlot->height();
-    }
 
     driftPlot->replot();
     const QPixmap pixmap = driftPlot->toPixmap(targetWidth, targetHeight, 1.0);

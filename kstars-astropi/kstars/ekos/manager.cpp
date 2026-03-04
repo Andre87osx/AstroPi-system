@@ -2665,6 +2665,30 @@ void Manager::updateGuideDetailView()
         return fullBox;
     };
 
+    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
+    {
+        const QPixmap viewPixmap = renderGuidePixmapForView();
+        if (!viewPixmap.isNull())
+        {
+            guideDetailView->setScaledContents(false);
+            // Use pixmap directly if it's already the correct size, no need to rescale
+            if (viewPixmap.size() == guideDetailView->size())
+            {
+                guideDetailView->setPixmap(viewPixmap);
+            }
+            else if (currentGuidePixmapIndex == 1)
+            {
+                // Only apply black box centering if pixmap size differs from widget
+                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
+            }
+            else
+            {
+                guideDetailView->setPixmap(viewPixmap);
+            }
+            return;
+        }
+    }
+
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
