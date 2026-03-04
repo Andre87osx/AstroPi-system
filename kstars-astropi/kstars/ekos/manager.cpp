@@ -2665,6 +2665,20 @@ void Manager::updateGuideDetailView()
         return fullBox;
     };
 
+    const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+    const auto renderGuidePixmapForView = [this, &viewSize]()
+    {
+        if (!guideProcess)
+            return QPixmap();
+
+        if (currentGuidePixmapIndex == 0)
+            return guideProcess->getProfileViewPixmap(viewSize);
+        if (currentGuidePixmapIndex == 1)
+            return guideProcess->getDriftPlotViewPixmap(viewSize);
+
+        return QPixmap();
+    };
+
     if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
     {
         const QPixmap viewPixmap = renderGuidePixmapForView();
