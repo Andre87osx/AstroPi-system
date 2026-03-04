@@ -2716,7 +2716,7 @@ void Manager::updateGuideDetailView()
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap));
+        guideDetailView->setPixmap(fitGuidePixmapInBlackBox(*guideStarPixmap));
     }
     else
     {
