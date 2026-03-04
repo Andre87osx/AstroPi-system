@@ -1140,8 +1140,8 @@
              <widget class="QCustomPlot" name="driftGraph" native="true">
               <property name="minimumSize">
                <size>
-                <width>350</width>
-                <height>350</height>
+                <width>200</width>
+                <height>200</height>
                </size>
               </property>
               <property name="maximumSize">
@@ -1203,7 +1203,7 @@
         <widget class="QTabWidget" name="tabWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>0</horstretch>
+           <horstretch>1</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
