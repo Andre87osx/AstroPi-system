@@ -2628,7 +2628,7 @@ void Manager::updateGuideDetailView()
                             << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
                             << "hasStar=" << (guideStarPixmap.get() != nullptr);
 
-    const bool hasGuideTarget = (guideStarPixmap.get() != nullptr);
+    const bool hasGuideTarget = (guideProfilePixmap.get() != nullptr);
     guideDetailNextButton->setEnabled(hasGuideTarget);
     guideDetailPrevButton->setEnabled(hasGuideTarget);
 
@@ -2673,19 +2673,11 @@ void Manager::updateGuideDetailView()
         const int targetWidth = std::max(guideDetailView->width(), 1);
         const int targetHeight = std::max(guideDetailView->height(), 1);
 
-        const int side = std::min(pixmap.width(), pixmap.height());
-        if (side <= 0)
-            return QPixmap();
-
-        const int srcX = (pixmap.width() - side) / 2;
-        const int srcY = (pixmap.height() - side) / 2;
-        const QPixmap square = pixmap.copy(srcX, srcY, side, side);
-
         QPixmap fullBox(targetWidth, targetHeight);
         fullBox.fill(Qt::black);
 
         const int renderSide = std::min(targetWidth, targetHeight);
-        const QPixmap scaled = square.scaled(renderSide, renderSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        const QPixmap scaled = pixmap.scaled(renderSide, renderSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
         QPainter painter(&fullBox);
         const int x = (targetWidth - scaled.width()) / 2;
@@ -2696,7 +2688,9 @@ void Manager::updateGuideDetailView()
     };
 
     const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
-    const auto renderGuidePixmapForView = [this, &viewSize]()
+    const int viewSquareSide = std::max(1, std::min(guideDetailView->width(), guideDetailView->height()));
+    const QSize viewSquareSize(viewSquareSide, viewSquareSide);
+    const auto renderGuidePixmapForView = [this, &viewSize, &viewSquareSize]()
     {
         if (!guideProcess)
             return QPixmap();
@@ -2704,18 +2698,24 @@ void Manager::updateGuideDetailView()
         if (currentGuidePixmapIndex == 0)
             return guideProcess->getDriftPlotViewPixmap(viewSize);
 
+        if (currentGuidePixmapIndex == 1)
+            return guideProcess->getProfileViewPixmap(viewSquareSize);
+
         return QPixmap();
     };
 
-    if (currentGuidePixmapIndex == 0)
+    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
     {
-        guideDetailView->setStyleSheet(QString());
+        if (currentGuidePixmapIndex == 1)
+            guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
+        else
+            guideDetailView->setStyleSheet(QString());
         const QPixmap viewPixmap = renderGuidePixmapForView();
         if (!viewPixmap.isNull())
         {
             guideDetailView->setScaledContents(false);
             // Use pixmap directly if it's already the correct size, no need to rescale
-            if (viewPixmap.size() == guideDetailView->size())
+            if (viewPixmap.size() == guideDetailView->size() && currentGuidePixmapIndex == 0)
             {
                 guideDetailView->setPixmap(viewPixmap);
             }
@@ -2723,6 +2723,10 @@ void Manager::updateGuideDetailView()
             {
                 // Only apply black box centering if pixmap size differs from widget
                 guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
+            }
+            else if (currentGuidePixmapIndex == 1)
+            {
+                guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(viewPixmap));
             }
             else
             {
@@ -2738,11 +2742,11 @@ void Manager::updateGuideDetailView()
         guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
     }
-    else if (currentGuidePixmapIndex == 1 && guideStarPixmap.get() != nullptr)
+    else if (currentGuidePixmapIndex == 1 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideStarPixmap));
+        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideProfilePixmap));
     }
     else
     {
@@ -3079,7 +3083,7 @@ void Manager::initGuide()
         // guide details buttons
         connect(guideDetailNextButton, &QPushButton::clicked, [this]()
         {
-            if (currentGuidePixmapIndex == 0 && guideStarPixmap.get() != nullptr)
+            if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
                 currentGuidePixmapIndex = 1;
             else
                 currentGuidePixmapIndex = 0;
@@ -3091,7 +3095,7 @@ void Manager::initGuide()
         {
             if (currentGuidePixmapIndex == 1)
                 currentGuidePixmapIndex = 0;
-            else if (guideStarPixmap.get() != nullptr)
+            else if (guideProfilePixmap.get() != nullptr)
                 currentGuidePixmapIndex = 1;
             else
                 currentGuidePixmapIndex = 0;
