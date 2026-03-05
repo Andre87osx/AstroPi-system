@@ -2175,7 +2175,7 @@ void Focus::drawHFRPlot()
         
         // Calculate range with 20% margin on both sides for better visibility
         const double rangeWidth = maxPosition - minPosition;
-        const double margin = std::max(rangeWidth * 0.2, static_cast<double>(pulseDuration));
+        const double margin = std::max(rangeWidth * 0.2, pulseDuration);
         HFRPlot->xAxis->setRange(minPosition - margin, maxPosition + margin);
         
         HFRPlot->yAxis->setRange(minHFRVal, maxHFR);
