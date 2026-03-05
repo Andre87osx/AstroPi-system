@@ -2161,25 +2161,43 @@ void Focus::drawHFRPlot()
 
     drawHFRIndeces();
 
-    double minHFRVal = currentHFR / 2.5;
-    if (hfr_value.size() > 0)
-        minHFRVal = std::max(0, static_cast<int>(0.9 * *std::min_element(hfr_value.begin(), hfr_value.end())));
+    const bool hasHFRValues = !hfr_value.isEmpty();
+    const double minHFRPoint = hasHFRValues ? *std::min_element(hfr_value.begin(), hfr_value.end()) : currentHFR;
+    const double maxHFRPoint = hasHFRValues ? *std::max_element(hfr_value.begin(), hfr_value.end()) : maxHFR;
+
+    const double hfrSpan = std::max(0.01, maxHFRPoint - minHFRPoint);
+    const double hfrPadding = std::max(0.05, hfrSpan * 0.25);
+    double minHFRVal = std::max(0.0, minHFRPoint - hfrPadding);
+    double maxHFRVal = std::max(minHFRVal + 0.1, maxHFRPoint + hfrPadding);
+
+    if (!hasHFRValues)
+    {
+        minHFRVal = currentHFR / 2.5;
+        maxHFRVal = maxHFR;
+    }
 
     // True for the position-based algorithms and those that simulate position.
     if (inFocusLoop == false && (canAbsMove || canRelMove || (focusAlgorithm == FOCUS_LINEAR)))
     {
-        const double minPosition = hfr_position.empty() ?
-                                   0 : *std::min_element(hfr_position.constBegin(), hfr_position.constEnd());
-        const double maxPosition = hfr_position.empty() ?
-                                   1e6 : *std::max_element(hfr_position.constBegin(), hfr_position.constEnd());
-        HFRPlot->xAxis->setRange(minPosition - pulseDuration, maxPosition + pulseDuration);
-        HFRPlot->yAxis->setRange(minHFRVal, maxHFR);
+        const bool hasPositions = !hfr_position.isEmpty();
+        const double minPosition = hasPositions ?
+                                   *std::min_element(hfr_position.constBegin(), hfr_position.constEnd()) : 0;
+        const double maxPosition = hasPositions ?
+                                   *std::max_element(hfr_position.constBegin(), hfr_position.constEnd()) : 1e6;
+
+        const double centerPosition = (minPosition + maxPosition) / 2.0;
+        const double positionHalfSpan = std::max(1.0, (maxPosition - minPosition) / 2.0);
+        const double positionPadding = std::max(10.0, std::max(positionHalfSpan * 0.25, static_cast<double>(pulseDuration)));
+        const double halfRange = positionHalfSpan + positionPadding;
+
+        HFRPlot->xAxis->setRange(centerPosition - halfRange, centerPosition + halfRange);
+        HFRPlot->yAxis->setRange(minHFRVal, maxHFRVal);
     }
     else
     {
         //HFRPlot->xAxis->setLabel(i18n("Iteration"));
         HFRPlot->xAxis->setRange(1, hfr_value.count() + 1);
-        HFRPlot->yAxis->setRange(currentHFR / 2.5, maxHFR * 1.25);
+        HFRPlot->yAxis->setRange(minHFRVal, std::max(maxHFRVal, maxHFR * 1.05));
     }
 
     HFRPlot->replot();
