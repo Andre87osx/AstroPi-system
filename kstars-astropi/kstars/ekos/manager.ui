@@ -1951,7 +1951,7 @@
                     </size>
                    </property>
                    <property name="toolTip">
-                    <string>Guide Profile</string>
+                    <string>Guide Plot</string>
                    </property>
                    <property name="autoFillBackground">
                     <bool>false</bool>
