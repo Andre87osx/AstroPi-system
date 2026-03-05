@@ -1906,7 +1906,7 @@
                 </layout>
                </item>
                <item>
-                <layout class="QHBoxLayout" name="guideGraphsLayout" stretch="0,0,0">
+                <layout class="QHBoxLayout" name="guideGraphsLayout" stretch="0,1,0">
                  <property name="spacing">
                   <number>0</number>
                  </property>
@@ -1950,12 +1950,6 @@
                      <height>180</height>
                     </size>
                    </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>180</width>
-                     <height>180</height>
-                    </size>
-                   </property>
                    <property name="toolTip">
                     <string>Guide Profile</string>
                    </property>
@@ -1963,7 +1957,7 @@
                     <bool>false</bool>
                    </property>
                    <property name="styleSheet">
-                    <string notr="true">QLabel { background-color: black; }</string>
+                    <string notr="true"/>
                    </property>
                    <property name="frameShape">
                     <enum>QFrame::Panel</enum>
