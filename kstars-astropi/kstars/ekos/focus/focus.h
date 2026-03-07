@@ -593,7 +593,7 @@ class Focus : public QWidget, public Ui::Focus
         /// Focus HFR & Centeroid algorithms
         StarAlgorithm focusDetection { ALGORITHM_GRADIENT };
         /// Focus Process Algorithm
-        FocusAlgorithm focusAlgorithm { FOCUS_ITERATIVE };
+     FocusAlgorithm focusAlgorithm { FOCUS_LINEAR };
 
         /*********************
          * HFR Club variables
