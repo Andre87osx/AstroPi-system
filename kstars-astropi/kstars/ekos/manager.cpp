@@ -2628,12 +2628,12 @@ void Manager::updateGuideDetailView()
                             << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
                             << "hasStar=" << (guideStarPixmap.get() != nullptr);
 
-    const bool hasGuideTarget = (guideStarPixmap.get() != nullptr);
+    const bool hasGuideTarget = (guideProfilePixmap.get() != nullptr);
     guideDetailNextButton->setEnabled(hasGuideTarget);
     guideDetailPrevButton->setEnabled(hasGuideTarget);
 
-    if (!hasGuideTarget && currentGuidePixmapIndex == 2)
-        currentGuidePixmapIndex = 1;
+    if (!hasGuideTarget && currentGuidePixmapIndex == 1)
+        currentGuidePixmapIndex = 0;
 
     const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
     {
@@ -2701,15 +2701,13 @@ void Manager::updateGuideDetailView()
         if (!guideProcess)
             return QPixmap();
 
-        if (currentGuidePixmapIndex == 0)
-            return guideProcess->getProfileViewPixmap(viewSize);
         if (currentGuidePixmapIndex == 1)
             return guideProcess->getDriftPlotViewPixmap(viewSize);
 
         return QPixmap();
     };
 
-    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
+    if (currentGuidePixmapIndex == 1)
     {
         guideDetailView->setStyleSheet(QString());
         const QPixmap viewPixmap = renderGuidePixmapForView();
@@ -2721,14 +2719,10 @@ void Manager::updateGuideDetailView()
             {
                 guideDetailView->setPixmap(viewPixmap);
             }
-            else if (currentGuidePixmapIndex == 1)
+            else
             {
                 // Only apply black box centering if pixmap size differs from widget
                 guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
-            }
-            else
-            {
-                guideDetailView->setPixmap(viewPixmap);
             }
             return;
         }
@@ -2736,21 +2730,15 @@ void Manager::updateGuideDetailView()
 
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
-        guideDetailView->setStyleSheet(QString());
+        guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
+        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideProfilePixmap));
     }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
     {
         guideDetailView->setStyleSheet(QString());
         guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
-    }
-    else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
-    {
-        guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
-        guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideStarPixmap));
     }
     else
     {
@@ -3088,10 +3076,8 @@ void Manager::initGuide()
         connect(guideDetailNextButton, &QPushButton::clicked, [this]()
         {
             if (currentGuidePixmapIndex == 0 && guidePlotPixmap.get() != nullptr)
-                currentGuidePixmapIndex++;
-            else if (currentGuidePixmapIndex == 1 && guideStarPixmap.get() != nullptr)
-                currentGuidePixmapIndex++;
-            else if (currentGuidePixmapIndex > 0)
+                currentGuidePixmapIndex = 1;
+            else
                 currentGuidePixmapIndex = 0;
 
             guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
@@ -3099,18 +3085,12 @@ void Manager::initGuide()
         });
         connect(guideDetailPrevButton, &QPushButton::clicked, [this]()
         {
-            switch (currentGuidePixmapIndex)
-            {
-                case 0:
-                    if (guideStarPixmap.get() != nullptr)
-                        currentGuidePixmapIndex = 2;
-                    else if (guidePlotPixmap.get() != nullptr)
-                        currentGuidePixmapIndex = 1;
-                    break;
-                default:
-                    currentGuidePixmapIndex--;
-                    break;
-            }
+            if (currentGuidePixmapIndex == 1)
+                currentGuidePixmapIndex = 0;
+            else if (guidePlotPixmap.get() != nullptr)
+                currentGuidePixmapIndex = 1;
+            else
+                currentGuidePixmapIndex = 0;
 
             guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
             updateGuideDetailView();
