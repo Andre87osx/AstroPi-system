@@ -1792,7 +1792,7 @@
       <entry name="FocusTicks" type="UInt">
          <label>Default Focuser step ticks</label>
          <whatsthis>Step size of the absolute focuser. The step size TICKS should be adjusted so that when the focuser moves TICKS steps, the difference in HFR is more than 0.1 pixels. Lower the value when you are close to optimal focus.</whatsthis>
-         <default>25</default>
+         <default>50</default>
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
@@ -1805,7 +1805,7 @@
       <entry name="FocusTolerance" type="Double">
          <label>Default Focuser tolerance value</label>
          <whatsthis>The tolerance specifies the percentage difference between the current focusing position and the minimum obtained during the focusing run. Adjustment of this value is necessary to prevent the focusing algorithm from oscillating back and forth.</whatsthis>
-         <default>1</default>
+         <default>2.5</default>
       </entry>
       <entry name="FocusCaptureTimeout" type="UInt">
          <whatsthis>Maximum time in seconds to wait for a captured image to be received before declaring a timeout.</whatsthis>
@@ -1818,7 +1818,7 @@
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
          <whatsthis>Set the maximum travel distance of an absolute focuser.</whatsthis>
-         <default>250</default>
+         <default>600</default>
       </entry>
       <entry name="InitialFocusOutSteps" type="Double">
          <label>Initial Focus Out Steps</label>
@@ -1901,7 +1901,7 @@
       </entry>
       <entry name="FocusExposure" type="double">
          <label>Default focus exposure time when no filters are used.</label>
-         <default>1</default>
+         <default>1.5</default>
       </entry>
       <entry name="FocusGaussianSigma" type="Double">
          <label>Gaussian blur sigma value.</label>
