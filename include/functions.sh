@@ -1167,7 +1167,9 @@ function chkKStars()
 	# Setup log directory with date structure
 	LOG_DIR="${appDir}/log/$(date +%Y-%m-%d)"
 	LOG_FILE="${LOG_DIR}/kstars-build-$(date +%H%M%S).log"
+	RC_FILE="${LOG_DIR}/kstars-build-$(date +%H%M%S).rc"
 	mkdir -p "${LOG_DIR}" || err_exit_kstars "Failed to create log directory: ${LOG_DIR}"
+	echo 1 > "${RC_FILE}"
 
 	echo "# Check KStars AstroPi"
 	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
@@ -1208,16 +1210,18 @@ function chkKStars()
 				
 				if [ ${status} -ne 0 ]; then
 					echo "# ERROR: ${steps[$i]} failed with exit code ${status}" | tee -a "${LOG_FILE}"
-					exit ${status}
+					echo ${status} > "${RC_FILE}"
+					exit 0
 				fi
 			done
     		echo "100"
     		echo "# Installation complete!" | tee -a "${LOG_FILE}"
     		echo "Build completed: $(date)" | tee -a "${LOG_FILE}"
-	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation...\n\nLog saved to:\n${LOG_FILE}" --percentage=0 --auto-close --width="${Wprogress}"
+	    	echo 0 > "${RC_FILE}"
+	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation...\n\nLog saved to:\n${LOG_FILE}" --percentage=0 --auto-close --width="${Wprogress}" || true
 
-	exit_stat=$?
-	if [ ${exit_stat} -ne 0 ]; then 
+	build_rc=$(cat "${RC_FILE}" 2>/dev/null || echo 1)
+	if [ "${build_rc}" -ne 0 ]; then
 		err_exit_kstars "Error during KStars AstroPi build and installation\n\nBuild log saved to:\n${LOG_FILE}"
 	fi
   	
