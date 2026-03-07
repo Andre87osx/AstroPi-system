@@ -2701,13 +2701,13 @@ void Manager::updateGuideDetailView()
         if (!guideProcess)
             return QPixmap();
 
-        if (currentGuidePixmapIndex == 0)
+        if (currentGuidePixmapIndex == 1)
             return guideProcess->getDriftPlotViewPixmap(viewSize);
 
         return QPixmap();
     };
 
-    if (currentGuidePixmapIndex == 0)
+    if (currentGuidePixmapIndex == 1)
     {
         guideDetailView->setStyleSheet(QString());
         const QPixmap viewPixmap = renderGuidePixmapForView();
@@ -2728,17 +2728,17 @@ void Manager::updateGuideDetailView()
         }
     }
 
-    if (currentGuidePixmapIndex == 0 && guidePlotPixmap.get() != nullptr)
-    {
-        guideDetailView->setStyleSheet(QString());
-        guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
-    }
-    else if (currentGuidePixmapIndex == 1 && guideProfilePixmap.get() != nullptr)
+    if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideProfilePixmap));
+    }
+    else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
+    {
+        guideDetailView->setStyleSheet(QString());
+        guideDetailView->setScaledContents(false);
+        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
     }
     else
     {
@@ -3075,7 +3075,7 @@ void Manager::initGuide()
         // guide details buttons
         connect(guideDetailNextButton, &QPushButton::clicked, [this]()
         {
-            if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
+            if (currentGuidePixmapIndex == 0 && guidePlotPixmap.get() != nullptr)
                 currentGuidePixmapIndex = 1;
             else
                 currentGuidePixmapIndex = 0;
@@ -3087,7 +3087,7 @@ void Manager::initGuide()
         {
             if (currentGuidePixmapIndex == 1)
                 currentGuidePixmapIndex = 0;
-            else if (guideProfilePixmap.get() != nullptr)
+            else if (guidePlotPixmap.get() != nullptr)
                 currentGuidePixmapIndex = 1;
             else
                 currentGuidePixmapIndex = 0;
@@ -3870,8 +3870,8 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
 
     const auto showGuidePlotInDetailView = [this]()
     {
-        if (currentGuidePixmapIndex != 0)
-            currentGuidePixmapIndex = 0;
+        if (currentGuidePixmapIndex != 1)
+            currentGuidePixmapIndex = 1;
 
         guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
         updateGuideDetailView();
