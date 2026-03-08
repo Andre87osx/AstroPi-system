@@ -593,7 +593,6 @@ class Manager : public QDialog, public Ui::Manager
         std::unique_ptr<QPixmap> guideProfilePixmap;
         std::unique_ptr<QPixmap> guidePlotPixmap;
         int currentGuidePixmapIndex = 0;
-        GuideState currentGuideState { GUIDE_IDLE };
         const QString guideDetailViewTooltips[3] = {"Guide Profile", "Guide Plot", "Guide Star"};
         // QLabel per il valore totale RMS
         QLabel *totalRMSLabel { nullptr };

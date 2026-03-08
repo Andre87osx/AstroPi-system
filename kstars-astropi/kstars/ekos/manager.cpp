@@ -2620,15 +2620,6 @@ void Manager::updateGuideDetailView()
         return;
     }
 
-    if ((currentGuideState == Ekos::GUIDE_CALIBRATING ||
-            currentGuideState == Ekos::GUIDE_GUIDING ||
-            currentGuideState == Ekos::GUIDE_DITHERING ||
-            currentGuideState == Ekos::GUIDE_DITHERING_SUCCESS) &&
-            currentGuidePixmapIndex != 1)
-    {
-        currentGuidePixmapIndex = 1;
-    }
-
     if (isPlotDiagEnabled())
         qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideDetailView(entry)"
                             << "index=" << currentGuidePixmapIndex
@@ -2674,24 +2665,78 @@ void Manager::updateGuideDetailView()
         return fullBox;
     };
 
-    if (currentGuidePixmapIndex == 1 && guideProcess)
+    const auto fitSquareGuideTargetInBlackBox = [this](const QPixmap &pixmap)
     {
-        const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
-        const QPixmap driftPlotPixmap = guideProcess->getDriftPlotViewPixmap(viewSize);
-        if (!driftPlotPixmap.isNull())
+        if (pixmap.isNull())
+            return QPixmap();
+
+        const int targetWidth = std::max(guideDetailView->width(), 1);
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+
+        const int side = std::min(pixmap.width(), pixmap.height());
+        if (side <= 0)
+            return QPixmap();
+
+        const int srcX = (pixmap.width() - side) / 2;
+        const int srcY = (pixmap.height() - side) / 2;
+        const QPixmap square = pixmap.copy(srcX, srcY, side, side);
+
+        QPixmap fullBox(targetWidth, targetHeight);
+        fullBox.fill(Qt::black);
+
+        const int renderSide = std::min(targetWidth, targetHeight);
+        const QPixmap scaled = square.scaled(renderSide, renderSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        QPainter painter(&fullBox);
+        const int x = (targetWidth - scaled.width()) / 2;
+        const int y = (targetHeight - scaled.height()) / 2;
+        painter.drawPixmap(x, y, scaled);
+
+        return fullBox;
+    };
+
+    const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+    const auto renderGuidePixmapForView = [this, &viewSize]()
+    {
+        if (!guideProcess)
+            return QPixmap();
+
+        if (currentGuidePixmapIndex == 0)
+            return guideProcess->getProfileViewPixmap(viewSize);
+        if (currentGuidePixmapIndex == 1)
+            return guideProcess->getDriftPlotViewPixmap(viewSize);
+
+        return QPixmap();
+    };
+
+    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
+    {
+        guideDetailView->setStyleSheet(QString());
+        const QPixmap viewPixmap = renderGuidePixmapForView();
+        if (!viewPixmap.isNull())
         {
-            guideDetailView->setStyleSheet(QString());
             guideDetailView->setScaledContents(false);
-            if (driftPlotPixmap.size() == guideDetailView->size())
-                guideDetailView->setPixmap(driftPlotPixmap);
+            // Use pixmap directly if it's already the correct size, no need to rescale
+            if (viewPixmap.size() == guideDetailView->size())
+            {
+                guideDetailView->setPixmap(viewPixmap);
+            }
+            else if (currentGuidePixmapIndex == 1)
+            {
+                // Only apply black box centering if pixmap size differs from widget
+                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
+            }
             else
-                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(driftPlotPixmap));
+            {
+                guideDetailView->setPixmap(viewPixmap);
+            }
             return;
         }
     }
 
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
+        guideDetailView->setStyleSheet(QString());
         guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
     }
@@ -2699,20 +2744,17 @@ void Manager::updateGuideDetailView()
     {
         guideDetailView->setStyleSheet(QString());
         guideDetailView->setScaledContents(false);
-        const int targetWidth = std::max(guideDetailView->width(), 1);
-        const int targetHeight = std::max(guideDetailView->height(), 1);
-        guideDetailView->setPixmap(guidePlotPixmap->scaled(targetWidth, targetHeight,
-                                                           Qt::IgnoreAspectRatio,
-                                                           Qt::SmoothTransformation));
+        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
         guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(fitGuidePixmapInBlackBox(*guideStarPixmap));
+        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideStarPixmap));
     }
     else
     {
+        guideDetailView->setStyleSheet(QString());
         // Schedule placeholder drawing after widget is rendered with final dimensions
         QTimer::singleShot(0, [this, label = guideDetailView]()
         {
@@ -3844,7 +3886,6 @@ void Manager::setFocusStatus(Ekos::FocusState status)
 
 void Manager::updateGuideStatus(Ekos::GuideState status)
 {
-    currentGuideState = status;
     guideStatus->setText(Ekos::getGuideStatusString(status));
 
     const auto showGuidePlotInDetailView = [this]()
