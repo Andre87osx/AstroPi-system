@@ -2665,6 +2665,22 @@ void Manager::updateGuideDetailView()
         return fullBox;
     };
 
+    if (currentGuidePixmapIndex == 1 && guideProcess)
+    {
+        const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+        const QPixmap driftPlotPixmap = guideProcess->getDriftPlotViewPixmap(viewSize);
+        if (!driftPlotPixmap.isNull())
+        {
+            guideDetailView->setStyleSheet(QString());
+            guideDetailView->setScaledContents(false);
+            if (driftPlotPixmap.size() == guideDetailView->size())
+                guideDetailView->setPixmap(driftPlotPixmap);
+            else
+                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(driftPlotPixmap));
+            return;
+        }
+    }
+
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
     {
         guideDetailView->setScaledContents(false);
@@ -2677,8 +2693,9 @@ void Manager::updateGuideDetailView()
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
+        guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guideStarPixmap));
+        guideDetailView->setPixmap(fitGuidePixmapInBlackBox(*guideStarPixmap));
     }
     else
     {
