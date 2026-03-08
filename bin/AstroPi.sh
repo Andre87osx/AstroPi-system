@@ -45,23 +45,16 @@ function AdminSystem() {
 		StatHotSpot="Disable"  # Hotspot is disabled
 	fi
 
-	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage details:\nMain disk used at <b>${diskUsagePerc}</b>	|	Free disk space: <b>${diskUsageFree}</b>"
+	textS="<big><b>Admin ${W_Title}</b></big>\n(C) 2022 - AstroPi Team\n\nSystem Info:\n<b>${sysinfo}</b>\n\nStorage Main disk used at <b>${diskUsagePerc}</b>	Free disk space: <b>${diskUsageFree}</b>"
 
-	ansS=$(zenity --list \
-		--width=$((W+220)) \
-		--height=$((H+30)) \
-		--title="${W_Title}" \
-		--cancel-label="Main" \
-		--hide-header \
-		--text "${textS}" \
-		--radiolist \
-		--column "Pick" --column "Option" --column "Details" \
+	ansS=$(zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textS}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Hotspot Manager is ${StatHotSpot}" "=> AUTO/Off WiFi NETWORK Manager" \
 		FALSE "Setup my WiFi" "=> Add new WiFi SSID connection" \
 		FALSE "System Cleaning" "=> Delete unused library and script" \
-		FALSE "Check for System update" "=> Update Linux AstroPi" \
+		FALSE "Check for System update" "=> Update Linux AstroPi (stable)" \
+		FALSE "Check for Beta update" "=> Update to latest Pre-release (testing)" \
 		FALSE "System Backup" "=> Perform AstroPi full backup")
-
+		
 	case $? in
 		0)
 			case "$(echo "$ansS" | xargs)" in
@@ -77,6 +70,56 @@ function AdminSystem() {
 							zenity --progress --title="Downloading..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
 							echo "Library downloaded"
 							bash install.sh &
+							exit 0
+							;;
+						5)
+							echo "The web proxy won't let us through"
+							zenity --error --text="The web proxy won't let us through"
+							exit 1
+							;;
+						*)
+							echo "The network is down or very slow"
+							zenity --error --text="The network is down or very slow"
+							exit 1
+							;;
+					esac
+					;;
+				"Check for Beta update")
+					echo "Welcome to AstroPi Beta installer"
+					echo "Checking internet connection and searching for pre-releases..."
+
+					case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
+						[23])
+							echo "HTTP connectivity is up"
+							# Get first pre-release tag from GitHub API
+							RELEASES_JSON=$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases)
+							BETA_TAG=$(echo "${RELEASES_JSON}" | grep -B5 '"prerelease": true' | grep -m1 '"tag_name"' | cut -d '"' -f4)
+							
+							if [ -z "${BETA_TAG}" ]; then
+								echo "No beta/pre-release found"
+								zenity --warning --width="${W}" --text="<b>No Beta version found</b>\n\nThere are currently no pre-release versions available.\nUse stable update instead." --title="${W_Title}"
+								exit 1
+							fi
+							
+							# Warn user about beta risks
+							zenity --question --width="${W}" \
+								--text="<b><big>Beta Update Warning</big></b>\n\nYou are about to install pre-release version:\n<b>${BETA_TAG}</b>\n\n⚠️ Beta versions may contain bugs and unstable features.\n\nDo you want to continue?" \
+								--title="${W_Title}"
+							
+							if [ $? -ne 0 ]; then
+								echo "User cancelled beta installation"
+								exit 0
+							fi
+							
+							echo "Downloading install.sh from beta ${BETA_TAG}..."
+							( curl -L "https://raw.githubusercontent.com/Andre87osx/AstroPi-system/${BETA_TAG}/bin/install.sh" > install_beta.sh ) 2>&1 | \
+							zenity --progress --title="Downloading Beta..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
+							
+							# Patch install.sh to force usage of beta tag
+							sed -i "s|LATEST_TAG=\$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases/latest | grep tag_name | cut -d '\"' -f4)|LATEST_TAG=\"${BETA_TAG}\"|" install_beta.sh
+							
+							echo "Starting beta installation (${BETA_TAG})..."
+							bash install_beta.sh &
 							exit 0
 							;;
 						5)
@@ -121,7 +164,7 @@ function AdminSystem() {
 function AdminKStars() {
 	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team"
 
-	ansK=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	ansK=$( zenity --list --width=${W} --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Update INDI and Driver	" "=> Update INDI core and Driver" \
 		FALSE "Update KStars AstroPi	" "=> Update KStars AstroPi" \
 		FALSE "Check GSC and Index	" "=> Check GSC catalog and Index for astrometry" \
@@ -159,7 +202,7 @@ function Extra()
 	textK="<big><b>KStars ${W_Title}</b></big>\n(C) 2022 - AstroPi Team
 	\n<small>Aimone A. | Ing Ostorero R. | Dr. Leali R. R. | Dr. Ghio G.</small>"
 
-	ansE=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label=Main --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
+	ansE=$( zenity --list --width=$((W+220)) --height=${H} --title="${W_Title}" --cancel-label="Home" --hide-header --text "${textK}" --radiolist --column "Pick" --column "Option" --column "Details" \
 		FALSE "Credits	" "=> Authors and more" \
 		FALSE "AstroPi Handbook	" "=> Complete AstroPi guidelines" \
 		FALSE "KDE KStars guide	" "=> Original tutorial (not AstroPi ver.)" )	

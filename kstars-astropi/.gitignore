@@ -85,3 +85,4 @@ unitybuild_*.cpp
 .clangd
 .idea
 /cmake-build*
+/log

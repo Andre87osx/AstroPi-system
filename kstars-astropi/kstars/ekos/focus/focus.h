@@ -123,6 +123,8 @@ class Focus : public QWidget, public Ui::Focus
             return exposureIN->value();
         }
 
+          QPixmap getProfileViewPixmap(const QSize &sizeHint = QSize()) const;
+
         /** DBUS interface function.
              * Set CCD binning
              * @param binX horizontal binning

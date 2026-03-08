@@ -49,6 +49,26 @@
 
 namespace Ekos
 {
+static bool updateSequenceArrayStatus(const QList<SequenceJob *> &jobs, SequenceJob *job, QJsonArray &sequenceArray,
+                                      const QString &status)
+{
+    const int index = jobs.indexOf(job);
+    if (index < 0 || index >= sequenceArray.size())
+    {
+        qCWarning(KSTARS_EKOS_CAPTURE) << "Skipping sequence status update due to invalid index."
+                                       << "index=" << index
+                                       << "jobs=" << jobs.size()
+                                       << "sequenceArray=" << sequenceArray.size()
+                                       << "status=" << status;
+        return false;
+    }
+
+    QJsonObject oneSequence = sequenceArray.at(index).toObject();
+    oneSequence["Status"] = status;
+    sequenceArray.replace(index, oneSequence);
+    return true;
+}
+
 Capture::Capture()
 {
     setupUi(this);
@@ -680,7 +700,7 @@ void Capture::start()
     if (limitFocusDeltaTS->isChecked() && m_AutoFocusReady == false)
         appendLogText(i18n("Warning: temperature delta check is selected but autofocus process was not started."));
 
-    if (currentCCD->getTelescopeType() != ISD::CCD::TELESCOPE_PRIMARY)
+    if (currentCCD && currentCCD->getTelescopeType() != ISD::CCD::TELESCOPE_PRIMARY)
     {
         connect(KSMessageBox::Instance(), &KSMessageBox::accepted, this, [ = ]()
         {
@@ -742,11 +762,8 @@ void Capture::stop(CaptureState targetState)
             activeJob->abort();
             if (activeJob->isPreview() == false)
             {
-                int index = jobs.indexOf(activeJob);
-                QJsonObject oneSequence = m_SequenceArray[index].toObject();
-                oneSequence["Status"] = "Aborted";
-                m_SequenceArray.replace(index, oneSequence);
-                emit sequenceChanged(m_SequenceArray);
+                if (updateSequenceArrayStatus(jobs, activeJob, m_SequenceArray, "Aborted"))
+                    emit sequenceChanged(m_SequenceArray);
             }
         }
 
@@ -762,12 +779,14 @@ void Capture::stop(CaptureState targetState)
             activeJob->disconnect(this);
             activeJob->reset();
             activeJob->setPreview(false);
-            currentCCD->setUploadMode(rememberUploadMode);
+            if (currentCCD)
+                currentCCD->setUploadMode(rememberUploadMode);
         }
         // or regular preview job
         else
         {
-            currentCCD->setUploadMode(rememberUploadMode);
+            if (currentCCD)
+                currentCCD->setUploadMode(rememberUploadMode);
             jobs.removeOne(activeJob);
             // Delete preview job
             delete (activeJob);
@@ -1166,6 +1185,9 @@ void Capture::resetFrameToZero()
 
 void Capture::updateFrameProperties(int reset)
 {
+    if (!currentCCD)
+        return;
+
     int binx = 1, biny = 1;
     double min, max, step;
     int xstep = 0, ystep = 0;
@@ -1175,6 +1197,9 @@ void Capture::updateFrameProperties(int reset)
     QString exposureElem = useGuideHead ? QString("GUIDER_EXPOSURE_VALUE") : QString("CCD_EXPOSURE_VALUE");
     targetChip =
         useGuideHead ? currentCCD->getChip(ISD::CCDChip::GUIDE_CCD) : currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
+
+    if (!targetChip)
+        return;
 
     captureFrameWN->setEnabled(targetChip->canSubframe());
     captureFrameHN->setEnabled(targetChip->canSubframe());
@@ -1194,6 +1219,9 @@ void Capture::updateFrameProperties(int reset)
             captureExposureN->setDecimals(6);
         else
             captureExposureN->setDecimals(3);
+        // Forza il minimo a 1e-11 sec
+        if (min < 0.00000000001)
+            min = 0.00000000001;
         for(int i = 0; i < exposureValues.count(); i++)
         {
             double value = exposureValues.at(i);
@@ -1748,6 +1776,9 @@ IPState Capture::setCaptureComplete()
 
     downloadProgressTimer.stop();
 
+    if (!activeJob)
+        return IPS_BUSY;
+
     // In case we're framing, let's start
     if (m_isLooping)
     {
@@ -1915,11 +1946,8 @@ void Capture::processJobCompletionStage2()
 
     if (activeJob->isPreview() == false)
     {
-        int index = jobs.indexOf(activeJob);
-        QJsonObject oneSequence = m_SequenceArray[index].toObject();
-        oneSequence["Status"] = "Complete";
-        m_SequenceArray.replace(index, oneSequence);
-        emit sequenceChanged(m_SequenceArray);
+        if (updateSequenceArrayStatus(jobs, activeJob, m_SequenceArray, "Complete"))
+            emit sequenceChanged(m_SequenceArray);
     }
 
     stop();
@@ -2355,11 +2383,8 @@ void Capture::captureImage()
             captureTimeout.start(static_cast<int>(activeJob->getExposure()) * 1000 + CAPTURE_TIMEOUT_THRESHOLD);
             if (activeJob->isPreview() == false)
             {
-                int index = jobs.indexOf(activeJob);
-                QJsonObject oneSequence = m_SequenceArray[index].toObject();
-                oneSequence["Status"] = "In Progress";
-                m_SequenceArray.replace(index, oneSequence);
-                emit sequenceChanged(m_SequenceArray);
+                if (updateSequenceArrayStatus(jobs, activeJob, m_SequenceArray, "In Progress"))
+                    emit sequenceChanged(m_SequenceArray);
             }
         }
         break;
@@ -2581,12 +2606,11 @@ void Capture::updateCCDTemperature(double value)
     if (cameraTemperatureN->cleanText().isEmpty())
         cameraTemperatureN->setValue(value);
 
-    //if (activeJob && (activeJob->getStatus() == SequenceJob::JOB_ABORTED || activeJob->getStatus() == SequenceJob::JOB_IDLE))
     if (activeJob)
         activeJob->setCurrentTemperature(value);
 }
 
-void Capture::updateRotatorNumber(INumberVectorProperty * nvp)
+void Capture::updateRotatorNumber(INumberVectorProperty *nvp)
 {
     if (!strcmp(nvp->name, "ABS_ROTATOR_ANGLE"))
     {
@@ -2895,7 +2919,7 @@ void Capture::removeJob(int index)
         return;
     }
 
-    if (index < 0)
+    if (index < 0 || index >= jobs.count())
         return;
 
 
@@ -7087,16 +7111,6 @@ void Capture::setCoolerToggled(bool enabled)
 
 void Capture::processCaptureTimeout()
 {
-    auto restartExposure = [&]()
-    {
-        appendLogText(i18n("Exposure timeout. Restarting exposure..."));
-        currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
-        ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
-        targetChip->abortExposure();
-        targetChip->capture(captureExposureN->value());
-        captureTimeout.start(static_cast<int>(captureExposureN->value() * 1000 + CAPTURE_TIMEOUT_THRESHOLD));
-    };
-
     m_CaptureTimeoutCounter++;
 
 
@@ -7114,14 +7128,38 @@ void Capture::processCaptureTimeout()
         QString camera = currentCCD->getDeviceName();
         QString fw = currentFilter ? currentFilter->getDeviceName() : "";
         emit driverTimedout(camera);
-        QTimer::singleShot(5000, [ &, camera, fw]()
+        QTimer::singleShot(5000, this, [ &, camera, fw]()
         {
             m_DeviceRestartCounter++;
             reconnectDriver(camera, fw);
         });
         return;
     }
-    else restartExposure();
+    else
+    {
+        if (currentCCD)
+        {
+            appendLogText(i18n("Exposure timeout. Restarting exposure..."));
+            currentCCD->setTransformFormat(ISD::CCD::FORMAT_FITS);
+            ISD::CCDChip *targetChip = currentCCD->getChip(useGuideHead ? ISD::CCDChip::GUIDE_CCD : ISD::CCDChip::PRIMARY_CCD);
+            if (targetChip)
+            {
+                targetChip->abortExposure();
+                targetChip->capture(captureExposureN->value());
+                captureTimeout.start(static_cast<int>(captureExposureN->value() * 1000 + CAPTURE_TIMEOUT_THRESHOLD));
+            }
+            else
+            {
+                qCDebug(KSTARS_EKOS_CAPTURE) << "Unable to restart exposure as CCD chip is missing, trying again in 5 seconds...";
+                QTimer::singleShot(5000, this, &Capture::processCaptureTimeout);
+            }
+        }
+        else
+        {
+            qCDebug(KSTARS_EKOS_CAPTURE) << "Unable to restart exposure as camera is missing, trying again in 5 seconds...";
+            QTimer::singleShot(5000, this, &Capture::processCaptureTimeout);
+        }
+    }
 }
 
 //void Capture::setGeneratedPreviewFITS(const QString &previewFITS)
@@ -7133,13 +7171,14 @@ void Capture::createDSLRDialog()
 {
     dslrInfoDialog.reset(new DSLRInfo(this, currentCCD));
 
-    connect(dslrInfoDialog.get(), &DSLRInfo::infoChanged, [this]()
+    connect(dslrInfoDialog.get(), &DSLRInfo::infoChanged, this, [this]()
     {
-        addDSLRInfo(QString(currentCCD->getDeviceName()),
-                    dslrInfoDialog->sensorMaxWidth,
-                    dslrInfoDialog->sensorMaxHeight,
-                    dslrInfoDialog->sensorPixelW,
-                    dslrInfoDialog->sensorPixelH);
+        if (currentCCD)
+            addDSLRInfo(QString(currentCCD->getDeviceName()),
+                        dslrInfoDialog->sensorMaxWidth,
+                        dslrInfoDialog->sensorMaxHeight,
+                        dslrInfoDialog->sensorPixelW,
+                        dslrInfoDialog->sensorPixelH);
     });
 
     dslrInfoDialog->show();

@@ -399,6 +399,10 @@ class Manager : public QDialog, public Ui::Manager
         void deviceConnected();
         void deviceDisconnected();
 
+        // Placeholder plot
+        void drawGuidePlaceholderPlot(QLabel *label);
+        void drawFocusPlaceholderPlot(QLabel *label);
+
         //void processINDIModeChange();
         void checkINDITimeout();
 
@@ -449,6 +453,7 @@ class Manager : public QDialog, public Ui::Manager
         void updateGuideProfilePixmap(QPixmap &profilePix);
         void updateGuidePlotPixmap(QPixmap &plotPix);
         void updateSigmas(double ra, double de);
+        void updateGuideSNR(double snr);
         void updateGuideDetailView();
 
     private:
@@ -589,6 +594,8 @@ class Manager : public QDialog, public Ui::Manager
         std::unique_ptr<QPixmap> guidePlotPixmap;
         int currentGuidePixmapIndex = 0;
         const QString guideDetailViewTooltips[3] = {"Guide Profile", "Guide Plot", "Guide Star"};
+        // QLabel per il valore totale RMS
+        QLabel *totalRMSLabel { nullptr };
 
         ProfileInfo *currentProfile { nullptr };
         bool profileWizardLaunched { false };

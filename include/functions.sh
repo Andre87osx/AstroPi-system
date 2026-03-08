@@ -12,9 +12,9 @@
 
 # Create version of AstroPi
 majorRelease=1								# Major Release
-minorRelease=7.8							# Minor Release
+minorRelease=7.9							# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
-KStars_v=3.5.4_v1.7.8						# Based on KDE Kstrs v.3.5.4
+KStars_v=3.5.4_v1.7.9						# Based on KDE Kstrs v.3.5.4
 Indi_v=1.9.7								# Based on INDI 1.9.7 Core
 StellarSolver_v=1.9							# From Rlancaste GitHub
 
@@ -29,20 +29,20 @@ H_SMALL=$((SCREEN_HEIGHT / 4))
 
 # Medium: standard info dialogs, forms (typical messages)
 W_MEDIUM=$((SCREEN_WIDTH / 3))
-H_MEDIUM=$((SCREEN_HEIGHT / 2))
+H_MEDIUM=$((SCREEN_HEIGHT * 2 / 5))
 
 # Large: log viewers, detailed error messages, text-info dialogs
 W_LARGE=$((SCREEN_WIDTH / 5))
-H_LARGE=$((SCREEN_HEIGHT / 3))
+H_LARGE=$((SCREEN_HEIGHT / 4))
 
 # Legacy variables for backward compatibility (defaults to medium)
 W=${W_MEDIUM}
 H=${H_MEDIUM}
-Wprogress=$((SCREEN_WIDTH / 2))
+Wprogress=$((SCREEN_WIDTH / 3))
 
 # Cap main window size to avoid huge dialogs on scaled displays
 if [ ${W} -gt 900 ]; then W=900; fi
-if [ ${H} -gt 600 ]; then H=600; fi
+if [ ${H} -gt 520 ]; then H=520; fi
 
 W_Title="AstroPi System v${AstroPi_v}"
 W_err_generic="<b>Something went wrong...</b>\nContact support at
@@ -1164,6 +1164,13 @@ function chkKStars()
 		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove old WorkDir: ${WorkDir}"
 	fi
 
+	# Setup log directory with date structure
+	LOG_DIR="${appDir}/log/$(date +%Y-%m-%d)"
+	LOG_FILE="${LOG_DIR}/kstars-build-$(date +%H%M%S).log"
+	RC_FILE="${LOG_DIR}/kstars-build-$(date +%H%M%S).rc"
+	mkdir -p "${LOG_DIR}" || err_exit_kstars "Failed to create log directory: ${LOG_DIR}"
+	echo 1 > "${RC_FILE}"
+
 	echo "# Check KStars AstroPi"
 	if [ ! -d "${WorkDir}"/kstars-cmake ]; then mkdir -p "${WorkDir}"/kstars-cmake; fi
 	if [ ! -d "${HOME}"/.indi/logs ]; then mkdir -p "${HOME}"/.indi/logs; fi
@@ -1184,31 +1191,38 @@ function chkKStars()
 	(
     		echo "10"
     		echo "# Preparing to run cmake..."
+    		echo "=== KStars AstroPi Build Log ===" | tee -a "${LOG_FILE}"
+    		echo "Build started: $(date)" | tee -a "${LOG_FILE}"
+    		echo "" | tee -a "${LOG_FILE}"
 
 			for i in "${!commands[@]}"; do
 				echo "${percentages[$i]}"
 				echo "# ${steps[$i]}..."
 				
-				# Execute command with output streaming, capture exit status
+				# Execute command with output streaming and log file capture
+				echo "=== ${steps[$i]} ===" | tee -a "${LOG_FILE}"
 				stdbuf -oL -eL bash -c "${commands[$i]} 2>&1" | while IFS= read -r line; do
-            		echo "# $line"
+            		echo "# $line" | tee -a "${LOG_FILE}"
         		done
 				
 				# Capture exit status from the command (first element of PIPESTATUS)
 				status=${PIPESTATUS[0]}
 				
 				if [ ${status} -ne 0 ]; then
-					echo "# ERROR: ${steps[$i]} failed with exit code ${status}"
-					exit ${status}
+					echo "# ERROR: ${steps[$i]} failed with exit code ${status}" | tee -a "${LOG_FILE}"
+					echo ${status} > "${RC_FILE}"
+					exit 0
 				fi
 			done
     		echo "100"
-    		echo "# Installation complete!"
-	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation..." --percentage=0 --auto-close --width="${Wprogress}"
+    		echo "# Installation complete!" | tee -a "${LOG_FILE}"
+    		echo "Build completed: $(date)" | tee -a "${LOG_FILE}"
+	    	echo 0 > "${RC_FILE}"
+	) | zenity --progress --title="Building and Installing KStars AstroPi" --text="Starting build and installation...\n\nLog saved to:\n${LOG_FILE}" --percentage=0 --auto-close --width="${Wprogress}" || true
 
-	exit_stat=$?
-	if [ ${exit_stat} -ne 0 ]; then 
-		err_exit_kstars "Error during KStars AstroPi build and installation"
+	build_rc=$(cat "${RC_FILE}" 2>/dev/null || echo 1)
+	if [ "${build_rc}" -ne 0 ]; then
+		err_exit_kstars "Error during KStars AstroPi build and installation\n\nBuild log saved to:\n${LOG_FILE}"
 	fi
   	
    	echo "# Cleaning CMake Project..."
@@ -1216,7 +1230,7 @@ function chkKStars()
 		sudo rm -rf "${WorkDir}" || err_exit_kstars "Failed to remove WorkDir during cleanup"
 	fi
 
-	zenity --info --width=${W} --text="KStars AstroPi $KStars_v successfully installed" --title="${W_Title}"
+	zenity --info --width=${W} --text="KStars AstroPi $KStars_v successfully installed\n\n<b>Build log saved to:</b>\n${LOG_FILE}" --title="${W_Title}"
 	
 	# restore trap
 	trap - ERR

@@ -40,6 +40,7 @@
 #include <QTextBrowser>
 #include <QTextStream>
 #include <QVBoxLayout>
+#include <QResizeEvent>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -256,15 +257,17 @@ Scheduler::Scheduler()
 
     if (astroPiLogoLabel != nullptr)
     {
-        QPixmap logoPixmap;
-        logoPixmap.load(":/icons/astropi_scheduler_logo.png");
-
+        // Prefer dedicated logo assets. Use wallpaper only as a last fallback.
         const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-        const QString appLogoPath = appDataPath + "/astropi_scheduler_logo.png";
-
         const QStringList candidatePaths
         {
-            appLogoPath,
+            ":/icons/astropi_scheduler_logo.png",
+            appDataPath + "/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../../astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../kstars/data/icons/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../../kstars/data/icons/astropi_scheduler_logo.png",
             QCoreApplication::applicationDirPath() + "/AstroPi_wallpaper.png",
             QCoreApplication::applicationDirPath() + "/../AstroPi_wallpaper.png",
             QCoreApplication::applicationDirPath() + "/../../AstroPi_wallpaper.png",
@@ -276,29 +279,18 @@ Scheduler::Scheduler()
             QCoreApplication::applicationDirPath() + "/../../../Loghi&background/AstroPi_wallpaper.png"
         };
 
-        if (logoPixmap.isNull())
+        for (const QString &candidate : candidatePaths)
         {
-            for (const QString &candidate : candidatePaths)
-            {
-                if (logoPixmap.load(candidate))
-                    break;
-            }
+            QPixmap candidatePixmap;
+            if (!candidatePixmap.load(candidate) || candidatePixmap.isNull())
+                continue;
+
+            m_AstroPiLogoSource = candidatePixmap;
+            break;
         }
 
-        if (!logoPixmap.isNull())
-        {
-            const int logicalLogoWidth = 260;
-            const qreal devicePixelRatio = astroPiLogoLabel->devicePixelRatioF();
-            int physicalLogoWidth = qRound(logicalLogoWidth * devicePixelRatio);
-            if (physicalLogoWidth < 1)
-                physicalLogoWidth = 1;
-
-            QPixmap scaledLogo = logoPixmap.scaledToWidth(physicalLogoWidth, Qt::SmoothTransformation);
-            scaledLogo.setDevicePixelRatio(devicePixelRatio);
-            astroPiLogoLabel->setPixmap(scaledLogo);
-        }
-        else
-            astroPiLogoLabel->setText(i18n("AstroPi"));
+        astroPiLogoLabel->setMinimumWidth(140);
+        updateAstroPiLogo();
     }
 
     if (showGuideButton != nullptr && schedulerGuideLabel != nullptr)
@@ -466,6 +458,30 @@ Scheduler::Scheduler()
     loadProfiles();
 
     watchJobChanges(true);
+}
+
+void Scheduler::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    updateAstroPiLogo();
+}
+
+void Scheduler::updateAstroPiLogo()
+{
+    if (astroPiLogoLabel == nullptr)
+        return;
+
+    if (m_AstroPiLogoSource.isNull())
+    {
+        astroPiLogoLabel->setText(i18n("AstroPi"));
+        return;
+    }
+
+    const int availableWidth = std::max(1, astroPiLogoLabel->contentsRect().width());
+    const int minReadableWidth = 140;
+    const int targetWidth = std::max(minReadableWidth, std::min(availableWidth, m_AstroPiLogoSource.width()));
+
+    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaledToWidth(targetWidth, Qt::SmoothTransformation));
 }
 
 QString Scheduler::getCurrentJobName()
@@ -2739,12 +2755,6 @@ void Scheduler::executeJob(SchedulerJob *job)
     // When the focus step is not checked, the capture module will eventually run focus periodically
     autofocusCompleted = false;
 
-    // Clear memory from previous job's align and focus modules to prevent memory leak
-    if (!alignInterface.isNull())
-        alignInterface->call(QDBus::AutoDetect, "abort");
-    if (!focusInterface.isNull())
-        focusInterface->call(QDBus::AutoDetect, "resetFrame");
-
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Executing Job " << currentJob->getName();
 
     currentJob->setState(SchedulerJob::JOB_BUSY);
@@ -3074,6 +3084,26 @@ bool Scheduler::checkStartupState()
 
             qCDebug(KSTARS_EKOS_SCHEDULER) << "Startup Idle. Starting startup process...";
 
+            // Start cooling CCD immediately if selected, regardless of Ekos state
+            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
+            {
+                constexpr double startupCoolingTemperatureC = -10.0;
+                if (!captureInterface.isNull())
+                {
+                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
+                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
+                    {
+                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
+                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
+                        captureInterface->setProperty("coolerControl", true);
+                    }
+                    else
+                    {
+                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
+                    }
+                }
+            }
+
             // If Ekos is already started, we skip the script and move on to dome unpark step
             // unless we do not have light frames, then we skip all
             //QDBusReply<int> isEkosStarted;
@@ -3097,25 +3127,6 @@ bool Scheduler::checkStartupState()
                 profile.append(schedulerProfileCombo->currentText());
                 if (!ekosInterface.isNull())
                     ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
-            }
-
-            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
-            {
-                constexpr double startupCoolingTemperatureC = -10.0;
-                if (!captureInterface.isNull())
-                {
-                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
-                    {
-                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
-                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
-                        captureInterface->setProperty("coolerControl", true);
-                    }
-                    else
-                    {
-                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
-                    }
-                }
             }
 
             if (startupScriptURL.isEmpty() == false)
