@@ -2007,6 +2007,19 @@
                  </item>
                 </layout>
                </item>
+              <item>
+               <widget class="QLabel" name="guideDetailSignalsLabel">
+                <property name="text">
+                 <string>Signals: Guide Profile</string>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeft|Qt::AlignVCenter</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
               </layout>
              </widget>
             </item>

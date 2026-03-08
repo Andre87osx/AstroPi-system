@@ -2620,6 +2620,25 @@ void Manager::updateGuideDetailView()
         return;
     }
 
+    if (guideDetailSignalsLabel)
+    {
+        switch (currentGuidePixmapIndex)
+        {
+            case 0:
+                guideDetailSignalsLabel->setText(QStringLiteral("Signals: Ekos::Guide::newProfilePixmap -> Manager::updateGuideProfilePixmap | Guide::getProfileViewPixmap"));
+                break;
+            case 1:
+                guideDetailSignalsLabel->setText(QStringLiteral("Signals: Ekos::Guide::newDriftPlotPixmap -> Manager::updateGuidePlotPixmap | Guide::getDriftPlotViewPixmap"));
+                break;
+            case 2:
+                guideDetailSignalsLabel->setText(QStringLiteral("Signals: Ekos::Guide::newStarPixmap -> Manager::updateGuideStarPixmap"));
+                break;
+            default:
+                guideDetailSignalsLabel->setText(QStringLiteral("Signals: unknown page index"));
+                break;
+        }
+    }
+
     if (isPlotDiagEnabled())
         qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideDetailView(entry)"
                             << "index=" << currentGuidePixmapIndex
