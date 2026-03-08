@@ -2620,6 +2620,15 @@ void Manager::updateGuideDetailView()
         return;
     }
 
+    if ((currentGuideState == Ekos::GUIDE_CALIBRATING ||
+            currentGuideState == Ekos::GUIDE_GUIDING ||
+            currentGuideState == Ekos::GUIDE_DITHERING ||
+            currentGuideState == Ekos::GUIDE_DITHERING_SUCCESS) &&
+            currentGuidePixmapIndex != 1)
+    {
+        currentGuidePixmapIndex = 1;
+    }
+
     if (isPlotDiagEnabled())
         qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideDetailView(entry)"
                             << "index=" << currentGuidePixmapIndex
@@ -2688,8 +2697,13 @@ void Manager::updateGuideDetailView()
     }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
     {
+        guideDetailView->setStyleSheet(QString());
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
+        const int targetWidth = std::max(guideDetailView->width(), 1);
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+        guideDetailView->setPixmap(guidePlotPixmap->scaled(targetWidth, targetHeight,
+                                                           Qt::IgnoreAspectRatio,
+                                                           Qt::SmoothTransformation));
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
@@ -3830,6 +3844,7 @@ void Manager::setFocusStatus(Ekos::FocusState status)
 
 void Manager::updateGuideStatus(Ekos::GuideState status)
 {
+    currentGuideState = status;
     guideStatus->setText(Ekos::getGuideStatusString(status));
 
     const auto showGuidePlotInDetailView = [this]()
