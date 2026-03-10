@@ -2730,23 +2730,18 @@ void Manager::updateGuideDetailView()
 
     if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
     {
-        guideDetailView->setStyleSheet(QString());
         const QPixmap viewPixmap = renderGuidePixmapForView();
         if (!viewPixmap.isNull())
         {
             guideDetailView->setScaledContents(false);
-            // Use pixmap directly if it's already the correct size, no need to rescale
-            if (viewPixmap.size() == guideDetailView->size())
+            if (currentGuidePixmapIndex == 1)
             {
-                guideDetailView->setPixmap(viewPixmap);
-            }
-            else if (currentGuidePixmapIndex == 1)
-            {
-                // Only apply black box centering if pixmap size differs from widget
-                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
+                guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
+                guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(viewPixmap));
             }
             else
             {
+                guideDetailView->setStyleSheet(QString());
                 guideDetailView->setPixmap(viewPixmap);
             }
             return;
@@ -2761,9 +2756,9 @@ void Manager::updateGuideDetailView()
     }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
     {
-        guideDetailView->setStyleSheet(QString());
+        guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(scaleGuidePixmap(*guidePlotPixmap));
+        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guidePlotPixmap));
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
