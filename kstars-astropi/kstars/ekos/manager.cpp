@@ -2723,7 +2723,11 @@ void Manager::updateGuideDetailView()
         if (currentGuidePixmapIndex == 0)
             return guideProcess->getProfileViewPixmap(viewSize);
         if (currentGuidePixmapIndex == 1)
-            return guideProcess->getDriftPlotViewPixmap(viewSize);
+        {
+            // Render the plot at square size so the content is not stretched
+            const int side = std::min(viewSize.width(), viewSize.height());
+            return guideProcess->getDriftPlotViewPixmap(QSize(side, side));
+        }
 
         return QPixmap();
     };
