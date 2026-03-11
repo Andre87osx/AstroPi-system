@@ -2724,9 +2724,12 @@ void Manager::updateGuideDetailView()
             return guideProcess->getProfileViewPixmap(viewSize);
         if (currentGuidePixmapIndex == 1)
         {
-            // Render the plot at square size so the content is not stretched
-            const int side = std::min(viewSize.width(), viewSize.height());
-            return guideProcess->getDriftPlotViewPixmap(QSize(side, side));
+            // Use a proportional hint (about 5:4) to keep target circles round
+            // without collapsing the plot to a narrow square.
+            const int targetHeight = std::max(viewSize.height(), 1);
+            const int proportionalWidth = std::max(1, static_cast<int>(std::lround(targetHeight * 1.25)));
+            const int targetWidth = std::min(std::max(viewSize.width(), 1), proportionalWidth);
+            return guideProcess->getDriftPlotViewPixmap(QSize(targetWidth, targetHeight));
         }
 
         return QPixmap();
@@ -2741,7 +2744,7 @@ void Manager::updateGuideDetailView()
             if (currentGuidePixmapIndex == 1)
             {
                 guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
-                guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(viewPixmap));
+                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
             }
             else
             {
@@ -2762,7 +2765,7 @@ void Manager::updateGuideDetailView()
     {
         guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guidePlotPixmap));
+        guideDetailView->setPixmap(fitGuidePixmapInBlackBox(*guidePlotPixmap));
     }
     else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
     {
