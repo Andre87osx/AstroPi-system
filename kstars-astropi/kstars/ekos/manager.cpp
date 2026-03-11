@@ -2630,9 +2630,6 @@ void Manager::updateGuideDetailView()
             case 1:
                 guideDetailSignalsLabel->setText(QStringLiteral("Signals: Ekos::Guide::newDriftPlotPixmap -> Manager::updateGuidePlotPixmap | Guide::getDriftPlotViewPixmap"));
                 break;
-            case 2:
-                guideDetailSignalsLabel->setText(QStringLiteral("Signals: Ekos::Guide::newStarPixmap -> Manager::updateGuideStarPixmap"));
-                break;
             default:
                 guideDetailSignalsLabel->setText(QStringLiteral("Signals: unknown page index"));
                 break;
@@ -2647,11 +2644,11 @@ void Manager::updateGuideDetailView()
                             << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
                             << "hasStar=" << (guideStarPixmap.get() != nullptr);
 
-    const bool hasGuideTarget = (guideStarPixmap.get() != nullptr);
+    const bool hasGuideTarget = (guideProfilePixmap.get() != nullptr);
     guideDetailNextButton->setEnabled(hasGuideTarget);
     guideDetailPrevButton->setEnabled(hasGuideTarget);
 
-    if (!hasGuideTarget && currentGuidePixmapIndex == 2)
+    if (!hasGuideTarget && currentGuidePixmapIndex != 1)
         currentGuidePixmapIndex = 1;
 
     const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
@@ -2766,12 +2763,6 @@ void Manager::updateGuideDetailView()
         guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
         guideDetailView->setScaledContents(false);
         guideDetailView->setPixmap(fitGuidePixmapInBlackBox(*guidePlotPixmap));
-    }
-    else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
-    {
-        guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
-        guideDetailView->setScaledContents(false);
-        guideDetailView->setPixmap(fitSquareGuideTargetInBlackBox(*guideStarPixmap));
     }
     else
     {
@@ -3108,30 +3099,20 @@ void Manager::initGuide()
         // guide details buttons
         connect(guideDetailNextButton, &QPushButton::clicked, [this]()
         {
-            if (currentGuidePixmapIndex == 0 && guidePlotPixmap.get() != nullptr)
-                currentGuidePixmapIndex++;
-            else if (currentGuidePixmapIndex == 1 && guideStarPixmap.get() != nullptr)
-                currentGuidePixmapIndex++;
-            else if (currentGuidePixmapIndex > 0)
+            if (currentGuidePixmapIndex == 1 && guideProfilePixmap.get() != nullptr)
                 currentGuidePixmapIndex = 0;
+            else
+                currentGuidePixmapIndex = 1;
 
             guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
             updateGuideDetailView();
         });
         connect(guideDetailPrevButton, &QPushButton::clicked, [this]()
         {
-            switch (currentGuidePixmapIndex)
-            {
-                case 0:
-                    if (guideStarPixmap.get() != nullptr)
-                        currentGuidePixmapIndex = 2;
-                    else if (guidePlotPixmap.get() != nullptr)
-                        currentGuidePixmapIndex = 1;
-                    break;
-                default:
-                    currentGuidePixmapIndex--;
-                    break;
-            }
+            if (currentGuidePixmapIndex == 1 && guideProfilePixmap.get() != nullptr)
+                currentGuidePixmapIndex = 0;
+            else
+                currentGuidePixmapIndex = 1;
 
             guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
             updateGuideDetailView();
