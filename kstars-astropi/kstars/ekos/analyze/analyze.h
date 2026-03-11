@@ -302,6 +302,11 @@ class Analyze : public QWidget, public Ui::Analyze
         void initTimelinePlot();
         void initGraphicsPlot();
         void initInputSelection();
+        void onPrevReport();
+        void onNextReport();
+        void updateReportNavButtons();
+        void refreshReportFiles(const QString &selectedFilePath = QString());
+        void loadReportByIndex(int index);
 
         // Displays the focus positions and HFRs on the graphics plot.
         void displayFocusGraphics(const QVector<double> &positions, const QVector<double> &hfrs, bool success);
@@ -408,6 +413,10 @@ class Analyze : public QWidget, public Ui::Analyze
 
         // Keeps the directory from the last time the user loaded a .analyze file.
         QUrl dirPath;
+
+        // List of .analyze reports in the current input directory and current index.
+        QStringList reportFiles;
+        int currentReportIndex { -1 };
 
         // True if Analyze is displaying data as it comes in from the other modules.
         // False if Analyze is displaying data read from a file.

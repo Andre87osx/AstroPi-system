@@ -24,6 +24,11 @@ echo ""
 case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
   [23]) echo "HTTP connectivity is up"  && CONN="true"
   		LATEST_TAG=$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases/latest | grep tag_name | cut -d '"' -f4)
+		if [ -z "${LATEST_TAG}" ]; then
+			echo "Unable to detect latest release tag"
+			zenity --error --text="Unable to detect latest release tag from GitHub"
+			exit 1
+		fi
 		curl -L "https://raw.githubusercontent.com/Andre87osx/AstroPi-system/${LATEST_TAG}/include/functions.sh" > "${HOME}/functions.sh"
 		echo ""
 		echo "Library downloaded";;
@@ -51,6 +56,12 @@ while [ "${CONN}" == "true" ]; do
 		fi
 	}
 	import "functions" 
+
+	# Force installer version from GitHub latest tag (e.g. v1.7.9 -> 1.7.9)
+	if [ -n "${LATEST_TAG}" ]; then
+		AstroPi_v="${LATEST_TAG#v}"
+		W_Title="AstroPi System v${AstroPi_v}"
+	fi
 
 	# Ask super user password.
 	ask_pass=$( zenity --password  --width=${W} --title="${W_Title}" )

@@ -45,6 +45,13 @@
 
 namespace Ekos
 {
+static bool isPlotDiagEnabled()
+{
+    static const bool enabled = qEnvironmentVariableIntValue("ASTROPI_CAPTURE_DIAG") > 0
+                                || qEnvironmentVariableIntValue("ASTROPI_PLOT_DIAG") > 0;
+    return enabled;
+}
+
 Focus::Focus()
 {
     // #1 Set the UI
@@ -1823,7 +1830,14 @@ void Focus::setCaptureComplete()
     // Emit the whole image
     emit newImage(focusView);
     // Emit the tracking (bounding) box view. Used in Summary View
-    emit newStarPixmap(focusView->getTrackingBoxPixmap(10));
+    QPixmap starPixmap = focusView->getTrackingBoxPixmap(10);
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::setCaptureComplete emit newStarPixmap"
+                                  << "null=" << starPixmap.isNull()
+                                  << "size=" << starPixmap.size()
+                                  << "inFocusLoop=" << inFocusLoop
+                                  << "inAutoFocus=" << inAutoFocus;
+    emit newStarPixmap(starPixmap);
 
     // If we are not looping; OR
     // If we are looping but we already have tracking box enabled; OR
@@ -2147,25 +2161,43 @@ void Focus::drawHFRPlot()
 
     drawHFRIndeces();
 
-    double minHFRVal = currentHFR / 2.5;
-    if (hfr_value.size() > 0)
-        minHFRVal = std::max(0, static_cast<int>(0.9 * *std::min_element(hfr_value.begin(), hfr_value.end())));
+    const bool hasHFRValues = !hfr_value.isEmpty();
+    const double minHFRPoint = hasHFRValues ? *std::min_element(hfr_value.begin(), hfr_value.end()) : currentHFR;
+    const double maxHFRPoint = hasHFRValues ? *std::max_element(hfr_value.begin(), hfr_value.end()) : maxHFR;
+
+    const double hfrSpan = std::max(0.01, maxHFRPoint - minHFRPoint);
+    const double hfrPadding = std::max(0.05, hfrSpan * 0.25);
+    double minHFRVal = std::max(0.0, minHFRPoint - hfrPadding);
+    double maxHFRVal = std::max(minHFRVal + 0.1, maxHFRPoint + hfrPadding);
+
+    if (!hasHFRValues)
+    {
+        minHFRVal = currentHFR / 2.5;
+        maxHFRVal = maxHFR;
+    }
 
     // True for the position-based algorithms and those that simulate position.
     if (inFocusLoop == false && (canAbsMove || canRelMove || (focusAlgorithm == FOCUS_LINEAR)))
     {
-        const double minPosition = hfr_position.empty() ?
-                                   0 : *std::min_element(hfr_position.constBegin(), hfr_position.constEnd());
-        const double maxPosition = hfr_position.empty() ?
-                                   1e6 : *std::max_element(hfr_position.constBegin(), hfr_position.constEnd());
-        HFRPlot->xAxis->setRange(minPosition - pulseDuration, maxPosition + pulseDuration);
-        HFRPlot->yAxis->setRange(minHFRVal, maxHFR);
+        const bool hasPositions = !hfr_position.isEmpty();
+        const double minPosition = hasPositions ?
+                                   *std::min_element(hfr_position.constBegin(), hfr_position.constEnd()) : 0;
+        const double maxPosition = hasPositions ?
+                                   *std::max_element(hfr_position.constBegin(), hfr_position.constEnd()) : 1e6;
+
+        const double centerPosition = (minPosition + maxPosition) / 2.0;
+        const double positionHalfSpan = std::max(1.0, (maxPosition - minPosition) / 2.0);
+        const double positionPadding = std::max(10.0, std::max(positionHalfSpan * 0.25, static_cast<double>(pulseDuration)));
+        const double halfRange = positionHalfSpan + positionPadding;
+
+        HFRPlot->xAxis->setRange(centerPosition - halfRange, centerPosition + halfRange);
+        HFRPlot->yAxis->setRange(minHFRVal, maxHFRVal);
     }
     else
     {
         //HFRPlot->xAxis->setLabel(i18n("Iteration"));
         HFRPlot->xAxis->setRange(1, hfr_value.count() + 1);
-        HFRPlot->yAxis->setRange(currentHFR / 2.5, maxHFR * 1.25);
+        HFRPlot->yAxis->setRange(minHFRVal, std::max(maxHFRVal, maxHFR * 1.05));
     }
 
     HFRPlot->replot();
@@ -2216,6 +2248,11 @@ void Focus::drawProfilePlot()
     lastGausFrequencies = currentFrequencies;
 
     profilePixmap = profilePlot->grab(); //.scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::drawProfilePlot emit newProfilePixmap"
+                                  << "null=" << profilePixmap.isNull()
+                                  << "size=" << profilePixmap.size()
+                                  << "plotSize=" << profilePlot->size();
     emit newProfilePixmap(profilePixmap);
 }
 
@@ -2310,6 +2347,7 @@ void Focus::autoFocusLinear()
 
             polynomialGraph->data()->clear();
             focusPoint->data()->clear();
+            polynomialGraphIsShown = false;
         }
     }
 
@@ -4644,5 +4682,44 @@ bool Focus::syncControl(const QJsonObject &settings, const QString &key, QWidget
 
     return false;
 };
+
+QPixmap Focus::getProfileViewPixmap(const QSize &sizeHint) const
+{
+    if (!HFRPlot)
+        return QPixmap();
+
+    int targetWidth = sizeHint.width();
+    int targetHeight = sizeHint.height();
+
+    // Use fallback dimensions if sizeHint is invalid
+    if (targetWidth <= 1)
+        targetWidth = 640;
+    if (targetHeight <= 1)
+        targetHeight = 360;
+
+    // Ensure HFRPlot has valid size, otherwise use fallback
+    if (HFRPlot->width() > 1 && HFRPlot->height() > 1)
+    {
+        // If sizeHint was valid but different from plot size, use plot size as base
+        if (sizeHint.width() <= 1)
+            targetWidth = HFRPlot->width();
+        if (sizeHint.height() <= 1)
+            targetHeight = HFRPlot->height();
+    }
+
+    HFRPlot->replot();
+    const QPixmap pixmap = HFRPlot->toPixmap(targetWidth, targetHeight, 1.0);
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::getProfileViewPixmap"
+                                  << "plotVisible=" << HFRPlot->isVisible()
+                                  << "plotSize=" << HFRPlot->size()
+                                  << "sizeHint=" << sizeHint
+                                  << "target=" << QSize(targetWidth, targetHeight)
+                                  << "pixmapNull=" << pixmap.isNull()
+                                  << "pixmapSize=" << pixmap.size();
+
+    return pixmap;
+}
 
 }

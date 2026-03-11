@@ -140,7 +140,37 @@ def connect_to_kstars():
         if zenity_proc:
             zenity_proc.terminate()
         log(f"ERROR: Unexpected error connecting to KStars: {e}")
+        return None, None
+
+
+def get_connected_mount(iface, devices):
+    """Return first connected mount-like device, preferring EQMOD names."""
+    if not devices:
         return None
+
+    # Prefer connected EQMOD-like mounts first
+    for device in devices:
+        try:
+            state = iface.getPropertyState(device, "CONNECTION")
+            if state == "Ok":
+                device_lower = device.lower()
+                if any(keyword.lower() in device_lower for keyword in MOUNT_KEYWORDS[:4]):
+                    return device
+        except Exception:
+            continue
+
+    # Fallback: any connected mount-like device
+    for device in devices:
+        try:
+            state = iface.getPropertyState(device, "CONNECTION")
+            if state == "Ok":
+                device_lower = device.lower()
+                if any(keyword.lower() in device_lower for keyword in MOUNT_KEYWORDS):
+                    return device
+        except Exception:
+            continue
+
+    return None
 
 def start_indi_devices(iface):
     """Start INDI devices and wait for them to load"""
@@ -350,6 +380,24 @@ def main():
     if not ready:
         log("ERROR: Timeout waiting for KStars INDI interface to be ready.")
         return 1
+
+    # Fast path: if mount is already connected, stop motion and park immediately
+    try:
+        devices = iface.getDevices()
+        connected_mount = get_connected_mount(iface, devices)
+    except Exception:
+        connected_mount = None
+
+    if connected_mount:
+        log(f"FAST PATH: Connected mount found ({connected_mount}). Parking immediately...")
+        stop_mount_motion(iface, connected_mount)
+        parked = park_mount(iface, connected_mount)
+        park_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        if parked:
+            log("FAST PATH parking completed successfully.")
+            log("========== PARKING SEQUENCE COMPLETE ==========")
+            return 0
+        log("FAST PATH parking failed, continuing with full recovery path...")
 
     # Step 2: Start INDI devices
     if not start_indi_devices(iface):
