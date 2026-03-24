@@ -2734,6 +2734,9 @@ void Guide::setTrackingStar(int x, int y)
 
 void Guide::setAxisDelta(double ra, double de)
 {
+    // Mark first valid guide sample for startup watchdog logic.
+    setProperty("guideFirstSampleReceived", true);
+
     //If PHD2 starts guiding because somebody pusted the button remotely, we want to set the state to guiding.
     //If guide pulses start coming in, it must be guiding.
     // 2020-04-10 sterne-jaeger: Will be resolved inside EKOS phd guiding.
@@ -4142,6 +4145,23 @@ void Guide::initConnections()
 
 void Guide::removeDevice(ISD::GDInterface *device)
 {
+
+                    // Internal-guider startup can occasionally miss the first processing cycle.
+                    // If no first delta arrives after a few exposure intervals, request one recovery capture.
+                    if (guiderType == GUIDE_INTERNAL)
+                    {
+                        setProperty("guideFirstSampleReceived", false);
+                        const int watchdogMS = std::max(3000, static_cast<int>(std::lround(exposureIN->value() * 3000.0)));
+                        QTimer::singleShot(watchdogMS, this, [this]()
+                        {
+                            if (state == GUIDE_GUIDING && guiderType == GUIDE_INTERNAL
+                                    && property("guideFirstSampleReceived").toBool() == false)
+                            {
+                                appendLogText(i18n("No guide samples received at startup. Triggering one recovery capture."));
+                                capture();
+                            }
+                        });
+                    }
     device->disconnect(this);
     if (currentTelescope && (currentTelescope->getDeviceName() == device->getDeviceName()))
     {
