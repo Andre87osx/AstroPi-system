@@ -2606,11 +2606,12 @@ void Capture::updateCCDTemperature(double value)
     if (cameraTemperatureN->cleanText().isEmpty())
         cameraTemperatureN->setValue(value);
 
+    //if (activeJob && (activeJob->getStatus() == SequenceJob::JOB_ABORTED || activeJob->getStatus() == SequenceJob::JOB_IDLE))
     if (activeJob)
         activeJob->setCurrentTemperature(value);
 }
 
-void Capture::updateRotatorNumber(INumberVectorProperty *nvp)
+void Capture::updateRotatorNumber(INumberVectorProperty * nvp)
 {
     if (!strcmp(nvp->name, "ABS_ROTATOR_ANGLE"))
     {
