@@ -449,7 +449,6 @@ class Manager : public QDialog, public Ui::Manager
 
         // Guide Summary
         void updateGuideStatus(GuideState status);
-        void updateGuideStarPixmap(QPixmap &starPix);
         void updateGuideProfilePixmap(QPixmap &profilePix);
         void updateGuidePlotPixmap(QPixmap &plotPix);
         void updateSigmas(double ra, double de);
@@ -589,7 +588,6 @@ class Manager : public QDialog, public Ui::Manager
 
         // Guide Summary
         QProgressIndicator *guidePI { nullptr };
-        std::unique_ptr<QPixmap> guideStarPixmap;
         std::unique_ptr<QPixmap> guideProfilePixmap;
         std::unique_ptr<QPixmap> guidePlotPixmap;
         int currentGuidePixmapIndex = 0;

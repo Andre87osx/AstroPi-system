@@ -2641,15 +2641,22 @@ void Manager::updateGuideDetailView()
                             << "index=" << currentGuidePixmapIndex
                             << "viewSize=" << guideDetailView->size()
                             << "hasProfile=" << (guideProfilePixmap.get() != nullptr)
-                            << "hasPlot=" << (guidePlotPixmap.get() != nullptr)
-                            << "hasStar=" << (guideStarPixmap.get() != nullptr);
+                            << "hasPlot=" << (guidePlotPixmap.get() != nullptr);
 
-    const bool hasGuideTarget = (guideProfilePixmap.get() != nullptr);
-    guideDetailNextButton->setEnabled(hasGuideTarget);
-    guideDetailPrevButton->setEnabled(hasGuideTarget);
+    const QSize availabilitySize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+    const bool hasGuideTarget = (guideProfilePixmap.get() != nullptr)
+                                || (guideProcess && !guideProcess->getProfileViewPixmap(availabilitySize).isNull());
+    const bool hasGuidePlot = (guidePlotPixmap.get() != nullptr)
+                              || (guideProcess && !guideProcess->getDriftPlotViewPixmap(availabilitySize).isNull());
+    const bool canToggleGuidePages = hasGuideTarget && hasGuidePlot;
 
-    if (!hasGuideTarget && currentGuidePixmapIndex != 1)
+    guideDetailNextButton->setEnabled(canToggleGuidePages);
+    guideDetailPrevButton->setEnabled(canToggleGuidePages);
+
+    if (!hasGuideTarget && currentGuidePixmapIndex == 0)
         currentGuidePixmapIndex = 1;
+    else if (!hasGuidePlot && currentGuidePixmapIndex == 1)
+        currentGuidePixmapIndex = 0;
 
     const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
     {
@@ -3071,7 +3078,6 @@ void Manager::initGuide()
         }
 
         connect(guideProcess.get(), &Ekos::Guide::newStatus, this, &Ekos::Manager::updateGuideStatus);
-        connect(guideProcess.get(), &Ekos::Guide::newStarPixmap, this, &Ekos::Manager::updateGuideStarPixmap);
         connect(guideProcess.get(), &Ekos::Guide::newProfilePixmap, this, &Ekos::Manager::updateGuideProfilePixmap);
         connect(guideProcess.get(), &Ekos::Guide::newDriftPlotPixmap, this, &Ekos::Manager::updateGuidePlotPixmap);
         connect(guideProcess.get(), &Ekos::Guide::newAxisSigma, this, &Ekos::Manager::updateSigmas);
@@ -3888,7 +3894,9 @@ void Manager::setFocusStatus(Ekos::FocusState status)
 
 void Manager::updateGuideStatus(Ekos::GuideState status)
 {
-    guideStatus->setText(Ekos::getGuideStatusString(status));
+    const QString previousGuideStatus = guideStatus->text();
+    const QString newGuideStatus = Ekos::getGuideStatusString(status);
+    guideStatus->setText(newGuideStatus);
 
     const auto showGuidePlotInDetailView = [this]()
     {
@@ -3923,19 +3931,22 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
             guidePI->setColor(Qt::darkGreen);
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
-            showGuidePlotInDetailView();
+            if (previousGuideStatus != newGuideStatus)
+                showGuidePlotInDetailView();
             break;
         case Ekos::GUIDE_DITHERING:
             guidePI->setColor(QColor(KStarsData::Instance()->colorScheme()->colorNamed("TargetColor")));
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
-            showGuidePlotInDetailView();
+            if (previousGuideStatus != newGuideStatus)
+                showGuidePlotInDetailView();
             break;
         case Ekos::GUIDE_DITHERING_SUCCESS:
             guidePI->setColor(Qt::darkGreen);
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
-            showGuidePlotInDetailView();
+            if (previousGuideStatus != newGuideStatus)
+                showGuidePlotInDetailView();
             break;
 
         default:
@@ -3950,21 +3961,6 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
     };
 
     ekosLiveClient.get()->message()->updateGuideStatus(cStatus);
-}
-
-void Manager::updateGuideStarPixmap(QPixmap &starPix)
-{
-    if (isPlotDiagEnabled())
-        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideStarPixmap"
-                            << "null=" << starPix.isNull()
-                            << "size=" << starPix.size()
-                            << "guideViewSize=" << guideDetailView->size();
-
-    if (starPix.isNull())
-        return;
-
-    guideStarPixmap.reset(new QPixmap(starPix));
-    updateGuideDetailView();
 }
 
 void Manager::updateGuideProfilePixmap(QPixmap &profilePix)
