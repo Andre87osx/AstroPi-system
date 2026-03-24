@@ -3039,12 +3039,17 @@ bool Scheduler::checkINDIState()
 
             if (m_CaptureReady == false)
             {
-                QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                if (hasCoolerControl.isValid())
+                QDBusReply<bool> hasCoolerControl = captureInterface->call(QDBus::AutoDetect, "hasCoolerControl");
+                if (hasCoolerControl.error().type() == QDBusError::NoError)
                 {
-                    warmCCDCheck->setEnabled(hasCoolerControl.toBool());
-                    m_CaptureReady = true;
-                    coolingCCDCheck->setEnabled(hasCoolerControl.toBool());
+                    const bool coolerAvailable = hasCoolerControl.value();
+                    warmCCDCheck->setEnabled(coolerAvailable);
+                    coolingCCDCheck->setEnabled(coolerAvailable);
+                    if (!coolerAvailable)
+                    {
+                        warmCCDCheck->setChecked(false);
+                        coolingCCDCheck->setChecked(false);
+                    }
                     m_CaptureReady = true;
                 }
                 else
@@ -3087,15 +3092,34 @@ bool Scheduler::checkStartupState()
             // Start cooling CCD immediately if selected, regardless of Ekos state
             if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
             {
-                constexpr double startupCoolingTemperatureC = -10.0;
                 if (!captureInterface.isNull())
                 {
-                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
+                    QDBusReply<bool> hasCoolerControl = captureInterface->call(QDBus::AutoDetect, "hasCoolerControl");
+                    if (hasCoolerControl.error().type() == QDBusError::NoError && hasCoolerControl.value())
                     {
+                        double startupCoolingTemperatureC = -10.0;
+
+                        if (currentJob != nullptr)
+                        {
+                            QList<SequenceJob *> seqJobs;
+                            bool hasAutoFocus = false;
+                            if (loadSequenceQueue(currentJob->getSequenceFile().toLocalFile(), currentJob, seqJobs, hasAutoFocus, this))
+                            {
+                                for (const SequenceJob *seqJob : qAsConst(seqJobs))
+                                {
+                                    if (seqJob->getEnforceTemperature())
+                                    {
+                                        startupCoolingTemperatureC = seqJob->getTargetTemperature();
+                                        break;
+                                    }
+                                }
+                            }
+                            qDeleteAll(seqJobs);
+                        }
+
                         appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
                         captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
-                        captureInterface->setProperty("coolerControl", true);
+                        captureInterface->call(QDBus::AutoDetect, "setCoolerControl", true);
                     }
                     else
                     {
@@ -3234,10 +3258,7 @@ bool Scheduler::checkShutdownState()
             {
                 appendLogText(i18n("Warming up CCD..."));
 
-                // Turn it off
-                //QVariant arg(false);
-                //captureInterface->call(QDBus::AutoDetect, "setCoolerControl", arg);
-                captureInterface->setProperty("coolerControl", false);
+                captureInterface->call(QDBus::AutoDetect, "setCoolerControl", false);
             }
 
             // The following steps require a connection to the INDI server
@@ -7317,9 +7338,19 @@ void Scheduler::syncProperties()
     }
     else if (iface == captureInterface)
     {
-        QVariant hasCoolerControl = captureInterface->property("coolerControl");
-        warmCCDCheck->setEnabled(hasCoolerControl.toBool());
-        m_CaptureReady = true;
+        QDBusReply<bool> hasCoolerControl = captureInterface->call(QDBus::AutoDetect, "hasCoolerControl");
+        if (hasCoolerControl.error().type() == QDBusError::NoError)
+        {
+            const bool coolerAvailable = hasCoolerControl.value();
+            warmCCDCheck->setEnabled(coolerAvailable);
+            coolingCCDCheck->setEnabled(coolerAvailable);
+            if (!coolerAvailable)
+            {
+                warmCCDCheck->setChecked(false);
+                coolingCCDCheck->setChecked(false);
+            }
+            m_CaptureReady = true;
+        }
     }
 }
 
