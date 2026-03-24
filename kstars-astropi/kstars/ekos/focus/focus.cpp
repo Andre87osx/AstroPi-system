@@ -1435,7 +1435,9 @@ void Focus::calculateHFR()
     // Beware as this HFR value is then treated specifically by the graph renderer
     double hfr = FocusAlgorithmInterface::IGNORED_HFR;
 
-    if (m_StarFinderWatcher.result() == false)
+    const bool starsAlreadyExtracted = (m_ImageData != nullptr && m_ImageData->areStarsSearched());
+
+    if (!starsAlreadyExtracted && m_StarFinderWatcher.result() == false)
     {
         qCWarning(KSTARS_EKOS_FOCUS) << "Failed to extract any stars.";
     }
@@ -1848,6 +1850,12 @@ void Focus::setCaptureComplete()
         if (m_ImageData->areStarsSearched() == false)
         {
             analyzeSources();
+        }
+        else
+        {
+            // Some pipelines deliver images with extracted stars already available.
+            // In that case continue directly, otherwise autofocus can pause intermittently.
+            calculateHFR();
         }
     }
     else
