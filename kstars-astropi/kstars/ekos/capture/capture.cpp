@@ -985,8 +985,8 @@ void Capture::checkCCD(int ccdNum)
             if (currentCCD->getTemperature(&temperature))
             {
                 temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
-                if (cameraTemperatureN->cleanText().isEmpty())
-                    cameraTemperatureN->setValue(temperature);
+                // Initialize with the current sensor reading when (re)selecting a camera.
+                cameraTemperatureN->setValue(temperature);
             }
         }
         else
@@ -2603,7 +2603,8 @@ void Capture::updateCCDTemperature(double value)
 
     temperatureOUT->setText(QString("%L1").arg(value, 0, 'f', 2));
 
-    if (cameraTemperatureN->cleanText().isEmpty())
+    // Keep this synchronized only when temperature is read-only.
+    if (cameraTemperatureN->isReadOnly())
         cameraTemperatureN->setValue(value);
 
     //if (activeJob && (activeJob->getStatus() == SequenceJob::JOB_ABORTED || activeJob->getStatus() == SequenceJob::JOB_IDLE))
