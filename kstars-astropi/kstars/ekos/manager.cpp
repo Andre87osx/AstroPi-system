@@ -515,20 +515,28 @@ int Manager::addModuleTab(Manager::EkosModule module, QWidget *tab, const QIcon 
     {
     case EkosModule::Observatory:
         index += guideProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Guide:
         index += alignProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Align:
         index += mountProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Mount:
         index += focusProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Focus:
         index += captureProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Capture:
         index += analyzeProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Analyze:
         index += schedulerProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Scheduler:
         index += 1;
+        [[fallthrough]];
     case EkosModule::Setup:
         // do nothing
         break;
