@@ -2073,7 +2073,7 @@
       </entry>
       <entry name="AstrometryDownsample" type="UInt">
          <label>Downsample factor</label>
-         <default>2</default>
+         <default>1</default>
       </entry>
       <entry name="AstrometryAutoDownsample" type="Bool">
          <label>Automatically downsample based on image size.</label>
