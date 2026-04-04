@@ -4748,7 +4748,6 @@ void Focus::initPlots()
     theoreticalCurrentPoint->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, Qt::white, QColor(255, 99, 71), 10));
 
     theoreticalProfileLabel = new QCPItemText(profilePlot);
-    profilePlot->addItem(theoreticalProfileLabel);
     theoreticalProfileLabel->setColor(QColor(255, 215, 0));
     theoreticalProfileLabel->setPadding(QMargins(4, 2, 4, 2));
     theoreticalProfileLabel->setBrush(QBrush(QColor(0, 0, 0, 140)));
