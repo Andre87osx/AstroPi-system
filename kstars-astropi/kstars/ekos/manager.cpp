@@ -617,6 +617,7 @@ void Manager::reset()
 
     mountGroup->setEnabled(false);
     focusGroup->setEnabled(false);
+    focusRelativeProfileB->setEnabled(false);
     captureGroup->setEnabled(false);
     guideGroup->setEnabled(false);
     sequenceLabel->setText(i18n("Sequence"));
@@ -1424,7 +1425,10 @@ void Manager::deviceConnected()
         if (captureProcess.get() != nullptr)
             captureProcess->setEnabled(true);
         if (focusProcess.get() != nullptr)
+        {
             focusProcess->setEnabled(true);
+            focusRelativeProfileB->setEnabled(true);
+        }
         if (alignProcess.get() != nullptr)
         {
             if (mountProcess.get() && mountProcess->isEnabled())
@@ -1438,7 +1442,10 @@ void Manager::deviceConnected()
     else if (dev->getDriverInterface() & INDI::BaseDevice::FOCUSER_INTERFACE)
     {
         if (focusProcess.get() != nullptr)
+        {
             focusProcess->setEnabled(true);
+            focusRelativeProfileB->setEnabled(true);
+        }
     }
 
     if (Options::neverLoadConfig())
@@ -1508,6 +1515,13 @@ void Manager::deviceDisconnected()
         if (mountProcess.get() != nullptr)
             mountProcess->setEnabled(false);
     }
+    else if (dev != nullptr && dev->getBaseDevice() &&
+             (dev->getDriverInterface() & (INDI::BaseDevice::CCD_INTERFACE | INDI::BaseDevice::FOCUSER_INTERFACE)))
+    {
+        if (focusProcess.get() != nullptr)
+            focusProcess->setEnabled(false);
+        focusRelativeProfileB->setEnabled(false);
+    }
 }
 
 void Manager::setTelescope(ISD::GDInterface * scopeDevice)
@@ -1542,6 +1556,9 @@ void Manager::setTelescope(ISD::GDInterface * scopeDevice)
         alignProcess->setTelescope(scopeDevice);
         alignProcess->setTelescopeInfo(primaryScopeFL, primaryScopeAperture, guideScopeFL, guideScopeAperture);
     }
+
+    if (focusProcess.get() != nullptr)
+        focusProcess->setTelescopeInfo(primaryScopeFL, primaryScopeAperture);
 
     //    if (domeProcess.get() != nullptr)
     //        domeProcess->setTelescope(scopeDevice);
@@ -2448,6 +2465,10 @@ void Manager::initFocus()
     focusProcess.reset(new Ekos::Focus());
     int index    = addModuleTab(EkosModule::Focus, focusProcess.get(), QIcon(":/icons/ekos_focus.png"));
 
+    double primaryScopeFL = 0, primaryScopeAperture = 0, guideScopeFL = 0, guideScopeAperture = 0;
+    getCurrentProfileTelescopeInfo(primaryScopeFL, primaryScopeAperture, guideScopeFL, guideScopeAperture);
+    focusProcess->setTelescopeInfo(primaryScopeFL, primaryScopeAperture);
+
     toolsWidget->tabBar()->setTabToolTip(index, i18n("Focus"));
 
     // Focus <---> Manager connections
@@ -2456,6 +2477,8 @@ void Manager::initFocus()
     connect(focusProcess.get(), &Ekos::Focus::newStarPixmap, this, &Ekos::Manager::updateFocusStarPixmap);
     connect(focusProcess.get(), &Ekos::Focus::newProfilePixmap, this, &Ekos::Manager::updateFocusProfilePixmap);
     connect(focusProcess.get(), &Ekos::Focus::newHFR, this, &Ekos::Manager::updateCurrentHFR);
+        connect(focusRelativeProfileB, &QPushButton::clicked, focusProcess.get(), &Ekos::Focus::showRelativeProfile,
+            Qt::UniqueConnection);
 
     // Focus <---> Filter Manager connections
     focusProcess->setFilterManager(filterManager);
@@ -2503,6 +2526,28 @@ void Manager::initFocus()
     });
 
     focusGroup->setEnabled(true);
+
+    bool focusConnected = false;
+    for (auto const &ccd : findDevices(KSTARS_CCD))
+    {
+        if (ccd != nullptr && ccd->isConnected())
+        {
+            focusConnected = true;
+            break;
+        }
+    }
+    if (!focusConnected)
+    {
+        for (auto const &focuser : findDevices(KSTARS_FOCUSER))
+        {
+            if (focuser != nullptr && focuser->isConnected())
+            {
+                focusConnected = true;
+                break;
+            }
+        }
+    }
+    focusRelativeProfileB->setEnabled(focusConnected);
 
     if (!focusPI)
     {
@@ -4270,6 +4315,8 @@ void Manager::connectModules()
     {
         connect(focusProcess.get(), &Ekos::Focus::newStatus, alignProcess.get(), &Ekos::Align::setFocusStatus,
                 Qt::UniqueConnection);
+        connect(alignProcess.get(), &Ekos::Align::newSolution, focusProcess.get(), &Ekos::Focus::syncHFRGuideFromAlignSolution,
+            Qt::UniqueConnection);
     }
 
     // Focus <---> Mount connections

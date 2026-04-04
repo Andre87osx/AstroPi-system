@@ -35,11 +35,13 @@
 #include <ekos_focus_debug.h>
 
 #include <cmath>
+#include <limits>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QLabel>
+#include <QSignalBlocker>
 #include <QSpinBox>
 
 #define MAXIMUM_ABS_ITERATIONS   30
@@ -365,6 +367,102 @@ void Focus::syncCCDInfo()
             }
         }
     }
+
+    refreshHFRGuideFromCCD();
+}
+
+void Focus::setTelescopeInfo(double primaryFocalLength, double primaryAperture)
+{
+    bool changed = false;
+
+    if (primaryAperture > 0 && !qFuzzyCompare(m_HFRGuideProfileApertureMm + 1.0, primaryAperture + 1.0))
+    {
+        m_HFRGuideProfileApertureMm = primaryAperture;
+        m_HFRGuideConfig.apertureMm = primaryAperture;
+        changed = true;
+    }
+
+    if (primaryFocalLength > 0 && m_HFRGuideConfig.focalLengthMm <= 0)
+    {
+        m_HFRGuideConfig.focalLengthMm = primaryFocalLength;
+        changed = true;
+    }
+
+    refreshHFRGuideFromCCD();
+
+    if (changed)
+        updateTheoreticalHFR(false);
+
+    syncHFRGuideDialogControls();
+}
+
+bool Focus::getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const
+{
+    pixelSizeUm = 0.0;
+    binning = 1;
+
+    if (currentCCD == nullptr)
+        return false;
+
+    auto *targetChip = currentCCD->getChip(ISD::CCDChip::PRIMARY_CCD);
+    if (targetChip == nullptr)
+        return false;
+
+    int binX = 1, binY = 1;
+    if (targetChip->getBinning(&binX, &binY))
+        binning = std::max(1, binX);
+    else if (activeBin > 0)
+        binning = activeBin;
+
+    uint16_t width = 0, height = 0;
+    uint8_t bitdepth = 0;
+    double pixelX = 0.0, pixelY = 0.0;
+    if (targetChip->getImageInfo(width, height, pixelX, pixelY, bitdepth))
+        pixelSizeUm = pixelY > 0 ? pixelY : pixelX;
+
+    return pixelSizeUm > 0.0;
+}
+
+void Focus::refreshHFRGuideFromCCD()
+{
+    double pixelSizeUm = 0.0;
+    int binning = 1;
+    if (getCurrentHFRGuideCCDInfo(pixelSizeUm, binning))
+    {
+        m_HFRGuideConfig.pixelSizeUm = pixelSizeUm;
+        m_HFRGuideConfig.binning = binning;
+    }
+}
+
+void Focus::syncHFRGuideFromAlignSolution(const QVariantMap &solution)
+{
+    const double pixscale = solution.value("pix").toDouble();
+    if (pixscale <= 0)
+        return;
+
+    double pixelSizeUm = 0.0;
+    int binning = 1;
+    if (!getCurrentHFRGuideCCDInfo(pixelSizeUm, binning))
+        return;
+
+    m_HFRGuideConfig.pixelSizeUm = pixelSizeUm;
+    m_HFRGuideConfig.binning = binning;
+
+    const double focalLengthMm = 206.265 * pixelSizeUm * binning / pixscale;
+    if (focalLengthMm <= 0)
+        return;
+
+    m_HFRGuideConfig.focalLengthMm = focalLengthMm;
+    if (m_HFRGuideProfileApertureMm > 0)
+        m_HFRGuideConfig.apertureMm = m_HFRGuideProfileApertureMm;
+
+    updateTheoreticalHFR();
+    syncHFRGuideDialogControls();
+
+    appendLogText(i18n("HFR Guide updated from plate solve. Effective focal length: %1 mm, pixel size: %2 µm, binning: %3.",
+                       QString::number(focalLengthMm, 'f', 1),
+                       QString::number(pixelSizeUm, 'f', 2),
+                       QString::number(binning)));
 }
 
 void Focus::addFilter(ISD::GDInterface *newFilter)
@@ -2251,6 +2349,102 @@ void Focus::drawHFRPlot()
 
 void Focus::drawProfilePlot()
 {
+    const bool showTheoreticalProfile = m_HFRGuideConfig.isValid() && m_TheoreticalHFR > 0 &&
+                                        (canAbsMove || canRelMove || focusAlgorithm == FOCUS_LINEAR);
+
+    if (showTheoreticalProfile)
+    {
+        QVector<double> theoreticalPositions;
+        QVector<double> theoreticalHFRs;
+
+        const bool hasPositions = !hfr_position.isEmpty();
+        const double centerPosition = currentPosition > 0 ? currentPosition :
+                                      (hasPositions ? hfr_position.last() : 0);
+        const double minPosition = hasPositions ?
+                                   *std::min_element(hfr_position.constBegin(), hfr_position.constEnd()) :
+                                   centerPosition - std::max(100.0, stepIN->value() * 10.0);
+        const double maxPosition = hasPositions ?
+                                   *std::max_element(hfr_position.constBegin(), hfr_position.constEnd()) :
+                                   centerPosition + std::max(100.0, stepIN->value() * 10.0);
+        const double halfSpan = std::max(25.0, (maxPosition - minPosition) / 2.0);
+
+        double characteristicStep = std::max(25.0, stepIN->value() * 4.0);
+        if (hfr_position.size() > 1)
+        {
+            QVector<double> sortedPositions = hfr_position;
+            std::sort(sortedPositions.begin(), sortedPositions.end());
+            double minSpacing = std::numeric_limits<double>::max();
+            for (int index = 1; index < sortedPositions.size(); ++index)
+            {
+                const double spacing = sortedPositions[index] - sortedPositions[index - 1];
+                if (spacing > 0)
+                    minSpacing = std::min(minSpacing, spacing);
+            }
+            if (minSpacing < std::numeric_limits<double>::max())
+                characteristicStep = std::max(characteristicStep, minSpacing * 2.0);
+        }
+        else if (pulseDuration > 0)
+        {
+            characteristicStep = std::max(characteristicStep, static_cast<double>(pulseDuration));
+        }
+
+        const double startPosition = centerPosition - halfSpan;
+        const double endPosition = centerPosition + halfSpan;
+        const int sampleCount = 200;
+        const double step = (endPosition - startPosition) / sampleCount;
+        for (int index = 0; index <= sampleCount; ++index)
+        {
+            const double position = startPosition + step * index;
+            const double normalizedOffset = (position - centerPosition) / characteristicStep;
+            theoreticalPositions.append(position);
+            // Build a V-curve like trend (linear wings with a small rounded bottom).
+            const double vShape = std::abs(normalizedOffset);
+            theoreticalHFRs.append(m_TheoreticalHFR + 0.55 * vShape + 0.05 * normalizedOffset * normalizedOffset);
+        }
+
+        currentGaus->data()->clear();
+        lastGaus->data()->clear();
+        if (firstGaus)
+        {
+            profilePlot->removeGraph(firstGaus);
+            firstGaus = nullptr;
+        }
+
+        theoreticalTargetLine->setData(theoreticalPositions, theoreticalHFRs);
+        theoreticalCurrentPoint->setData(QVector<double> { centerPosition },
+                                         QVector<double> { currentHFR > 0 ? currentHFR : m_TheoreticalHFR });
+
+        profilePlot->xAxis->setLabel(i18n("Focus position (steps)"));
+        profilePlot->yAxis->setLabel(i18n("HFR (px)"));
+        profilePlot->xAxis->setRange(startPosition, endPosition);
+        profilePlot->yAxis->setRange(std::max(0.0, m_TheoreticalHFR * 0.8),
+                                     std::max(currentHFR, *std::max_element(theoreticalHFRs.constBegin(), theoreticalHFRs.constEnd())) * 1.05);
+        if (theoreticalProfileLabel)
+        {
+            theoreticalProfileLabel->position->setType(QCPItemPosition::ptAxisRectRatio);
+            theoreticalProfileLabel->position->setCoords(0.02, 0.06);
+            theoreticalProfileLabel->setText(i18n("Theoretical V-curve"));
+            theoreticalProfileLabel->setVisible(true);
+        }
+        profilePlot->replot();
+
+        profilePixmap = profilePlot->grab();
+        if (isPlotDiagEnabled())
+            qCInfo(KSTARS_EKOS_FOCUS) << "[PLOT_DIAG] Focus::drawProfilePlot emit newProfilePixmap"
+                                      << "null=" << profilePixmap.isNull()
+                                      << "size=" << profilePixmap.size()
+                                      << "plotSize=" << profilePlot->size();
+        emit newProfilePixmap(profilePixmap);
+        return;
+    }
+
+    theoreticalTargetLine->data()->clear();
+    theoreticalCurrentPoint->data()->clear();
+    if (theoreticalProfileLabel)
+        theoreticalProfileLabel->setVisible(false);
+    profilePlot->xAxis->setLabel(QString());
+    profilePlot->yAxis->setLabel(QString());
+
     QVector<double> currentIndexes;
     QVector<double> currentFrequencies;
 
@@ -3209,12 +3403,106 @@ double Focus::calculateTheoreticalHFR(const HFRGuideConfig &config)
     return fwhmTotalPx / 2.0;  // HFR = FWHM / 2
 }
 
+void Focus::updateTheoreticalHFR(bool redrawProfile)
+{
+    m_TheoreticalHFR = m_HFRGuideConfig.isValid() ? calculateTheoreticalHFR(m_HFRGuideConfig) : -1.0;
+    updateHFRGuideResultLabel();
+
+    if (redrawProfile && profilePlot != nullptr)
+        drawProfilePlot();
+}
+
+void Focus::syncHFRGuideDialogControls()
+{
+    if (m_HFRGuideDialog.isNull())
+        return;
+
+    if (!m_HFRGuideFocalSB.isNull() && m_HFRGuideConfig.focalLengthMm > 0)
+    {
+        QSignalBlocker blocker(m_HFRGuideFocalSB);
+        m_HFRGuideFocalSB->setValue(m_HFRGuideConfig.focalLengthMm);
+    }
+
+    if (!m_HFRGuideApertureSB.isNull() && m_HFRGuideConfig.apertureMm > 0)
+    {
+        QSignalBlocker blocker(m_HFRGuideApertureSB);
+        m_HFRGuideApertureSB->setValue(m_HFRGuideConfig.apertureMm);
+    }
+
+    if (!m_HFRGuidePixelSB.isNull() && m_HFRGuideConfig.pixelSizeUm > 0)
+    {
+        QSignalBlocker blocker(m_HFRGuidePixelSB);
+        m_HFRGuidePixelSB->setValue(m_HFRGuideConfig.pixelSizeUm);
+    }
+
+    if (!m_HFRGuideBinningSB.isNull() && m_HFRGuideConfig.binning > 0)
+    {
+        QSignalBlocker blocker(m_HFRGuideBinningSB);
+        m_HFRGuideBinningSB->setValue(m_HFRGuideConfig.binning);
+    }
+
+    if (!m_HFRGuideSeeingSB.isNull() && m_HFRGuideConfig.siteSeeing > 0)
+    {
+        QSignalBlocker blocker(m_HFRGuideSeeingSB);
+        m_HFRGuideSeeingSB->setValue(m_HFRGuideConfig.siteSeeing);
+    }
+
+    updateHFRGuideResultLabel();
+}
+
+void Focus::updateHFRGuideResultLabel()
+{
+    if (m_HFRGuideResultLabel.isNull())
+        return;
+
+    HFRGuideConfig cfg = m_HFRGuideConfig;
+    if (!m_HFRGuideFocalSB.isNull()) cfg.focalLengthMm = m_HFRGuideFocalSB->value();
+    if (!m_HFRGuideApertureSB.isNull()) cfg.apertureMm = m_HFRGuideApertureSB->value();
+    if (!m_HFRGuidePixelSB.isNull()) cfg.pixelSizeUm = m_HFRGuidePixelSB->value();
+    if (!m_HFRGuideBinningSB.isNull()) cfg.binning = m_HFRGuideBinningSB->value();
+    if (!m_HFRGuideSeeingSB.isNull()) cfg.siteSeeing = m_HFRGuideSeeingSB->value();
+
+    const double hfr = calculateTheoreticalHFR(cfg);
+    if (hfr > 0)
+    {
+        m_HFRGuideResultLabel->setText(QString("<b>%1</b>")
+            .arg(i18n("Theoretical HFR (binning %1×%1): %2 px",
+                      cfg.binning, QString::number(hfr, 'f', 2))));
+    }
+    else
+    {
+        m_HFRGuideResultLabel->setText(QString("<b>%1</b>").arg(i18n("Incomplete HFR Guide parameters.")));
+    }
+}
+
 void Focus::showHFRGuideConfig()
 {
+    refreshHFRGuideFromCCD();
+
+    if (!m_HFRGuideDialog.isNull())
+    {
+        syncHFRGuideDialogControls();
+        m_HFRGuideDialog->show();
+        m_HFRGuideDialog->raise();
+        m_HFRGuideDialog->activateWindow();
+        return;
+    }
+
     QDialog *dlg = new QDialog(this);
+    m_HFRGuideDialog = dlg;
     dlg->setAttribute(Qt::WA_DeleteOnClose);
     dlg->setWindowTitle(i18n("Focus HFR Guide Configuration"));
     dlg->setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
+    connect(dlg, &QDialog::finished, this, [this]()
+    {
+        m_HFRGuideDialog.clear();
+        m_HFRGuideFocalSB.clear();
+        m_HFRGuideApertureSB.clear();
+        m_HFRGuidePixelSB.clear();
+        m_HFRGuideBinningSB.clear();
+        m_HFRGuideSeeingSB.clear();
+        m_HFRGuideResultLabel.clear();
+    });
 
     QGridLayout *layout = new QGridLayout(dlg);
 
@@ -3231,11 +3519,11 @@ void Focus::showHFRGuideConfig()
     layout->addWidget(instrLabel, 0, 0, 1, 2);
 
     // Pre-fill with existing config if valid, otherwise use reasonable defaults
-    const double fl  = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.focalLengthMm : 950.0;
-    const double ap  = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.apertureMm    : 150.0;
-    const double px  = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.pixelSizeUm   : 3.8;
-    const int    bin = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.binning        : 2;
-    const double see = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.siteSeeing     : 5.0;
+    const double fl  = m_HFRGuideConfig.focalLengthMm > 0 ? m_HFRGuideConfig.focalLengthMm : 950.0;
+    const double ap  = m_HFRGuideConfig.apertureMm > 0 ? m_HFRGuideConfig.apertureMm : 150.0;
+    const double px  = m_HFRGuideConfig.pixelSizeUm > 0 ? m_HFRGuideConfig.pixelSizeUm : 3.8;
+    const int    bin = m_HFRGuideConfig.binning > 0 ? m_HFRGuideConfig.binning : 2;
+    const double see = m_HFRGuideConfig.siteSeeing > 0 ? m_HFRGuideConfig.siteSeeing : 5.0;
 
     auto makeDSB = [dlg](double val, double mn, double mx, double step, int dec) -> QDoubleSpinBox *
     {
@@ -3248,54 +3536,38 @@ void Focus::showHFRGuideConfig()
     };
 
     layout->addWidget(new QLabel(i18n("Focal Length (mm):"), dlg), 1, 0);
-    QDoubleSpinBox *focalSB    = makeDSB(fl,  100.0, 5000.0, 10.0, 0);
-    layout->addWidget(focalSB, 1, 1);
+    m_HFRGuideFocalSB = makeDSB(fl,  100.0, 5000.0, 10.0, 1);
+    layout->addWidget(m_HFRGuideFocalSB, 1, 1);
 
     layout->addWidget(new QLabel(i18n("Aperture (mm):"), dlg), 2, 0);
-    QDoubleSpinBox *apertureSB = makeDSB(ap,   30.0, 1000.0,  5.0, 0);
-    layout->addWidget(apertureSB, 2, 1);
+    m_HFRGuideApertureSB = makeDSB(ap,   30.0, 1000.0,  5.0, 1);
+    layout->addWidget(m_HFRGuideApertureSB, 2, 1);
 
     layout->addWidget(new QLabel(i18n("Pixel Size (\xc2\xb5m):"), dlg), 3, 0);
-    QDoubleSpinBox *pixelSB    = makeDSB(px,    1.0,   30.0,  0.1, 2);
-    layout->addWidget(pixelSB, 3, 1);
+    m_HFRGuidePixelSB = makeDSB(px,    1.0,   30.0,  0.1, 2);
+    layout->addWidget(m_HFRGuidePixelSB, 3, 1);
 
     layout->addWidget(new QLabel(i18n("Binning:"), dlg), 4, 0);
-    QSpinBox *binningSB = new QSpinBox(dlg);
-    binningSB->setRange(1, 4);
-    binningSB->setValue(bin);
-    layout->addWidget(binningSB, 4, 1);
+    m_HFRGuideBinningSB = new QSpinBox(dlg);
+    m_HFRGuideBinningSB->setRange(1, 4);
+    m_HFRGuideBinningSB->setValue(bin);
+    layout->addWidget(m_HFRGuideBinningSB, 4, 1);
 
     layout->addWidget(new QLabel(i18n("Site Seeing (arcsec):"), dlg), 5, 0);
-    QDoubleSpinBox *seeingSB   = makeDSB(see, 0.5, 10.0, 0.5, 1);
-    layout->addWidget(seeingSB, 5, 1);
+    m_HFRGuideSeeingSB = makeDSB(see, 0.5, 10.0, 0.5, 1);
+    layout->addWidget(m_HFRGuideSeeingSB, 5, 1);
 
     // Result label — updated in real time as parameters change
-    QLabel *resultLabel = new QLabel(dlg);
-    resultLabel->setAlignment(Qt::AlignCenter);
-    layout->addWidget(resultLabel, 6, 0, 1, 2);
+    m_HFRGuideResultLabel = new QLabel(dlg);
+    m_HFRGuideResultLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(m_HFRGuideResultLabel, 6, 0, 1, 2);
+    updateHFRGuideResultLabel();
 
-    // Recalc lambda — captures widget pointers by value (safe: heap-allocated, outlive lambda)
-    auto recalc = [focalSB, apertureSB, pixelSB, binningSB, seeingSB, resultLabel, this]()
-    {
-        HFRGuideConfig cfg;
-        cfg.focalLengthMm = focalSB->value();
-        cfg.apertureMm    = apertureSB->value();
-        cfg.pixelSizeUm   = pixelSB->value();
-        cfg.binning       = binningSB->value();
-        cfg.siteSeeing    = seeingSB->value();
-        const double hfr  = calculateTheoreticalHFR(cfg);
-        resultLabel->setText(QString("<b>%1</b>")
-            .arg(i18n("Theoretical HFR (binning %1\xc3\x97%1): %2 px",
-                      cfg.binning, QString::number(hfr, 'f', 2))));
-    };
-
-    recalc();  // Populate result label immediately
-
-    connect(focalSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
-    connect(apertureSB, QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
-    connect(pixelSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
-    connect(binningSB,  QOverload<int>::of(&QSpinBox::valueChanged),          dlg, [recalc](int)    { recalc(); });
-    connect(seeingSB,   QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
+    connect(m_HFRGuideFocalSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRGuideResultLabel(); });
+    connect(m_HFRGuideApertureSB, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRGuideResultLabel(); });
+    connect(m_HFRGuidePixelSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRGuideResultLabel(); });
+    connect(m_HFRGuideBinningSB,  QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int) { updateHFRGuideResultLabel(); });
+    connect(m_HFRGuideSeeingSB,   QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRGuideResultLabel(); });
 
     // Save / Close buttons
     QDialogButtonBox *buttons = new QDialogButtonBox(
@@ -3303,14 +3575,14 @@ void Focus::showHFRGuideConfig()
     layout->addWidget(buttons, 7, 0, 1, 2);
 
     connect(buttons->button(QDialogButtonBox::Save), &QPushButton::clicked, dlg,
-        [focalSB, apertureSB, pixelSB, binningSB, seeingSB, this]()
+        [this]()
         {
             HFRGuideConfig cfg;
-            cfg.focalLengthMm = focalSB->value();
-            cfg.apertureMm    = apertureSB->value();
-            cfg.pixelSizeUm   = pixelSB->value();
-            cfg.binning       = binningSB->value();
-            cfg.siteSeeing    = seeingSB->value();
+            cfg.focalLengthMm = m_HFRGuideFocalSB->value();
+            cfg.apertureMm    = m_HFRGuideApertureSB->value();
+            cfg.pixelSizeUm   = m_HFRGuidePixelSB->value();
+            cfg.binning       = m_HFRGuideBinningSB->value();
+            cfg.siteSeeing    = m_HFRGuideSeeingSB->value();
 
             const QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation)
                                   + "HFR_guide.txt";
@@ -3328,7 +3600,7 @@ void Focus::showHFRGuideConfig()
                 f.close();
 
                 m_HFRGuideConfig = cfg;
-                m_TheoreticalHFR = calculateTheoreticalHFR(cfg);
+                updateTheoreticalHFR();
                 appendLogText(i18n("HFR Guide saved. Theoretical HFR: %1 px",
                                    QString::number(m_TheoreticalHFR, 'f', 2)));
             }
@@ -4467,6 +4739,22 @@ void Focus::initPlots()
     pen.setWidth(2);
     lastGaus->setPen(pen);
 
+    theoreticalTargetLine = profilePlot->addGraph();
+    theoreticalTargetLine->setLineStyle(QCPGraph::lsLine);
+    theoreticalTargetLine->setPen(QPen(QColor(255, 215, 0), 2));
+
+    theoreticalCurrentPoint = profilePlot->addGraph();
+    theoreticalCurrentPoint->setLineStyle(QCPGraph::lsNone);
+    theoreticalCurrentPoint->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, Qt::white, QColor(255, 99, 71), 10));
+
+    theoreticalProfileLabel = new QCPItemText(profilePlot);
+    profilePlot->addItem(theoreticalProfileLabel);
+    theoreticalProfileLabel->setColor(QColor(255, 215, 0));
+    theoreticalProfileLabel->setPadding(QMargins(4, 2, 4, 2));
+    theoreticalProfileLabel->setBrush(QBrush(QColor(0, 0, 0, 140)));
+    theoreticalProfileLabel->setPen(QPen(Qt::NoPen));
+    theoreticalProfileLabel->setVisible(false);
+
     HFRPlot->setBackground(QBrush(Qt::black));
 
     HFRPlot->xAxis->setBasePen(QPen(Qt::white, 1));
@@ -4548,6 +4836,16 @@ void Focus::initPlots()
     v_graph->setLineStyle(QCPGraph::lsNone);
     v_graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::white, Qt::white, 14));
 
+}
+
+void Focus::showRelativeProfile()
+{
+    if (profileDialog == nullptr)
+        return;
+
+    profileDialog->show();
+    profileDialog->raise();
+    profileDialog->activateWindow();
 }
 
 void Focus::initConnections()
