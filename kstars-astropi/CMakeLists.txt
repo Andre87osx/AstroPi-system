@@ -2,7 +2,7 @@ PROJECT(kstars CXX C)
 set (KStars_VERSION_MAJOR 3)
 set (KStars_VERSION_MINOR 5)
 set (KStars_VERSION_REVISION 4)
-set (KSTARS_BUILD_RELEASE "KStars AstroPi - v1.7.8")
+set (KSTARS_BUILD_RELEASE "KStars AstroPi - v1.8.0")
 set (CMAKE_CXX_STANDARD 14)
 
 # Build KStars Lite with -DBUILD_KSTARS_LITE=ON
@@ -297,6 +297,9 @@ if (UNIX)
   # TEMPORARY: To disable QCustomPlot warning until 2.0.0 is released which fixes these warnings
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-non-virtual-dtor")
 
+  # Suppress ARM alignment and intentional fall-through warnings in FITS/Ekos code
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-cast-align -Wno-implicit-fallthrough")
+
   # Optimize binary size by dropping unneeded symbols at linking stage
   if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdata-sections -ffunction-sections")
@@ -318,6 +321,10 @@ IF (UNIX OR APPLE OR ANDROID)
     ENDIF ()
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SEC_COMP_FLAGS}")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEC_COMP_FLAGS}")
+    # Keep AstroPi ARM builds quiet despite hardening flags re-enabling cast-align.
+    IF (UNIX)
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-cast-align")
+    ENDIF ()
     SET(SEC_LINK_FLAGS "")
 
     include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/CheckNodump.cmake")

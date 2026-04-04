@@ -38,7 +38,7 @@ if [ ! -d "${WorkDir}/kstars-cmake" ]; then
     mkdir -p "${WorkDir}/kstars-cmake"
 fi
 cd "${WorkDir}/kstars-cmake"
-cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off "${appDir}/kstars-astropi"
+cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off "${appDir}/kstars-astropi"
 make -j $(expr $(nproc) + 2)
 
 # Copia l'eseguibile principale (kstars)

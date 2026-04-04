@@ -1042,6 +1042,13 @@ ENDIF ()
 set(kstars_SRCS ${kstars_SRCS} ${fits2_SRCS} ${sep_SRCS} ${gpg_SRCS} ${hough_SRCS} ${hips_manager_SRCS})
 set(kstarslite_SRCS ${kstarslite_SRCS} ${fits_klite_SRCS} ${sep_SRCS} ${hough_SRCS} ${fits2_klite_SRCS} ${kstarslite_libtess_SRC})
 
+# Work around GCC 8 ARM ICE triggered by heavy Qt template instantiation in manager.cpp.
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9
+    AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+    set_source_files_properties(ekos/manager.cpp PROPERTIES COMPILE_FLAGS "-O0")
+endif ()
+
 IF (NOT ANDROID)
     qt5_add_dbus_adaptor(kstars_SRCS org.kde.kstars.xml kstars.h KStars)
     qt5_add_dbus_adaptor(kstars_SRCS org.kde.kstars.SimClock.xml simclock.h SimClock)

@@ -1,22 +1,472 @@
 <!-- 
-=> AstroPi.desktop              /usr/bin                                            main icon launch AstroPi System
-    |=> .Update.sh              /usr/bin                                            first step, upgrade git and launch 
-        |=> AstrpPi.sh          "${HOME}"/.AstroPi-system/Script
-        |=> astrometry.sh       "${HOME}".AstroPi-system/Script
-=> autohotspot.service          /usr/bin
-    |=> autohotspot             /usr/bin
-=> kstars.desktop               /usr/bin
-    |=> kstars.sh               /usr/bin
-        |=> parking.py          /usr/bin
-=> panel                        "${HOME}"/.config/lxpanel/LXDE-pi/panels/panel
--->
-<!-- 
 To obtain ChangeLog use this cmd line in git dir
 $ cd C:\Users\andre\OneDrive\Documenti\GitHub\AstroPi-system
 $ git log --after=<date> --date=short --pretty=format:"%h %ad %<(20)%an %<(150,trunc)%s" >> ChangeLog
 -->
 
-<<<<<<< Updated upstream
+TAG PROGRESS (latest first)
+================================
+HEAD  (76d6b03)                         commits after latest TAG: 3
+v1.7.9          2026-03-07  ba05f64     commits since previous TAG: 53
+v1.7-intelNUC.9 2026-02-26  9e455fd     commits since previous TAG: 15
+v1.7.8          2026-02-24  096e046     commits since previous TAG: 33
+v.1.7.7         2026-01-18  6d98192     commits since previous TAG: 2
+1.7.7           2026-01-18  cbc20a7     commits since previous TAG: 2
+v1.7.7          2026-01-18  71e2e45     commits since previous TAG: 70
+v1.7            2025-08-30  36ea00a     commits since previous TAG: 6
+v1.6            2025-01-16  48be11e     commits since previous TAG: 224
+v1.5            2022-12-31  c863140     commits since previous TAG: 201
+v1.4            2021-11-23  8d2a4fc     commits since previous TAG: 126
+v1.2            2021-08-28  f1c9d1d     commits since previous TAG: 7
+v1.1            2021-08-21  97a6116     commits since previous TAG: 105
+3.5.4           2021-07-12  d70b368     commits since previous TAG: 27
+v3.5.2          2021-06-16  6e2415e     commits since previous TAG: 12
+v3.5.3          2021-06-07  9586cb7
+
+NOTE:
+- There are multiple aliases for release 1.7.7 (v.1.7.7, 1.7.7, v1.7.7).
+- Counts are computed as TAG-to-TAG commit deltas in descending date order.
+
+DETAILED PROGRESS BY TAG (newest first)
+================================
+
+UNRELEASED (after v1.7.9)  [commits: 3]
+--------------------------------
+76d6b03 2026-03-07 Andrea Aimone        fix: Add beta update option to AdminSystem for pre-release installations
+2cb78ff 2026-03-07 Andrea Aimone        fix: Update default focuser settings for improved autofocus performance
+dd1aa9c 2026-03-07 Andrea Aimone        fix: Change focus algorithm to FOCUS_LINEAR and update default in configuration
+
+v1.7.9 (2026-03-07)  [commits: 53]
+--------------------------------
+ba05f64 2026-03-07 Andrea Aimone        fix: Update guide detail view logic to use guideProfilePixmap and adjust index handling
+72f455d 2026-03-07 Andrea Aimone        revert: Update guide detail view logic to include guide star and profile options
+e85e445 2026-03-07 Andrea Aimone        fix: Update guide detail view logic to use guidePlotPixmap for target checks and rendering
+96c6789 2026-03-07 Andrea Aimone        fix: Enhance error reporting in KStars build process and update memory allocation error messages for consistency
+3f5e61c 2026-03-07 Andrea Aimone        fix: Refactor guide detail view rendering logic for improved pixmap handling and clarity
+16dd080 2026-03-05 Andrea Aimone        fix: Update guide detail view logic to use guideProfilePixmap for target checks and rendering
+49032ec 2026-03-05 Andrea Aimone        fix: Improve HFR plot range calculation for better visualization and handling of empty data
+2fe5070 2026-03-05 Andrea Aimone        fix: Update guide detail view logic and tooltips for improved clarity
+39a99f6 2026-03-05 Andrea Aimone        fix: Implement fitSquareGuideTargetInBlackBox function for improved guide detail view rendering
+df3b1b4 2026-03-05 Andrea Aimone        Revert "fix: Enhance HFR plot range calculation for improved visibility and adjust UI layout properties"
+393e093 2026-03-05 Andrea Aimone        Revert "fix: Ensure proper type casting for pulseDuration in HFR plot range calculation"
+db1f45b 2026-03-04 Andrea Aimone        fix: Ensure proper type casting for pulseDuration in HFR plot range calculation
+64a2ba9 2026-03-04 Andrea Aimone        fix: Enhance HFR plot range calculation for improved visibility and adjust UI layout properties
+1ebf049 2026-03-04 Andrea Aimone        fix: Increase minimum width of guideDetailView for improved layout
+3283725 2026-03-04 Andrea Aimone        fix: Adjust minimum size of driftGraph for improved visibility and update tabWidget size policy
+9d1c083 2026-03-04 Andrea Aimone        fix: Increase minimum and maximum size of driftGraph for better visibility
+96c7fa6 2026-03-04 Andrea Aimone        fix: Update guide detail view to use fitGuidePixmapInBlackBox for improved scaling
+200cb90 2026-03-04 Andrea Aimone        fix: Add dynamic rendering for guide detail view based on current size
+31f1993 2026-03-04 Andrea Aimone        feat: Enhance guide detail view rendering with direct pixmap handling and conditional scaling
+1907855 2026-03-03 Andrea Aimone        fix: Improve placeholder plot rendering timing and enhance label dimension handling
+c9237f3 2026-03-03 Andrea Aimone        refactor: Simplify guide detail view rendering and use locally-drawn placeholder
+f0c4524 2026-03-03 Andrea Aimone        fix: Update guide detail view to use view size for drift plot and adjust placeholder scaling
+144ab9d 2026-03-03 Andrea Aimone        fix: Disable navigation buttons in guide detail view and enhance image scaling
+4fb9a32 2026-03-02 Andrea Aimone        feat: Enhance guide detail view scaling and add legend to placeholder plot
+1946af5 2026-03-02 Andrea Aimone        bugfix: Center align RAM and disk labels in manager UI and adjust guide detail view scaling
+ec67272 2026-03-02 Andrea Aimone        feat: Set size policy for guide detail view to ignored in manager UI
+d8d32f2 2026-03-02 Andrea Aimone        refactor: Remove alignment properties from progress bar widgets in manager UI
+54bb5c7 2026-03-02 Andrea Aimone        feat: Enhance AstroPi logo handling with dynamic resizing and fallback options
+9883c29 2026-03-02 Andrea Aimone        feat: Add guide SNR display with progress bar and update logic
+f5de473 2026-03-02 Andrea Aimone        feat: Implement normalizeDriftGraphYAxis function and integrate it into drift graph scaling
+e943e47 2026-03-01 Andrea Aimone        feat: Add hidden controls for shutdown and startup scripts in scheduler UI
+2f21bcd 2026-03-01 Andrea Aimone        Fix focus polynomial graph visibility state
+7504c5a 2026-03-01 Andrea Aimone        fix: Move CCD cooling logic to startup process for immediate activation
+88d8079 2026-03-01 Andrea Aimone        fix: Remove unused shutdown and startup button widgets from scheduler UI
+b2bacbe 2026-03-01 Andrea Aimone        fix: Adjust layout properties and improve label formatting in manager UI
+6fd9561 2026-03-01 Andrea Aimone        feat: Add RAM and Disk usage indicators in system properties panel
+9a9f90d 2026-03-01 Andrea Aimone        fix: Refactor guide detail view image scaling for improved performance
+c5f4c4c 2026-03-01 Andrea Aimone        fix: Adjust button size policies and add input value label in Analyze UI
+78cb7ac 2026-03-01 Andrea Aimone        fix: Improve report navigation logic and ensure correct index handling
+cefb520 2026-03-01 Andrea Aimone        fix: Update storage details text formatting in AdminSystem function
+8cbc34c 2026-03-01 Andrea Aimone        feat: Add navigation buttons for report browsing in Analyze module
+71d32b1 2026-02-28 Andrea Aimone        feat: Add total RMS label to Manager UI and update RMS calculation
+4e1cdf2 2026-02-28 Andrea Aimone        fix: Enhance placeholder plot rendering in Guide and Focus modules for improved visual consistency
+89ddd5f 2026-02-28 Andrea Aimone        fix: Add placeholder plot functions for guide and focus in Manager class
+bd22cae 2026-02-28 Andrea Aimone        feat: Add logging for KStars build process with timestamped log files
+380a481 2026-02-27 Andrea Aimone        fix: Improve plot size handling in Focus and Guide modules for better fallback dimensions
+dd16de8 2026-02-27 Andrea Aimone        refact: for plot generation in Focus and Guide modules and MANAGER tab
+45555f7 2026-02-27 Andrea Aimone        chore: remove temporary _tmp_kde_kstars reference
+4f9ddf0 2026-02-27 Andrea Aimone        fix: Simplify zenity command in AdminSystem function for improved readability
+80a4eaa 2026-02-27 Andrea Aimone        fix: Adjust AdminSystem dialog width for improved layout
+602ce6a 2026-02-27 Andrea Aimone        fix: Improve sequence status updates and handle null CCD cases in Capture module
+1ef211d 2026-02-26 Andrea Aimone        fix: Eliminate white borders and stretch plots to fill Manager UI boxes
+dc3359b 2026-02-26 Andrea Aimone        fix: Use render() instead of grab() for plot capture in Manager UI
+
+v1.7-intelNUC.9 (2026-02-26)  [commits: 15]
+--------------------------------
+9e455fd 2026-02-26 Andrea Aimone        fix: Display empty plots in Manager UI when modules are inactive
+e5b271a 2026-02-26 Andrea Aimone        fix: Use correct HFRPlot widget for Focus profile in Manager UI
+331a6ff 2026-02-26 Andrea Aimone        fix: Revert CCD temperature logic to v1.7.7 working version
+daca0fd 2026-02-26 Andrea Aimone        fix: Adjust dialog dimensions for better responsiveness in AdminSystem and AdminKStars functions
+9182618 2026-02-26 Andrea Aimone        feat: MANAGER tab Add methods to retrieve profile and drift plot pixmaps in Focus and Guide classes
+b0d59ba 2026-02-26 Andrea Aimone        fix: Update CCD temperature display logic to handle cooler status and show N/A when cooler is not present
+a545472 2026-02-26 Andrea Aimone        fix: Enhance installer to handle missing latest release tag and update minor version to 7.9
+c387feb 2026-02-26 Andrea Aimone        fix: Update CCD temperature display to show N/A when cooler is not present
+8e569ef 2026-02-26 Andrea Aimone        fix: Remove gradient background from styleSheet in Manager UI
+d9eb989 2026-02-26 Andrea Aimone        fix: Update CCD temperature display logic to show real temperature or N/A based on cooler status
+363e263 2026-02-26 Andrea Aimone        fix: Update cancel label from "Main" to "Home" in AdminSystem and AdminKStars dialogs
+d7e25a7 2026-02-26 Andrea Aimone        fix: Adjust window height and progress width for better UI scaling in AstroPi System
+a196873 2026-02-26 Andrea Aimone        fix: Update KStars version to 3.5.4_v1.7.9 in functions and CMakeLists
+487d990 2026-02-26 Andrea Aimone        fix: Update cooler toggle logic to reflect real sensor temperature when disabled
+74c4276 2026-02-26 Andrea Aimone        fix: Update minimum exposure time to prevent invalid values in capture settings
+
+v1.7.8 (2026-02-24)  [commits: 33]
+--------------------------------
+096e046 2026-02-24 Andrea Aimone        fix: Enhance telescope parking logic with Python version check and immediate parking for connected mounts
+0770f67 2026-02-24 Andrea Aimone        refactor: Remove redundant memory cleanup code in job execution
+df7a729 2026-02-22 Andrea Aimone        fix: Adjust large dialog dimensions for improved layout consistency
+0091b85 2026-02-22 Andrea Aimone        fix: Add size cap for main window to prevent oversized dialogs on scaled displays
+7a88375 2026-02-22 Andrea Aimone        feat: Adjust dialog size logic for better responsiveness based on content length
+afc2df2 2026-02-22 Andrea Aimone        feat: Refine dialog size logic to optimize medium usage
+be6ff68 2026-02-22 Andrea Aimone        feta: Update VNC Server to 7.16
+e4a60e6 2026-02-22 Andrea Aimone        feat: Add cleanup for previous build artifacts in INDI and KStars functions
+dffcb3a 2026-02-22 Andrea Aimone        feat: Enhance dialog sizing logic for improved user experience
+8b47f36 2026-02-22 Andrea Aimone        feat: Optimize GUI dimensions and enhance error handling in KStars installation
+fce8fd2 2026-02-22 Andrea Aimone        bugfix: Clear align and focus modules memory between jobs
+4ebaa54 2026-02-20 Andrea Aimone        feat: Add RAM usage monitoring to the Manager interface
+e68fcb5 2026-02-20 Andrea Aimone        feat: Optimize memory handling in alignment and scheduler modules
+e363b1d 2026-02-19 Andrea Aimone        bugfix: Improve CCD and filter handling with additional checks and logging
+d91785f 2026-02-19 Andrea Aimone        feat: Add workflow and script for building Raspbian Buster artifacts
+af44e55 2026-02-19 Andrea Aimone        feat: Add abort logic for alignment requests in Scheduler on timeout
+b9b8864 2026-02-18 Andrea Aimone        feat: Implement mount connection recovery logic with safe shutdown fallback
+e718984 2026-02-18 Andrea Aimone        feat: Enhance CCD temperature control and recovery logic in Scheduler
+e2eb6df 2026-02-18 Andrea Aimone        fix unique GUIDE md
+e667f16 2026-02-18 Andrea Aimone        enhance image retention logic in Align module
+67a3c8e 2026-02-18 Andrea Aimone        fix DPI logo AstroPi in scheduler
+e79b7dd 2026-02-16 Andrea Aimone        fix scheduler guide and logo
+727e854 2026-02-16 Andrea Aimone        fix fits viewv auto open if  unflaghed
+6f925b3 2026-02-16 Andrea Aimone        delete log test
+b4be7b7 2026-02-16 Andrea Aimone        fix mountbox QML error i18n + set auto width
+e7135d3 2026-02-16 Andrea Aimone        update rev to 1.7.8
+8ba53bb 2026-02-16 Andrea Aimone        fix alig bug out of memory
+febba2a 2026-02-16 Andrea Aimone        delete ekos log
+cf0ca2a 2026-02-16 Andrea Aimone        fix allert crash delete timeout banner
+5cc4cae 2026-02-16 Andrea Aimone        Merge pull request #258 from aimonea/rev1.7.8
+2adce89 2026-02-16 Andrea Aimone        remove old log
+588024c 2026-02-16 Andrea Aimone        Merge pull request #257 from Andre87osx/rev1.7.4
+6b71548 2026-02-16 Andrea Aimone        Merge pull request #256 from Andre87osx/main
+
+v.1.7.7 (alias) (2026-01-18)  [commits: 2]
+--------------------------------
+6d98192 2026-01-18 aimonea              Suggest running INDI fix script (only if not already done)
+0468d4d 2026-01-18 aimonea              fix vnc update
+
+1.7.7 (alias) (2026-01-18)  [commits: 2]
+--------------------------------
+cbc20a7 2026-01-18 aimonea              update rev to 1.7.7
+916870d 2026-01-18 aimonea              change dir for VNC update .deb
+
+v1.7.7 (2026-01-18)  [commits: 70]
+--------------------------------
+71e2e45 2026-01-18 aimonea              add progress to fix INDI dep process
+73a0564 2026-01-18 aimonea              fix apt repo for buster
+381470b 2026-01-07 Andrea Aimone        Merge pull request #254 from Andre87osx/rev1.7.4
+9d95b21 2025-12-30 aimonea              add wmctrl to system update
+49e7c9a 2025-12-30 aimonea              fix schedular guide loop
+dacec79 2025-12-30 aimonea              fix gdp source list
+eead434 2025-12-30 aimonea              upgrade source list
+be4ce1a 2025-12-30 aimonea              fix parking py
+a7b637a 2025-12-27 aimonea              Update functions.sh
+dfd643a 2025-12-27 aimonea              Update functions.sh
+c8d85f3 2025-12-27 aimonea              Update functions.sh
+6474b2d 2025-12-27 aimonea              fix INDI dep
+10fa4da 2025-12-27 aimonea              fix link source list
+7f3d197 2025-12-27 aimonea              add kstars pakage
+8bd96f3 2025-12-27 aimonea              fix some typo and delete mark hold
+08db6e6 2025-12-26 aimonea              fix EOF line error in source list
+7d93e1c 2025-12-26 aimonea              last fix suorce.list NOW WORKS
+7d0ffa2 2025-12-21 aimonea              othert fix repo with trust
+8c101e6 2025-12-21 aimonea              fix wpa
+152c022 2025-12-21 aimonea              other repo fix
+a0c44f3 2025-12-20 aimonea              fix wpa connections
+bb9e6d9 2025-12-20 aimonea              last fix repo
+00df263 2025-12-20 aimonea              other fix repo
+cbb6ba5 2025-12-20 aimonea              other repo fix
+439caec 2025-12-20 aimonea              perform fix for repo
+1a695ad 2025-12-20 aimonea              Updare apt for new repo buster
+2a989e9 2025-12-14 aimonea              add workspace
+6fa7443 2025-12-14 aimonea              FIX chrash MGMT and park mout
+524c0f6 2025-12-14 aimonea              FIX Guide error MGMT
+dad13b5 2025-11-01 Andrea Aimone        fix some functions in AstroPi sytems
+5c2e7ed 2025-11-01 Andrea Aimone        some fix for ksBackup
+2b3c272 2025-10-31 Andrea Aimone        fix text
+4e4f8df 2025-10-31 Andrea Aimone        fix zenity width
+b0c14e6 2025-10-31 Andrea Aimone        add function sysBackup
+702ac69 2025-10-19 Andrea Aimone        last fix index files
+363440d 2025-10-19 Andrea Aimone        Merge pull request #252 from Andre87osx/rev1.7.3
+ff68672 2025-10-19 Andrea Aimone        FIX addres for Astrometry download FITS
+743168a 2025-10-18 Andrea Aimone        Update install.sh
+32ff293 2025-10-18 Andrea Aimone        Update kstars.kcfg
+7e29a27 2025-10-18 Andrea Aimone        Merge pull request #251 from Andre87osx/rev1.7.3
+0a83691 2025-10-17 Andrea Aimone        fix syntax error
+55e44bb 2025-10-17 Andrea Aimone        Merge pull request #250 from Andre87osx/rev1.7.3
+c062104 2025-10-17 Andrea Aimone        # Chk if system is NOT ARM64 chkARM64()
+f710e52 2025-10-17 Andrea Aimone        # Chk if system is NOT ARM64 chkARM64()
+20fbef4 2025-10-17 Andrea Aimone        implement function chkARM64() FORCE 32bit
+6ad96fb 2025-10-11 Andrea Aimone        EnforceGuideDeviation in CAPTURE
+d8348e1 2025-10-11 Andrea Aimone        Set CANTALUPA as defaut geographics
+729418a 2025-10-11 Andrea Aimone        when a job aborts or steps into an error reschedule IMMEDIATE
+0c12dee 2025-10-10 Andrea Aimone        GUIDE Maximum number of immediate reacquire attempts before forcing abort.
+a7f31b1 2025-10-04 Andrea Aimone        Merge pull request #249 from Andre87osx/rev1.7-patch-1
+46c48cd 2025-10-04 Andrea Aimone        Cleanup workspace on any error so build artifacts are removed
+16cb906 2025-10-04 Andrea Aimone        update cleaning if INDI error
+72ee00e 2025-10-04 Andrea Aimone        implement kstars output in zenity progress
+d126563 2025-10-04 Andrea Aimone        Merge pull request #248 from Andre87osx/1.7.2temp
+9a0666a 2025-10-04 Andrea Aimone        Update functions.sh INDI rev 1,9,7
+08d1b38 2025-09-21 Andrea Aimone        INDI driver sync for 1.9.7
+875376e 2025-09-21 Andrea Aimone        update INDI installations helper
+21b2253 2025-09-20 Andrea Aimone        function chkINDI() best error management
+f8b5a75 2025-09-20 Andrea Aimone        delete function next_v() not seed
+65ce176 2025-09-20 Andrea Aimone        set INDI 1.9.7 as default
+d1eaf4b 2025-09-20 Andrea Aimone        rework INDI and kstars build
+d5485b9 2025-09-20 Andrea Aimone        add VNC server Update
+658200c 2025-09-13 Andrea Aimone        restore INDI 1.9.1 temporay
+4174f67 2025-08-30 Andrea Aimone        Merge pull request #246 from Andre87osx/rev1.7
+b91a5c3 2025-08-30 Andrea Aimone        Merge branch 'main' into rev1.7
+4cdfcb5 2025-08-30 Andrea Aimone        Revert "Merge pull request #245 from Andre87osx/revert-244-rev1.7"
+77c738e 2025-08-30 Andrea Aimone        Use latest TAG for update NOT main
+9bf42b0 2025-08-30 Andrea Aimone        Merge pull request #245 from Andre87osx/revert-244-rev1.7
+71f66a9 2025-08-30 Andrea Aimone        Revert "Rev1.7"
+182a872 2025-08-30 Andrea Aimone        Merge pull request #244 from Andre87osx/rev1.7
+
+v1.7 (2025-08-30)  [commits: 6]
+--------------------------------
+36ea00a 2025-08-30 Andrea Aimone        KSTARS_BUILD_RELEASE "KStars AstroPi - v1.7
+1ba1a5d 2025-08-30 Andrea Aimone        Set INDI to 1.9.8 and remove TEMP chek for 64bit
+acf2881 2025-08-25 Andrea Aimone        mark rev 1.7
+be1aa3e 2025-08-25 Andrea Aimone        restore "setupSysTime" if hotspot activated
+4f7f633 2025-08-21 Andrea Aimone        Aggiorna numero tentativi MAX_FAILURE_ATTEMPTS nello scheluler
+534ff9a 2025-08-21 Andrea Aimone        Aggiunto stop timer come sicurezza aggiuntiva
+
+v1.6 (2025-01-16)  [commits: 224]
+--------------------------------
+48be11e 2025-01-16 Andrea Aimone        Merge pull request #243 from Andre87osx/revert-238-test_fix_kstars1.6
+ffe2503 2025-01-16 Andrea Aimone        Revert "Test IMPLEMENT kstars1.6"
+3423516 2025-01-14 Andrea Aimone        fix re-schedule error to true
+9252c3e 2025-01-14 Andrea Aimone        Merge pull request #238 from Andre87osx/test_fix_kstars1.6
+222032c 2025-01-13 Andrea Aimone        Fix focus label and max step size value
+47babc7 2025-01-13 Andrea Aimone        Fix focus max step size and schedular error handling
+cec29ca 2025-01-11 Andrea Aimone        Update mountbox.qml
+e3daca1 2025-01-06 Andrea Aimone        Update indidrivers.xml, delete ZWO camera
+2615a30 2025-01-04 Andrea Aimone        Update kstars.kcfg see log for deatails
+ad0357d 2025-01-04 Andrea Aimone        add permanent warning afert safety procedure
+c39803c 2025-01-04 Andrea Aimone        add timeout in crash message
+e4f6fec 2025-01-04 Andrea Aimone        fix crash procedure, try use nohup
+0e341a0 2024-10-10 Andrea Aimone        On abnormal disconnect, try to clear devices first
+9e6fc90 2024-10-10 Andrea Aimone        Display FITS viewer only when option is set
+ce56830 2024-10-10 Andrea Aimone        Display FITS viewer only when option is set
+959d5b3 2024-10-10 Andrea Aimone        Display FITS viewer only when option is set
+081f644 2024-10-10 Andrea Aimone        Use FWHM 1 as it appears to be much more reliable than 2 or above at detecting stars
+1441ae7 2024-10-10 Andrea Aimone        Tightened up the code related to capture suspending on bad guide deviations
+52e83ce 2024-10-10 Andrea Aimone        Tightened up the code related to capture suspending on bad guide deviations
+da5b818 2024-10-10 Andrea Aimone        Tightened up the code related to capture suspending on bad guide deviations
+b680b8f 2024-10-10 Andrea Aimone        fix performance for loading thumbnails
+265f6cf 2024-10-05 Andrea Aimone        fix wpa_supplicant file
+de99c53 2024-10-05 Andrea Aimone        add zenity progress Update functions.sh
+63d87c6 2024-10-05 Andrea Aimone        fix sysclean Update functions.sh
+f210cc1 2024-10-05 Andrea Aimone        Update kstars.desktop
+d1699cd 2024-10-05 Andrea Aimone        Update scheduler.ui
+a538a42 2024-10-01 Andrea Aimone        rework kstars.sh
+fbad501 2024-09-30 Andrea Aimone        add dnsmasq.conf to bin
+42d9906 2024-09-30 Andrea Aimone        add_dns masq
+69be375 2024-09-27 Andrea Aimone        autohotspot nee forwarding to work with ETH
+08b25dc 2024-09-27 Andrea Aimone        add comment during cmake indi
+816f046 2024-09-27 Andrea Aimone        Update functions.sh
+5c749a0 2024-09-27 Andrea Aimone        Merge pull request #232 from Andre87osx/revert3.5.4
+c8d4e68 2024-09-27 Andrea Aimone        clean workdir after cmake
+b0dfaa5 2024-09-27 Andrea Aimone        fix config
+2b935dc 2024-09-27 Andrea Aimone        upload354
+915226a 2024-09-27 Andrea Aimone        Delete kstars-astropi directory
+7fc12e3 2024-09-26 Andrea Aimone        rev 1.6 restored part 1
+d2d76ec 2024-09-26 Andrea Aimone        Update functions.sh add error message
+0eb657a 2024-09-26 Andrea Aimone        fix bug loop
+341ede2 2024-09-26 Andrea Aimone        fix tabs
+37229de 2024-09-26 Andrea Aimone        Merge pull request #231 from Andre87osx/restore_354
+a0505c8 2024-09-26 Andrea Aimone        restore 3.5.4 and indi 1.9.1
+dc2970a 2024-09-26 Andrea Aimone        del 360
+1997c84 2024-09-25 Andrea Aimone        Merge pull request #229 from Andre87osx/kstars_3.6.0
+a222035 2024-09-25 Andrea Aimone        Update CMakeLists.txt fix rev 1.7
+f21df08 2024-09-25 Andrea Aimone        Update kstars.kcfg default settings
+12519d0 2024-09-25 Andrea Aimone        fix some typo Update functions.sh
+bbb43ff 2024-09-24 Andrea Aimone        add ppa:mutlaqja/ppa in tester
+2c72ecf 2024-09-24 Andrea Aimone        delete cmake indi from tester
+33e4fbc 2024-09-24 Andrea Aimone        remmove run in tester
+6f8cdaf 2024-09-24 Andrea Aimone        fix dir to build in tester
+203b0d3 2024-09-24 Andrea Aimone        fix v indi in tester
+8ccf728 2024-09-24 Andrea Aimone        remoove gst from tester
+8683802 2024-09-24 Andrea Aimone        fix cmake tester for v1.7
+f97d4e3 2024-09-24 Andrea Aimone        Update kstars.kcfg
+c010bcd 2024-09-24 Andrea Aimone        some fix in description
+0293aba 2024-09-23 Andrea Aimone        fix syntax error
+270d286 2024-09-23 Andrea Aimone        fix kstars building
+89216a7 2024-09-23 Andrea Aimone        fix stellarsolver
+e4bd5ed 2024-09-23 Andrea Aimone        fix widt zenity progress
+ddacf85 2024-09-23 Andrea Aimone        add lost INDI dependencies
+0d1c9d7 2024-09-23 Andrea Aimone        fix mkdir error
+45fe6b5 2024-09-23 Andrea Aimone        upgrade indi 3rd
+374b20d 2024-09-23 Andrea Aimone        add new dependeciens for INDI
+85f7e79 2024-09-22 Andrea Aimone        upload code
+57831cc 2024-09-22 Andrea Aimone        del all code
+6fd43f2 2024-09-22 Andrea Aimone        delete corrupt code
+e6069bb 2024-09-22 Andrea Aimone        import last 3.6.0
+b707ff9 2024-09-22 Andrea Aimone        import 3.6.0 code from invent.kde.org
+cb90073 2024-09-22 Andrea Aimone        up to 3.6.0 in functions.sh
+f4c7d7b 2024-09-22 Andrea Aimone        fix wifi bugs
+befa783 2024-09-20 Andrea Aimone        minor typo in install.sh
+c5c9043 2024-09-19 Andrea Aimone        remoove # >> FIX some dipendencies
+5379c8f 2024-09-19 Andrea Aimone        apt install -y vlc-bin in functions
+5c9c256 2024-09-19 Andrea Aimone        add buffer for zenity
+af01eff 2024-09-19 Andrea Aimone        try fix zenity in update process
+8753d34 2024-09-19 Andrea Aimone        Merge pull request #220 from Andre87osx/AstroPi_v1.7-rework
+435df6a 2024-09-19 Andrea Aimone        delete force to 1.7
+f5a1ac0 2024-09-19 Andrea Aimone        Revert "try upgrade focus algorithm"
+c7094d3 2024-09-19 Andrea Aimone        Merge pull request #225 from Andre87osx/test_focus
+6ceea1e 2024-09-19 Andrea Aimone        try upgrade focus algorithm
+e56d667 2024-09-18 Andrea Aimone        Update AstroPi.sh to 1.7
+091b7ca 2024-09-18 Andrea Aimone        fix install apt dependencies
+871f691 2024-09-18 Andrea Aimone        upgrade kstars compiling code
+bc2fb22 2024-09-18 Andrea Aimone        fix network manager add wifi
+4040471 2024-09-18 Andrea Aimone        FIX some dipendencies
+9180bbf 2024-09-17 Andrea Aimone        FIX other bugs
+cb71d2c 2024-09-17 Andrea Aimone        fix hotspot bugs
+6765b2b 2024-09-17 Andrea Aimone        fix zenity on GSC funcion
+002ec3a 2024-09-17 Andrea Aimone        Fix funcions
+ce4ef32 2024-09-17 Andrea Aimone        Update rev in functions.sh
+4261ef3 2024-09-17 Andrea Aimone        Update rev. to 1.7 in comment install.sh
+f086a91 2024-09-17 Andrea Aimone        Restart or force autohotspot services
+ee77f1d 2024-09-17 Andrea Aimone        set FocusMaxTravel to 1000
+c1e8995 2024-09-17 Andrea Aimone        Default Focuser step ticks set to 50
+346094f 2024-09-16 Andrea Aimone        use testing in kstars compiler
+1a803b1 2024-09-16 Andrea Aimone        delete dir .project if cmake fails
+09c1290 2024-09-16 Andrea Aimone        Revert "try upgrade focus"
+8b7039c 2024-09-16 Andrea Aimone        Revert "focus update to 3.5.6"
+91113d8 2024-09-16 Andrea Aimone        Revert "fix focus upgrade 3.5.6"
+02fdd97 2024-09-16 Andrea Aimone        Revert "fix test focus CRLF line endings"
+c60ec93 2024-09-16 Andrea Aimone        Revert "focus add darkprocessor"
+d464fd2 2024-09-16 Andrea Aimone        focus add darkprocessor
+3bace7f 2024-09-16 Andrea Aimone        Merge branch 'AstroPi_v1.7-rework' of https://github.com/Andre87osx/AstroPi-system into AstroPi_v1.7-rework
+738f5cb 2024-09-16 Andrea Aimone        fix test focus CRLF line endings
+6eef760 2024-09-16 Andrea Aimone        upgrade test FOCUS
+fed5cdc 2024-09-16 Andrea Aimone        fix focus upgrade 3.5.6
+0779857 2024-09-16 Andrea Aimone        focus update to 3.5.6
+e05e0c2 2024-09-16 Andrea Aimone        try upgrade focus
+ef87203 2024-09-10 Andrea Aimone        Merge pull request #222 from Andre87osx/Andre87osx-patch-1
+47a03d9 2024-09-10 Andrea Aimone        set v1.7 in functions.sh
+1881657 2024-09-10 Andrea Aimone        try force 1.7 for test
+7c8de56 2024-09-09 Andrea Aimone        Merge pull request #221 from Andre87osx/Andre87osx-patch-1
+b864d62 2024-09-09 Andrea Aimone        update AUTO off hotspot
+46a1a8c 2024-09-09 Andrea Aimone        rework autohtspot
+63f0e19 2024-09-09 Andrea Aimone        delete clone ASI ZWO CDD
+afe4c1d 2024-09-09 Andrea Aimone        Merge pull request #219 from Andre87osx/Andre87osx-patch-1
+11e3d52 2024-09-09 Andrea Aimone        fix kstars to rev 1.7
+406cd8a 2024-09-09 Andrea Aimone        set rev 1.7 in functions.sh
+b3560bc 2024-09-08 Andrea Aimone        Merge pull request #215 from Andre87osx/AstroPi_v1.7-rework
+3bc7092 2024-09-08 Andrea Aimone        Merge pull request #218 from Andre87osx/Kstars_v1.7-rework
+ef70ad8 2024-09-08 Andrea Aimone        Merge pull request #216 from Andre87osx/fix-cap-uncap
+39bd158 2024-09-08 Andrea Aimone        Merge pull request #217 from Andre87osx/Kstars_v1.7-rework
+1291128 2024-09-08 Andrea Aimone        Update cmake.yml
+b4f4aa7 2024-09-08 Andrea Aimone        delete property
+dafed75 2024-09-08 Andrea Aimone        try no-force cap uncap
+628c5a0 2024-09-08 Andrea Aimone        last fix before testing INDI AstroPi
+98ef1dc 2024-09-08 Andrea Aimone        Delete include/test_install.sh
+dd3d955 2024-09-08 Andrea Aimone        indi-full gsc
+f74cc25 2024-09-08 Andrea Aimone        Update cmake.yml
+8a2aefd 2024-09-08 Andrea Aimone        add -Wno-dev
+9eec0ce 2024-09-08 Andrea Aimone        Update cmake.yml
+c66a563 2024-09-08 Andrea Aimone        Update cmake.yml
+7c68a0a 2024-09-07 Andrea Aimone        -Wno-error=deprecated
+a96e302 2024-09-07 Andrea Aimone        Update cmake.yml
+d6f8f2d 2024-09-07 Andrea Aimone        add libqt5datavisualization5-dev
+a02c6f0 2024-09-07 Andrea Aimone        add libqt5datavisualization5
+6752a65 2024-09-07 Andrea Aimone        Update cmake.yml
+78e1917 2024-09-07 Andrea Aimone        Update cmake.yml
+e796e1d 2024-09-07 Andrea Aimone        Update cmake.yml
+cfa5dcd 2024-09-07 Andrea Aimone        Update cmake.yml
+eef3968 2024-09-07 Andrea Aimone        add INDI3rdLIB SETUP
+eead372 2024-09-07 Andrea Aimone        Update cmake.yml
+30fa201 2024-09-07 Andrea Aimone        Update cmake.yml
+de073f9 2024-09-07 Andrea Aimone        Update cmake.yml
+ee7ba00 2024-09-07 Andrea Aimone        try another way for INDI
+5727d30 2024-09-07 Andrea Aimone        try use install default
+5f48b86 2024-09-06 Andrea Aimone        fix curl test_install
+6cb58f0 2024-09-06 Andrea Aimone        delete some error pakage 2
+86e6f95 2024-09-06 Andrea Aimone        delete some error pakage
+dfe0dea 2024-09-06 Andrea Aimone        fix dependecies 2
+f801c38 2024-09-05 Andrea Aimone        try use script for INDI
+1f7ee48 2024-09-05 Andrea Aimone        Rename test_install to test_install.sh
+6509b1e 2024-09-05 Andrea Aimone        Create test_install
+7d2c6f9 2024-09-04 Andrea Aimone        fix last missing
+515fa82 2024-09-04 Andrea Aimone        add missing dependencies
+d25082f 2024-09-04 Andrea Aimone        add indi3rd
+74705c6 2024-09-04 Andrea Aimone        fix bug dir INDI
+86e64e5 2024-09-04 Andrea Aimone        try build indi AstroPi
+ece30b9 2024-09-03 Andrea Aimone        fix bug apt
+ac90583 2024-09-03 Andrea Aimone        add all library for INDI
+c8fbdb1 2024-09-03 Andrea Aimone        add libusb-1.0-0-dev
+e17f7c1 2024-09-03 Andrea Aimone        try use INDI
+be4a91b 2024-09-03 Andrea Aimone        Update 2 cmake.yml
+8893bfe 2024-09-03 Andrea Aimone        restore mount.qml
+a196901 2024-09-01 Andrea Aimone        Update install.sh
+787fb29 2024-08-31 Andrea Aimone        Merge pull request #210 from Andre87osx/v1.6beta
+e88425e 2024-08-18 Andrea Aimone        Update install.sh
+61c6fec 2024-08-18 Andrea Aimone        Update install.sh
+acfeff7 2024-08-18 Andrea Aimone        Update install.sh
+bee2870 2024-08-18 Andrea Aimone        Update functions.sh
+4c8de5d 2024-08-14 Andrea Aimone        Update cmake.yml
+67ec021 2024-08-14 Andrea Aimone        Update cmake.yml
+7c57612 2023-09-24 Andrea Aimone        minor fix in functions.sh
+27d2164 2023-09-23 Andrea Aimone        last fix input password
+bbe6382 2023-09-23 Andrea Aimone        rework password input
+0914b0a 2023-09-23 Andrea Aimone        fix beta link
+6d4cf3a 2023-09-23 Andrea Aimone        try use v1.6 beta
+8305045 2023-09-23 Andrea Aimone        new method for add alias
+50a2049 2023-09-08 Andrea Aimone        second test
+8cc9a55 2023-09-06 Andrea Aimone        second test
+7bcf8e0 2023-09-06 Andrea Aimone        add first step to indi build
+bd4ebc7 2023-09-05 Andrea Aimone        add strategy + try use version pakage
+9d970ff 2023-09-04 Andrea Aimone        temporary stop build kstars
+4aa3664 2023-09-04 Andrea Aimone        add indi rev (try)
+38a1d70 2023-09-03 Andrea Aimone        fix sudo apt-get install libkf5doctools-dev
+891f8e0 2023-09-03 Andrea Aimone        cmake tester delete kdoctools-dev
+2d87635 2023-09-03 Andrea Aimone        tray fix cmake compiler tester
+52b9942 2023-09-03 Andrea Aimone        fix test connection
+e984df4 2023-09-03 Andrea Aimone        more code reworking step 2
+dff802a 2023-07-02 Andrea Aimone        Update indidrivers.xml
+3535986 2023-06-06 Andrea Aimone        Update cmake.yml
+9ccbaba 2023-06-06 Andrea Aimone        delete old kstars p+�akage
+c6be8ee 2023-06-06 Andrea Aimone        add .node.js
+d43c673 2023-01-07 Andrea Aimone        fix atik driver rev
+303a613 2023-01-06 Andrea Aimone        fix typo
+e8f0a6a 2023-01-06 Andrea Aimone        use install.sh instead of update.sh
+ce27bb4 2023-01-06 Andrea Aimone        rework install.sh
+7e91808 2023-01-05 Andrea Aimone        Fix kstars rev to 1.6 BETA
+310cb0b 2023-01-04 Andrea Aimone        fix some comma ""
+8dc01d6 2023-01-03 Andrea Aimone        perform some bugfix interpreter
+541ff11 2023-01-01 Andrea Aimone        Merge pull request #194 from Andre87osx/v1.6-beta
+3f543c0 2023-01-01 Andrea Aimone        fix for SC2086 quote array
+af57cdc 2022-12-31 Andrea Aimone        fix some bug in function.sh
+936fc3b 2022-12-31 Andrea Aimone        astrometry update rev
+22ba567 2022-12-31 Andrea Aimone        Revert "Bugfix endline convert to LF"
+4eaf89d 2022-12-31 Andrea Aimone        Astrometry.sh allert correction
+abfa290 2022-07-07 Andrea Aimone        AstroPi.sh add check source and more implementations
+7a57f48 2022-05-14 Andrea Aimone        fix logo in some script
+766b1ca 2022-05-14 Andrea Aimone        new astropi wallpaper
+90d2c1e 2022-05-11 Andrea Aimone        fix sysinfo array
+41313d3 2022-05-11 Andrea Aimone        fix funcions position
+21fb49c 2022-05-11 Andrea Aimone        fix update source & minor GUI fix
+be48ad4 2022-05-04 Andrea Aimone        start rework GUI and proces
+444def3 2022-05-04 Andrea Aimone        rework functions parts
+6e4e5fe 2022-05-04 Andrea Aimone        Update array.sh
+6d36103 2022-05-04 Andrea Aimone        minor fix install.sh
+1bdecad 2022-05-04 Andrea Aimone        fix rev 1.6 astropi.desktop
+83ab40e 2022-05-04 Andrea Aimone        minor fix astrometry.sh
+f309e00 2022-05-04 Andrea Aimone        separate array to function
+147e37a 2022-04-25 Andrea Aimone        rework update script&dependencies
+55a7e47 2022-04-23 Andrea Aimone        rename script dir to BIN
+dd816c6 2022-04-16 Andrea Aimone        fix bug in bash bad interpreter
+
+END OF DETAILED TAG PROGRESS
+
 v1.5
 ================================
 6b94c85 2022-03-23 Andrea Aimone        Rename upgrade.sh to update.sh                                                                                                                        
@@ -574,4 +1024,3 @@ ff7b933 2021-05-16 Andrea Aimone        Edit twilight relax DUSK DOWN
 107d1f7 2021-05-16 Andre87osx           I apply changes to get stable version AstroPi 3.5.3                                                                                                   
 35ccb1b 2021-05-16 Andre87osx           AstroPi 3.5.3                                                                                                                                         
 dcd6ad7 2021-05-16 Andrea Aimone        Initial commit                                                                                                                                        
->>>>>>> Stashed changes

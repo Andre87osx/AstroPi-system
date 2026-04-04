@@ -48,8 +48,17 @@
 
 #include <QFutureWatcher>
 #include <QComboBox>
+#include <QStorageInfo>
+#include <QGradient>
 
 #include <algorithm>
+
+#include <QPainter>
+#include <QPen>
+#include <QBrush>
+#include <QLocale>
+
+#include <cmath>
 
 #if defined(Q_OS_UNIX)
 #include <unistd.h>
@@ -62,6 +71,13 @@
 
 namespace Ekos
 {
+
+static bool isPlotDiagEnabled()
+{
+    static const bool enabled = qEnvironmentVariableIntValue("ASTROPI_CAPTURE_DIAG") > 0
+                                || qEnvironmentVariableIntValue("ASTROPI_PLOT_DIAG") > 0;
+    return enabled;
+}
 
 Manager *Manager::_Manager = nullptr;
 
@@ -96,9 +112,13 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
         setWindowFlags(Qt::Window);
 #endif
     setupUi(this);
+    // Collega QLabel totalRMSLabel
+    totalRMSLabel = findChild<QLabel*>("totalRMSLabel");
+    if (totalRMSLabel)
+        totalRMSLabel->setText("RMS: --");
 
     // position the vertical splitter by 2/3
-    deviceSplitter->setSizes(QList<int>({20000, 10000}));
+    deviceSplitter->setSizes(QList<int>({24000, 8000}));
 
     qRegisterMetaType<Ekos::CommunicationStatus>("Ekos::CommunicationStatus");
     qDBusRegisterMetaType<Ekos::CommunicationStatus>();
@@ -123,9 +143,27 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     imageProgress->setFormat("%v");
     imageProgress->setBarStyle(QRoundProgressBar::StyleLine);
     captureProgress->setDecimals(0);
+    guideSNRProgress->setValue(0);
+    guideSNRProgress->setDecimals(2);
+    guideSNRProgress->setFormat("%v");
+    guideSNRProgress->setRange(0, 100);
+    guideSNRProgress->setEnabled(false);
+    guideSNRValueLabel->setText("---,--");
     ramProgress->setValue(0);
     ramProgress->setDecimals(0);
     ramProgress->setRange(0, 100);
+    diskProgress->setValue(0);
+    diskProgress->setDecimals(0);
+    diskProgress->setRange(0, 100);
+    guideDetailView->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    guideDetailNextButton->setEnabled(false);
+    guideDetailPrevButton->setEnabled(false);
+    verticalLayout_ram_column->setAlignment(ramCircleLabel, Qt::AlignHCenter);
+    verticalLayout_ram_column->setAlignment(ramProgress, Qt::AlignHCenter);
+    verticalLayout_ram_column->setAlignment(ramUsageLabel, Qt::AlignHCenter);
+    verticalLayout_disk_column->setAlignment(diskCircleLabel, Qt::AlignHCenter);
+    verticalLayout_disk_column->setAlignment(diskProgress, Qt::AlignHCenter);
+    verticalLayout_disk_column->setAlignment(diskUsageLabel, Qt::AlignHCenter);
     countdownTimer.setInterval(1000);
     connect(&countdownTimer, &QTimer::timeout, this, &Ekos::Manager::updateCaptureCountDown);
     ramUpdateTimer.setInterval(2000);
@@ -477,20 +515,28 @@ int Manager::addModuleTab(Manager::EkosModule module, QWidget *tab, const QIcon 
     {
     case EkosModule::Observatory:
         index += guideProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Guide:
         index += alignProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Align:
         index += mountProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Mount:
         index += focusProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Focus:
         index += captureProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Capture:
         index += analyzeProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Analyze:
         index += schedulerProcess ? 1 : 0;
+        [[fallthrough]];
     case EkosModule::Scheduler:
         index += 1;
+        [[fallthrough]];
     case EkosModule::Setup:
         // do nothing
         break;
@@ -571,6 +617,7 @@ void Manager::reset()
 
     mountGroup->setEnabled(false);
     focusGroup->setEnabled(false);
+    focusRelativeProfileB->setEnabled(false);
     captureGroup->setEnabled(false);
     guideGroup->setEnabled(false);
     sequenceLabel->setText(i18n("Sequence"));
@@ -579,6 +626,9 @@ void Manager::reset()
     overallRemainingTime->setText("--:--:--");
     sequenceRemainingTime->setText("--:--:--");
     imageRemainingTime->setText("--:--:--");
+    guideSNRProgress->setEnabled(false);
+    guideSNRProgress->setValue(0);
+    guideSNRValueLabel->setText("---,--");
     mountStatus->setText(i18n("Idle"));
     mountStatus->setStyleSheet(QString());
     captureStatus->setText(i18n("Idle"));
@@ -1375,7 +1425,10 @@ void Manager::deviceConnected()
         if (captureProcess.get() != nullptr)
             captureProcess->setEnabled(true);
         if (focusProcess.get() != nullptr)
+        {
             focusProcess->setEnabled(true);
+            focusRelativeProfileB->setEnabled(true);
+        }
         if (alignProcess.get() != nullptr)
         {
             if (mountProcess.get() && mountProcess->isEnabled())
@@ -1389,7 +1442,10 @@ void Manager::deviceConnected()
     else if (dev->getDriverInterface() & INDI::BaseDevice::FOCUSER_INTERFACE)
     {
         if (focusProcess.get() != nullptr)
+        {
             focusProcess->setEnabled(true);
+            focusRelativeProfileB->setEnabled(true);
+        }
     }
 
     if (Options::neverLoadConfig())
@@ -1459,6 +1515,13 @@ void Manager::deviceDisconnected()
         if (mountProcess.get() != nullptr)
             mountProcess->setEnabled(false);
     }
+    else if (dev != nullptr && dev->getBaseDevice() &&
+             (dev->getDriverInterface() & (INDI::BaseDevice::CCD_INTERFACE | INDI::BaseDevice::FOCUSER_INTERFACE)))
+    {
+        if (focusProcess.get() != nullptr)
+            focusProcess->setEnabled(false);
+        focusRelativeProfileB->setEnabled(false);
+    }
 }
 
 void Manager::setTelescope(ISD::GDInterface * scopeDevice)
@@ -1493,6 +1556,9 @@ void Manager::setTelescope(ISD::GDInterface * scopeDevice)
         alignProcess->setTelescope(scopeDevice);
         alignProcess->setTelescopeInfo(primaryScopeFL, primaryScopeAperture, guideScopeFL, guideScopeAperture);
     }
+
+    if (focusProcess.get() != nullptr)
+        focusProcess->setTelescopeInfo(primaryScopeFL, primaryScopeAperture);
 
     //    if (domeProcess.get() != nullptr)
     //        domeProcess->setTelescope(scopeDevice);
@@ -2325,7 +2391,7 @@ void Manager::initCapture()
     if (!capturePI)
     {
         capturePI = new QProgressIndicator(captureProcess.get());
-        captureStatusLayout->insertWidget(-1, capturePI);
+        captureGroupLayout->insertWidget(-1, capturePI);
     }
 
     for (auto &device : findDevices(KSTARS_AUXILIARY))
@@ -2399,6 +2465,10 @@ void Manager::initFocus()
     focusProcess.reset(new Ekos::Focus());
     int index    = addModuleTab(EkosModule::Focus, focusProcess.get(), QIcon(":/icons/ekos_focus.png"));
 
+    double primaryScopeFL = 0, primaryScopeAperture = 0, guideScopeFL = 0, guideScopeAperture = 0;
+    getCurrentProfileTelescopeInfo(primaryScopeFL, primaryScopeAperture, guideScopeFL, guideScopeAperture);
+    focusProcess->setTelescopeInfo(primaryScopeFL, primaryScopeAperture);
+
     toolsWidget->tabBar()->setTabToolTip(index, i18n("Focus"));
 
     // Focus <---> Manager connections
@@ -2407,6 +2477,8 @@ void Manager::initFocus()
     connect(focusProcess.get(), &Ekos::Focus::newStarPixmap, this, &Ekos::Manager::updateFocusStarPixmap);
     connect(focusProcess.get(), &Ekos::Focus::newProfilePixmap, this, &Ekos::Manager::updateFocusProfilePixmap);
     connect(focusProcess.get(), &Ekos::Focus::newHFR, this, &Ekos::Manager::updateCurrentHFR);
+        connect(focusRelativeProfileB, &QPushButton::clicked, focusProcess.get(), &Ekos::Focus::showRelativeProfile,
+            Qt::UniqueConnection);
 
     // Focus <---> Filter Manager connections
     focusProcess->setFilterManager(filterManager);
@@ -2455,6 +2527,28 @@ void Manager::initFocus()
 
     focusGroup->setEnabled(true);
 
+    bool focusConnected = false;
+    for (auto const &ccd : findDevices(KSTARS_CCD))
+    {
+        if (ccd != nullptr && ccd->isConnected())
+        {
+            focusConnected = true;
+            break;
+        }
+    }
+    if (!focusConnected)
+    {
+        for (auto const &focuser : findDevices(KSTARS_FOCUSER))
+        {
+            if (focuser != nullptr && focuser->isConnected())
+            {
+                focusConnected = true;
+                break;
+            }
+        }
+    }
+    focusRelativeProfileB->setEnabled(focusConnected);
+
     if (!focusPI)
     {
         focusPI = new QProgressIndicator(focusProcess.get());
@@ -2487,6 +2581,19 @@ void Manager::updateCurrentHFR(double newHFR, int position)
 
 void Manager::updateFocusDetailView()
 {
+    if (focusDetailView->width() <= 1 || focusDetailView->height() <= 1)
+    {
+        QTimer::singleShot(100, this, &Ekos::Manager::updateFocusDetailView);
+        return;
+    }
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateFocusDetailView(entry)"
+                            << "index=" << currentFocusPixmapIndex
+                            << "viewSize=" << focusDetailView->size()
+                            << "hasProfile=" << (focusProfilePixmap.get() != nullptr)
+                            << "hasStar=" << (focusStarPixmap.get() != nullptr);
+
     if (currentFocusPixmapIndex == 0 && focusProfilePixmap.get() != nullptr)
     {
         focusDetailView->setPixmap(focusProfilePixmap.get()->scaled(focusDetailView->width(), focusDetailView->height(),
@@ -2497,29 +2604,413 @@ void Manager::updateFocusDetailView()
         focusDetailView->setPixmap(focusStarPixmap.get()->scaled(focusDetailView->width(), focusDetailView->height(),
                                    Qt::KeepAspectRatio, Qt::SmoothTransformation));
     }
+    else
+    {
+        // Always show the plot widget, even if empty, to display axes and grid
+        if (focusProcess && currentFocusPixmapIndex == 0)
+        {
+            QPixmap fallbackPixmap = focusProcess->getProfileViewPixmap();
+            if (isPlotDiagEnabled())
+                qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Focus fallback"
+                                    << "null=" << fallbackPixmap.isNull()
+                                    << "size=" << fallbackPixmap.size()
+                                    << "viewSize=" << focusDetailView->size();
+            if (!fallbackPixmap.isNull())
+            {
+                focusDetailView->setPixmap(fallbackPixmap.scaled(focusDetailView->width(), focusDetailView->height(),
+                                           Qt::KeepAspectRatio, Qt::SmoothTransformation));
+            }
+            else
+            {
+                drawFocusPlaceholderPlot(focusDetailView);
+            }
+        }
+        else
+        {
+            drawFocusPlaceholderPlot(focusDetailView);
+        }
+    }
 }
 
 void Manager::updateSigmas(double ra, double de)
 {
     errRA->setText(QString::number(ra, 'f', 2) + "\"");
     errDEC->setText(QString::number(de, 'f', 2) + "\"");
+    // Calcola e mostra il valore totale RMS
+    double total = std::hypot(ra, de);
+    if (totalRMSLabel)
+        totalRMSLabel->setText(QString("RMS: %1\"").arg(QString::number(total, 'f', 2)));
 
-    QJsonObject cStatus = { {"rarms", ra}, {"derms", de} };
+    QJsonObject cStatus = { {"rarms", ra}, {"derms", de}, {"totalrms", total} };
 
     ekosLiveClient.get()->message()->updateGuideStatus(cStatus);
 }
 
+void Manager::updateGuideSNR(double snr)
+{
+    if (!std::isfinite(snr) || snr < 0)
+    {
+        guideSNRProgress->setEnabled(false);
+        guideSNRProgress->setValue(0);
+        guideSNRValueLabel->setText("---,--");
+        return;
+    }
+
+    const double clampedSNR = std::max(0.0, snr);
+    const int rangeUpper = std::max(100, static_cast<int>(std::ceil(clampedSNR)));
+
+    guideSNRProgress->setEnabled(true);
+    guideSNRProgress->setRange(0, rangeUpper);
+    guideSNRProgress->setValue(clampedSNR);
+    guideSNRValueLabel->setText(QLocale().toString(clampedSNR, 'f', 2));
+}
+
 void Manager::updateGuideDetailView()
 {
+    if (guideDetailView->width() <= 1 || guideDetailView->height() <= 1)
+    {
+        QTimer::singleShot(100, this, &Ekos::Manager::updateGuideDetailView);
+        return;
+    }
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideDetailView(entry)"
+                            << "index=" << currentGuidePixmapIndex
+                            << "viewSize=" << guideDetailView->size()
+                            << "hasProfile=" << (guideProfilePixmap.get() != nullptr)
+                            << "hasPlot=" << (guidePlotPixmap.get() != nullptr);
+
+    const QSize availabilitySize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+    const bool hasGuideTarget = (guideProfilePixmap.get() != nullptr)
+                                || (guideProcess && !guideProcess->getProfileViewPixmap(availabilitySize).isNull());
+    const bool hasGuidePlot = (guidePlotPixmap.get() != nullptr)
+                              || (guideProcess && !guideProcess->getDriftPlotViewPixmap(availabilitySize).isNull());
+    const bool canToggleGuidePages = hasGuideTarget && hasGuidePlot;
+
+    guideDetailNextButton->setEnabled(canToggleGuidePages);
+    guideDetailPrevButton->setEnabled(canToggleGuidePages);
+
+    if (!hasGuideTarget && currentGuidePixmapIndex == 0)
+        currentGuidePixmapIndex = 1;
+    else if (!hasGuidePlot && currentGuidePixmapIndex == 1)
+        currentGuidePixmapIndex = 0;
+
+    const auto scaleGuidePixmap = [this](const QPixmap &pixmap)
+    {
+        if (pixmap.isNull())
+            return QPixmap();
+
+        const int targetWidth = std::max(guideDetailView->width(), 1);
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+        return pixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    };
+
+    const auto fitGuidePixmapInBlackBox = [this](const QPixmap &pixmap)
+    {
+        if (pixmap.isNull())
+            return QPixmap();
+
+        const int targetWidth = std::max(guideDetailView->width(), 1);
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+
+        QPixmap fullBox(targetWidth, targetHeight);
+        fullBox.fill(Qt::black);
+
+        const QPixmap scaled = pixmap.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        QPainter painter(&fullBox);
+        const int x = (targetWidth - scaled.width()) / 2;
+        const int y = (targetHeight - scaled.height()) / 2;
+        painter.drawPixmap(x, y, scaled);
+
+        return fullBox;
+    };
+
+    const auto fitSquareGuideTargetInBlackBox = [this](const QPixmap &pixmap)
+    {
+        if (pixmap.isNull())
+            return QPixmap();
+
+        const int targetWidth = std::max(guideDetailView->width(), 1);
+        const int targetHeight = std::max(guideDetailView->height(), 1);
+
+        const int side = std::min(pixmap.width(), pixmap.height());
+        if (side <= 0)
+            return QPixmap();
+
+        const int srcX = (pixmap.width() - side) / 2;
+        const int srcY = (pixmap.height() - side) / 2;
+        const QPixmap square = pixmap.copy(srcX, srcY, side, side);
+
+        QPixmap fullBox(targetWidth, targetHeight);
+        fullBox.fill(Qt::black);
+
+        const int renderSide = std::min(targetWidth, targetHeight);
+        const QPixmap scaled = square.scaled(renderSide, renderSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        QPainter painter(&fullBox);
+        const int x = (targetWidth - scaled.width()) / 2;
+        const int y = (targetHeight - scaled.height()) / 2;
+        painter.drawPixmap(x, y, scaled);
+
+        return fullBox;
+    };
+
+    const QSize viewSize(std::max(guideDetailView->width(), 1), std::max(guideDetailView->height(), 1));
+    const auto renderGuidePixmapForView = [this, &viewSize]()
+    {
+        if (!guideProcess)
+            return QPixmap();
+
+        if (currentGuidePixmapIndex == 0)
+            return guideProcess->getProfileViewPixmap(viewSize);
+        if (currentGuidePixmapIndex == 1)
+        {
+            // Use a proportional hint (about 5:4) to keep target circles round
+            // without collapsing the plot to a narrow square.
+            const int targetHeight = std::max(viewSize.height(), 1);
+            const int proportionalWidth = std::max(1, static_cast<int>(std::lround(targetHeight * 1.25)));
+            const int targetWidth = std::min(std::max(viewSize.width(), 1), proportionalWidth);
+            return guideProcess->getDriftPlotViewPixmap(QSize(targetWidth, targetHeight));
+        }
+
+        return QPixmap();
+    };
+
+    if (currentGuidePixmapIndex == 0 || currentGuidePixmapIndex == 1)
+    {
+        const QPixmap viewPixmap = renderGuidePixmapForView();
+        if (!viewPixmap.isNull())
+        {
+            guideDetailView->setScaledContents(false);
+            if (currentGuidePixmapIndex == 1)
+            {
+                guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
+                guideDetailView->setPixmap(fitGuidePixmapInBlackBox(viewPixmap));
+            }
+            else
+            {
+                guideDetailView->setStyleSheet(QString());
+                guideDetailView->setPixmap(viewPixmap);
+            }
+            return;
+        }
+    }
+
     if (currentGuidePixmapIndex == 0 && guideProfilePixmap.get() != nullptr)
-        guideDetailView->setPixmap(guideProfilePixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    {
+        guideDetailView->setStyleSheet(QString());
+        guideDetailView->setScaledContents(false);
+        guideDetailView->setPixmap(scaleGuidePixmap(*guideProfilePixmap));
+    }
     else if (currentGuidePixmapIndex == 1 && guidePlotPixmap.get() != nullptr)
-        guideDetailView->setPixmap(guidePlotPixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
-    else if (currentGuidePixmapIndex == 2 && guideStarPixmap.get() != nullptr)
-        guideDetailView->setPixmap(guideStarPixmap.get()->scaled(guideDetailView->width(), guideDetailView->height(),
-                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    {
+        guideDetailView->setStyleSheet(QStringLiteral("background-color: black;"));
+        guideDetailView->setScaledContents(false);
+        guideDetailView->setPixmap(fitGuidePixmapInBlackBox(*guidePlotPixmap));
+    }
+    else
+    {
+        guideDetailView->setStyleSheet(QString());
+        // Schedule placeholder drawing after widget is rendered with final dimensions
+        QTimer::singleShot(0, [this, label = guideDetailView]()
+        {
+            if (label && label->window()->isVisible())
+            {
+                drawGuidePlaceholderPlot(label);
+            }
+        });
+    }
+}
+
+// Migliorato: Disegna un plot placeholder simile ai moduli veri (assi centrati, padding, font coerente)
+
+void Manager::drawGuidePlaceholderPlot(QLabel *label)
+{
+    label->setScaledContents(false);
+
+    // Get label dimensions, fallback to parent widget if label is too small
+    int w = label->width();
+    int h = label->height();
+
+    if (w < 100 || h < 100)
+    {
+        // Label not yet sized, use parent widget dimensions
+        QWidget *parent = label->parentWidget();
+        while (parent && (w < 100 || h < 100))
+        {
+            if (parent->width() > 100 && parent->height() > 100)
+            {
+                w = parent->width();
+                h = parent->height();
+                break;
+            }
+            parent = parent->parentWidget();
+        }
+    }
+
+    w = std::max(w, 200);  // Minimum fallback: 200x200
+    h = std::max(h, 200);
+
+    const int plotWidth = std::min(w, std::max(1, static_cast<int>(std::lround(h * 1.25))));
+    const int plotLeft = (w - plotWidth) / 2;
+    const int plotRight = plotLeft + plotWidth;
+
+    int leftPad = std::max(42, plotWidth / 14);
+    int rightPad = std::max(10, plotWidth / 40);
+    int topPad = std::max(8, h / 25);
+    int bottomPad = std::max(24, h / 6);
+    QPixmap pix(w, h);
+    pix.fill(Qt::black);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+    // Griglia tratteggiata tenue
+    QPen gridPen(QColor(185, 185, 185));
+    gridPen.setStyle(Qt::DotLine);
+    gridPen.setWidth(1);
+    p.setPen(gridPen);
+    int gridCols = 4, gridRows = 6;
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = plotLeft + leftPad + i * (plotWidth - leftPad - rightPad) / gridCols;
+        p.drawLine(x, topPad, x, h-bottomPad);
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i * (h - topPad - bottomPad) / gridRows;
+        p.drawLine(plotLeft + leftPad, y, plotRight - rightPad, y);
+    }
+    // Assi pieni
+    p.setPen(QPen(QColor(220, 220, 220), 1));
+    int x0 = plotLeft + leftPad, x1 = plotRight - rightPad, y0 = topPad, y1 = h-bottomPad;
+    int xMid = (x0 + x1)/2, yMid = (y0 + y1)/2;
+    p.drawLine(x0, yMid, x1, yMid); // asse orizzontale
+    p.drawLine(xMid, y0, xMid, y1); // asse verticale
+    // Etichette
+    QFont font("Arial", 12, QFont::Normal);
+    p.setFont(font);
+    // Label Y (verticale)
+    p.save();
+    p.translate(x0-38, (y0+y1)/2+40);
+    p.rotate(-90);
+    p.drawText(0, 0, "drift (arcsec)");
+    p.restore();
+    // Label X
+    p.drawText((x0+x1)/2-32, h-8, "Tempo");
+
+    // Cardinal directions and orientation marks (match drift plot style)
+    p.setPen(QColor(0, 170, 255));
+    p.drawText(xMid - 6, y0 + 22, "N");
+    p.setPen(QColor(0, 255, 0));
+    p.drawText(x1 - 26, y0 + 22, "O");
+    p.setPen(QColor(0, 170, 255));
+    p.drawText(xMid - 6, y1 - 8, "S");
+    p.setPen(QColor(0, 255, 0));
+    p.drawText(x1 - 26, y1 - 8, "E");
+    // Numeri sugli assi
+    p.setFont(QFont("Arial", 10));
+    p.setPen(Qt::white);
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = x0 + i * (x1 - x0) / gridCols;
+        if (i < gridCols)
+        {
+            const int minutes = (gridCols - i) * 30;
+            const int hoursPart = minutes / 60;
+            const int minsPart = minutes % 60;
+            const QString tickLabel = QString("-%1:%2")
+                                      .arg(hoursPart, 2, 10, QLatin1Char('0'))
+                                      .arg(minsPart, 2, 10, QLatin1Char('0'));
+            p.drawText(x - 24, y1 + 18, tickLabel);
+        }
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = y0 + i * (y1 - y0) / gridRows;
+        double val = 3.0 - i*1.0;
+        p.drawText(x0-38, y+5, QString::number(val, 'f', 0));
+    }
+
+    // Bottom-left legend like live guide plot (RA / DE / SNR / RMS)
+    const int legendY = std::max(y1 - 8, topPad + 12);
+    int legendX = x0 + 14;
+    const auto drawLegendItem = [&p, &legendX, legendY](const QColor &color, const QString &name)
+    {
+        p.setPen(QPen(color, 2));
+        p.drawLine(legendX, legendY, legendX + 28, legendY);
+        legendX += 34;
+        p.setPen(color);
+        p.drawText(legendX, legendY + 4, name);
+        legendX += 36;
+    };
+
+    p.setFont(QFont("Arial", 9));
+    drawLegendItem(QColor(0, 255, 0), "RA");
+    drawLegendItem(QColor(0, 170, 255), "DE");
+    drawLegendItem(QColor(255, 215, 0), "SNR");
+    drawLegendItem(QColor(255, 0, 0), "RMS");
+
+    label->setScaledContents(false);
+    label->setPixmap(pix);
+}
+
+
+void Manager::drawFocusPlaceholderPlot(QLabel *label)
+{
+    int w = std::max(label->width(), 400);
+    int h = std::max(label->height(), 120);
+    int leftPad = 45, rightPad = 15, topPad = 10, bottomPad = 30;
+    QPixmap pix(w, h);
+    pix.fill(Qt::black);
+    QPainter p(&pix);
+    p.setRenderHint(QPainter::Antialiasing);
+    // Griglia bianca tratteggiata
+    QPen gridPen(QColor(255,255,255));
+    gridPen.setStyle(Qt::DotLine);
+    gridPen.setWidth(1);
+    p.setPen(gridPen);
+    int gridCols = 5, gridRows = 5;
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        p.drawLine(x, topPad, x, h-bottomPad);
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        p.drawLine(leftPad, y, w-rightPad, y);
+    }
+    // Assi pieni
+    p.setPen(QPen(Qt::white, 2));
+    int x0 = leftPad, x1 = w-rightPad, y0 = topPad, y1 = h-bottomPad;
+    // X asse: orizzontale in basso
+    p.drawLine(x0, y1, x1, y1);
+    // Y asse: verticale a sinistra
+    p.drawLine(x0, y0, x0, y1);
+    // Etichette
+    QFont font("Arial", 12, QFont::Normal);
+    p.setFont(font);
+    // Label Y (verticale)
+    p.save();
+    p.translate(x0-30, (y0+y1)/2+40);
+    p.rotate(-90);
+    p.drawText(0, 0, "HFR");
+    p.restore();
+    // Label X
+    p.drawText((x0+x1)/2-30, h-8, "Posizione");
+    // Numeri sugli assi
+    p.setFont(QFont("Arial", 10));
+    for (int i = 0; i <= gridCols; ++i)
+    {
+        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        p.drawText(x-6, y1+18, QString::number(i));
+    }
+    for (int i = 0; i <= gridRows; ++i)
+    {
+        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        p.drawText(x0-28, y+5, QString::number(gridRows-i));
+    }
+    label->setScaledContents(false);
+    label->setPixmap(pix);
 }
 
 void Manager::initMount()
@@ -2629,10 +3120,14 @@ void Manager::initGuide()
         }
 
         connect(guideProcess.get(), &Ekos::Guide::newStatus, this, &Ekos::Manager::updateGuideStatus);
-        connect(guideProcess.get(), &Ekos::Guide::newStarPixmap, this, &Ekos::Manager::updateGuideStarPixmap);
         connect(guideProcess.get(), &Ekos::Guide::newProfilePixmap, this, &Ekos::Manager::updateGuideProfilePixmap);
         connect(guideProcess.get(), &Ekos::Guide::newDriftPlotPixmap, this, &Ekos::Manager::updateGuidePlotPixmap);
         connect(guideProcess.get(), &Ekos::Guide::newAxisSigma, this, &Ekos::Manager::updateSigmas);
+        connect(guideProcess.get(), &Ekos::Guide::guideStats, this,
+                [this](double, double, int, int, double snr, double, int)
+        {
+            updateGuideSNR(snr);
+        });
         connect(guideProcess.get(), &Ekos::Guide::newAxisDelta, [&](double ra, double de)
         {
             QJsonObject status = { { "drift_ra", ra}, {"drift_de", de} };
@@ -2652,30 +3147,20 @@ void Manager::initGuide()
         // guide details buttons
         connect(guideDetailNextButton, &QPushButton::clicked, [this]()
         {
-            if (currentGuidePixmapIndex == 0 && guidePlotPixmap.get() != nullptr)
-                currentGuidePixmapIndex++;
-            else if (currentGuidePixmapIndex == 1 && guideStarPixmap.get() != nullptr)
-                currentGuidePixmapIndex++;
-            else if (currentGuidePixmapIndex > 0)
+            if (currentGuidePixmapIndex == 1 && guideProfilePixmap.get() != nullptr)
                 currentGuidePixmapIndex = 0;
+            else
+                currentGuidePixmapIndex = 1;
 
             guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
             updateGuideDetailView();
         });
         connect(guideDetailPrevButton, &QPushButton::clicked, [this]()
         {
-            switch (currentGuidePixmapIndex)
-            {
-                case 0:
-                    if (guideStarPixmap.get() != nullptr)
-                        currentGuidePixmapIndex = 2;
-                    else if (guidePlotPixmap.get() != nullptr)
-                        currentGuidePixmapIndex = 1;
-                    break;
-                default:
-                    currentGuidePixmapIndex--;
-                    break;
-            }
+            if (currentGuidePixmapIndex == 1 && guideProfilePixmap.get() != nullptr)
+                currentGuidePixmapIndex = 0;
+            else
+                currentGuidePixmapIndex = 1;
 
             guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
             updateGuideDetailView();
@@ -3325,25 +3810,78 @@ void Manager::updateRAMProgress()
     {
         ramProgress->setEnabled(false);
         ramUsageLabel->setText("--");
+    }
+
+    constexpr double GIB = 1024.0 * 1024.0 * 1024.0;
+    if (availableRAM > 0 && totalRAM > 0)
+    {
+        const double freeRAM = std::min(availableRAM, static_cast<double>(totalRAM));
+        const double usedRAM = std::max(0.0, static_cast<double>(totalRAM) - freeRAM);
+        const int usedPercent = static_cast<int>((usedRAM * 100.0) / static_cast<double>(totalRAM));
+
+        ramProgress->setEnabled(true);
+        ramProgress->setValue(usedPercent);
+        
+        // Change color to orange if usage exceeds 60%
+        QGradientStops stops;
+        if (usedPercent >= 60)
+        {
+            stops << QGradientStop(0.0, Qt::green) << QGradientStop(0.6, Qt::green) << QGradientStop(1.0, Qt::darkYellow);
+        }
+        else
+        {
+            stops << QGradientStop(0.0, Qt::blue) << QGradientStop(1.0, Qt::blue);
+        }
+        ramProgress->setDataColors(stops);
+        
+        ramUsageLabel->setText(i18nc("RAM usage summary: used and free GiB",
+                                     "%1 GiB used / %2 GiB free",
+                                     QString::number(usedRAM / GIB, 'f', 1),
+                                     QString::number(freeRAM / GIB, 'f', 1)));
+    }
+
+    const QStorageInfo rootStorage(QStorageInfo::root());
+    if (!rootStorage.isValid() || !rootStorage.isReady() || rootStorage.bytesTotal() <= 0)
+    {
+        diskProgress->setEnabled(false);
+        diskUsageLabel->setText("--");
         return;
     }
 
-    const double freeRAM = std::min(availableRAM, static_cast<double>(totalRAM));
-    const double usedRAM = std::max(0.0, static_cast<double>(totalRAM) - freeRAM);
-    const int usedPercent = static_cast<int>((usedRAM * 100.0) / static_cast<double>(totalRAM));
+    const qint64 totalDisk = rootStorage.bytesTotal();
+    const qint64 freeDisk = rootStorage.bytesAvailable();
+    const qint64 usedDisk = std::max<qint64>(0, totalDisk - freeDisk);
+    const int usedDiskPercent = static_cast<int>((usedDisk * 100.0) / static_cast<double>(totalDisk));
 
-    ramProgress->setEnabled(true);
-    ramProgress->setValue(usedPercent);
-
-    constexpr double GIB = 1024.0 * 1024.0 * 1024.0;
-    ramUsageLabel->setText(i18nc("RAM usage summary: used and free GiB",
-                                 "%1 GiB used / %2 GiB free",
-                                 QString::number(usedRAM / GIB, 'f', 1),
-                                 QString::number(freeRAM / GIB, 'f', 1)));
+    diskProgress->setEnabled(true);
+    diskProgress->setValue(usedDiskPercent);
+    
+    // Change color to orange if disk usage exceeds 85%
+    QGradientStops diskStops;
+    if (usedDiskPercent >= 85)
+    {
+        diskStops << QGradientStop(0.0, Qt::green) << QGradientStop(0.6, Qt::green) << QGradientStop(1.0, Qt::darkYellow);
+    }
+    else
+    {
+        diskStops << QGradientStop(0.0, Qt::blue) << QGradientStop(1.0, Qt::blue);
+    }
+    diskProgress->setDataColors(diskStops);
+    
+    diskUsageLabel->setText(i18nc("Disk usage summary: free and total GiB",
+                                  "%1 GiB free / %2 GiB total",
+                                  QString::number(static_cast<double>(freeDisk) / GIB, 'f', 1),
+                                  QString::number(static_cast<double>(totalDisk) / GIB, 'f', 1)));
 }
 
 void Manager::updateFocusStarPixmap(QPixmap &starPixmap)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateFocusStarPixmap"
+                            << "null=" << starPixmap.isNull()
+                            << "size=" << starPixmap.size()
+                            << "focusViewSize=" << focusDetailView->size();
+
     if (starPixmap.isNull())
         return;
 
@@ -3353,6 +3891,12 @@ void Manager::updateFocusStarPixmap(QPixmap &starPixmap)
 
 void Manager::updateFocusProfilePixmap(QPixmap &profilePixmap)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateFocusProfilePixmap"
+                            << "null=" << profilePixmap.isNull()
+                            << "size=" << profilePixmap.size()
+                            << "focusViewSize=" << focusDetailView->size();
+
     if (profilePixmap.isNull())
         return;
 
@@ -3392,7 +3936,18 @@ void Manager::setFocusStatus(Ekos::FocusState status)
 
 void Manager::updateGuideStatus(Ekos::GuideState status)
 {
-    guideStatus->setText(Ekos::getGuideStatusString(status));
+    const QString previousGuideStatus = guideStatus->text();
+    const QString newGuideStatus = Ekos::getGuideStatusString(status);
+    guideStatus->setText(newGuideStatus);
+
+    const auto showGuidePlotInDetailView = [this]()
+    {
+        if (currentGuidePixmapIndex != 1)
+            currentGuidePixmapIndex = 1;
+
+        guideDetailView->setToolTip(guideDetailViewTooltips[currentGuidePixmapIndex]);
+        updateGuideDetailView();
+    };
 
     switch (status)
     {
@@ -3404,6 +3959,9 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
         case Ekos::GUIDE_CALIBRATION_SUCESS:
             if (guidePI->isAnimated())
                 guidePI->stopAnimation();
+            guideSNRProgress->setEnabled(false);
+            guideSNRProgress->setValue(0);
+            guideSNRValueLabel->setText("---,--");
             break;
 
         case Ekos::GUIDE_CALIBRATING:
@@ -3415,16 +3973,22 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
             guidePI->setColor(Qt::darkGreen);
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
+            if (previousGuideStatus != newGuideStatus)
+                showGuidePlotInDetailView();
             break;
         case Ekos::GUIDE_DITHERING:
             guidePI->setColor(QColor(KStarsData::Instance()->colorScheme()->colorNamed("TargetColor")));
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
+            if (previousGuideStatus != newGuideStatus)
+                showGuidePlotInDetailView();
             break;
         case Ekos::GUIDE_DITHERING_SUCCESS:
             guidePI->setColor(Qt::darkGreen);
             if (guidePI->isAnimated() == false)
                 guidePI->startAnimation();
+            if (previousGuideStatus != newGuideStatus)
+                showGuidePlotInDetailView();
             break;
 
         default:
@@ -3441,17 +4005,14 @@ void Manager::updateGuideStatus(Ekos::GuideState status)
     ekosLiveClient.get()->message()->updateGuideStatus(cStatus);
 }
 
-void Manager::updateGuideStarPixmap(QPixmap &starPix)
-{
-    if (starPix.isNull())
-        return;
-
-    guideStarPixmap.reset(new QPixmap(starPix));
-    updateGuideDetailView();
-}
-
 void Manager::updateGuideProfilePixmap(QPixmap &profilePix)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuideProfilePixmap"
+                            << "null=" << profilePix.isNull()
+                            << "size=" << profilePix.size()
+                            << "guideViewSize=" << guideDetailView->size();
+
     if (profilePix.isNull())
         return;
 
@@ -3461,6 +4022,12 @@ void Manager::updateGuideProfilePixmap(QPixmap &profilePix)
 
 void Manager::updateGuidePlotPixmap(QPixmap &plotPix)
 {
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS) << "[PLOT_DIAG] Manager::updateGuidePlotPixmap"
+                            << "null=" << plotPix.isNull()
+                            << "size=" << plotPix.size()
+                            << "guideViewSize=" << guideDetailView->size();
+
     if (plotPix.isNull())
         return;
 
@@ -3748,6 +4315,8 @@ void Manager::connectModules()
     {
         connect(focusProcess.get(), &Ekos::Focus::newStatus, alignProcess.get(), &Ekos::Align::setFocusStatus,
                 Qt::UniqueConnection);
+        connect(alignProcess.get(), &Ekos::Align::newSolution, focusProcess.get(), &Ekos::Focus::syncHFRGuideFromAlignSolution,
+            Qt::UniqueConnection);
     }
 
     // Focus <---> Mount connections

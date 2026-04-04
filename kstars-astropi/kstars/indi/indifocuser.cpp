@@ -178,7 +178,7 @@ bool Focuser::moveRel(int steps)
     {
         focusProp = baseDevice->getNumber("manualfocusdrive");
 
-        FocusDirection dir;
+        FocusDirection dir = FOCUS_OUTWARD;
         getFocusDirection(&dir);
         if (dir == FOCUS_INWARD)
             steps = -abs(steps);

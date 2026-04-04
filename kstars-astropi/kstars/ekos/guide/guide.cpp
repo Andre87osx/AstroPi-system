@@ -36,6 +36,7 @@
 
 #include "ui_manualdither.h"
 
+#include <cmath>
 #include <random>
 
 #define CAPTURE_TIMEOUT_THRESHOLD 30000
@@ -60,6 +61,13 @@ enum DRIFT_GRAPH_INDECES
 
 namespace Ekos
 {
+static bool isPlotDiagEnabled()
+{
+    static const bool enabled = qEnvironmentVariableIntValue("ASTROPI_CAPTURE_DIAG") > 0
+                                || qEnvironmentVariableIntValue("ASTROPI_PLOT_DIAG") > 0;
+    return enabled;
+}
+
 Guide::Guide() : QWidget()
 {
     // #1 Setup UI
@@ -436,6 +444,7 @@ void Guide::slotAutoScaleGraphs()
     // This is only called when the autoScale button is pressed.
     driftGraph->graph(G_RA)->rescaleValueAxis(false, true);
     driftGraph->graph(G_DEC)->rescaleValueAxis(true, true);
+    normalizeDriftGraphYAxis();
     driftGraph->replot();
 
     driftPlot->xAxis->setRange(-accuracyRadius * 3, accuracyRadius * 3);
@@ -638,6 +647,41 @@ void Guide::setCorrectionGraphScale()
     driftGraph->yAxis2->setRange(driftGraph->yAxis->range().lower * correctionSlider->value(),
                                  driftGraph->yAxis->range().upper * correctionSlider->value());
     driftGraph->replot();
+}
+
+void Guide::normalizeDriftGraphYAxis()
+{
+    if (!driftGraph || !driftGraph->yAxis || !driftGraph->xAxis)
+        return;
+
+    constexpr double MIN_HALF_RANGE = 3.0;
+    constexpr double RANGE_MARGIN = 1.15;
+
+    const QCPRange visibleX = driftGraph->xAxis->range();
+
+    const auto maxAbsInVisibleRange = [this, &visibleX](int graphIndex)
+    {
+        const QCPGraph *graph = driftGraph->graph(graphIndex);
+        if (graph == nullptr || graph->data().isNull() || graph->data()->isEmpty())
+            return 0.0;
+
+        double maxAbs = 0.0;
+        const auto begin = graph->data()->findBegin(visibleX.lower, true);
+        const auto end = graph->data()->findEnd(visibleX.upper, true);
+        for (auto it = begin; it != end; ++it)
+            maxAbs = std::max(maxAbs, std::abs(it->value));
+
+        return maxAbs;
+    };
+
+    double halfRange = std::max(maxAbsInVisibleRange(G_RA), maxAbsInVisibleRange(G_DEC));
+    if (!std::isfinite(halfRange))
+        halfRange = MIN_HALF_RANGE;
+
+    halfRange = std::max(MIN_HALF_RANGE, std::ceil(halfRange * RANGE_MARGIN));
+
+    driftGraph->yAxis->setRange(-halfRange, halfRange);
+    setCorrectionGraphScale();
 }
 
 void Guide::exportGuideData()
@@ -1543,7 +1587,13 @@ void Guide::setCaptureComplete()
     }
 
     emit newImage(guideView);
-    emit newStarPixmap(guideView->getTrackingBoxPixmap(10));
+    QPixmap starPixmap = guideView->getTrackingBoxPixmap(10);
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::setCaptureComplete emit newStarPixmap"
+                                  << "null=" << starPixmap.isNull()
+                                  << "size=" << starPixmap.size()
+                                  << "state=" << state;
+    emit newStarPixmap(starPixmap);
 }
 
 void Guide::appendLogText(const QString &text)
@@ -2684,6 +2734,9 @@ void Guide::setTrackingStar(int x, int y)
 
 void Guide::setAxisDelta(double ra, double de)
 {
+    // Mark first valid guide sample for startup watchdog logic.
+    setProperty("guideFirstSampleReceived", true);
+
     //If PHD2 starts guiding because somebody pusted the button remotely, we want to set the state to guiding.
     //If guide pulses start coming in, it must be guiding.
     // 2020-04-10 sterne-jaeger: Will be resolved inside EKOS phd guiding.
@@ -2709,6 +2762,7 @@ void Guide::setAxisDelta(double ra, double de)
         driftGraph->graph(G_RA_HIGHLIGHT)->addData(key, ra); //Set highlighted RA point to latest point
         driftGraph->graph(G_DEC_HIGHLIGHT)->addData(key, de); //Set highlighted DEC point to latest point
     }
+    normalizeDriftGraphYAxis();
     driftGraph->replot();
 
     //Add to Drift Plot
@@ -2737,9 +2791,31 @@ void Guide::setAxisDelta(double ra, double de)
     emit newAxisDelta(ra, de);
 
     profilePixmap = driftGraph->grab();
+    if (isPlotDiagEnabled())
+    {
+        static int profileEmitCounter = 0;
+        profileEmitCounter++;
+        if (profileEmitCounter <= 10 || profileEmitCounter % 50 == 0)
+            qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide emit newProfilePixmap"
+                                      << "count=" << profileEmitCounter
+                                      << "null=" << profilePixmap.isNull()
+                                      << "size=" << profilePixmap.size()
+                                      << "driftGraphSize=" << driftGraph->size();
+    }
     emit newProfilePixmap(profilePixmap);
 
     driftPlotPixmap = driftPlot->grab();
+    if (isPlotDiagEnabled())
+    {
+        static int driftEmitCounter = 0;
+        driftEmitCounter++;
+        if (driftEmitCounter <= 10 || driftEmitCounter % 50 == 0)
+            qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide emit newDriftPlotPixmap"
+                                      << "count=" << driftEmitCounter
+                                      << "null=" << driftPlotPixmap.isNull()
+                                      << "size=" << driftPlotPixmap.size()
+                                      << "driftPlotSize=" << driftPlot->size();
+    }
     emit newDriftPlotPixmap(driftPlotPixmap);
 }
 
@@ -2866,6 +2942,8 @@ void Guide::driftMouseClicked(QMouseEvent *event)
     if (event->buttons() & Qt::RightButton)
     {
         driftGraph->yAxis->setRange(-3, 3);
+        normalizeDriftGraphYAxis();
+        driftGraph->replot();
     }
 }
 
@@ -3521,6 +3599,11 @@ void Guide::initDriftGraph()
     timeTicker->setTimeFormat("%m:%s");
     driftGraph->xAxis->setTicker(timeTicker);
 
+    QSharedPointer<QCPAxisTickerFixed> driftYAxisTicker(new QCPAxisTickerFixed);
+    driftYAxisTicker->setTickStep(1.0);
+    driftYAxisTicker->setScaleStrategy(QCPAxisTickerFixed::ssMultiples);
+    driftGraph->yAxis->setTicker(driftYAxisTicker);
+
     //Vertical Axis Labels Settings
     driftGraph->yAxis2->setVisible(true);
     driftGraph->yAxis2->setTickLabels(true);
@@ -3649,6 +3732,7 @@ void Guide::initDriftGraph()
     driftGraph->graph(G_DEC_PULSE)->setVisible(Options::dECorrDisplayedOnGuideGraph()); //DEC Pulses
     driftGraph->graph(G_SNR)->setVisible(Options::sNRDisplayedOnGuideGraph()); //SNR
     setRMSVisibility();
+    normalizeDriftGraphYAxis();
 
     updateCorrectionsScaleVisibility();
 }
@@ -4061,6 +4145,23 @@ void Guide::initConnections()
 
 void Guide::removeDevice(ISD::GDInterface *device)
 {
+
+                    // Internal-guider startup can occasionally miss the first processing cycle.
+                    // If no first delta arrives after a few exposure intervals, request one recovery capture.
+                    if (guiderType == GUIDE_INTERNAL)
+                    {
+                        setProperty("guideFirstSampleReceived", false);
+                        const int watchdogMS = std::max(3000, static_cast<int>(std::lround(exposureIN->value() * 3000.0)));
+                        QTimer::singleShot(watchdogMS, this, [this]()
+                        {
+                            if (state == GUIDE_GUIDING && guiderType == GUIDE_INTERNAL
+                                    && property("guideFirstSampleReceived").toBool() == false)
+                            {
+                                appendLogText(i18n("No guide samples received at startup. Triggering one recovery capture."));
+                                capture();
+                            }
+                        });
+                    }
     device->disconnect(this);
     if (currentTelescope && (currentTelescope->getDeviceName() == device->getDeviceName()))
     {
@@ -4262,5 +4363,63 @@ void Guide::loop()
     }
     else if (guiderType == GUIDE_INTERNAL)
         capture();
+}
+
+QPixmap Guide::getProfileViewPixmap(const QSize &sizeHint) const
+{
+    if (!driftGraph)
+        return QPixmap();
+
+    int targetWidth = sizeHint.width();
+    int targetHeight = sizeHint.height();
+
+    // Use fallback dimensions if sizeHint is invalid
+    if (targetWidth <= 1)
+        targetWidth = 640;
+    if (targetHeight <= 1)
+        targetHeight = 360;
+
+    driftGraph->replot();
+    const QPixmap pixmap = driftGraph->toPixmap(targetWidth, targetHeight, 1.0);
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::getProfileViewPixmap"
+                                  << "plotVisible=" << driftGraph->isVisible()
+                                  << "plotSize=" << driftGraph->size()
+                                  << "sizeHint=" << sizeHint
+                                  << "target=" << QSize(targetWidth, targetHeight)
+                                  << "pixmapNull=" << pixmap.isNull()
+                                  << "pixmapSize=" << pixmap.size();
+
+    return pixmap;
+}
+
+QPixmap Guide::getDriftPlotViewPixmap(const QSize &sizeHint) const
+{
+    if (!driftPlot)
+        return QPixmap();
+
+    int targetWidth = sizeHint.width();
+    int targetHeight = sizeHint.height();
+
+    // Use fallback dimensions if sizeHint is invalid
+    if (targetWidth <= 1)
+        targetWidth = 640;
+    if (targetHeight <= 1)
+        targetHeight = 360;
+
+    driftPlot->replot();
+    const QPixmap pixmap = driftPlot->toPixmap(targetWidth, targetHeight, 1.0);
+
+    if (isPlotDiagEnabled())
+        qCInfo(KSTARS_EKOS_GUIDE) << "[PLOT_DIAG] Guide::getDriftPlotViewPixmap"
+                                  << "plotVisible=" << driftPlot->isVisible()
+                                  << "plotSize=" << driftPlot->size()
+                                  << "sizeHint=" << sizeHint
+                                  << "target=" << QSize(targetWidth, targetHeight)
+                                  << "pixmapNull=" << pixmap.isNull()
+                                  << "pixmapSize=" << pixmap.size();
+
+    return pixmap;
 }
 }

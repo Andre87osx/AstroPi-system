@@ -29,6 +29,11 @@ namespace Ekos
 
 class FocusAlgorithmInterface;
 class PolynomialFit;
+class QDialog;
+class QDoubleSpinBox;
+class QSpinBox;
+class QLabel;
+class QCPItemText;
 
 /**
  * @class Focus
@@ -122,6 +127,8 @@ class Focus : public QWidget, public Ui::Focus
         {
             return exposureIN->value();
         }
+
+          QPixmap getProfileViewPixmap(const QSize &sizeHint = QSize()) const;
 
         /** DBUS interface function.
              * Set CCD binning
@@ -217,6 +224,8 @@ class Focus : public QWidget, public Ui::Focus
             return m_LogText.join("\n");
         }
 
+                    void setTelescopeInfo(double primaryFocalLength, double primaryAperture);
+
         // Presets
         QJsonObject getSettings() const;
         void setSettings(const QJsonObject &settings);
@@ -288,6 +297,7 @@ class Focus : public QWidget, public Ui::Focus
              * @brief syncCCDInfo Read current CCD information and update settings accordingly.
              */
         void syncCCDInfo();
+        void syncHFRGuideFromAlignSolution(const QVariantMap &solution);
 
         /**
              * @brief Check Focuser and make sure information is updated accordingly.
@@ -313,6 +323,7 @@ class Focus : public QWidget, public Ui::Focus
              * @brief clearDataPoints Remove all data points from HFR plots
              */
         void clearDataPoints();
+     void showRelativeProfile();
 
         /**
              * @brief focusStarSelected The user selected a focus star, save its coordinates and subframe it if subframing is enabled.
@@ -780,5 +791,46 @@ class Focus : public QWidget, public Ui::Focus
 
         // Mount altitude value for logging
         double mountAlt { INVALID_VALUE };
+
+        ////////////////////////////////////////////////////////////////////
+        /// HFR Guide Profile
+        ////////////////////////////////////////////////////////////////////
+        struct HFRGuideConfig
+        {
+            double focalLengthMm {0.0};
+            double apertureMm    {0.0};
+            double pixelSizeUm   {0.0};
+            int    binning       {2};
+            double siteSeeing    {5.0};  // arcsec
+            bool isValid() const
+            {
+                return focalLengthMm > 0.0 && apertureMm > 0.0 && pixelSizeUm > 0.0;
+            }
+        };
+
+        void   loadHFRGuide();
+        double calculateTheoreticalHFR(const HFRGuideConfig &config);
+        void   showHFRGuideConfig();
+            bool   getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const;
+            void   refreshHFRGuideFromCCD();
+            void   updateTheoreticalHFR(bool redrawProfile = true);
+            void   syncHFRGuideDialogControls();
+            void   updateHFRGuideResultLabel();
+
+        HFRGuideConfig m_HFRGuideConfig;
+        double         m_TheoreticalHFR {-1.0};
+            double         m_HFRGuideProfileApertureMm {0.0};
+
+            QPointer<QDialog>        m_HFRGuideDialog;
+            QPointer<QDoubleSpinBox> m_HFRGuideFocalSB;
+            QPointer<QDoubleSpinBox> m_HFRGuideApertureSB;
+            QPointer<QDoubleSpinBox> m_HFRGuidePixelSB;
+            QPointer<QSpinBox>       m_HFRGuideBinningSB;
+            QPointer<QDoubleSpinBox> m_HFRGuideSeeingSB;
+            QPointer<QLabel>         m_HFRGuideResultLabel;
+
+            QCPGraph *theoreticalTargetLine { nullptr };
+            QCPGraph *theoreticalCurrentPoint { nullptr };
+            QCPItemText *theoreticalProfileLabel { nullptr };
 };
 }

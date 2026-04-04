@@ -488,7 +488,7 @@ void SchedulerJob::updateJobCells()
         {
             stateStrings[JOB_IDLE] = i18n("Idle");
             stateStrings[JOB_EVALUATION] = i18n("Evaluating");
-            stateStrings[JOB_SCHEDULED] = i18n("Scheduled");
+            stateStrings[JOB_SCHEDULED] = i18n("Programmato");
             stateStrings[JOB_BUSY] = i18n("Running");
             stateStrings[JOB_INVALID] = i18n("Invalid");
             stateStrings[JOB_COMPLETE] = i18n("Complete");

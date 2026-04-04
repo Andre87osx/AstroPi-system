@@ -54,7 +54,7 @@ typedef void (*array_writer)(float *ptr, int n, void *target);
   {if (!(ptr = (typ *)calloc((size_t)(nel),sizeof(typ))))		\
       {									\
 	char errtext[160];						\
-	sprintf(errtext, #ptr " (" #nel "=%lu elements) "		\
+	sprintf(errtext, #ptr " (" #nel "=%zu elements) "		\
 		"at line %d in module " __FILE__ " !",			\
 		(size_t)(nel)*sizeof(typ), __LINE__);			\
 	put_errdetail(errtext);						\
@@ -67,7 +67,7 @@ typedef void (*array_writer)(float *ptr, int n, void *target);
   {if (!(ptr = (typ *)malloc((size_t)(nel)*sizeof(typ))))		\
       {									\
 	char errtext[160];						\
-	sprintf(errtext, #ptr " (" #nel "=%lu elements) "		\
+	sprintf(errtext, #ptr " (" #nel "=%zu elements) "		\
 		"at line %d in module " __FILE__ " !",			\
 		(size_t)(nel)*sizeof(typ), __LINE__);			\
 	put_errdetail(errtext);						\

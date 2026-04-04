@@ -35,7 +35,7 @@
       </sizepolicy>
      </property>
      <property name="title">
-      <string>Object &amp;&amp; Sequence Selection</string>
+      <string>Selezione Oggetto &amp;&amp; Sequenza</string>
      </property>
      <layout class="QHBoxLayout" name="horizontalLayout_10" stretch="1,4">
       <property name="spacing">
@@ -72,7 +72,7 @@
              <string>Select optional FITS file to be used for alignment. When using FITS, specify the object or the estimated coordinates which are used to slew the mount.</string>
             </property>
             <property name="text">
-             <string>FITS File:</string>
+             <string>File FITS:</string>
             </property>
            </widget>
           </item>
@@ -124,7 +124,7 @@
              <string>Ekos Sequence File</string>
             </property>
             <property name="text">
-             <string>Sequence:</string>
+             <string>Sequenza:</string>
             </property>
            </widget>
           </item>
@@ -151,7 +151,7 @@
           <item row="5" column="0">
            <widget class="QLabel" name="label_7">
             <property name="text">
-             <string>Priority:</string>
+             <string>Priorita:</string>
             </property>
            </widget>
           </item>
@@ -347,7 +347,7 @@
              <string>Select which steps to execute before starting the capture process.</string>
             </property>
             <property name="text">
-             <string>Steps:</string>
+             <string>Passi:</string>
             </property>
            </widget>
           </item>
@@ -1041,12 +1041,12 @@
           </attribute>
           <column>
            <property name="text">
-            <string>Name</string>
+            <string>Nome</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>Status</string>
+            <string>Stato</string>
            </property>
            <property name="font">
             <font>
@@ -1057,37 +1057,37 @@
           </column>
           <column>
            <property name="text">
-            <string>Captures</string>
+            <string>Catture</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>Altitude</string>
+            <string>Altezza</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>Score</string>
+            <string>Punteggio</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>Start Time</string>
+            <string>Ora Inizio</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>End Time</string>
+            <string>Ora Fine</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>Est. Duration</string>
+            <string>Durata Stimata</string>
            </property>
           </column>
           <column>
            <property name="text">
-            <string>Lead time</string>
+            <string>Tempo di anticipo</string>
            </property>
           </column>
          </widget>
@@ -1210,7 +1210,7 @@ font-weight:bold;
              <string notr="true"/>
             </property>
             <property name="text">
-             <string>Idle</string>
+             <string>Inattivo</string>
             </property>
            </widget>
           </item>
@@ -1244,7 +1244,7 @@ font-weight:bold;
         </sizepolicy>
        </property>
        <property name="title">
-        <string>Job Completion Conditions</string>
+        <string>Condizioni di Completamento Job</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_5" stretch="0">
         <property name="spacing">
@@ -1279,7 +1279,7 @@ font-weight:bold;
              </sizepolicy>
             </property>
             <property name="text">
-             <string>&amp;Repeat for</string>
+             <string>&amp;Ripeti per</string>
             </property>
             <property name="checked">
              <bool>true</bool>
@@ -1320,7 +1320,7 @@ font-weight:bold;
              <string>The observation job is completed when the sequence is complete.</string>
             </property>
             <property name="text">
-             <string>Se&amp;quence completion</string>
+             <string>Completamento se&amp;quenza</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
@@ -1339,7 +1339,7 @@ font-weight:bold;
              <string>Terminate the job on the given date and time.</string>
             </property>
             <property name="text">
-             <string>Repeat &amp;until</string>
+             <string>Ripeti &amp;fino al</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
@@ -1358,7 +1358,7 @@ font-weight:bold;
              <string>Restart job until it is executed this many times.</string>
             </property>
             <property name="suffix">
-             <string> runs</string>
+             <string> esecuzioni</string>
             </property>
             <property name="minimum">
              <number>1</number>
@@ -1383,7 +1383,7 @@ font-weight:bold;
              <string>Restart the sequence job indefinitely.</string>
             </property>
             <property name="text">
-             <string>Repeat &amp;until terminated</string>
+             <string>Ripeti &amp;fino a interruzione</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">completionButtonGroup</string>
@@ -1404,7 +1404,7 @@ font-weight:bold;
         </sizepolicy>
        </property>
        <property name="title">
-        <string>Job Startup Conditions</string>
+        <string>Condizioni di Avvio Job</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <property name="spacing">
@@ -1455,7 +1455,7 @@ font-weight:bold;
              <string>Start the observation job when the object reaches culmination adjusted for the offset value in minutes. By default, the observation job runs 60 minutes prior to culmination.</string>
             </property>
             <property name="text">
-             <string>Cul&amp;mination Offset</string>
+             <string>Offset Cu&amp;lminazione</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">startupButtonGroup</string>
@@ -1474,7 +1474,7 @@ font-weight:bold;
              <string>start the job on the specified date and time</string>
             </property>
             <property name="text">
-             <string>O&amp;n</string>
+             <string>A&amp;lle</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">startupButtonGroup</string>
@@ -1552,7 +1552,7 @@ font-weight:bold;
         </sizepolicy>
        </property>
        <property name="title">
-        <string>Job Constraints</string>
+        <string>Vincoli Job</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_7">
         <property name="spacing">
@@ -1650,7 +1650,7 @@ font-weight:bold;
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Weather conditions must remain safe. When weather conditions become dangerous, shutdown procedure is initiated.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>Weather</string>
+             <string>Meteo</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">constraintButtonGroup</string>
@@ -1688,7 +1688,7 @@ font-weight:bold;
              <string>&lt;html&gt;&lt;body&gt;&lt;p&gt;The twilight restriction constrains jobs to execute in astronomical darkness. Use the dusk and dawn offsets in the Ekos Scheduler options to adjust the interval.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>Twilight</string>
+             <string>Crepuscolo</string>
             </property>
             <property name="checked">
              <bool>true</bool>
@@ -1738,7 +1738,7 @@ font-weight:bold;
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;One-time shutdown procedure to be executed after all scheduler jobs are completed. The script is executed &lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;after&lt;/span&gt; the shutdown procedures (e.g. parking), if selected, are completed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="title">
-        <string>Observatory Shutdown Procedure</string>
+        <string>Procedura Chiusura Osservatorio</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <property name="spacing">
@@ -1776,7 +1776,7 @@ font-weight:bold;
              <string>Turn off CCD cooler.</string>
             </property>
             <property name="text">
-             <string>Warm CCD</string>
+             <string>Riscalda CCD</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
@@ -1798,7 +1798,7 @@ font-weight:bold;
              <string>Close dust cover</string>
             </property>
             <property name="text">
-             <string>Cap</string>
+             <string>Tappo</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
@@ -1820,7 +1820,7 @@ font-weight:bold;
              <string>Park telescope to home position.</string>
             </property>
             <property name="text">
-             <string>Park Mount</string>
+             <string>Parcheggia Montatura</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
@@ -1845,7 +1845,7 @@ font-weight:bold;
              <string>Park dome to home position</string>
             </property>
             <property name="text">
-             <string>Park Dome</string>
+             <string>Parcheggia Cupola</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">shutdownProcedureGroup</string>
@@ -1865,42 +1865,38 @@ font-weight:bold;
             </property>
            </spacer>
           </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_shutdown_hidden_controls">
+          <property name="spacing">
+            <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QPushButton" name="shutdownB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+            <property name="visible">
+             <bool>false</bool>
             </property>
             <property name="text">
              <string/>
             </property>
            </widget>
           </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <property name="spacing">
-           <number>1</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="label_13">
-            <property name="text">
-             <string>Script:</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <widget class="QLineEdit" name="shutdownScript">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="readOnly">
+            <property name="visible">
              <bool>false</bool>
             </property>
             <property name="clearButtonEnabled">
@@ -1910,11 +1906,8 @@ font-weight:bold;
           </item>
           <item>
            <widget class="QPushButton" name="selectShutdownScriptB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+            <property name="visible">
+             <bool>false</bool>
             </property>
             <property name="text">
              <string/>
@@ -2119,7 +2112,7 @@ font-weight:bold;
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;One-time startup procedure to be executed before starting Ekos. The script is executed &lt;span style=&quot; font-weight:600; text-decoration: underline;&quot;&gt;before&lt;/span&gt; the startup procedures (e.g. unpark scope), if selected, are executed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="title">
-        <string>Observatory Startup Procedure</string>
+        <string>Procedura Avvio Osservatorio</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <property name="spacing">
@@ -2157,7 +2150,7 @@ font-weight:bold;
              <string>Park dome to home position</string>
             </property>
             <property name="text">
-             <string>UnPark Dome</string>
+             <string>Sblocca Cupola</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">startupProcedureButtonGroup</string>
@@ -2179,7 +2172,7 @@ font-weight:bold;
              <string>Park telescope to home position.</string>
             </property>
             <property name="text">
-             <string>UnPark Mount</string>
+             <string>Sblocca Montatura</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">startupProcedureButtonGroup</string>
@@ -2201,7 +2194,7 @@ font-weight:bold;
              <string>Open dust cover</string>
             </property>
             <property name="text">
-             <string>UnCap</string>
+             <string>Apri Tappo</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">startupProcedureButtonGroup</string>
@@ -2243,42 +2236,38 @@ font-weight:bold;
             </property>
            </spacer>
           </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_startup_hidden_controls">
+          <property name="spacing">
+            <number>0</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QPushButton" name="startupB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+            <property name="visible">
+             <bool>false</bool>
             </property>
             <property name="text">
              <string/>
             </property>
            </widget>
           </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_12">
-          <property name="spacing">
-           <number>1</number>
-          </property>
-          <item>
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Script:</string>
-            </property>
-           </widget>
-          </item>
           <item>
            <widget class="QLineEdit" name="startupScript">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="readOnly">
+            <property name="visible">
              <bool>false</bool>
             </property>
             <property name="clearButtonEnabled">
@@ -2288,11 +2277,8 @@ font-weight:bold;
           </item>
           <item>
            <widget class="QPushButton" name="selectStartupScriptB">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
+            <property name="visible">
+             <bool>false</bool>
             </property>
             <property name="text">
              <string/>
@@ -2324,15 +2310,10 @@ font-weight:bold;
   <tabstop>unparkDomeCheck</tabstop>
   <tabstop>unparkMountCheck</tabstop>
   <tabstop>uncapCheck</tabstop>
-  <tabstop>startupB</tabstop>
-  <tabstop>selectStartupScriptB</tabstop>
   <tabstop>warmCCDCheck</tabstop>
   <tabstop>capCheck</tabstop>
   <tabstop>parkMountCheck</tabstop>
   <tabstop>parkDomeCheck</tabstop>
-  <tabstop>shutdownB</tabstop>
-  <tabstop>shutdownScript</tabstop>
-  <tabstop>selectShutdownScriptB</tabstop>
   <tabstop>addToQueueB</tabstop>
   <tabstop>removeFromQueueB</tabstop>
   <tabstop>evaluateOnlyB</tabstop>

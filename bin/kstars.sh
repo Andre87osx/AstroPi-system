@@ -65,8 +65,16 @@ park_telescope() {
 	local park_script="${Script_Dir}/parking.py"
 	local max_attempts=3
 	local attempt=0
+	local py_cmd=""
 	
 	echo "EMERGENCY: Attempting to park telescope..."
+
+	if command -v python3 >/dev/null 2>&1; then
+		py_cmd="python3"
+	else
+		echo "ERROR: python3 not found"
+		return 1
+	fi
 	
 	# Verify parking script exists
 	if [[ ! -f "$park_script" ]]; then
@@ -79,8 +87,9 @@ park_telescope() {
 		((attempt++))
 		echo "Parking attempt $attempt/$max_attempts..."
 		
-		if python "$park_script" > /tmp/parking_log_$$.txt 2>&1; then
+		if timeout 180 "$py_cmd" "$park_script" > /tmp/parking_log_$$.txt 2>&1; then
 			echo "SUCCESS: Telescope parked successfully"
+			rm -f /tmp/parking_log_$$.txt
 			return 0
 		else
 			# Check if error is due to kstars not running via DBUS
@@ -122,8 +131,12 @@ else
 	# KStars crashed - emergency procedure
 	echo "FAILURE: KStars crashed. Emergency telescope parking in progress..."
 	time=$( date '+%F_%H:%M:%S' )
-	
-	# Show warning dialog (non-blocking and persistent)
+
+	# Start parking immediately in background (safety first)
+	park_telescope &
+	PARK_PID=$!
+
+	# Show warning dialog while parking is running
 	nohup zenity --warning --width=350 --title="KStars AstroPi - EMERGENCY" \
 		--text="<b>KStars AstroPi crashed!</b>
 \nEmergency parking sequence started at ${time}.
@@ -132,10 +145,12 @@ else
 \nPlease keep this warning visible until the situation is verified.
 \nContact support: <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
 		> /dev/null 2>&1 &
-	
-	# Attempt to park the telescope
-	if park_telescope; then
+	ZENITY_PID=$!
+
+	# Wait for parking completion
+	if wait "$PARK_PID"; then
 		echo "Parking sequence completed successfully at $(date '+%F_%H:%M:%S')"
+		kill "$ZENITY_PID" >/dev/null 2>&1 || true
 		exit 0
 	else
 		echo "ERROR: Parking sequence failed. Check system status manually."

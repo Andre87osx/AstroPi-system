@@ -40,6 +40,7 @@
 #include <QTextBrowser>
 #include <QTextStream>
 #include <QVBoxLayout>
+#include <QResizeEvent>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -256,15 +257,17 @@ Scheduler::Scheduler()
 
     if (astroPiLogoLabel != nullptr)
     {
-        QPixmap logoPixmap;
-        logoPixmap.load(":/icons/astropi_scheduler_logo.png");
-
+        // Prefer dedicated logo assets. Use wallpaper only as a last fallback.
         const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-        const QString appLogoPath = appDataPath + "/astropi_scheduler_logo.png";
-
         const QStringList candidatePaths
         {
-            appLogoPath,
+            ":/icons/astropi_scheduler_logo.png",
+            appDataPath + "/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../../astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../kstars/data/icons/astropi_scheduler_logo.png",
+            QCoreApplication::applicationDirPath() + "/../../kstars/data/icons/astropi_scheduler_logo.png",
             QCoreApplication::applicationDirPath() + "/AstroPi_wallpaper.png",
             QCoreApplication::applicationDirPath() + "/../AstroPi_wallpaper.png",
             QCoreApplication::applicationDirPath() + "/../../AstroPi_wallpaper.png",
@@ -276,29 +279,18 @@ Scheduler::Scheduler()
             QCoreApplication::applicationDirPath() + "/../../../Loghi&background/AstroPi_wallpaper.png"
         };
 
-        if (logoPixmap.isNull())
+        for (const QString &candidate : candidatePaths)
         {
-            for (const QString &candidate : candidatePaths)
-            {
-                if (logoPixmap.load(candidate))
-                    break;
-            }
+            QPixmap candidatePixmap;
+            if (!candidatePixmap.load(candidate) || candidatePixmap.isNull())
+                continue;
+
+            m_AstroPiLogoSource = candidatePixmap;
+            break;
         }
 
-        if (!logoPixmap.isNull())
-        {
-            const int logicalLogoWidth = 260;
-            const qreal devicePixelRatio = astroPiLogoLabel->devicePixelRatioF();
-            int physicalLogoWidth = qRound(logicalLogoWidth * devicePixelRatio);
-            if (physicalLogoWidth < 1)
-                physicalLogoWidth = 1;
-
-            QPixmap scaledLogo = logoPixmap.scaledToWidth(physicalLogoWidth, Qt::SmoothTransformation);
-            scaledLogo.setDevicePixelRatio(devicePixelRatio);
-            astroPiLogoLabel->setPixmap(scaledLogo);
-        }
-        else
-            astroPiLogoLabel->setText(i18n("AstroPi"));
+        astroPiLogoLabel->setMinimumWidth(140);
+        updateAstroPiLogo();
     }
 
     if (showGuideButton != nullptr && schedulerGuideLabel != nullptr)
@@ -466,6 +458,30 @@ Scheduler::Scheduler()
     loadProfiles();
 
     watchJobChanges(true);
+}
+
+void Scheduler::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    updateAstroPiLogo();
+}
+
+void Scheduler::updateAstroPiLogo()
+{
+    if (astroPiLogoLabel == nullptr)
+        return;
+
+    if (m_AstroPiLogoSource.isNull())
+    {
+        astroPiLogoLabel->setText(i18n("AstroPi"));
+        return;
+    }
+
+    const int availableWidth = std::max(1, astroPiLogoLabel->contentsRect().width());
+    const int minReadableWidth = 140;
+    const int targetWidth = std::max(minReadableWidth, std::min(availableWidth, m_AstroPiLogoSource.width()));
+
+    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaledToWidth(targetWidth, Qt::SmoothTransformation));
 }
 
 QString Scheduler::getCurrentJobName()
@@ -1708,6 +1724,13 @@ void Scheduler::start()
 
             qCInfo(KSTARS_EKOS_SCHEDULER) << "Scheduler is starting...";
 
+            // Disable FITS Viewer when scheduler starts
+            if (Options::useFITSViewer())
+            {
+                Options::setUseFITSViewer(false);
+                appendLogText(i18n("Disabling FITS Viewer for Scheduler startup."));
+            }
+
             /* Update UI to reflect startup */
             pi->startAnimation();
             sleepLabel->hide();
@@ -1796,7 +1819,7 @@ void Scheduler::setCurrentJob(SchedulerJob *job)
     }
     else
     {
-        jobStatus->setText(i18n("No job running"));
+        jobStatus->setText(i18n("Nessun job in esecuzione"));
         //queueTable->clearSelection();
     }
 }
@@ -2739,12 +2762,6 @@ void Scheduler::executeJob(SchedulerJob *job)
     // When the focus step is not checked, the capture module will eventually run focus periodically
     autofocusCompleted = false;
 
-    // Clear memory from previous job's align and focus modules to prevent memory leak
-    if (!alignInterface.isNull())
-        alignInterface->call(QDBus::AutoDetect, "abort");
-    if (!focusInterface.isNull())
-        focusInterface->call(QDBus::AutoDetect, "resetFrame");
-
     qCInfo(KSTARS_EKOS_SCHEDULER) << "Executing Job " << currentJob->getName();
 
     currentJob->setState(SchedulerJob::JOB_BUSY);
@@ -3029,12 +3046,17 @@ bool Scheduler::checkINDIState()
 
             if (m_CaptureReady == false)
             {
-                QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                if (hasCoolerControl.isValid())
+                QDBusReply<bool> hasCoolerControl = captureInterface->call(QDBus::AutoDetect, "hasCoolerControl");
+                if (hasCoolerControl.error().type() == QDBusError::NoError)
                 {
-                    warmCCDCheck->setEnabled(hasCoolerControl.toBool());
-                    m_CaptureReady = true;
-                    coolingCCDCheck->setEnabled(hasCoolerControl.toBool());
+                    const bool coolerAvailable = hasCoolerControl.value();
+                    warmCCDCheck->setEnabled(coolerAvailable);
+                    coolingCCDCheck->setEnabled(coolerAvailable);
+                    if (!coolerAvailable)
+                    {
+                        warmCCDCheck->setChecked(false);
+                        coolingCCDCheck->setChecked(false);
+                    }
                     m_CaptureReady = true;
                 }
                 else
@@ -3066,13 +3088,46 @@ bool Scheduler::checkStartupState()
         {
             KNotification::event(QLatin1String("ObservatoryStartup"), i18n("Observatory is in the startup process"));
 
-            if (Options::useFITSViewer())
-            {
-                Options::setUseFITSViewer(false);
-                appendLogText(i18n("Disabling FITS Viewer for Scheduler startup."));
-            }
-
             qCDebug(KSTARS_EKOS_SCHEDULER) << "Startup Idle. Starting startup process...";
+
+            // Start cooling CCD immediately if selected, regardless of Ekos state
+            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
+            {
+                if (!captureInterface.isNull())
+                {
+                    QDBusReply<bool> hasCoolerControl = captureInterface->call(QDBus::AutoDetect, "hasCoolerControl");
+                    if (hasCoolerControl.error().type() == QDBusError::NoError && hasCoolerControl.value())
+                    {
+                        double startupCoolingTemperatureC = -10.0;
+
+                        if (currentJob != nullptr)
+                        {
+                            QList<SequenceJob *> seqJobs;
+                            bool hasAutoFocus = false;
+                            if (loadSequenceQueue(currentJob->getSequenceFile().toLocalFile(), currentJob, seqJobs, hasAutoFocus, this))
+                            {
+                                for (const SequenceJob *seqJob : qAsConst(seqJobs))
+                                {
+                                    if (seqJob->getEnforceTemperature())
+                                    {
+                                        startupCoolingTemperatureC = seqJob->getTargetTemperature();
+                                        break;
+                                    }
+                                }
+                            }
+                            qDeleteAll(seqJobs);
+                        }
+
+                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
+                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
+                        captureInterface->call(QDBus::AutoDetect, "setCoolerControl", true);
+                    }
+                    else
+                    {
+                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
+                    }
+                }
+            }
 
             // If Ekos is already started, we skip the script and move on to dome unpark step
             // unless we do not have light frames, then we skip all
@@ -3097,25 +3152,6 @@ bool Scheduler::checkStartupState()
                 profile.append(schedulerProfileCombo->currentText());
                 if (!ekosInterface.isNull())
                     ekosInterface->callWithArgumentList(QDBus::AutoDetect, "setProfile", profile);
-            }
-
-            if (coolingCCDCheck->isEnabled() && coolingCCDCheck->isChecked())
-            {
-                constexpr double startupCoolingTemperatureC = -10.0;
-                if (!captureInterface.isNull())
-                {
-                    const QVariant hasCoolerControl = captureInterface->property("coolerControl");
-                    if (hasCoolerControl.isValid() && hasCoolerControl.toBool())
-                    {
-                        appendLogText(i18n("Cooling CCD to %1 °C...", startupCoolingTemperatureC));
-                        captureInterface->call(QDBus::AutoDetect, "setCCDTemperature", startupCoolingTemperatureC);
-                        captureInterface->setProperty("coolerControl", true);
-                    }
-                    else
-                    {
-                        appendLogText(i18n("Cooling CCD skipped: current camera has no cooler control."));
-                    }
-                }
             }
 
             if (startupScriptURL.isEmpty() == false)
@@ -3223,10 +3259,7 @@ bool Scheduler::checkShutdownState()
             {
                 appendLogText(i18n("Warming up CCD..."));
 
-                // Turn it off
-                //QVariant arg(false);
-                //captureInterface->call(QDBus::AutoDetect, "setCoolerControl", arg);
-                captureInterface->setProperty("coolerControl", false);
+                captureInterface->call(QDBus::AutoDetect, "setCoolerControl", false);
             }
 
             // The following steps require a connection to the INDI server
@@ -7306,9 +7339,19 @@ void Scheduler::syncProperties()
     }
     else if (iface == captureInterface)
     {
-        QVariant hasCoolerControl = captureInterface->property("coolerControl");
-        warmCCDCheck->setEnabled(hasCoolerControl.toBool());
-        m_CaptureReady = true;
+        QDBusReply<bool> hasCoolerControl = captureInterface->call(QDBus::AutoDetect, "hasCoolerControl");
+        if (hasCoolerControl.error().type() == QDBusError::NoError)
+        {
+            const bool coolerAvailable = hasCoolerControl.value();
+            warmCCDCheck->setEnabled(coolerAvailable);
+            coolingCCDCheck->setEnabled(coolerAvailable);
+            if (!coolerAvailable)
+            {
+                warmCCDCheck->setChecked(false);
+                coolingCCDCheck->setChecked(false);
+            }
+            m_CaptureReady = true;
+        }
     }
 }
 

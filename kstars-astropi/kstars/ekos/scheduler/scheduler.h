@@ -19,6 +19,7 @@
 #include <lilxml.h>
 
 #include <QProcess>
+#include <QPixmap>
 #include <QTime>
 #include <QTimer>
 #include <QUrl>
@@ -385,6 +386,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
           * @param enable is the toggle flag, true to watch for changes, false to ignore them.
           */
         void watchJobChanges(bool enable);
+                    void resizeEvent(QResizeEvent *event) override;
 
         /** @internal Marks the currently selected SchedulerJob as modified change.
          *
@@ -803,6 +805,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
         // retrieve the guiding status
         GuideState getGuidingStatus();
+     void updateAstroPiLogo();
 
 
         Ekos::Scheduler *ui { nullptr };
@@ -908,6 +911,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
         QUrl dirPath;
 
         QMap<QString, uint16_t> m_CapturedFramesCount;
+     QPixmap m_AstroPiLogoSource;
 
         bool m_MountReady { false };
         bool m_CaptureReady { false };

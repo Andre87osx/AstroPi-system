@@ -399,6 +399,10 @@ class Manager : public QDialog, public Ui::Manager
         void deviceConnected();
         void deviceDisconnected();
 
+        // Placeholder plot
+        void drawGuidePlaceholderPlot(QLabel *label);
+        void drawFocusPlaceholderPlot(QLabel *label);
+
         //void processINDIModeChange();
         void checkINDITimeout();
 
@@ -445,10 +449,10 @@ class Manager : public QDialog, public Ui::Manager
 
         // Guide Summary
         void updateGuideStatus(GuideState status);
-        void updateGuideStarPixmap(QPixmap &starPix);
         void updateGuideProfilePixmap(QPixmap &profilePix);
         void updateGuidePlotPixmap(QPixmap &plotPix);
         void updateSigmas(double ra, double de);
+        void updateGuideSNR(double snr);
         void updateGuideDetailView();
 
     private:
@@ -584,11 +588,12 @@ class Manager : public QDialog, public Ui::Manager
 
         // Guide Summary
         QProgressIndicator *guidePI { nullptr };
-        std::unique_ptr<QPixmap> guideStarPixmap;
         std::unique_ptr<QPixmap> guideProfilePixmap;
         std::unique_ptr<QPixmap> guidePlotPixmap;
         int currentGuidePixmapIndex = 0;
-        const QString guideDetailViewTooltips[3] = {"Guide Profile", "Guide Plot", "Guide Star"};
+        const QString guideDetailViewTooltips[2] = {"Guide Profile", "Guide Plot"};
+        // QLabel per il valore totale RMS
+        QLabel *totalRMSLabel { nullptr };
 
         ProfileInfo *currentProfile { nullptr };
         bool profileWizardLaunched { false };
