@@ -41,6 +41,7 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 #include <QResizeEvent>
+#include <cmath>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -3904,6 +3905,16 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_GUIDING:
+            if (getGuidingStatus() == Ekos::GUIDE_GUIDING && hasGuidingTelemetry())
+            {
+                appendLogText(i18n("Job '%1' guiding telemetry acquired (RMS online).", currentJob->getName()));
+                guideFailureCount = 0;
+                restartGuidingTimer.stop();
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
+                getNextAction();
+                break;
+            }
+
             if (currentOperationAttemptTime.isValid() &&
                     currentOperationAttemptTime.elapsed() > static_cast<int>(GUIDE_ATTEMPT_HARD_TIMEOUT_MS))
             {
@@ -7441,13 +7452,21 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
         // If calibration stage complete?
         if (status == Ekos::GUIDE_GUIDING)
         {
-            appendLogText(i18n("Job '%1' guiding is in progress.", currentJob->getName()));
-            guideFailureCount = 0;
-            // if guiding recovered while we are waiting, abort the restart
-            restartGuidingTimer.stop();
+            if (hasGuidingTelemetry())
+            {
+                appendLogText(i18n("Job '%1' guiding is in progress.", currentJob->getName()));
+                guideFailureCount = 0;
+                // if guiding recovered while we are waiting, abort the restart
+                restartGuidingTimer.stop();
 
-            currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
-            getNextAction();
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
+                getNextAction();
+            }
+            else
+            {
+                appendLogText(i18n("Job '%1' guiding started, waiting for RMS telemetry...", currentJob->getName()));
+                currentOperationTime.restart();
+            }
         }
         else if (status == Ekos::GUIDE_CALIBRATION_ERROR ||
                  status == Ekos::GUIDE_ABORTED)
@@ -7533,6 +7552,22 @@ GuideState Scheduler::getGuidingStatus()
     Ekos::GuideState gStatus = static_cast<Ekos::GuideState>(guideStatus.toInt());
 
     return gStatus;
+}
+
+bool Scheduler::hasGuidingTelemetry()
+{
+    if (guideInterface.isNull())
+        return false;
+
+    const QVariant axisSigma = guideInterface->property("axisSigma");
+    if (!axisSigma.isValid() || !axisSigma.canConvert<QList<double>>())
+        return false;
+
+    const QList<double> sigma = axisSigma.value<QList<double>>();
+    if (sigma.size() < 2)
+        return false;
+
+    return std::isfinite(sigma.at(0)) && std::isfinite(sigma.at(1));
 }
 
 void Scheduler::setCaptureStatus(Ekos::CaptureState status)
