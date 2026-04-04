@@ -2774,11 +2774,11 @@ void Manager::updateGuideDetailView()
 void Manager::drawGuidePlaceholderPlot(QLabel *label)
 {
     label->setScaledContents(false);
-    
+
     // Get label dimensions, fallback to parent widget if label is too small
     int w = label->width();
     int h = label->height();
-    
+
     if (w < 100 || h < 100)
     {
         // Label not yet sized, use parent widget dimensions
@@ -2794,11 +2794,16 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
             parent = parent->parentWidget();
         }
     }
-    
+
     w = std::max(w, 200);  // Minimum fallback: 200x200
     h = std::max(h, 200);
-    int leftPad = std::max(42, w / 14);
-    int rightPad = std::max(10, w / 40);
+
+    const int plotWidth = std::min(w, std::max(1, static_cast<int>(std::lround(h * 1.25))));
+    const int plotLeft = (w - plotWidth) / 2;
+    const int plotRight = plotLeft + plotWidth;
+
+    int leftPad = std::max(42, plotWidth / 14);
+    int rightPad = std::max(10, plotWidth / 40);
     int topPad = std::max(8, h / 25);
     int bottomPad = std::max(24, h / 6);
     QPixmap pix(w, h);
@@ -2813,17 +2818,17 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
     int gridCols = 4, gridRows = 6;
     for (int i = 0; i <= gridCols; ++i)
     {
-        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        int x = plotLeft + leftPad + i * (plotWidth - leftPad - rightPad) / gridCols;
         p.drawLine(x, topPad, x, h-bottomPad);
     }
     for (int i = 0; i <= gridRows; ++i)
     {
-        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
-        p.drawLine(leftPad, y, w-rightPad, y);
+        int y = topPad + i * (h - topPad - bottomPad) / gridRows;
+        p.drawLine(plotLeft + leftPad, y, plotRight - rightPad, y);
     }
     // Assi pieni
     p.setPen(QPen(QColor(220, 220, 220), 1));
-    int x0 = leftPad, x1 = w-rightPad, y0 = topPad, y1 = h-bottomPad;
+    int x0 = plotLeft + leftPad, x1 = plotRight - rightPad, y0 = topPad, y1 = h-bottomPad;
     int xMid = (x0 + x1)/2, yMid = (y0 + y1)/2;
     p.drawLine(x0, yMid, x1, yMid); // asse orizzontale
     p.drawLine(xMid, y0, xMid, y1); // asse verticale
@@ -2853,7 +2858,7 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
     p.setPen(Qt::white);
     for (int i = 0; i <= gridCols; ++i)
     {
-        int x = leftPad + i*(w-leftPad-rightPad)/gridCols;
+        int x = x0 + i * (x1 - x0) / gridCols;
         if (i < gridCols)
         {
             const int minutes = (gridCols - i) * 30;
@@ -2867,7 +2872,7 @@ void Manager::drawGuidePlaceholderPlot(QLabel *label)
     }
     for (int i = 0; i <= gridRows; ++i)
     {
-        int y = topPad + i*(h-topPad-bottomPad)/gridRows;
+        int y = y0 + i * (y1 - y0) / gridRows;
         double val = 3.0 - i*1.0;
         p.drawText(x0-38, y+5, QString::number(val, 'f', 0));
     }
