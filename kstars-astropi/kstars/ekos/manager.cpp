@@ -118,7 +118,7 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
         totalRMSLabel->setText("RMS: --");
 
     // position the vertical splitter by 2/3
-    deviceSplitter->setSizes(QList<int>({20000, 10000}));
+    deviceSplitter->setSizes(QList<int>({24000, 8000}));
 
     qRegisterMetaType<Ekos::CommunicationStatus>("Ekos::CommunicationStatus");
     qDBusRegisterMetaType<Ekos::CommunicationStatus>();
