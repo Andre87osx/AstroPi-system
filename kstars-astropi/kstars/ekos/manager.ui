@@ -611,64 +611,6 @@
              <number>4</number>
             </property>
             <item>
-             <layout class="QHBoxLayout" name="captureStatusLayout">
-              <property name="spacing">
-               <number>1</number>
-              </property>
-              <item>
-               <widget class="QLabel" name="label_13">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>24</height>
-                 </size>
-                </property>
-                <property name="mouseTracking">
-                 <bool>true</bool>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true">font-weight:bold;</string>
-                </property>
-                <property name="text">
-                 <string>Capture: </string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QLabel" name="captureStatus">
-                <property name="minimumSize">
-                 <size>
-                  <width>0</width>
-                  <height>24</height>
-                 </size>
-                </property>
-                <property name="styleSheet">
-                 <string notr="true"/>
-                </property>
-                <property name="text">
-                 <string>Idle</string>
-                </property>
-                <property name="textFormat">
-                 <enum>Qt::AutoText</enum>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <spacer name="horizontalSpacer_4">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>1</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-             </layout>
-            </item>
-            <item>
              <widget class="QWidget" name="previewWidget" native="true">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -1104,7 +1046,55 @@
                   <number>0</number>
                  </property>
                  <item>
-                  <widget class="QLabel" name="label_2">
+                    <widget class="QLabel" name="label_3">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                       <height>34</height>
+                    </size>
+                   </property>
+                   <property name="styleSheet">
+                      <string notr="true">font-weight:bold; font-size:18pt;</string>
+                   </property>
+                   <property name="text">
+                      <string>Target: </string>
+                   </property>
+                   <property name="textFormat">
+                    <enum>Qt::AutoText</enum>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                    <widget class="QLabel" name="mountTarget">
+                   <property name="minimumSize">
+                    <size>
+                       <width>100</width>
+                       <height>34</height>
+                    </size>
+                   </property>
+                   <property name="styleSheet">
+                      <string notr="true">font-size:18pt; font-weight:bold;</string>
+                   </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_3">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                    <widget class="QLabel" name="label_2">
                    <property name="minimumSize">
                     <size>
                      <width>0</width>
@@ -1145,20 +1135,39 @@
                   </widget>
                  </item>
                  <item>
-                  <spacer name="horizontalSpacer_3">
+                  <spacer name="horizontalSpacer_4">
                    <property name="orientation">
                     <enum>Qt::Horizontal</enum>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
-                     <width>40</width>
+                     <width>20</width>
                      <height>20</height>
                     </size>
                    </property>
                   </spacer>
                  </item>
                  <item>
-                  <widget class="QLabel" name="label_3">
+                  <widget class="QLabel" name="label_13">
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>24</height>
+                    </size>
+                   </property>
+                   <property name="mouseTracking">
+                    <bool>true</bool>
+                   </property>
+                   <property name="styleSheet">
+                    <string notr="true">font-weight:bold;</string>
+                   </property>
+                   <property name="text">
+                    <string>Capture: </string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="captureStatus">
                    <property name="minimumSize">
                     <size>
                      <width>0</width>
@@ -1166,26 +1175,13 @@
                     </size>
                    </property>
                    <property name="styleSheet">
-                    <string notr="true">font-weight:bold;</string>
+                    <string notr="true"/>
                    </property>
                    <property name="text">
-                    <string>Target: </string>
+                    <string>Idle</string>
                    </property>
                    <property name="textFormat">
                     <enum>Qt::AutoText</enum>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QLabel" name="mountTarget">
-                   <property name="minimumSize">
-                    <size>
-                     <width>50</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string/>
                    </property>
                   </widget>
                  </item>
