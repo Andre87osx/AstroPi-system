@@ -3076,7 +3076,11 @@ void Manager::initMount()
     if (!mountPI)
     {
         mountPI = new QProgressIndicator(mountProcess.get());
-        mountStatusLayout->insertWidget(-1, mountPI);
+        const int mountStatusIndex = mountStatusLayout->indexOf(mountStatus);
+        if (mountStatusIndex >= 0)
+            mountStatusLayout->insertWidget(mountStatusIndex + 1, mountPI);
+        else
+            mountStatusLayout->insertWidget(-1, mountPI);
     }
 
     mountGroup->setEnabled(true);
