@@ -24,16 +24,17 @@
 #include <QtDBus/QtDBus>
 #include <parameters.h>
 
-namespace Ekos
-{
-
-class FocusAlgorithmInterface;
-class PolynomialFit;
 class QDialog;
 class QDoubleSpinBox;
 class QSpinBox;
 class QLabel;
 class QCPItemText;
+
+namespace Ekos
+{
+
+class FocusAlgorithmInterface;
+class PolynomialFit;
 
 /**
  * @class Focus
