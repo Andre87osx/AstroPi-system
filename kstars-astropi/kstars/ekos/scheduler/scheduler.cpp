@@ -1819,7 +1819,7 @@ void Scheduler::setCurrentJob(SchedulerJob *job)
     }
     else
     {
-        jobStatus->setText(i18n("No job running"));
+        jobStatus->setText(i18n("Nessun job in esecuzione"));
         //queueTable->clearSelection();
     }
 }
