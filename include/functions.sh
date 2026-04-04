@@ -1180,7 +1180,7 @@ function chkKStars()
 	# =================================================================
 	# Build KStar AstroPi
 	commands=(
-    		"cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off ${appDir}/kstars-astropi"
+	    	"cmake -Wno-dev -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=Off ${appDir}/kstars-astropi"
     		"make -j $(expr $(nproc) + 2)"
     		"sudo make install"
 		)

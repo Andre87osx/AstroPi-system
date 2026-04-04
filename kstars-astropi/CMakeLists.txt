@@ -321,6 +321,10 @@ IF (UNIX OR APPLE OR ANDROID)
     ENDIF ()
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SEC_COMP_FLAGS}")
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEC_COMP_FLAGS}")
+    # Keep AstroPi ARM builds quiet despite hardening flags re-enabling cast-align.
+    IF (UNIX)
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-cast-align")
+    ENDIF ()
     SET(SEC_LINK_FLAGS "")
 
     include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules/CheckNodump.cmake")
