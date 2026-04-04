@@ -12,9 +12,9 @@
 
 # Create version of AstroPi
 majorRelease=1								# Major Release
-minorRelease=7.9							# Minor Release
+minorRelease=8.0							# Minor Release
 AstroPi_v=${majorRelease}.${minorRelease}	# Actual Stable Release
-KStars_v=3.5.4_v1.7.9						# Based on KDE Kstrs v.3.5.4
+KStars_v=3.5.4_v1.8.0						# Based on KDE Kstrs v.3.5.4
 Indi_v=1.9.7								# Based on INDI 1.9.7 Core
 StellarSolver_v=1.9							# From Rlancaste GitHub
 
