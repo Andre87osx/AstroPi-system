@@ -35,6 +35,12 @@
 #include <ekos_focus_debug.h>
 
 #include <cmath>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDoubleSpinBox>
+#include <QGridLayout>
+#include <QLabel>
+#include <QSpinBox>
 
 #define MAXIMUM_ABS_ITERATIONS   30
 #define MAXIMUM_RESET_ITERATIONS 3
@@ -133,6 +139,8 @@ Focus::Focus()
     {
         Options::setFocusOptionsProfile(index);
     });
+
+    loadHFRGuide();
 }
 
 void Focus::loadStellarSolverProfiles()
@@ -888,6 +896,16 @@ void Focus::start()
     starsHFR.clear();
 
     lastHFR = 0;
+
+    // HFR Guide status
+    if (focusAlgorithm == FOCUS_POLYNOMIAL)
+    {
+        if (m_TheoreticalHFR < 0)
+            appendLogText(i18n("HFR Guide not configured. Use 'HFR Guide...' button to set a theoretical target."));
+        else
+            appendLogText(i18n("HFR Guide active: theoretical HFR = %1 px",
+                               QString::number(m_TheoreticalHFR, 'f', 2)));
+    }
 
     // Keep the  last focus temperature, it can still be useful in case the autofocus fails
     // lastFocusTemperature
@@ -1743,6 +1761,26 @@ void Focus::setCurrentHFR(double value)
             polySolutionFound = 0;
             completeFocusProcedure(true);
             return;
+        }
+
+        // HFR Guide: if configured and current HFR already meets the theoretical target,
+        // accept the current position without waiting for polynomial convergence.
+        // Non-blocking: if m_TheoreticalHFR < 0 the check is skipped entirely.
+        if (inAutoFocus && focusAlgorithm == FOCUS_POLYNOMIAL &&
+                m_TheoreticalHFR > 0.0 &&
+                m_LastFocusDirection != FOCUS_NONE &&
+                absIterations >= 2)
+        {
+            const double hfrTolerance = toleranceIN->value() / 100.0;
+            if (currentHFR <= m_TheoreticalHFR * (1.0 + hfrTolerance))
+            {
+                appendLogText(i18n("HFR %1 meets theoretical target %2 px. Accepting focus at position %3.",
+                                   QString::number(currentHFR, 'f', 2),
+                                   QString::number(m_TheoreticalHFR, 'f', 2),
+                                   currentPosition));
+                completeFocusProcedure(true);
+                return;
+            }
         }
 
         Edge *selectedHFRStarHFR = nullptr;
@@ -2708,6 +2746,22 @@ void Focus::autoFocusAbs()
                 }
                 else
                 {
+                    // HFR Guide: if configured and current HFR meets the theoretical target,
+                    // accept the current position instead of aborting for travel limit.
+                    if (m_TheoreticalHFR > 0.0)
+                    {
+                        const double hfrTolerance = toleranceIN->value() / 100.0;
+                        if (currentHFR > 0 && currentHFR <= m_TheoreticalHFR * (1.0 + hfrTolerance))
+                        {
+                            appendLogText(i18n("Travel limit reached. HFR %1 meets theoretical target %2 px. "
+                                               "Accepting focus at position %3.",
+                                               QString::number(currentHFR, 'f', 2),
+                                               QString::number(m_TheoreticalHFR, 'f', 2),
+                                               currentPosition));
+                            completeFocusProcedure(true);
+                            break;
+                        }
+                    }
                     qCDebug(KSTARS_EKOS_FOCUS) << "targetPosition (" << targetPosition << ") - initHFRAbsPos ("
                                                << initialFocuserAbsPosition << ") exceeds maxTravel distance of " << maxTravelIN->value();
 
@@ -3095,6 +3149,199 @@ void Focus::appendLogText(const QString &text)
     qCInfo(KSTARS_EKOS_FOCUS) << text;
 
     emit newLog(text);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+/// HFR Guide Profile — load, calculate, configure
+///////////////////////////////////////////////////////////////////////////////////////////
+void Focus::loadHFRGuide()
+{
+    m_TheoreticalHFR = -1.0;
+    m_HFRGuideConfig = HFRGuideConfig();
+
+    const QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation) + "HFR_guide.txt";
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return;
+
+    QTextStream in(&file);
+    while (!in.atEnd())
+    {
+        const QString line = in.readLine().trimmed();
+        if (line.isEmpty() || line.startsWith('#'))
+            continue;
+        const QStringList parts = line.split('=');
+        if (parts.size() != 2)
+            continue;
+        const QString key = parts[0].trimmed();
+        const double   val = parts[1].trimmed().toDouble();
+        if      (key == "focal_length_mm")    m_HFRGuideConfig.focalLengthMm = val;
+        else if (key == "aperture_mm")        m_HFRGuideConfig.apertureMm    = val;
+        else if (key == "pixel_size_um")      m_HFRGuideConfig.pixelSizeUm   = val;
+        else if (key == "binning")            m_HFRGuideConfig.binning       = static_cast<int>(val);
+        else if (key == "site_seeing_arcsec") m_HFRGuideConfig.siteSeeing    = val;
+    }
+    file.close();
+
+    if (m_HFRGuideConfig.isValid())
+        m_TheoreticalHFR = calculateTheoreticalHFR(m_HFRGuideConfig);
+}
+
+double Focus::calculateTheoreticalHFR(const HFRGuideConfig &config)
+{
+    if (!config.isValid())
+        return -1.0;
+
+    // Plate scale in arcsec/px (includes binning)
+    const double plateScale = 206.265 * config.pixelSizeUm * config.binning / config.focalLengthMm;
+
+    // Airy disk FWHM in arcsec (lambda = 550 nm = 0.00055 mm)
+    constexpr double lambda_mm  = 0.00055;
+    const double fwhmAiryArcsec = 1.028 * (lambda_mm / config.apertureMm) * 206265.0;
+
+    // Convert both components to pixels
+    const double fwhmAiryPx   = fwhmAiryArcsec / plateScale;
+    const double fwhmSeeingPx = config.siteSeeing / plateScale;
+
+    // Combined FWHM via quadrature (diffraction + atmospheric seeing)
+    const double fwhmTotalPx = std::sqrt(fwhmAiryPx * fwhmAiryPx + fwhmSeeingPx * fwhmSeeingPx);
+
+    return fwhmTotalPx / 2.0;  // HFR = FWHM / 2
+}
+
+void Focus::showHFRGuideConfig()
+{
+    QDialog *dlg = new QDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->setWindowTitle(i18n("Focus HFR Guide Configuration"));
+    dlg->setWindowFlags(Qt::Tool | Qt::WindowStaysOnTopHint);
+
+    QGridLayout *layout = new QGridLayout(dlg);
+
+    // Instructions
+    QLabel *instrLabel = new QLabel(
+        i18n("<b>Configure the theoretical HFR reference</b><br><br>"
+             "<b>Step 1:</b> Perform a rough manual focus first<br>"
+             "<b>Step 2:</b> Run Plate Solving (Align module) to confirm the focal length<br>"
+             "<b>Step 3:</b> Enter the optical parameters, adjust the site seeing for your "
+             "location, then click <i>Save</i><br><br>"
+             "This configuration is non-blocking: if not saved, the standard focus "
+             "procedure is used without changes."), dlg);
+    instrLabel->setWordWrap(true);
+    layout->addWidget(instrLabel, 0, 0, 1, 2);
+
+    // Pre-fill with existing config if valid, otherwise use reasonable defaults
+    const double fl  = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.focalLengthMm : 950.0;
+    const double ap  = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.apertureMm    : 150.0;
+    const double px  = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.pixelSizeUm   : 3.8;
+    const int    bin = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.binning        : 2;
+    const double see = m_HFRGuideConfig.isValid() ? m_HFRGuideConfig.siteSeeing     : 5.0;
+
+    auto makeDSB = [dlg](double val, double mn, double mx, double step, int dec) -> QDoubleSpinBox *
+    {
+        QDoubleSpinBox *sb = new QDoubleSpinBox(dlg);
+        sb->setRange(mn, mx);
+        sb->setSingleStep(step);
+        sb->setDecimals(dec);
+        sb->setValue(val);
+        return sb;
+    };
+
+    layout->addWidget(new QLabel(i18n("Focal Length (mm):"), dlg), 1, 0);
+    QDoubleSpinBox *focalSB    = makeDSB(fl,  100.0, 5000.0, 10.0, 0);
+    layout->addWidget(focalSB, 1, 1);
+
+    layout->addWidget(new QLabel(i18n("Aperture (mm):"), dlg), 2, 0);
+    QDoubleSpinBox *apertureSB = makeDSB(ap,   30.0, 1000.0,  5.0, 0);
+    layout->addWidget(apertureSB, 2, 1);
+
+    layout->addWidget(new QLabel(i18n("Pixel Size (\xc2\xb5m):"), dlg), 3, 0);
+    QDoubleSpinBox *pixelSB    = makeDSB(px,    1.0,   30.0,  0.1, 2);
+    layout->addWidget(pixelSB, 3, 1);
+
+    layout->addWidget(new QLabel(i18n("Binning:"), dlg), 4, 0);
+    QSpinBox *binningSB = new QSpinBox(dlg);
+    binningSB->setRange(1, 4);
+    binningSB->setValue(bin);
+    layout->addWidget(binningSB, 4, 1);
+
+    layout->addWidget(new QLabel(i18n("Site Seeing (arcsec):"), dlg), 5, 0);
+    QDoubleSpinBox *seeingSB   = makeDSB(see, 0.5, 10.0, 0.5, 1);
+    layout->addWidget(seeingSB, 5, 1);
+
+    // Result label — updated in real time as parameters change
+    QLabel *resultLabel = new QLabel(dlg);
+    resultLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(resultLabel, 6, 0, 1, 2);
+
+    // Recalc lambda — captures widget pointers by value (safe: heap-allocated, outlive lambda)
+    auto recalc = [focalSB, apertureSB, pixelSB, binningSB, seeingSB, resultLabel, this]()
+    {
+        HFRGuideConfig cfg;
+        cfg.focalLengthMm = focalSB->value();
+        cfg.apertureMm    = apertureSB->value();
+        cfg.pixelSizeUm   = pixelSB->value();
+        cfg.binning       = binningSB->value();
+        cfg.siteSeeing    = seeingSB->value();
+        const double hfr  = calculateTheoreticalHFR(cfg);
+        resultLabel->setText(QString("<b>%1</b>")
+            .arg(i18n("Theoretical HFR (binning %1\xc3\x97%1): %2 px",
+                      cfg.binning, QString::number(hfr, 'f', 2))));
+    };
+
+    recalc();  // Populate result label immediately
+
+    connect(focalSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
+    connect(apertureSB, QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
+    connect(pixelSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
+    connect(binningSB,  QOverload<int>::of(&QSpinBox::valueChanged),          dlg, [recalc](int)    { recalc(); });
+    connect(seeingSB,   QOverload<double>::of(&QDoubleSpinBox::valueChanged), dlg, [recalc](double) { recalc(); });
+
+    // Save / Close buttons
+    QDialogButtonBox *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Close, dlg);
+    layout->addWidget(buttons, 7, 0, 1, 2);
+
+    connect(buttons->button(QDialogButtonBox::Save), &QPushButton::clicked, dlg,
+        [focalSB, apertureSB, pixelSB, binningSB, seeingSB, this]()
+        {
+            HFRGuideConfig cfg;
+            cfg.focalLengthMm = focalSB->value();
+            cfg.apertureMm    = apertureSB->value();
+            cfg.pixelSizeUm   = pixelSB->value();
+            cfg.binning       = binningSB->value();
+            cfg.siteSeeing    = seeingSB->value();
+
+            const QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation)
+                                  + "HFR_guide.txt";
+            QFile f(path);
+            if (f.open(QIODevice::WriteOnly | QIODevice::Text))
+            {
+                QTextStream out(&f);
+                out << "# AstroPi Focus HFR Guide Profile\n";
+                out << "# Adjust site_seeing_arcsec (arcsec) to match your observing site.\n";
+                out << QString("focal_length_mm = %1\n").arg(cfg.focalLengthMm, 0, 'f', 0);
+                out << QString("aperture_mm = %1\n").arg(cfg.apertureMm, 0, 'f', 0);
+                out << QString("pixel_size_um = %1\n").arg(cfg.pixelSizeUm, 0, 'f', 2);
+                out << QString("binning = %1\n").arg(cfg.binning);
+                out << QString("site_seeing_arcsec = %1\n").arg(cfg.siteSeeing, 0, 'f', 1);
+                f.close();
+
+                m_HFRGuideConfig = cfg;
+                m_TheoreticalHFR = calculateTheoreticalHFR(cfg);
+                appendLogText(i18n("HFR Guide saved. Theoretical HFR: %1 px",
+                                   QString::number(m_TheoreticalHFR, 'f', 2)));
+            }
+            else
+            {
+                appendLogText(i18n("Failed to save HFR Guide to: %1", path));
+            }
+        });
+
+    connect(buttons->button(QDialogButtonBox::Close), &QPushButton::clicked, dlg, &QDialog::close);
+
+    dlg->resize(420, 380);
+    dlg->show();
 }
 
 void Focus::clearLog()
@@ -4434,6 +4681,9 @@ void Focus::initConnections()
             focusView->setTrackingBox(QRect());
         }
     });
+
+    // HFR Guide configuration button
+    connect(hfrGuideConfigB, &QPushButton::clicked, this, &Focus::showHFRGuideConfig);
 }
 
 void Focus::setFocusAlgorithm(FocusAlgorithm algorithm)

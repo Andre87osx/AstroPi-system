@@ -1837,6 +1837,13 @@
            </widget>
           </item>
           <item>
+           <widget class="QPushButton" name="hfrGuideConfigB">
+            <property name="text">
+             <string>HFR Guide...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="clearDataB">
             <property name="text">
              <string>Clear Data</string>

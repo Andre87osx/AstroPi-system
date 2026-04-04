@@ -782,5 +782,28 @@ class Focus : public QWidget, public Ui::Focus
 
         // Mount altitude value for logging
         double mountAlt { INVALID_VALUE };
+
+        ////////////////////////////////////////////////////////////////////
+        /// HFR Guide Profile
+        ////////////////////////////////////////////////////////////////////
+        struct HFRGuideConfig
+        {
+            double focalLengthMm {0.0};
+            double apertureMm    {0.0};
+            double pixelSizeUm   {0.0};
+            int    binning       {2};
+            double siteSeeing    {5.0};  // arcsec
+            bool isValid() const
+            {
+                return focalLengthMm > 0.0 && apertureMm > 0.0 && pixelSizeUm > 0.0;
+            }
+        };
+
+        void   loadHFRGuide();
+        double calculateTheoreticalHFR(const HFRGuideConfig &config);
+        void   showHFRGuideConfig();
+
+        HFRGuideConfig m_HFRGuideConfig;
+        double         m_TheoreticalHFR {-1.0};
 };
 }
