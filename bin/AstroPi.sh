@@ -112,14 +112,11 @@ function AdminSystem() {
 							fi
 							
 							echo "Downloading install.sh from beta ${BETA_TAG}..."
-							( curl -L "https://raw.githubusercontent.com/Andre87osx/AstroPi-system/${BETA_TAG}/bin/install.sh" > install_beta.sh ) 2>&1 | \
+							( curl -L "https://raw.githubusercontent.com/Andre87osx/AstroPi-system/${BETA_TAG}/bin/install.sh" > install.sh ) 2>&1 | \
 							zenity --progress --title="Downloading Beta..." --pulsate --auto-close --auto-kill --width="${Wprogress}"
 							
-							# Patch install.sh to force usage of beta tag
-							sed -i "s|LATEST_TAG=\$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases/latest | grep tag_name | cut -d '\"' -f4)|LATEST_TAG=\"${BETA_TAG}\"|" install_beta.sh
-							
 							echo "Starting beta installation (${BETA_TAG})..."
-							bash install_beta.sh &
+							LATEST_TAG="${BETA_TAG}" bash install.sh &
 							exit 0
 							;;
 						5)

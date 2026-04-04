@@ -23,7 +23,9 @@ echo "Check internet connectionions and if Git exist"
 echo ""
 case "$(curl -s --max-time 2 -I https://github.com/Andre87osx/AstroPi-system | sed 's/^[^ ]*  *\([0-9]\).*/\1/; 1q')" in
   [23]) echo "HTTP connectivity is up"  && CONN="true"
-  		LATEST_TAG=$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases/latest | grep tag_name | cut -d '"' -f4)
+		if [ -z "${LATEST_TAG}" ]; then
+			LATEST_TAG=$(curl -s https://api.github.com/repos/Andre87osx/AstroPi-system/releases/latest | grep tag_name | cut -d '"' -f4)
+		fi
 		if [ -z "${LATEST_TAG}" ]; then
 			echo "Unable to detect latest release tag"
 			zenity --error --text="Unable to detect latest release tag from GitHub"
