@@ -5975,6 +5975,13 @@ IPState Capture::checkDarkFramePendingTasks()
 
 IPState Capture::checkFlatFramePendingTasks()
 {
+    // Enable FITS Viewer immediately when starting flat frames
+    if (Options::useFITSViewer() == false)
+    {
+        Options::setUseFITSViewer(true);
+        qCInfo(KSTARS_EKOS_CAPTURE) << "Enabling FITS Viewer for flat frame calibration...";
+    }
+
     switch (activeJob->getFlatFieldSource())
     {
         case SOURCE_MANUAL:
@@ -6294,12 +6301,6 @@ bool Capture::processPostCaptureCalibrationStage()
     if (activeJob->getFrameType() == FRAME_FLAT && activeJob->getFlatFieldDuration() == DURATION_ADU &&
             activeJob->getTargetADU() > 0)
     {
-        if (Options::useFITSViewer() == false)
-        {
-            Options::setUseFITSViewer(true);
-            qCInfo(KSTARS_EKOS_CAPTURE) << "Enabling FITS Viewer...";
-        }
-
         QSharedPointer<FITSData> image_data;
         FITSView * currentImage = targetChip->getImageView(FITS_NORMAL);
 

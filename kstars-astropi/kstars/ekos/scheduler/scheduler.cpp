@@ -1724,6 +1724,13 @@ void Scheduler::start()
 
             qCInfo(KSTARS_EKOS_SCHEDULER) << "Scheduler is starting...";
 
+            // Disable FITS Viewer when scheduler starts
+            if (Options::useFITSViewer())
+            {
+                Options::setUseFITSViewer(false);
+                appendLogText(i18n("Disabling FITS Viewer for Scheduler startup."));
+            }
+
             /* Update UI to reflect startup */
             pi->startAnimation();
             sleepLabel->hide();
@@ -3080,12 +3087,6 @@ bool Scheduler::checkStartupState()
         case STARTUP_IDLE:
         {
             KNotification::event(QLatin1String("ObservatoryStartup"), i18n("Observatory is in the startup process"));
-
-            if (Options::useFITSViewer())
-            {
-                Options::setUseFITSViewer(false);
-                appendLogText(i18n("Disabling FITS Viewer for Scheduler startup."));
-            }
 
             qCDebug(KSTARS_EKOS_SCHEDULER) << "Startup Idle. Starting startup process...";
 
