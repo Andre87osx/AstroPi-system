@@ -28,6 +28,26 @@
 #include "kstars.h"
 #include "skymapcomposite.h"
 #include "kspaths.h"
+#include <QRegularExpression>
+
+namespace
+{
+const QRegularExpression &messierNameRegex()
+{
+    static const QRegularExpression regex(
+        QStringLiteral("\\b(?:M|Messier)\\s*(?:[1-9]\\d?|10\\d|110)\\b"),
+        QRegularExpression::CaseInsensitiveOption);
+    return regex;
+}
+
+bool matchesMessierLabel(const QString &value)
+{
+    if (value.isEmpty())
+        return false;
+
+    return messierNameRegex().match(value).hasMatch();
+}
+} // namespace
 
 CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_filename,
                                      bool load_default)
@@ -67,7 +87,7 @@ double compute_maglim()
 
 void CatalogsComponent::draw(SkyPainter *skyp)
 {
-    if (!selected() || Options::zoomFactor() < Options::dSOMinZoomFactor())
+    if (!selected())
         return;
 
     KStarsData *data          = KStarsData::Instance();
@@ -88,6 +108,12 @@ void CatalogsComponent::draw(SkyPainter *skyp)
 
     const auto label_padding{ 1 + (1 - (Options::deepSkyLabelDensity() / 100)) * 50 };
     auto &proj = *map.projector();
+
+    if (Options::zoomFactor() < Options::dSOMinZoomFactor())
+    {
+        drawMessierLabelsOnly(skyp, labeler, proj, label_padding, hideLabels);
+        return;
+    }
 
     updateSkyMesh(map);
 
@@ -140,6 +166,8 @@ void CatalogsComponent::draw(SkyPainter *skyp)
 
             if (sizeCriterion)
             {
+                cacheMessierCandidates({ object });
+
                 object.JITupdate();
                 auto &color = m_catalog_colors[object.catalogId()];
                 if (!color.isValid())
@@ -168,6 +196,75 @@ void CatalogsComponent::draw(SkyPainter *skyp)
     // and we are not zooming
     m_cache.prune(num_trixels * 1.2);
 };
+
+bool CatalogsComponent::isMessierObject(const CatalogObject &object) const
+{
+    return matchesMessierLabel(object.name()) || matchesMessierLabel(object.longname()) ||
+           matchesMessierLabel(object.catalogIdentifier());
+}
+
+void CatalogsComponent::cacheMessierCandidates(const ObjectList &objects)
+{
+    for (const auto &object : objects)
+    {
+        if (!isMessierObject(object))
+            continue;
+
+        const auto &id = object.getObjectId();
+        if (m_messier_object_ids.contains(id))
+            continue;
+
+        m_messier_object_ids.insert(id);
+        m_messier_objects.push_back(object);
+    }
+}
+
+void CatalogsComponent::ensureMessierCachePrimed()
+{
+    if (m_messier_cache_primed)
+        return;
+
+    m_messier_cache_primed = true;
+
+    try
+    {
+        const auto candidates = m_db_manager.get_objects(12.5f);
+        ObjectList promoted;
+        promoted.reserve(candidates.size());
+
+        for (const auto &object : candidates)
+            promoted.push_back(object);
+
+        cacheMessierCandidates(promoted);
+    }
+    catch (const CatalogsDB::DatabaseError &e)
+    {
+        qCWarning(KSTARS) << "Messier cache priming failed:" << e.what();
+    }
+}
+
+void CatalogsComponent::drawMessierLabelsOnly(SkyPainter *skyp, SkyLabeler &labeler,
+                                              const Projector &proj,
+                                              int label_padding,
+                                              bool hide_labels)
+{
+    Q_UNUSED(skyp)
+
+    if (hide_labels)
+        return;
+
+    ensureMessierCachePrimed();
+
+    for (auto &object : m_messier_objects)
+    {
+        object.JITupdate();
+
+        if (!proj.checkVisibility(&object))
+            continue;
+
+        labeler.drawNameLabel(&object, proj.toScreen(&object), label_padding);
+    }
+}
 
 void CatalogsComponent::updateSkyMesh(SkyMap &map, MeshBufNum_t buf)
 {

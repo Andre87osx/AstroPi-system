@@ -22,9 +22,13 @@
 #include "trixelcache.h"
 #include "Options.h"
 #include <unordered_map>
+#include <QSet>
 
 class SkyMesh;
 class SkyMap;
+class SkyLabeler;
+class SkyPainter;
+class Projector;
 
 /**
  * \brief Represents objects loaded from an sqlite backed, trixel
@@ -118,6 +122,9 @@ class CatalogsComponent : public SkyComponent
     {
         m_cache.clear();
         m_catalog_colors = {};
+        m_messier_objects.clear();
+        m_messier_object_ids.clear();
+        m_messier_cache_primed = false;
     };
 
     /**
@@ -174,6 +181,14 @@ class CatalogsComponent : public SkyComponent
      */
     std::unordered_map<int, QColor> m_catalog_colors;
 
+    /**
+     * A lightweight cache for Messier objects used to keep labels visible
+     * even when the general DSO rendering is below the min zoom threshold.
+     */
+    std::vector<CatalogObject> m_messier_objects;
+    QSet<QByteArray> m_messier_object_ids;
+    bool m_messier_cache_primed{ false };
+
     //@{
     /** Helpers */
 
@@ -182,6 +197,13 @@ class CatalogsComponent : public SkyComponent
     {
         return m_skyMesh->size() * percentage / 100;
     }
+
+    bool isMessierObject(const CatalogObject &object) const;
+    void cacheMessierCandidates(const ObjectList &objects);
+    void ensureMessierCachePrimed();
+    void drawMessierLabelsOnly(SkyPainter *skyp, SkyLabeler &labeler,
+                               const Projector &proj, int label_padding,
+                               bool hide_labels);
 
     //@}
 };
