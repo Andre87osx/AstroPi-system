@@ -117,8 +117,8 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     if (totalRMSLabel)
         totalRMSLabel->setText("RMS: --");
 
-    // position the vertical splitter by 2/3
-    deviceSplitter->setSizes(QList<int>({24000, 8000}));
+    // Default splitter ratio: 2/3 image preview, 1/3 analysis panel.
+    deviceSplitter->setSizes(QList<int>({20000, 10000}));
 
     qRegisterMetaType<Ekos::CommunicationStatus>("Ekos::CommunicationStatus");
     qDBusRegisterMetaType<Ekos::CommunicationStatus>();
