@@ -2364,24 +2364,30 @@ void Focus::drawHFRPlot()
 
 void Focus::drawProfilePlot()
 {
-    const bool showTheoreticalProfile = m_HFRGuideConfig.isValid() && m_TheoreticalHFR > 0 &&
-                                        (canAbsMove || canRelMove || focusAlgorithm == FOCUS_LINEAR);
+    // Show theoretical bell curve whenever the optical config is valid (always, not only during autofocus)
+    const bool showTheoreticalProfile = m_HFRGuideConfig.isValid() && m_TheoreticalHFR > 0;
 
     if (showTheoreticalProfile)
     {
         QVector<double> theoreticalPositions;
         QVector<double> theoreticalHFRs;
 
-        const bool hasPositions = !hfr_position.isEmpty();
+        // Use actual measured data if available, otherwise centre on current focuser position
+        const bool hasMeasuredData = !hfr_position.isEmpty() && !hfr_value.isEmpty() &&
+                                     hfr_position.size() == hfr_value.size();
         const double centerPosition = currentPosition > 0 ? currentPosition :
-                                      (hasPositions ? hfr_position.last() : 0);
-        const double minPosition = hasPositions ?
-                                   *std::min_element(hfr_position.constBegin(), hfr_position.constEnd()) :
-                                   centerPosition - std::max(100.0, stepIN->value() * 10.0);
-        const double maxPosition = hasPositions ?
-                                   *std::max_element(hfr_position.constBegin(), hfr_position.constEnd()) :
-                                   centerPosition + std::max(100.0, stepIN->value() * 10.0);
-        const double halfSpan = std::max(25.0, (maxPosition - minPosition) / 2.0);
+                                      (hasMeasuredData ? hfr_position.last() : 0.0);
+        const double minDataPos = hasMeasuredData ?
+                                  *std::min_element(hfr_position.constBegin(), hfr_position.constEnd()) :
+                                  centerPosition;
+        const double maxDataPos = hasMeasuredData ?
+                                  *std::max_element(hfr_position.constBegin(), hfr_position.constEnd()) :
+                                  centerPosition;
+        // Half-span: wide enough to contain all measured data plus a margin
+        const double halfSpanRequired = hasMeasuredData ?
+            std::max(std::abs(centerPosition - minDataPos), std::abs(maxDataPos - centerPosition)) * 1.3 :
+            0.0;
+        const double halfSpan = std::max({halfSpanRequired, 100.0, stepIN->value() * 5.0});
 
         double characteristicStep = std::max(25.0, stepIN->value() * 4.0);
         if (hfr_position.size() > 1)
@@ -2404,41 +2410,72 @@ void Focus::drawProfilePlot()
         }
 
         const double startPosition = centerPosition - halfSpan;
-        const double endPosition = centerPosition + halfSpan;
-        const int sampleCount = 200;
-        const double step = (endPosition - startPosition) / sampleCount;
+        const double endPosition   = centerPosition + halfSpan;
+        const int    sampleCount   = 200;
+        const double sampleStep    = (endPosition - startPosition) / sampleCount;
         for (int index = 0; index <= sampleCount; ++index)
         {
-            const double position = startPosition + step * index;
+            const double position         = startPosition + sampleStep * index;
             const double normalizedOffset = (position - centerPosition) / characteristicStep;
             theoreticalPositions.append(position);
-            // Build a V-curve like trend (linear wings with a small rounded bottom).
-            const double vShape = std::abs(normalizedOffset);
-            theoreticalHFRs.append(m_TheoreticalHFR + 0.55 * vShape + 0.05 * normalizedOffset * normalizedOffset);
+            // Smooth parabolic bell curve: minimum at focus, rises symmetrically on both sides
+            theoreticalHFRs.append(m_TheoreticalHFR * (1.0 + 0.5 * normalizedOffset * normalizedOffset));
         }
 
-        currentGaus->data()->clear();
-        lastGaus->data()->clear();
         if (firstGaus)
         {
             profilePlot->removeGraph(firstGaus);
             firstGaus = nullptr;
         }
+        lastGaus->data()->clear();
 
+        // Real measured data: green if best HFR <= theoretical, red if worse
+        if (hasMeasuredData)
+        {
+            const double minMeasuredHFR    = *std::min_element(hfr_value.constBegin(), hfr_value.constEnd());
+            const bool   betterThanExpected = minMeasuredHFR <= m_TheoreticalHFR * 1.05;
+            const QColor realColor          = betterThanExpected ? QColor(0, 200, 80) : QColor(220, 60, 60);
+            QPen realPen(realColor, 2);
+            currentGaus->setPen(realPen);
+            currentGaus->setLineStyle(QCPGraph::lsLine);
+            currentGaus->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, realColor, 5));
+            currentGaus->setData(hfr_position, hfr_value);
+        }
+        else
+        {
+            currentGaus->data()->clear();
+        }
+
+        // Theoretical bell curve in light yellow
         theoreticalTargetLine->setData(theoreticalPositions, theoreticalHFRs);
-        theoreticalCurrentPoint->setData(QVector<double> { centerPosition },
-                                         QVector<double> { currentHFR > 0 ? currentHFR : m_TheoreticalHFR });
+
+        // Current position dot: green if HFR <= theoretical, red if worse
+        const bool   currentBetter = currentHFR > 0 && currentHFR <= m_TheoreticalHFR;
+        const QColor pointColor    = (currentHFR > 0) ?
+                                     (currentBetter ? QColor(0, 200, 80) : QColor(220, 60, 60)) :
+                                     Qt::white;
+        theoreticalCurrentPoint->setScatterStyle(
+            QCPScatterStyle(QCPScatterStyle::ssDisc, Qt::white, pointColor, 10));
+        theoreticalCurrentPoint->setData(
+            QVector<double> { centerPosition },
+            QVector<double> { currentHFR > 0 ? currentHFR : m_TheoreticalHFR });
+
+        // Y range: cover theory + real data + current point
+        double yMax = *std::max_element(theoreticalHFRs.constBegin(), theoreticalHFRs.constEnd());
+        if (hasMeasuredData)
+            yMax = std::max(yMax, *std::max_element(hfr_value.constBegin(), hfr_value.constEnd()));
+        if (currentHFR > 0)
+            yMax = std::max(yMax, currentHFR);
 
         profilePlot->xAxis->setLabel(i18n("Focus position (steps)"));
         profilePlot->yAxis->setLabel(i18n("HFR (px)"));
         profilePlot->xAxis->setRange(startPosition, endPosition);
-        profilePlot->yAxis->setRange(std::max(0.0, m_TheoreticalHFR * 0.8),
-                                     std::max(currentHFR, *std::max_element(theoreticalHFRs.constBegin(), theoreticalHFRs.constEnd())) * 1.05);
+        profilePlot->yAxis->setRange(std::max(0.0, m_TheoreticalHFR * 0.8), yMax * 1.05);
         if (theoreticalProfileLabel)
         {
             theoreticalProfileLabel->position->setType(QCPItemPosition::ptAxisRectRatio);
             theoreticalProfileLabel->position->setCoords(0.02, 0.06);
-            theoreticalProfileLabel->setText(i18n("Theoretical V-curve"));
+            theoreticalProfileLabel->setText(i18n("Theoretical curve"));
             theoreticalProfileLabel->setVisible(true);
         }
         profilePlot->replot();
@@ -2459,6 +2496,19 @@ void Focus::drawProfilePlot()
         theoreticalProfileLabel->setVisible(false);
     profilePlot->xAxis->setLabel(QString());
     profilePlot->yAxis->setLabel(QString());
+
+    // Restore normal Gaussian display style (may have been changed in the theoretical path)
+    currentGaus->setPen(QPen(Qt::red, 2));
+    currentGaus->setLineStyle(QCPGraph::lsLine);
+    currentGaus->setScatterStyle(QCPScatterStyle::ssNone);
+    {
+        QPen lastGausPen(Qt::darkGreen);
+        lastGausPen.setStyle(Qt::DashLine);
+        lastGausPen.setWidth(2);
+        lastGaus->setPen(lastGausPen);
+        lastGaus->setLineStyle(QCPGraph::lsLine);
+        lastGaus->setScatterStyle(QCPScatterStyle::ssNone);
+    }
 
     QVector<double> currentIndexes;
     QVector<double> currentFrequencies;
