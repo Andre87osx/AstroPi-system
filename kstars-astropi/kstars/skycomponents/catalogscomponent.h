@@ -199,7 +199,7 @@ class CatalogsComponent : public SkyComponent
     }
 
     bool isMessierObject(const CatalogObject &object) const;
-    void cacheMessierCandidates(const ObjectList &objects);
+    void cacheMessierCandidate(const CatalogObject &object);
     void ensureMessierCachePrimed();
     void drawMessierLabelsOnly(SkyPainter *skyp, SkyLabeler &labeler,
                                const Projector &proj, int label_padding,

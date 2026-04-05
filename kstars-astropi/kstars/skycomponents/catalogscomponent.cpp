@@ -166,8 +166,6 @@ void CatalogsComponent::draw(SkyPainter *skyp)
 
             if (sizeCriterion)
             {
-                cacheMessierCandidates({ object });
-
                 object.JITupdate();
                 auto &color = m_catalog_colors[object.catalogId()];
                 if (!color.isValid())
@@ -203,20 +201,17 @@ bool CatalogsComponent::isMessierObject(const CatalogObject &object) const
            matchesMessierLabel(object.catalogIdentifier());
 }
 
-void CatalogsComponent::cacheMessierCandidates(const ObjectList &objects)
+void CatalogsComponent::cacheMessierCandidate(const CatalogObject &object)
 {
-    for (const auto &object : objects)
-    {
-        if (!isMessierObject(object))
-            continue;
+    if (!isMessierObject(object))
+        return;
 
-        const auto &id = object.getObjectId();
-        if (m_messier_object_ids.contains(id))
-            continue;
+    const auto &id = object.getObjectId();
+    if (m_messier_object_ids.contains(id))
+        return;
 
-        m_messier_object_ids.insert(id);
-        m_messier_objects.push_back(object);
-    }
+    m_messier_object_ids.insert(id);
+    m_messier_objects.push_back(object);
 }
 
 void CatalogsComponent::ensureMessierCachePrimed()
@@ -229,13 +224,8 @@ void CatalogsComponent::ensureMessierCachePrimed()
     try
     {
         const auto candidates = m_db_manager.get_objects(12.5f);
-        ObjectList promoted;
-        promoted.reserve(candidates.size());
-
         for (const auto &object : candidates)
-            promoted.push_back(object);
-
-        cacheMessierCandidates(promoted);
+            cacheMessierCandidate(object);
     }
     catch (const CatalogsDB::DatabaseError &e)
     {
