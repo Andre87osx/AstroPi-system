@@ -382,8 +382,16 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     summaryPreview->createFloatingToolBar();
     summaryPreview->setCursorMode(FITSView::dragCursor);
     QVBoxLayout * vlayout = new QVBoxLayout();
+    vlayout->setContentsMargins(0, 0, 0, 0);
+    vlayout->setSpacing(0);
     vlayout->addWidget(summaryPreview.get());
     previewWidget->setLayout(vlayout);
+
+    connect(deviceSplitter, &QSplitter::splitterMoved, this, [this]()
+    {
+        if (summaryPreview && summaryPreview->imageData())
+            QTimer::singleShot(0, summaryPreview.get(), &FITSView::ZoomToFit);
+    });
 
     // JM 2019-01-19: Why cloud images depend on summary preview?
     //    connect(summaryPreview.get(), &FITSView::loaded, [&]()
@@ -474,6 +482,9 @@ void Manager::showEvent(QShowEvent * /*event*/)
 
 void Manager::resizeEvent(QResizeEvent *)
 {
+    if (summaryPreview && summaryPreview->imageData())
+        QTimer::singleShot(0, summaryPreview.get(), &FITSView::ZoomToFit);
+
     updateFocusDetailView();
     updateGuideDetailView();
 }
@@ -3737,6 +3748,7 @@ void Manager::updateCaptureProgress(Ekos::SequenceJob * job, const QSharedPointe
         if (Options::useSummaryPreview())
         {
             summaryPreview->loadData(data);
+            QTimer::singleShot(0, summaryPreview.get(), &FITSView::ZoomToFit);
             ekosLiveClient.get()->media()->sendPreviewImage(summaryPreview.get(), uuid);
         }
         else
