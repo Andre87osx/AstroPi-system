@@ -678,6 +678,8 @@ class Focus : public QWidget, public Ui::Focus
         //int fx,fy,fw,fh;
         /// If HFR=-1 which means no stars detected, we need to decide how many times should the re-capture process take place before we give up or reverse direction.
         int noStarCount { 0 };
+            /// How many times we retried capturing while trying to auto-select the first focus star.
+            int autoStarSelectionRetries { 0 };
         /// Track which upload mode the CCD is set to. If set to UPLOAD_LOCAL, then we need to switch it to UPLOAD_CLIENT in order to do focusing, and then switch it back to UPLOAD_LOCAL
         ISD::CCD::UploadMode rememberUploadMode { ISD::CCD::UPLOAD_CLIENT };
         /// Previous binning setting

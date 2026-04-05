@@ -49,6 +49,7 @@
 #define AUTO_STAR_TIMEOUT        45000
 #define MINIMUM_PULSE_TIMER      32
 #define MAX_RECAPTURE_RETRIES    3
+#define MAX_AUTOSTAR_RETRIES     2
 #define MINIMUM_POLY_SOLUTIONS   2
 
 namespace Ekos
@@ -992,6 +993,7 @@ void Focus::start()
     waitStarSelectTimer.stop();
 
     starsHFR.clear();
+    autoStarSelectionRetries = 0;
 
     lastHFR = 0;
 
@@ -2045,6 +2047,17 @@ void Focus::setHFRComplete()
 
             if (selectedHFRStar == nullptr)
             {
+                // First frame after scheduler startup can occasionally miss auto-star selection.
+                // Retry capture a small number of times before requesting manual selection.
+                if ((inAutoFocus || minimumRequiredHFR >= 0) && autoStarSelectionRetries < MAX_AUTOSTAR_RETRIES)
+                {
+                    ++autoStarSelectionRetries;
+                    appendLogText(i18n("Automatic star selection failed (%1/%2). Recapturing...",
+                                       autoStarSelectionRetries, MAX_AUTOSTAR_RETRIES));
+                    capture();
+                    return;
+                }
+
                 appendLogText(i18n("Failed to automatically select a star. Please select a star manually."));
 
                 // Center the tracking box in the frame and display it
@@ -2063,6 +2076,8 @@ void Focus::setHFRComplete()
 
                 return;
             }
+
+            autoStarSelectionRetries = 0;
 
             // set the tracking box on selectedHFRStar
             starCenter.setX(selectedHFRStar->x);
