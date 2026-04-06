@@ -4335,7 +4335,7 @@ void Manager::connectModules()
     {
         connect(focusProcess.get(), &Ekos::Focus::newStatus, alignProcess.get(), &Ekos::Align::setFocusStatus,
                 Qt::UniqueConnection);
-        connect(alignProcess.get(), &Ekos::Align::newSolution, focusProcess.get(), &Ekos::Focus::syncHFRGuideFromAlignSolution,
+        connect(alignProcess.get(), &Ekos::Align::newSolution, focusProcess.get(), &Ekos::Focus::syncHFRHelperFromAlignSolution,
             Qt::UniqueConnection);
     }
 
