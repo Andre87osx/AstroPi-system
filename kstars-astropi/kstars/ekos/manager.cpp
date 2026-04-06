@@ -2402,7 +2402,11 @@ void Manager::initCapture()
     if (!capturePI)
     {
         capturePI = new QProgressIndicator(captureProcess.get());
-        captureGroupLayout->insertWidget(-1, capturePI);
+        const int captureStatusIndex = mountStatusLayout->indexOf(captureStatus);
+        if (captureStatusIndex >= 0)
+            mountStatusLayout->insertWidget(captureStatusIndex + 1, capturePI);
+        else
+            mountStatusLayout->insertWidget(-1, capturePI);
     }
 
     for (auto &device : findDevices(KSTARS_AUXILIARY))
