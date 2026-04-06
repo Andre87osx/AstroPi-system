@@ -804,7 +804,7 @@ class Focus : public QWidget, public Ui::Focus
             double apertureMm    {0.0};
             double pixelSizeUm   {0.0};
             int    binning       {2};
-            double siteSeeing    {5.0};  // arcsec
+               double siteSeeing    {3.0};  // arcsec
             bool isValid() const
             {
                 return focalLengthMm > 0.0 && apertureMm > 0.0 && pixelSizeUm > 0.0;

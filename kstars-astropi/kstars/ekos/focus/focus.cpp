@@ -3604,7 +3604,7 @@ void Focus::showHFRHelperConfig()
     const double ap  = m_HFRHelperConfig.apertureMm > 0 ? m_HFRHelperConfig.apertureMm : 150.0;
     const double px  = m_HFRHelperConfig.pixelSizeUm > 0 ? m_HFRHelperConfig.pixelSizeUm : 3.8;
     const int    bin = m_HFRHelperConfig.binning > 0 ? m_HFRHelperConfig.binning : 2;
-    const double see = m_HFRHelperConfig.siteSeeing > 0 ? m_HFRHelperConfig.siteSeeing : 5.0;
+    const double see = m_HFRHelperConfig.siteSeeing > 0 ? m_HFRHelperConfig.siteSeeing : 3.0;
 
     auto makeDSB = [dlg](double val, double mn, double mx, double step, int dec) -> QDoubleSpinBox *
     {
