@@ -298,7 +298,7 @@ class Focus : public QWidget, public Ui::Focus
              * @brief syncCCDInfo Read current CCD information and update settings accordingly.
              */
         void syncCCDInfo();
-        void syncHFRGuideFromAlignSolution(const QVariantMap &solution);
+        void syncHFRHelperFromAlignSolution(const QVariantMap &solution);
 
         /**
              * @brief Check Focuser and make sure information is updated accordingly.
@@ -796,9 +796,9 @@ class Focus : public QWidget, public Ui::Focus
         double mountAlt { INVALID_VALUE };
 
         ////////////////////////////////////////////////////////////////////
-        /// HFR Guide Profile
+        /// HFR Helper — theoretical HFR reference for focus quality
         ////////////////////////////////////////////////////////////////////
-        struct HFRGuideConfig
+        struct HFRHelperConfig
         {
             double focalLengthMm {0.0};
             double apertureMm    {0.0};
@@ -811,26 +811,26 @@ class Focus : public QWidget, public Ui::Focus
             }
         };
 
-        void   loadHFRGuide();
-        double calculateTheoreticalHFR(const HFRGuideConfig &config);
-        void   showHFRGuideConfig();
-            bool   getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const;
-            void   refreshHFRGuideFromCCD();
+        void   loadHFRHelper();
+        double calculateTheoreticalHFR(const HFRHelperConfig &config);
+        void   showHFRHelperConfig();
+            bool   getCurrentHFRHelperCCDInfo(double &pixelSizeUm, int &binning) const;
+            void   refreshHFRHelperFromCCD();
             void   updateTheoreticalHFR(bool redrawProfile = true);
-            void   syncHFRGuideDialogControls();
-            void   updateHFRGuideResultLabel();
+            void   syncHFRHelperDialogControls();
+            void   updateHFRHelperResultLabel();
 
-        HFRGuideConfig m_HFRGuideConfig;
-        double         m_TheoreticalHFR {-1.0};
-            double         m_HFRGuideProfileApertureMm {0.0};
+        HFRHelperConfig m_HFRHelperConfig;
+        double          m_TheoreticalHFR {-1.0};
+            double          m_HFRHelperProfileApertureMm {0.0};
 
-            QPointer<QDialog>        m_HFRGuideDialog;
-            QPointer<QDoubleSpinBox> m_HFRGuideFocalSB;
-            QPointer<QDoubleSpinBox> m_HFRGuideApertureSB;
-            QPointer<QDoubleSpinBox> m_HFRGuidePixelSB;
-            QPointer<QSpinBox>       m_HFRGuideBinningSB;
-            QPointer<QDoubleSpinBox> m_HFRGuideSeeingSB;
-            QPointer<QLabel>         m_HFRGuideResultLabel;
+            QPointer<QDialog>        m_HFRHelperDialog;
+            QPointer<QDoubleSpinBox> m_HFRHelperFocalSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperApertureSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperPixelSB;
+            QPointer<QSpinBox>       m_HFRHelperBinningSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperSeeingSB;
+            QPointer<QLabel>         m_HFRHelperResultLabel;
 
             QCPGraph *theoreticalTargetLine { nullptr };
             QCPGraph *theoreticalCurrentPoint { nullptr };

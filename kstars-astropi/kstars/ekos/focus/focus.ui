@@ -1839,7 +1839,7 @@
           <item>
            <widget class="QPushButton" name="hfrGuideConfigB">
             <property name="text">
-             <string>HFR Guide...</string>
+             <string>HFR Helper...</string>
             </property>
            </widget>
           </item>
