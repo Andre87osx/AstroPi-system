@@ -47,6 +47,40 @@ bool matchesMessierLabel(const QString &value)
 
     return messierNameRegex().match(value).hasMatch();
 }
+
+QString extractMessierLabel(const QString &value)
+{
+    if (value.isEmpty())
+        return QString();
+
+    static const QRegularExpression captureRegex(
+        QStringLiteral("\\b(?:M|Messier)\\s*([1-9]\\d?|10\\d|110)\\b"),
+        QRegularExpression::CaseInsensitiveOption);
+
+    const auto match = captureRegex.match(value);
+    if (!match.hasMatch())
+        return QString();
+
+    bool ok = false;
+    const int messierNumber = match.captured(1).toInt(&ok);
+    if (!ok)
+        return QString();
+
+    return QStringLiteral("M%1").arg(messierNumber);
+}
+
+QString messierDisplayLabel(const CatalogObject &object)
+{
+    auto label = extractMessierLabel(object.name());
+    if (!label.isEmpty())
+        return label;
+
+    label = extractMessierLabel(object.longname());
+    if (!label.isEmpty())
+        return label;
+
+    return extractMessierLabel(object.catalogIdentifier());
+}
 } // namespace
 
 CatalogsComponent::CatalogsComponent(SkyComposite *parent, const QString &db_filename,
@@ -111,7 +145,8 @@ void CatalogsComponent::draw(SkyPainter *skyp)
 
     if (Options::zoomFactor() < Options::dSOMinZoomFactor())
     {
-        drawMessierLabelsOnly(skyp, labeler, proj, label_padding, hideLabels);
+        const bool hideMessierLabels = map.isSlewing() && Options::hideOnSlew();
+        drawMessierLabelsOnly(skyp, labeler, proj, label_padding, hideMessierLabels);
         return;
     }
 
@@ -252,7 +287,13 @@ void CatalogsComponent::drawMessierLabelsOnly(SkyPainter *skyp, SkyLabeler &labe
         if (!proj.checkVisibility(&object))
             continue;
 
-        labeler.drawNameLabel(&object, proj.toScreen(&object), label_padding);
+        const auto label = messierDisplayLabel(object);
+        auto screenPos   = proj.toScreen(&object);
+
+        if (!label.isEmpty())
+            labeler.drawGuideLabel(screenPos, label, 0.0);
+        else
+            labeler.drawNameLabel(&object, screenPos, label_padding);
     }
 }
 
