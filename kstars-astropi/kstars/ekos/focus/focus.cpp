@@ -400,7 +400,7 @@ void Focus::setTelescopeInfo(double primaryFocalLength, double primaryAperture)
 bool Focus::getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const
 {
     pixelSizeUm = 0.0;
-    binning = 1;
+    binning = 2;
 
     if (currentCCD == nullptr)
         return false;
@@ -409,7 +409,7 @@ bool Focus::getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const
     if (targetChip == nullptr)
         return false;
 
-    int binX = 1, binY = 1;
+    int binX = 2, binY = 2;
     if (targetChip->getBinning(&binX, &binY))
         binning = std::max(1, binX);
     else if (activeBin > 0)
@@ -427,7 +427,7 @@ bool Focus::getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const
 void Focus::refreshHFRGuideFromCCD()
 {
     double pixelSizeUm = 0.0;
-    int binning = 1;
+    int binning = 2;
     if (getCurrentHFRGuideCCDInfo(pixelSizeUm, binning))
     {
         m_HFRGuideConfig.pixelSizeUm = pixelSizeUm;
@@ -442,7 +442,7 @@ void Focus::syncHFRGuideFromAlignSolution(const QVariantMap &solution)
         return;
 
     double pixelSizeUm = 0.0;
-    int binning = 1;
+    int binning = 2;
     if (!getCurrentHFRGuideCCDInfo(pixelSizeUm, binning))
         return;
 
