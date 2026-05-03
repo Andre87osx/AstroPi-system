@@ -812,6 +812,7 @@ class Focus : public QWidget, public Ui::Focus
         };
 
         void   loadHFRHelper();
+          bool   saveHFRHelperToDisk();
         double calculateTheoreticalHFR(const HFRHelperConfig &config);
         void   showHFRHelperConfig();
             bool   getCurrentHFRHelperCCDInfo(double &pixelSizeUm, int &binning) const;
@@ -824,6 +825,8 @@ class Focus : public QWidget, public Ui::Focus
         HFRHelperConfig m_HFRHelperConfig;
         double          m_TheoreticalHFR {-1.0};
             double          m_HFRHelperProfileApertureMm {0.0};
+               int             m_HFRHelperAnchorAbsPosition {-1};
+               bool            m_HFRHelperSetupBannerShown {false};
 
             QPointer<QDialog>        m_HFRHelperDialog;
             QPointer<QDoubleSpinBox> m_HFRHelperFocalSB;

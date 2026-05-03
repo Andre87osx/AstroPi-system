@@ -867,6 +867,20 @@ void Focus::addCCD(ISD::GDInterface *newCCD)
     CCDCaptureCombo->addItem(newCCD->getDeviceName());
 
     checkCCD();
+
+    // Show a one-time setup banner when the focus camera connects and the HFR Helper
+    // is not yet configured.  We do this here (at device-connection time) so the user
+    // sees it before starting any imaging session - NOT in the middle of a sequence.
+    if (!m_HFRHelperSetupBannerShown && !m_HFRHelperConfig.isValid())
+    {
+        m_HFRHelperSetupBannerShown = true;
+        const QString msg = i18n("HFR Helper is not configured for this optical system. "
+                                 "Open the HFR Helper dialog (Focus → HFR Helper) to enter your telescope and camera parameters. "
+                                 "This enables theoretical HFR targets and anchor-position fallback.");
+        appendLogText(msg);
+        KSNotification::event(QLatin1String("FocusHFRHelperNotConfigured"), msg,
+                              KSNotification::EVENT_WARN);
+    }
 }
 
 void Focus::getAbsFocusPosition()
@@ -1779,9 +1793,15 @@ void Focus::completeFocusProcedure(bool success)
             {
                 const double hfrTolerance = toleranceIN->value() / 100.0;
                 if (currentHFR <= effectiveTheoreticalHFR * (1.0 + hfrTolerance))
+                {
                     appendLogText(i18n("HFR Helper: final HFR %1 px meets theoretical target %2 px.",
                                        QString::number(currentHFR, 'f', 2),
                                        QString::number(effectiveTheoreticalHFR, 'f', 2)));
+                    // Save this position as the calibrated anchor for future bad-seeing fallback
+                    m_HFRHelperAnchorAbsPosition = currentPosition;
+                    if (saveHFRHelperToDisk())
+                        appendLogText(i18n("HFR Helper: anchor position saved at %1.", currentPosition));
+                }
                 else
                     appendLogText(i18n("HFR Helper: final HFR %1 px is above theoretical target %2 px.",
                                        QString::number(currentHFR, 'f', 2),
@@ -1808,8 +1828,18 @@ void Focus::completeFocusProcedure(bool success)
                 if (currentPosition == initialFocuserAbsPosition)
                     currentPosition--;
 
-                appendLogText(i18n("Autofocus failed, moving back to initial focus position %1.", initialFocuserAbsPosition));
-                currentFocuser->moveAbs(initialFocuserAbsPosition);
+                // On the final retry failure, prefer the HFR Helper calibrated anchor position if available
+                if (!retry_focusing && m_HFRHelperAnchorAbsPosition >= 0)
+                {
+                    appendLogText(i18n("Autofocus failed after all retries. Returning to HFR Helper anchor position %1.",
+                                       m_HFRHelperAnchorAbsPosition));
+                    currentFocuser->moveAbs(m_HFRHelperAnchorAbsPosition);
+                }
+                else
+                {
+                    appendLogText(i18n("Autofocus failed, moving back to initial focus position %1.", initialFocuserAbsPosition));
+                    currentFocuser->moveAbs(initialFocuserAbsPosition);
+                }
                 /* Restart will be executed by the end-of-move notification from the device if needed by resetFocus */
             }
 
@@ -3484,6 +3514,7 @@ void Focus::loadHFRHelper()
 {
     m_TheoreticalHFR = -1.0;
     m_HFRHelperConfig = HFRHelperConfig();
+    m_HFRHelperAnchorAbsPosition = -1;
 
     // Try new file name first; fall back to legacy "HFR_guide.txt" for existing installations.
     const QString base = KSPaths::writableLocation(QStandardPaths::GenericDataLocation);
@@ -3506,16 +3537,39 @@ void Focus::loadHFRHelper()
             continue;
         const QString key = parts[0].trimmed();
         const double   val = parts[1].trimmed().toDouble();
-        if      (key == "focal_length_mm")    m_HFRHelperConfig.focalLengthMm = val;
-        else if (key == "aperture_mm")        m_HFRHelperConfig.apertureMm    = val;
-        else if (key == "pixel_size_um")      m_HFRHelperConfig.pixelSizeUm   = val;
-        else if (key == "binning")            m_HFRHelperConfig.binning       = static_cast<int>(val);
-        else if (key == "site_seeing_arcsec") m_HFRHelperConfig.siteSeeing    = val;
+        if      (key == "focal_length_mm")     m_HFRHelperConfig.focalLengthMm = val;
+        else if (key == "aperture_mm")         m_HFRHelperConfig.apertureMm    = val;
+        else if (key == "pixel_size_um")       m_HFRHelperConfig.pixelSizeUm   = val;
+        else if (key == "binning")             m_HFRHelperConfig.binning       = static_cast<int>(val);
+        else if (key == "site_seeing_arcsec")  m_HFRHelperConfig.siteSeeing    = val;
+        else if (key == "anchor_abs_position") m_HFRHelperAnchorAbsPosition    = static_cast<int>(val);
     }
     file.close();
 
     if (m_HFRHelperConfig.isValid())
         m_TheoreticalHFR = calculateTheoreticalHFR(m_HFRHelperConfig);
+}
+
+bool Focus::saveHFRHelperToDisk()
+{
+    const QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation)
+                         + "HFR_helper.txt";
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+
+    QTextStream out(&f);
+    out << "# AstroPi Focus HFR Helper Profile\n";
+    out << "# Adjust site_seeing_arcsec (arcsec) to match your observing site.\n";
+    out << QString("focal_length_mm = %1\n").arg(m_HFRHelperConfig.focalLengthMm, 0, 'f', 0);
+    out << QString("aperture_mm = %1\n").arg(m_HFRHelperConfig.apertureMm, 0, 'f', 0);
+    out << QString("pixel_size_um = %1\n").arg(m_HFRHelperConfig.pixelSizeUm, 0, 'f', 2);
+    out << QString("binning = %1\n").arg(m_HFRHelperConfig.binning);
+    out << QString("site_seeing_arcsec = %1\n").arg(m_HFRHelperConfig.siteSeeing, 0, 'f', 1);
+    if (m_HFRHelperAnchorAbsPosition >= 0)
+        out << QString("anchor_abs_position = %1\n").arg(m_HFRHelperAnchorAbsPosition);
+    f.close();
+    return true;
 }
 
 double Focus::calculateTheoreticalHFR(const HFRHelperConfig &config)
