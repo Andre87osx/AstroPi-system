@@ -815,6 +815,7 @@ class Focus : public QWidget, public Ui::Focus
         double calculateTheoreticalHFR(const HFRHelperConfig &config);
         void   showHFRHelperConfig();
             bool   getCurrentHFRHelperCCDInfo(double &pixelSizeUm, int &binning) const;
+               bool   getCurrentHFRHelperTheoretical(double &theoreticalHFR, bool logWarning);
             void   refreshHFRHelperFromCCD();
             void   updateTheoreticalHFR(bool redrawProfile = true);
             void   syncHFRHelperDialogControls();

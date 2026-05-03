@@ -424,6 +424,39 @@ bool Focus::getCurrentHFRHelperCCDInfo(double &pixelSizeUm, int &binning) const
     return pixelSizeUm > 0.0;
 }
 
+bool Focus::getCurrentHFRHelperTheoretical(double &theoreticalHFR, bool logWarning)
+{
+    theoreticalHFR = -1.0;
+    if (!m_HFRHelperConfig.isValid())
+        return false;
+
+    HFRHelperConfig runtimeConfig = m_HFRHelperConfig;
+    double pixelSizeUm = 0.0;
+    int focusBinning = 2;
+    if (getCurrentHFRHelperCCDInfo(pixelSizeUm, focusBinning)
+            && focusBinning > 0
+            && runtimeConfig.binning != focusBinning)
+    {
+        if (logWarning)
+        {
+            const QString warningMessage = i18n(
+                "HFR Helper warning: helper binning is %1x%1 but Focus module binning is %2x%2. "
+                "Using Focus binning as runtime fallback for theoretical HFR.",
+                runtimeConfig.binning, focusBinning);
+            appendLogText(warningMessage);
+            // Uses the default desktop-notification timeout (auto close).
+            KSNotification::event(QLatin1String("FocusHFRHelperBinningMismatch"),
+                                  warningMessage,
+                                  KSNotification::EVENT_WARN);
+        }
+
+        runtimeConfig.binning = focusBinning;
+    }
+
+    theoreticalHFR = calculateTheoreticalHFR(runtimeConfig);
+    return theoreticalHFR > 0.0;
+}
+
 void Focus::refreshHFRHelperFromCCD()
 {
     double pixelSizeUm = 0.0;
@@ -431,7 +464,10 @@ void Focus::refreshHFRHelperFromCCD()
     if (getCurrentHFRHelperCCDInfo(pixelSizeUm, binning))
     {
         m_HFRHelperConfig.pixelSizeUm = pixelSizeUm;
-        m_HFRHelperConfig.binning = binning;
+        // Keep user-saved helper binning once configuration is complete.
+        // Otherwise, seed binning from the current CCD value.
+        if (!m_HFRHelperConfig.isValid())
+            m_HFRHelperConfig.binning = binning;
     }
 }
 
@@ -447,7 +483,10 @@ void Focus::syncHFRHelperFromAlignSolution(const QVariantMap &solution)
         return;
 
     m_HFRHelperConfig.pixelSizeUm = pixelSizeUm;
-    m_HFRHelperConfig.binning = binning;
+    // Preserve saved helper binning and only auto-fill from CCD while helper
+    // config is still incomplete.
+    if (!m_HFRHelperConfig.isValid())
+        m_HFRHelperConfig.binning = binning;
 
     const double focalLengthMm = 206.265 * pixelSizeUm * binning / pixscale;
     if (focalLengthMm <= 0)
@@ -997,12 +1036,20 @@ void Focus::start()
 
     lastHFR = 0;
 
-    // HFR Helper status — always report regardless of algorithm
-    if (m_TheoreticalHFR < 0)
-        appendLogText(i18n("HFR Helper not configured. Use 'HFR Helper...' button to set a theoretical target."));
-    else
-        appendLogText(i18n("HFR Helper active: theoretical HFR = %1 px",
-                           QString::number(m_TheoreticalHFR, 'f', 2)));
+    // HFR Helper status — always report regardless of algorithm.
+    // This is non-blocking: autofocus continues even if helper is unavailable.
+    {
+        double effectiveTheoreticalHFR = -1.0;
+        if (getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, true))
+        {
+            appendLogText(i18n("HFR Helper active: theoretical HFR = %1 px",
+                               QString::number(effectiveTheoreticalHFR, 'f', 2)));
+        }
+        else
+        {
+            appendLogText(i18n("HFR Helper not configured. Use 'HFR Helper...' button to set a theoretical target."));
+        }
+    }
 
     // Keep the  last focus temperature, it can still be useful in case the autofocus fails
     // lastFocusTemperature
@@ -1727,17 +1774,18 @@ void Focus::completeFocusProcedure(bool success)
             absTicksSpin->setValue(currentPosition);
 
             // HFR Helper: report quality of the achieved focus vs theoretical target
-            if (m_TheoreticalHFR > 0.0 && currentHFR > 0)
+            double effectiveTheoreticalHFR = -1.0;
+            if (currentHFR > 0 && getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false))
             {
                 const double hfrTolerance = toleranceIN->value() / 100.0;
-                if (currentHFR <= m_TheoreticalHFR * (1.0 + hfrTolerance))
+                if (currentHFR <= effectiveTheoreticalHFR * (1.0 + hfrTolerance))
                     appendLogText(i18n("HFR Helper: final HFR %1 px meets theoretical target %2 px.",
                                        QString::number(currentHFR, 'f', 2),
-                                       QString::number(m_TheoreticalHFR, 'f', 2)));
+                                       QString::number(effectiveTheoreticalHFR, 'f', 2)));
                 else
                     appendLogText(i18n("HFR Helper: final HFR %1 px is above theoretical target %2 px.",
                                        QString::number(currentHFR, 'f', 2),
-                                       QString::number(m_TheoreticalHFR, 'f', 2)));
+                                       QString::number(effectiveTheoreticalHFR, 'f', 2)));
             }
         }
         // In case of failure, go back to last position if the focuser is absolute
@@ -1876,18 +1924,19 @@ void Focus::setCurrentHFR(double value)
 
         // HFR Helper: if configured and current HFR already meets the theoretical target,
         // accept the current position without waiting for algorithm convergence.
-        // Non-blocking: if m_TheoreticalHFR < 0 the check is skipped entirely.
+        // Non-blocking: if theoretical HFR is not valid (> 0), this check is skipped.
+        double effectiveTheoreticalHFR = -1.0;
         if (inAutoFocus && (focusAlgorithm == FOCUS_POLYNOMIAL || focusAlgorithm == FOCUS_ITERATIVE) &&
-                m_TheoreticalHFR > 0.0 &&
+                getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false) &&
                 m_LastFocusDirection != FOCUS_NONE &&
                 absIterations >= 2)
         {
             const double hfrTolerance = toleranceIN->value() / 100.0;
-            if (currentHFR <= m_TheoreticalHFR * (1.0 + hfrTolerance))
+            if (currentHFR <= effectiveTheoreticalHFR * (1.0 + hfrTolerance))
             {
                 appendLogText(i18n("HFR %1 meets HFR Helper theoretical target %2 px. Accepting focus at position %3.",
                                    QString::number(currentHFR, 'f', 2),
-                                   QString::number(m_TheoreticalHFR, 'f', 2),
+                                   QString::number(effectiveTheoreticalHFR, 'f', 2),
                                    currentPosition));
                 completeFocusProcedure(true);
                 return;
@@ -2440,11 +2489,17 @@ void Focus::drawProfilePlot()
         }
         lastGaus->data()->clear();
 
+        const double effectiveTheoreticalHFR = [this]()
+        {
+            double value = -1.0;
+            return getCurrentHFRHelperTheoretical(value, false) ? value : m_TheoreticalHFR;
+        }();
+
         // Real measured data: green if best HFR <= theoretical, red if worse
         if (hasMeasuredData)
         {
             const double minMeasuredHFR    = *std::min_element(hfr_value.constBegin(), hfr_value.constEnd());
-            const bool   betterThanExpected = minMeasuredHFR <= m_TheoreticalHFR * 1.05;
+            const bool   betterThanExpected = minMeasuredHFR <= effectiveTheoreticalHFR * 1.05;
             const QColor realColor          = betterThanExpected ? QColor(0, 200, 80) : QColor(220, 60, 60);
             QPen realPen(realColor, 2);
             currentGaus->setPen(realPen);
@@ -2461,7 +2516,7 @@ void Focus::drawProfilePlot()
         theoreticalTargetLine->setData(theoreticalPositions, theoreticalHFRs);
 
         // Current position dot: green if HFR <= theoretical, red if worse
-        const bool   currentBetter = currentHFR > 0 && currentHFR <= m_TheoreticalHFR;
+        const bool   currentBetter = currentHFR > 0 && currentHFR <= effectiveTheoreticalHFR;
         const QColor pointColor    = (currentHFR > 0) ?
                                      (currentBetter ? QColor(0, 200, 80) : QColor(220, 60, 60)) :
                                      Qt::white;
@@ -2469,7 +2524,7 @@ void Focus::drawProfilePlot()
             QCPScatterStyle(QCPScatterStyle::ssDisc, Qt::white, pointColor, 10));
         theoreticalCurrentPoint->setData(
             QVector<double> { centerPosition },
-            QVector<double> { currentHFR > 0 ? currentHFR : m_TheoreticalHFR });
+            QVector<double> { currentHFR > 0 ? currentHFR : effectiveTheoreticalHFR });
 
         // Y range: cover theory + real data + current point
         double yMax = *std::max_element(theoreticalHFRs.constBegin(), theoreticalHFRs.constEnd());
@@ -3018,15 +3073,16 @@ void Focus::autoFocusAbs()
                 {
                     // HFR Helper: if configured and current HFR meets the theoretical target,
                     // accept the current position instead of aborting for travel limit.
-                    if (m_TheoreticalHFR > 0.0)
+                    double effectiveTheoreticalHFR = -1.0;
+                    if (getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false))
                     {
                         const double hfrTolerance = toleranceIN->value() / 100.0;
-                        if (currentHFR > 0 && currentHFR <= m_TheoreticalHFR * (1.0 + hfrTolerance))
+                        if (currentHFR > 0 && currentHFR <= effectiveTheoreticalHFR * (1.0 + hfrTolerance))
                         {
                             appendLogText(i18n("Travel limit reached. HFR %1 meets HFR Helper theoretical target %2 px. "
                                                "Accepting focus at position %3.",
                                                QString::number(currentHFR, 'f', 2),
-                                               QString::number(m_TheoreticalHFR, 'f', 2),
+                                               QString::number(effectiveTheoreticalHFR, 'f', 2),
                                                currentPosition));
                             completeFocusProcedure(true);
                             break;
