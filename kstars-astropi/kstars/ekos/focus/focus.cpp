@@ -3737,7 +3737,7 @@ void Focus::showHFRHelperConfig()
     const double px  = m_HFRHelperConfig.pixelSizeUm > 0 ? m_HFRHelperConfig.pixelSizeUm : 3.8;
     const int    bin = m_HFRHelperConfig.binning > 0 ? m_HFRHelperConfig.binning : 2;
     const double see = m_HFRHelperConfig.siteSeeing > 0 ? m_HFRHelperConfig.siteSeeing : 3.0;
-    const double range = m_HFRHelperConfig.acceptanceRangePct > 0 ? m_HFRHelperConfig.acceptanceRangePct : 10.0;
+    const double range = m_HFRHelperConfig.acceptanceRangePct > 0 ? m_HFRHelperConfig.acceptanceRangePct : 5.0;
 
     auto makeDSB = [dlg](double val, double mn, double mx, double step, int dec) -> QDoubleSpinBox *
     {
@@ -3771,12 +3771,12 @@ void Focus::showHFRHelperConfig()
     m_HFRHelperSeeingSB = makeDSB(see, 0.5, 10.0, 0.5, 1);
     layout->addWidget(m_HFRHelperSeeingSB, 5, 1);
 
-    layout->addWidget(new QLabel(i18n("Acceptance range above target (%):"), dlg), 6, 0);
-    m_HFRHelperRangeSB = makeDSB(range, 1.0, 50.0, 1.0, 0);
+    layout->addWidget(new QLabel(i18n("Max HFR overshoot above target (%):"), dlg), 6, 0);
+    m_HFRHelperRangeSB = makeDSB(range, 1.0, 20.0, 1.0, 0);
     layout->addWidget(m_HFRHelperRangeSB, 6, 1);
 
     QLabel *rangeHint = new QLabel(
-        i18n("Example: 10%% means autofocus can finish when HFR is up to 1.10x the theoretical target. Lower values are stricter."));
+        i18n("Example: 5%% means autofocus can stop only when HFR is at most 5%% above the theoretical target. Use a small value if your photos are unusable when focus is too loose."));
     rangeHint->setWordWrap(true);
     layout->addWidget(rangeHint, 7, 0, 1, 2);
 
