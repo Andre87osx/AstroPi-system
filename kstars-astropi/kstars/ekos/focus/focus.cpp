@@ -1791,8 +1791,8 @@ void Focus::completeFocusProcedure(bool success)
             double effectiveTheoreticalHFR = -1.0;
             if (currentHFR > 0 && getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false))
             {
-                const double hfrTolerance = toleranceIN->value() / 100.0;
-                if (currentHFR <= effectiveTheoreticalHFR * (1.0 + hfrTolerance))
+                const double helperRange = m_HFRHelperConfig.acceptanceRangePct / 100.0;
+                if (currentHFR <= effectiveTheoreticalHFR * (1.0 + helperRange))
                 {
                     appendLogText(i18n("HFR Helper: final HFR %1 px meets theoretical target %2 px.",
                                        QString::number(currentHFR, 'f', 2),
@@ -1814,6 +1814,20 @@ void Focus::completeFocusProcedure(bool success)
             // If we're doing in-sequence focusing using an absolute focuser, retry focusing once, starting from last known good position
             bool const retry_focusing = !resetFocus && ++resetFocusIteration < MAXIMUM_RESET_ITERATIONS;
 
+            int bestFocusPosition = -1;
+            double bestFocusValue = std::numeric_limits<double>::max();
+            if (!hfr_value.isEmpty())
+            {
+                const int bestIndex = static_cast<int>(std::min_element(hfr_value.begin(), hfr_value.end()) - hfr_value.begin());
+                bestFocusPosition = hfr_position[bestIndex];
+                bestFocusValue = hfr_value[bestIndex];
+            }
+
+            const bool hasBestFocus = bestFocusPosition >= 0;
+            const int failureReturnPosition = hasBestFocus ? bestFocusPosition
+                                                           : (m_HFRHelperAnchorAbsPosition >= 0 ? m_HFRHelperAnchorAbsPosition
+                                                                                                 : initialFocuserAbsPosition);
+
             // If retrying, before moving, reset focus frame in case the star in subframe was lost
             if (retry_focusing)
             {
@@ -1825,20 +1839,26 @@ void Focus::completeFocusProcedure(bool success)
             if (currentFocuser && currentFocuser->isConnected())
             {
                 // HACK: If the focuser will not move, cheat a little to get the notification - see processNumber
-                if (currentPosition == initialFocuserAbsPosition)
+                if (currentPosition == failureReturnPosition)
                     currentPosition--;
 
-                // On the final retry failure, prefer the HFR Helper calibrated anchor position if available
-                if (!retry_focusing && m_HFRHelperAnchorAbsPosition >= 0)
+                if (hasBestFocus)
                 {
-                    appendLogText(i18n("Autofocus failed after all retries. Returning to HFR Helper anchor position %1.",
+                    appendLogText(i18n("Autofocus failed. Returning to best HFR position %1 (HFR %2).",
+                                       failureReturnPosition,
+                                       QString::number(bestFocusValue, 'f', 2)));
+                    currentFocuser->moveAbs(failureReturnPosition);
+                }
+                else if (m_HFRHelperAnchorAbsPosition >= 0)
+                {
+                    appendLogText(i18n("Autofocus failed. Returning to HFR Helper anchor position %1.",
                                        m_HFRHelperAnchorAbsPosition));
-                    currentFocuser->moveAbs(m_HFRHelperAnchorAbsPosition);
+                    currentFocuser->moveAbs(failureReturnPosition);
                 }
                 else
                 {
                     appendLogText(i18n("Autofocus failed, moving back to initial focus position %1.", initialFocuserAbsPosition));
-                    currentFocuser->moveAbs(initialFocuserAbsPosition);
+                    currentFocuser->moveAbs(failureReturnPosition);
                 }
                 /* Restart will be executed by the end-of-move notification from the device if needed by resetFocus */
             }
@@ -1972,8 +1992,8 @@ void Focus::setCurrentHFR(double value)
                 m_LastFocusDirection != FOCUS_NONE &&
                 absIterations >= 2)
         {
-            const double hfrTolerance = toleranceIN->value() / 100.0;
-            if (currentHFR <= effectiveTheoreticalHFR * (1.0 + hfrTolerance))
+            const double helperRange = m_HFRHelperConfig.acceptanceRangePct / 100.0;
+            if (currentHFR <= effectiveTheoreticalHFR * (1.0 + helperRange))
             {
                 appendLogText(i18n("HFR %1 meets HFR Helper theoretical target %2 px. Accepting focus at position %3.",
                                    QString::number(currentHFR, 'f', 2),
