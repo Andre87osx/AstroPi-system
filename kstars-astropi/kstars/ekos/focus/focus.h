@@ -805,6 +805,7 @@ class Focus : public QWidget, public Ui::Focus
             double pixelSizeUm   {0.0};
             int    binning       {2};
                double siteSeeing    {3.0};  // arcsec
+               double acceptanceRangePct {10.0};
             bool isValid() const
             {
                 return focalLengthMm > 0.0 && apertureMm > 0.0 && pixelSizeUm > 0.0;
@@ -834,6 +835,7 @@ class Focus : public QWidget, public Ui::Focus
             QPointer<QDoubleSpinBox> m_HFRHelperPixelSB;
             QPointer<QSpinBox>       m_HFRHelperBinningSB;
             QPointer<QDoubleSpinBox> m_HFRHelperSeeingSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperRangeSB;
             QPointer<QLabel>         m_HFRHelperResultLabel;
 
             QCPGraph *theoreticalTargetLine { nullptr };

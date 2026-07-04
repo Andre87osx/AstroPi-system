@@ -447,7 +447,7 @@ bool LinearFocusAlgorithm::bestSamplesHeuristic()
     const int length = values.size();
     if (length < 5) return true;
     QVector<double> tempValues = values;
-    std::nth_element(tempValues.begin(), tempValues.begin() + 2, tempValues.end());
+    std::nth_element(tempValues.begin(), tempValues.begin() + 1, tempValues.end());
     double secondBest = tempValues[1];
     if ((values[length - 1] <= secondBest) || (values[length - 2] <= secondBest))
         return true;

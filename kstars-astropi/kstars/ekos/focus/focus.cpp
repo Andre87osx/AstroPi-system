@@ -1947,9 +1947,20 @@ void Focus::setCurrentHFR(double value)
         // Check if we're done from polynomial fitting algorithm
         if (focusAlgorithm == FOCUS_POLYNOMIAL && polySolutionFound == MINIMUM_POLY_SOLUTIONS)
         {
-            polySolutionFound = 0;
-            completeFocusProcedure(true);
-            return;
+            double effectiveTheoreticalHFR = -1.0;
+            const bool helperConfigured = getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false);
+            const double helperRange = m_HFRHelperConfig.acceptanceRangePct / 100.0;
+
+            if (!helperConfigured || currentHFR <= effectiveTheoreticalHFR * (1.0 + helperRange))
+            {
+                polySolutionFound = 0;
+                completeFocusProcedure(true);
+                return;
+            }
+
+            appendLogText(i18n("Polynomial minimum found, but HFR %1 px is still outside the helper range around %2 px. Continuing refinement.",
+                               QString::number(currentHFR, 'f', 2),
+                               QString::number(effectiveTheoreticalHFR, 'f', 2)));
         }
 
         // HFR Helper: if configured and current HFR already meets the theoretical target,
@@ -3542,6 +3553,7 @@ void Focus::loadHFRHelper()
         else if (key == "pixel_size_um")       m_HFRHelperConfig.pixelSizeUm   = val;
         else if (key == "binning")             m_HFRHelperConfig.binning       = static_cast<int>(val);
         else if (key == "site_seeing_arcsec")  m_HFRHelperConfig.siteSeeing    = val;
+        else if (key == "acceptance_range_pct") m_HFRHelperConfig.acceptanceRangePct = val;
         else if (key == "anchor_abs_position") m_HFRHelperAnchorAbsPosition    = static_cast<int>(val);
     }
     file.close();
@@ -3566,6 +3578,7 @@ bool Focus::saveHFRHelperToDisk()
     out << QString("pixel_size_um = %1\n").arg(m_HFRHelperConfig.pixelSizeUm, 0, 'f', 2);
     out << QString("binning = %1\n").arg(m_HFRHelperConfig.binning);
     out << QString("site_seeing_arcsec = %1\n").arg(m_HFRHelperConfig.siteSeeing, 0, 'f', 1);
+    out << QString("acceptance_range_pct = %1\n").arg(m_HFRHelperConfig.acceptanceRangePct, 0, 'f', 0);
     if (m_HFRHelperAnchorAbsPosition >= 0)
         out << QString("anchor_abs_position = %1\n").arg(m_HFRHelperAnchorAbsPosition);
     f.close();
@@ -3638,6 +3651,12 @@ void Focus::syncHFRHelperDialogControls()
         m_HFRHelperSeeingSB->setValue(m_HFRHelperConfig.siteSeeing);
     }
 
+    if (!m_HFRHelperRangeSB.isNull() && m_HFRHelperConfig.acceptanceRangePct > 0)
+    {
+        QSignalBlocker blocker(m_HFRHelperRangeSB);
+        m_HFRHelperRangeSB->setValue(m_HFRHelperConfig.acceptanceRangePct);
+    }
+
     updateHFRHelperResultLabel();
 }
 
@@ -3652,13 +3671,16 @@ void Focus::updateHFRHelperResultLabel()
     if (!m_HFRHelperPixelSB.isNull()) cfg.pixelSizeUm = m_HFRHelperPixelSB->value();
     if (!m_HFRHelperBinningSB.isNull()) cfg.binning = m_HFRHelperBinningSB->value();
     if (!m_HFRHelperSeeingSB.isNull()) cfg.siteSeeing = m_HFRHelperSeeingSB->value();
+    if (!m_HFRHelperRangeSB.isNull()) cfg.acceptanceRangePct = m_HFRHelperRangeSB->value();
 
     const double hfr = calculateTheoreticalHFR(cfg);
     if (hfr > 0)
     {
-        m_HFRHelperResultLabel->setText(QString("<b>%1</b>")
+        m_HFRHelperResultLabel->setText(QStringLiteral("<b>%1</b><br>%2")
             .arg(i18n("Theoretical HFR (binning %1×%1): %2 px",
-                      cfg.binning, QString::number(hfr, 'f', 2))));
+                      cfg.binning, QString::number(hfr, 'f', 2)))
+            .arg(i18n("Accept focus when HFR is within %1% above the target.",
+                      QString::number(cfg.acceptanceRangePct, 'f', 0))));
     }
     else
     {
@@ -3715,6 +3737,7 @@ void Focus::showHFRHelperConfig()
     const double px  = m_HFRHelperConfig.pixelSizeUm > 0 ? m_HFRHelperConfig.pixelSizeUm : 3.8;
     const int    bin = m_HFRHelperConfig.binning > 0 ? m_HFRHelperConfig.binning : 2;
     const double see = m_HFRHelperConfig.siteSeeing > 0 ? m_HFRHelperConfig.siteSeeing : 3.0;
+    const double range = m_HFRHelperConfig.acceptanceRangePct > 0 ? m_HFRHelperConfig.acceptanceRangePct : 10.0;
 
     auto makeDSB = [dlg](double val, double mn, double mx, double step, int dec) -> QDoubleSpinBox *
     {
@@ -3748,10 +3771,19 @@ void Focus::showHFRHelperConfig()
     m_HFRHelperSeeingSB = makeDSB(see, 0.5, 10.0, 0.5, 1);
     layout->addWidget(m_HFRHelperSeeingSB, 5, 1);
 
+    layout->addWidget(new QLabel(i18n("Acceptance range above target (%):"), dlg), 6, 0);
+    m_HFRHelperRangeSB = makeDSB(range, 1.0, 50.0, 1.0, 0);
+    layout->addWidget(m_HFRHelperRangeSB, 6, 1);
+
+    QLabel *rangeHint = new QLabel(
+        i18n("Example: 10%% means autofocus can finish when HFR is up to 1.10x the theoretical target. Lower values are stricter."));
+    rangeHint->setWordWrap(true);
+    layout->addWidget(rangeHint, 7, 0, 1, 2);
+
     // Result label — updated in real time as parameters change
     m_HFRHelperResultLabel = new QLabel(dlg);
     m_HFRHelperResultLabel->setAlignment(Qt::AlignCenter);
-    layout->addWidget(m_HFRHelperResultLabel, 6, 0, 1, 2);
+    layout->addWidget(m_HFRHelperResultLabel, 8, 0, 1, 2);
     updateHFRHelperResultLabel();
 
     connect(m_HFRHelperFocalSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRHelperResultLabel(); });
@@ -3759,6 +3791,7 @@ void Focus::showHFRHelperConfig()
     connect(m_HFRHelperPixelSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRHelperResultLabel(); });
     connect(m_HFRHelperBinningSB,  QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int) { updateHFRHelperResultLabel(); });
     connect(m_HFRHelperSeeingSB,   QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRHelperResultLabel(); });
+    connect(m_HFRHelperRangeSB,    QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateHFRHelperResultLabel(); });
 
     // Save / Close buttons
     QDialogButtonBox *buttons = new QDialogButtonBox(
@@ -3774,6 +3807,7 @@ void Focus::showHFRHelperConfig()
             cfg.pixelSizeUm   = m_HFRHelperPixelSB->value();
             cfg.binning       = m_HFRHelperBinningSB->value();
             cfg.siteSeeing    = m_HFRHelperSeeingSB->value();
+            cfg.acceptanceRangePct = m_HFRHelperRangeSB->value();
 
             const QString path = KSPaths::writableLocation(QStandardPaths::GenericDataLocation)
                                   + "HFR_helper.txt";
@@ -3788,6 +3822,7 @@ void Focus::showHFRHelperConfig()
                 out << QString("pixel_size_um = %1\n").arg(cfg.pixelSizeUm, 0, 'f', 2);
                 out << QString("binning = %1\n").arg(cfg.binning);
                 out << QString("site_seeing_arcsec = %1\n").arg(cfg.siteSeeing, 0, 'f', 1);
+                out << QString("acceptance_range_pct = %1\n").arg(cfg.acceptanceRangePct, 0, 'f', 0);
                 f.close();
 
                 m_HFRHelperConfig = cfg;
