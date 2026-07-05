@@ -2456,8 +2456,14 @@ void Focus::drawHFRPlot()
         maxHFRVal = maxHFR;
     }
 
+    const bool positionAxisMode = (inFocusLoop == false && (canAbsMove || canRelMove || (focusAlgorithm == FOCUS_LINEAR)));
+
+    // Keep axis labels explicit so users always know the units.
+    HFRPlot->xAxis->setLabel(positionAxisMode ? i18n("Focus position (steps)") : i18n("Sample #"));
+    HFRPlot->yAxis->setLabel(i18n("HFR (px)"));
+
     // True for the position-based algorithms and those that simulate position.
-    if (inFocusLoop == false && (canAbsMove || canRelMove || (focusAlgorithm == FOCUS_LINEAR)))
+    if (positionAxisMode)
     {
         const bool hasPositions = !hfr_position.isEmpty();
         const double minPosition = hasPositions ?
@@ -2492,21 +2498,36 @@ void Focus::drawProfilePlot()
     {
         QVector<double> theoreticalPositions;
         QVector<double> theoreticalHFRs;
+        QVector<double> measuredRelativePositions;
 
         // Use actual measured data if available, otherwise centre on current focuser position
         const bool hasMeasuredData = !hfr_position.isEmpty() && !hfr_value.isEmpty() &&
                                      hfr_position.size() == hfr_value.size();
-        const double centerPosition = currentPosition > 0 ? currentPosition :
-                                      (hasMeasuredData ? hfr_position.last() : 0.0);
+
+        double referencePosition = -1.0;
+        if (m_HFRHelperAnchorAbsPosition >= 0)
+            referencePosition = m_HFRHelperAnchorAbsPosition;
+        else if (hasMeasuredData)
+        {
+            const auto minIt = std::min_element(hfr_value.constBegin(), hfr_value.constEnd());
+            const int minIndex = std::distance(hfr_value.constBegin(), minIt);
+            referencePosition = hfr_position[minIndex];
+        }
+        else if (currentPosition > 0)
+            referencePosition = currentPosition;
+        else
+            referencePosition = 0.0;
+
+        const double currentAbsPosition = currentPosition > 0 ? currentPosition : referencePosition;
         const double minDataPos = hasMeasuredData ?
                                   *std::min_element(hfr_position.constBegin(), hfr_position.constEnd()) :
-                                  centerPosition;
+                                  std::min(referencePosition, currentAbsPosition);
         const double maxDataPos = hasMeasuredData ?
                                   *std::max_element(hfr_position.constBegin(), hfr_position.constEnd()) :
-                                  centerPosition;
+                                  std::max(referencePosition, currentAbsPosition);
         // Half-span: wide enough to contain all measured data plus a margin
         const double halfSpanRequired = hasMeasuredData ?
-            std::max(std::abs(centerPosition - minDataPos), std::abs(maxDataPos - centerPosition)) * 1.3 :
+            std::max(std::abs(referencePosition - minDataPos), std::abs(maxDataPos - referencePosition)) * 1.3 :
             0.0;
         const double halfSpan = std::max({halfSpanRequired, 100.0, stepIN->value() * 5.0});
 
@@ -2530,14 +2551,14 @@ void Focus::drawProfilePlot()
             characteristicStep = std::max(characteristicStep, static_cast<double>(pulseDuration));
         }
 
-        const double startPosition = centerPosition - halfSpan;
-        const double endPosition   = centerPosition + halfSpan;
+        const double startPosition = referencePosition - halfSpan;
+        const double endPosition   = referencePosition + halfSpan;
         const int    sampleCount   = 200;
         const double sampleStep    = (endPosition - startPosition) / sampleCount;
         for (int index = 0; index <= sampleCount; ++index)
         {
             const double position         = startPosition + sampleStep * index;
-            const double normalizedOffset = (position - centerPosition) / characteristicStep;
+            const double normalizedOffset = (position - referencePosition) / characteristicStep;
             theoreticalPositions.append(position);
             // Smooth parabolic bell curve: minimum at focus, rises symmetrically on both sides
             theoreticalHFRs.append(m_TheoreticalHFR * (1.0 + 0.5 * normalizedOffset * normalizedOffset));
@@ -2566,7 +2587,8 @@ void Focus::drawProfilePlot()
             currentGaus->setPen(realPen);
             currentGaus->setLineStyle(QCPGraph::lsLine);
             currentGaus->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, realColor, 5));
-            currentGaus->setData(hfr_position, hfr_value);
+            measuredRelativePositions = hfr_position;
+            currentGaus->setData(measuredRelativePositions, hfr_value);
         }
         else
         {
@@ -2584,7 +2606,7 @@ void Focus::drawProfilePlot()
         theoreticalCurrentPoint->setScatterStyle(
             QCPScatterStyle(QCPScatterStyle::ssDisc, Qt::white, pointColor, 10));
         theoreticalCurrentPoint->setData(
-            QVector<double> { centerPosition },
+            QVector<double> { currentAbsPosition },
             QVector<double> { currentHFR > 0 ? currentHFR : effectiveTheoreticalHFR });
 
         // Y range: cover theory + real data + current point
@@ -2602,7 +2624,9 @@ void Focus::drawProfilePlot()
         {
             theoreticalProfileLabel->position->setType(QCPItemPosition::ptAxisRectRatio);
             theoreticalProfileLabel->position->setCoords(0.02, 0.06);
-            theoreticalProfileLabel->setText(i18n("Theoretical curve"));
+            theoreticalProfileLabel->setText(i18n("Theoretical HFR: %1 px @ %2 steps",
+                                                 QString::number(effectiveTheoreticalHFR, 'f', 2),
+                                                 QString::number(referencePosition, 'f', 0)));
             theoreticalProfileLabel->setVisible(true);
         }
         profilePlot->replot();
@@ -2621,8 +2645,8 @@ void Focus::drawProfilePlot()
     theoreticalCurrentPoint->data()->clear();
     if (theoreticalProfileLabel)
         theoreticalProfileLabel->setVisible(false);
-    profilePlot->xAxis->setLabel(QString());
-    profilePlot->yAxis->setLabel(QString());
+    profilePlot->xAxis->setLabel(i18n("Relative profile (sigma)"));
+    profilePlot->yAxis->setLabel(i18n("Normalized intensity"));
 
     // Restore normal Gaussian display style (may have been changed in the theoretical path)
     currentGaus->setPen(QPen(Qt::red, 2));
@@ -4987,7 +5011,7 @@ void Focus::initPlots()
 
     theoreticalTargetLine = profilePlot->addGraph();
     theoreticalTargetLine->setLineStyle(QCPGraph::lsLine);
-    theoreticalTargetLine->setPen(QPen(QColor(255, 215, 0), 2));
+    theoreticalTargetLine->setPen(QPen(QColor(255, 215, 0, 170), 2, Qt::DashLine));
 
     theoreticalCurrentPoint = profilePlot->addGraph();
     theoreticalCurrentPoint->setLineStyle(QCPGraph::lsNone);
@@ -5024,7 +5048,8 @@ void Focus::initPlots()
     HFRPlot->xAxis->grid()->setZeroLinePen(Qt::NoPen);
     HFRPlot->yAxis->grid()->setZeroLinePen(Qt::NoPen);
 
-    HFRPlot->yAxis->setLabel(i18n("HFR"));
+    HFRPlot->xAxis->setLabel(i18n("Focus position (steps)"));
+    HFRPlot->yAxis->setLabel(i18n("HFR (px)"));
 
     HFRPlot->setInteractions(QCP::iRangeZoom);
     HFRPlot->setInteraction(QCP::iRangeDrag, true);
@@ -5078,7 +5103,8 @@ void Focus::initPlots()
     focusPoint->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::white, Qt::yellow, 10));
 
     v_graph = HFRPlot->addGraph();
-    v_graph->setLineStyle(QCPGraph::lsNone);
+    v_graph->setLineStyle(QCPGraph::lsLine);
+    v_graph->setPen(QPen(QColor(180, 220, 255), 1));
     v_graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::white, Qt::white, 14));
 
 }
