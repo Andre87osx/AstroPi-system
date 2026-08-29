@@ -1796,7 +1796,7 @@
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
-         <default>0</default>
+         <default>1</default>
       </entry>
       <entry name="GuideSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after resuming guide.</whatsthis>
@@ -1813,12 +1813,12 @@
       </entry>
       <entry name="FocusMotionTimeout" type="UInt">
          <whatsthis>Maximum time in seconds to wait for a focuser to move to desired position before declaring a timeout.</whatsthis>
-         <default>30</default>
+         <default>60</default>
       </entry>
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
          <whatsthis>Set the maximum travel distance of an absolute focuser.</whatsthis>
-         <default>250</default>
+         <default>5000</default>
       </entry>
       <entry name="InitialFocusOutSteps" type="Double">
          <label>Initial Focus Out Steps</label>
@@ -1889,11 +1889,11 @@
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusMaxSingleStep" type="UInt">
          <label>Maximum single step the focus algorithm is permitted to command.</label>

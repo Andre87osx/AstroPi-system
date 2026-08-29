@@ -1752,6 +1752,26 @@ void Focus::completeFocusProcedure(bool success)
 {
     QString analysis_results = "";
 
+    // HFR Helper: a converged result that still sits above the theoretical target is not a real success
+    // (e.g. thin clouds/veiling can mask the true minimum) — demote to failure so the existing retry/give-up
+    // path engages instead of silently accepting an out-of-focus position and wasting subsequent captures.
+    if (success && inAutoFocus && currentHFR > 0)
+    {
+        double effectiveTheoreticalHFR = -1.0;
+        if (getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false))
+        {
+            const double helperRange = m_HFRHelperConfig.acceptanceRangePct / 100.0;
+            if (currentHFR > effectiveTheoreticalHFR * (1.0 + helperRange))
+            {
+                appendLogText(i18n("HFR Helper: final HFR %1 px is above theoretical target %2 px. "
+                                   "Treating as focus failure (possible clouds/veiling).",
+                                   QString::number(currentHFR, 'f', 2),
+                                   QString::number(effectiveTheoreticalHFR, 'f', 2)));
+                success = false;
+            }
+        }
+    }
+
     if (inAutoFocus)
     {
         if (success)
@@ -1787,25 +1807,17 @@ void Focus::completeFocusProcedure(bool success)
             // Replace user position with optimal position
             absTicksSpin->setValue(currentPosition);
 
-            // HFR Helper: report quality of the achieved focus vs theoretical target
+            // HFR Helper: final HFR already passed the quality gate above, so this can only be the "meets target" case
             double effectiveTheoreticalHFR = -1.0;
             if (currentHFR > 0 && getCurrentHFRHelperTheoretical(effectiveTheoreticalHFR, false))
             {
-                const double helperRange = m_HFRHelperConfig.acceptanceRangePct / 100.0;
-                if (currentHFR <= effectiveTheoreticalHFR * (1.0 + helperRange))
-                {
-                    appendLogText(i18n("HFR Helper: final HFR %1 px meets theoretical target %2 px.",
-                                       QString::number(currentHFR, 'f', 2),
-                                       QString::number(effectiveTheoreticalHFR, 'f', 2)));
-                    // Save this position as the calibrated anchor for future bad-seeing fallback
-                    m_HFRHelperAnchorAbsPosition = currentPosition;
-                    if (saveHFRHelperToDisk())
-                        appendLogText(i18n("HFR Helper: anchor position saved at %1.", currentPosition));
-                }
-                else
-                    appendLogText(i18n("HFR Helper: final HFR %1 px is above theoretical target %2 px.",
-                                       QString::number(currentHFR, 'f', 2),
-                                       QString::number(effectiveTheoreticalHFR, 'f', 2)));
+                appendLogText(i18n("HFR Helper: final HFR %1 px meets theoretical target %2 px.",
+                                   QString::number(currentHFR, 'f', 2),
+                                   QString::number(effectiveTheoreticalHFR, 'f', 2)));
+                // Save this position as the calibrated anchor for future bad-seeing fallback
+                m_HFRHelperAnchorAbsPosition = currentPosition;
+                if (saveHFRHelperToDisk())
+                    appendLogText(i18n("HFR Helper: anchor position saved at %1.", currentPosition));
             }
         }
         // In case of failure, go back to last position if the focuser is absolute
