@@ -3820,7 +3820,7 @@ void Focus::showHFRHelperConfig()
     layout->addWidget(m_HFRHelperRangeSB, 6, 1);
 
     QLabel *rangeHint = new QLabel(
-        i18n("Example: 5%% means autofocus can stop only when HFR is at most 5%% above the theoretical target. Use a small value if your photos are unusable when focus is too loose."));
+        i18n("Example: 5%% accepts autofocus only when HFR is within 5%% of the theoretical target. Lower values require tighter focus."), dlg);
     rangeHint->setWordWrap(true);
     layout->addWidget(rangeHint, 7, 0, 1, 2);
 
@@ -3840,7 +3840,7 @@ void Focus::showHFRHelperConfig()
     // Save / Close buttons
     QDialogButtonBox *buttons = new QDialogButtonBox(
         QDialogButtonBox::Save | QDialogButtonBox::Close, dlg);
-    layout->addWidget(buttons, 7, 0, 1, 2);
+    layout->addWidget(buttons, 9, 0, 1, 2);
 
     connect(buttons->button(QDialogButtonBox::Save), &QPushButton::clicked, dlg,
         [this]()
@@ -3882,7 +3882,8 @@ void Focus::showHFRHelperConfig()
 
     connect(buttons->button(QDialogButtonBox::Close), &QPushButton::clicked, dlg, &QDialog::close);
 
-    dlg->resize(420, 380);
+    dlg->setMinimumSize(500, 440);
+    dlg->resize(520, 460);
     dlg->show();
 }
 
