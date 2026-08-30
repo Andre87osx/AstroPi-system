@@ -46,6 +46,7 @@
 
 #include <QMenu>
 #include <QStatusBar>
+#include <QTabWidget>
 
 //This file contains functions that kstars calls at startup (except constructors).
 //These functions are declared in kstars.h
@@ -946,11 +947,25 @@ void KStars::buildGUI()
     m_SkyMap = SkyMap::Create();
     connect(m_SkyMap, SIGNAL(mousePointChanged(SkyPoint*)), SLOT(slotShowPositionBar(SkyPoint*)));
     connect(m_SkyMap, SIGNAL(zoomChanged()), SLOT(slotZoomChanged()));
-    setCentralWidget(m_SkyMap);
+    m_MainTabWidget = new QTabWidget(this);
+    m_MainTabWidget->setObjectName("mainTabWidget");
+    m_MainTabWidget->addTab(m_SkyMap, i18n("Planetarium"));
+    setCentralWidget(m_MainTabWidget);
 
     //Initialize menus, toolbars, and statusbars
     initStatusBar();
     initActions();
+
+#ifdef HAVE_INDI
+    Ekos::Manager *ekosManager = Ekos::Manager::Instance();
+    m_MainTabWidget->insertTab(0, ekosManager, i18n("Ekos"));
+    m_MainTabWidget->setCurrentWidget(ekosManager);
+    actionCollection()->action("show_ekos")->setChecked(true);
+    connect(m_MainTabWidget, &QTabWidget::currentChanged, this, [this, ekosManager](int)
+    {
+        actionCollection()->action("show_ekos")->setChecked(m_MainTabWidget->currentWidget() == ekosManager);
+    });
+#endif
 
     // Setup GUI from the settings file
     // UI tests provide the default settings file from the resources explicitly file to render UI properly

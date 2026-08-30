@@ -71,6 +71,9 @@
 #include "tools/whatsinteresting/wiview.h"
 #include "hips/hipsmanager.h"
 #include "catalogsdb.h"
+
+#include <QTabWidget>
+
 #ifdef HAVE_INDI
 #include <basedevice.h>
 //#include "indi/telescopewizardprocess.h"
@@ -271,13 +274,9 @@ void KStars::slotINDIToolBar()
     else if (a == actionCollection()->action("show_ekos"))
     {
         if (a->isChecked())
-        {
-            Ekos::Manager::Instance()->raise();
-            Ekos::Manager::Instance()->activateWindow();
-            Ekos::Manager::Instance()->showNormal();
-        }
+            m_MainTabWidget->setCurrentWidget(Ekos::Manager::Instance());
         else
-            Ekos::Manager::Instance()->hide();
+            m_MainTabWidget->setCurrentWidget(m_SkyMap);
     }
     else if (a == actionCollection()->action("lock_telescope"))
     {
@@ -790,17 +789,7 @@ void KStars::slotEkos()
     }
 #endif
 
-    if (Ekos::Manager::Instance()->isVisible() &&
-        Ekos::Manager::Instance()->isActiveWindow())
-    {
-        Ekos::Manager::Instance()->hide();
-    }
-    else
-    {
-        Ekos::Manager::Instance()->raise();
-        Ekos::Manager::Instance()->activateWindow();
-        Ekos::Manager::Instance()->showNormal();
-    }
+    m_MainTabWidget->setCurrentWidget(Ekos::Manager::Instance());
 
 #endif
 #endif

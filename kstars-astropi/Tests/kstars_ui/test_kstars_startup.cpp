@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QtTest>
 #include <QDialogButtonBox>
+#include <QTabWidget>
 #include <QtConcurrent>
 
 #include "Options.h"
@@ -20,6 +21,10 @@
 #include "kspaths.h"
 #include "kswizard.h"
 #include <KTipDialog>
+
+#ifdef HAVE_INDI
+#include "ekos/manager.h"
+#endif
 
 #include "kstars_ui_tests.h"
 #include "test_kstars_startup.h"
@@ -164,5 +169,27 @@ void TestKStarsStartup::testInitialConditions()
     KStars::Instance()->data()->clock()->setUTC(KStarsDateTime(m_InitialConditions.dateTime));
     QCOMPARE(llround(KStars::Instance()->data()->clock()->utc().toLocalTime().toMSecsSinceEpoch() / 1000.0),
              m_InitialConditions.dateTime.toSecsSinceEpoch());
+#endif
+}
+
+void TestKStarsStartup::testIntegratedEkosTabs()
+{
+#ifdef HAVE_INDI
+    QTabWidget *mainTabs = KStars::Instance()->findChild<QTabWidget *>("mainTabWidget");
+    QVERIFY(mainTabs != nullptr);
+    QCOMPARE(mainTabs->count(), 2);
+    QCOMPARE(mainTabs->tabText(0), QString("Ekos"));
+    QCOMPARE(mainTabs->tabText(1), QString("Planetarium"));
+    QCOMPARE(mainTabs->currentIndex(), 0);
+    QVERIFY(qobject_cast<Ekos::Manager *>(mainTabs->widget(0)) != nullptr);
+
+    QAction *showEkos = KStars::Instance()->actionCollection()->action("show_ekos");
+    QVERIFY(showEkos != nullptr);
+    QVERIFY(showEkos->isChecked());
+
+    mainTabs->setCurrentIndex(1);
+    QVERIFY(!showEkos->isChecked());
+    showEkos->trigger();
+    QCOMPARE(mainTabs->currentIndex(), 0);
 #endif
 }

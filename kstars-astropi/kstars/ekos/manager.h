@@ -345,7 +345,6 @@ class Manager : public QDialog, public Ui::Manager
 
     protected:
         void closeEvent(QCloseEvent *event) override;
-        void hideEvent(QHideEvent *) override;
         void showEvent(QShowEvent *) override;
         void resizeEvent(QResizeEvent *) override;
 
@@ -381,9 +380,6 @@ class Manager : public QDialog, public Ui::Manager
         void restartDriver(const QString &deviceName);
 
     private slots:
-
-        void changeAlwaysOnTop(Qt::ApplicationState state);
-
         void showEkosOptions();
 
         void updateLog();

@@ -84,7 +84,7 @@ Manager *Manager::_Manager = nullptr;
 Manager *Manager::Instance()
 {
     if (_Manager == nullptr)
-        _Manager = new Manager(Options::independentWindowEkos() ? nullptr : KStars::Instance());
+        _Manager = new Manager(KStars::Instance());
 
     return _Manager;
 }
@@ -96,21 +96,7 @@ void Manager::release()
 
 Manager::Manager(QWidget * parent) : QDialog(parent)
 {
-#ifdef Q_OS_OSX
-
-    if (Options::independentWindowEkos())
-        setWindowFlags(Qt::Window);
-    else
-    {
-        setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
-        connect(QApplication::instance(), SIGNAL(applicationStateChanged(Qt::ApplicationState)), this,
-                SLOT(changeAlwaysOnTop(Qt::ApplicationState)));
-    }
-#else
-    if (Options::independentWindowEkos())
-        //setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
-        setWindowFlags(Qt::Window);
-#endif
+    setWindowFlags(Qt::Widget);
     setupUi(this);
     // Collega QLabel totalRMSLabel
     totalRMSLabel = findChild<QLabel*>("totalRMSLabel");
@@ -426,19 +412,6 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
         button->setAutoDefault(false);
 
 
-    resize(Options::ekosWindowWidth(), Options::ekosWindowHeight());
-}
-
-void Manager::changeAlwaysOnTop(Qt::ApplicationState state)
-{
-    if (isVisible())
-    {
-        if (state == Qt::ApplicationActive)
-            setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
-        else
-            setWindowFlags(windowFlags() & ~Qt::WindowStaysOnTopHint);
-        show();
-    }
 }
 
 Manager::~Manager()
@@ -448,30 +421,11 @@ Manager::~Manager()
 
 void Manager::closeEvent(QCloseEvent * event)
 {
-    //    QAction * a = KStars::Instance()->actionCollection()->action("show_ekos");
-    //    a->setChecked(false);
-
-    // 2019-02-14 JM: Close event, for some reason, make all the children disappear
-    // when the widget is shown again. Applying a workaround here
-
     event->ignore();
-    hide();
-}
-
-void Manager::hideEvent(QHideEvent * /*event*/)
-{
-    Options::setEkosWindowWidth(width());
-    Options::setEkosWindowHeight(height());
-
-    QAction * a = KStars::Instance()->actionCollection()->action("show_ekos");
-    a->setChecked(false);
 }
 
 void Manager::showEvent(QShowEvent * /*event*/)
 {
-    QAction * a = KStars::Instance()->actionCollection()->action("show_ekos");
-    a->setChecked(true);
-
     // Just show the profile wizard ONCE per session
     if (profileWizardLaunched == false && profiles.count() == 1)
     {

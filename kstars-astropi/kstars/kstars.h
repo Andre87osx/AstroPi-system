@@ -38,6 +38,7 @@ class QDockWidget;
 class QPalette;
 class KActionMenu;
 class KConfigDialog;
+class QTabWidget;
 
 class KStarsData;
 class SkyPoint;
@@ -853,6 +854,7 @@ class KStars : public KXmlGuiWindow
 
         KStarsData *m_KStarsData { nullptr };
         SkyMap *m_SkyMap { nullptr };
+     QTabWidget *m_MainTabWidget { nullptr };
 
         // Widgets
         TimeStepBox *m_TimeStepBox { nullptr };

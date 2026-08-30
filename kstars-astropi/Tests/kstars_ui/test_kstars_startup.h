@@ -57,6 +57,7 @@ private slots:
 
     void createInstanceTest();
     void testInitialConditions();
+    void testIntegratedEkosTabs();
 };
 
 #endif // TEST_KSTARS_STARTUP_H
