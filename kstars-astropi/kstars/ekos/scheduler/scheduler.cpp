@@ -244,17 +244,14 @@ Scheduler::Scheduler()
     // Connect geographical location - when it is available
     //connect(KStarsData::Instance()..., &LocationDialog::locationChanged..., this, &Scheduler::simClockTimeChanged);
 
-    // AstroPi UI profile default policy: retry aborted jobs (e.g. transient veiling/clouds)
-    // once all executable jobs are aborted, after a cool-down delay. User can still tune
-    // strategy/delay live from the Scheduler tab; this is only the startup default.
-    setErrorHandlingStrategy(ERROR_RESTART_AFTER_TERMINATION);
-    errorHandlingRescheduleErrorsCB->setChecked(false);
-    errorHandlingDelaySB->setValue(3600);
+    // AstroPi UI profile: the retry-after-abort policy (strategy/delay/reschedule errors) is
+    // configured from Configura KStars -> Ekos -> Scheduler -> Job Recovery, not from this tool's
+    // own (hidden) widgets. Mirror the persisted Options value into them at construction time.
+    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(Options::errorHandlingStrategy()));
+    errorHandlingRescheduleErrorsCB->setChecked(Options::rescheduleErrors());
+    errorHandlingDelaySB->setValue(Options::errorHandlingStrategyDelay());
     errorHandlingRescheduleErrorsCB->setEnabled(true);
     errorHandlingDelaySB->setEnabled(true);
-    Options::setErrorHandlingStrategy(ERROR_RESTART_AFTER_TERMINATION);
-    Options::setRescheduleErrors(false);
-    Options::setErrorHandlingStrategyDelay(3600);
 
     if (astroPiLogoLabel != nullptr)
     {
