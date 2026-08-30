@@ -22,7 +22,7 @@ pubblicata e marcata come **pre-release**.
   **Set as a pre-release** attiva e scarica il tag associato.
 
 L'installer scarica l'archivio del tag, ad esempio
-`v1.8.2.tar.gz`. Percio il tag deve indicare esattamente il commit che si vuole
+`v1.8.3.tar.gz`. Percio il tag deve indicare esattamente il commit che si vuole
 installare.
 
 ## Prima di pubblicare
@@ -36,10 +36,12 @@ git pull --ff-only upstream main
 git status --short
 ```
 
-`git status --short` non deve produrre output. Controllare inoltre che la
-versione indicata in `include/functions.sh` e le eventuali versioni correlate
-nel progetto siano state aggiornate, che le modifiche siano state testate e che
-il commit sia gia su `upstream/main`.
+`git status --short` non deve produrre output. Prima del tag, allineare tutte
+le etichette di versione pubbliche: `include/functions.sh` (`minorRelease` e
+`KStars_v`), `kstars-astropi/CMakeLists.txt` (`KSTARS_BUILD_RELEASE`) e gli
+esempi correnti in questa guida. Non aggiornare le voci storiche del changelog.
+Verificare quindi che le modifiche siano state testate e che il commit sia gia
+su `upstream/main`.
 
 Questo repository usa `upstream` per pubblicare. Non usare `origin` per il
 push: il suo URL di push e disabilitato.
