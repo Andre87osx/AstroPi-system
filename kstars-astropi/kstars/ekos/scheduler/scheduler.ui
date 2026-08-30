@@ -1999,7 +1999,7 @@ font-weight:bold;
              <string>&amp;None</string>
             </property>
               <property name="visible">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
             <attribute name="buttonGroup">
              <string notr="true">errorHandlingButtonGroup</string>
@@ -2021,7 +2021,7 @@ font-weight:bold;
              <string>&amp;Queue</string>
             </property>
               <property name="visible">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
             <attribute name="buttonGroup">
              <string notr="true">errorHandlingButtonGroup</string>
@@ -2043,7 +2043,7 @@ font-weight:bold;
              <string>I&amp;mmediate</string>
             </property>
               <property name="visible">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
             <attribute name="buttonGroup">
              <string notr="true">errorHandlingButtonGroup</string>
@@ -2072,7 +2072,7 @@ font-weight:bold;
              <string>Re-schedule errors</string>
             </property>
               <property name="visible">
-               <bool>false</bool>
+               <bool>true</bool>
               </property>
            </widget>
           </item>
@@ -2097,7 +2097,7 @@ font-weight:bold;
              <number>10</number>
             </property>
             <property name="visible">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
            </widget>
           </item>
