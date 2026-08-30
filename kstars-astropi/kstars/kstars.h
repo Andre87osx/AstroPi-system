@@ -818,6 +818,9 @@ class KStars : public KXmlGuiWindow
         /** Build the KStars main window */
         void buildGUI();
 
+          /** Show planetarium toolbars only while the planetarium tab is active. */
+          void updatePlanetariumToolbars();
+
         void closeEvent(QCloseEvent *event) override;
 
     public:

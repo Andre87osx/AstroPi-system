@@ -964,12 +964,19 @@ void KStars::buildGUI()
     connect(m_MainTabWidget, &QTabWidget::currentChanged, this, [this, ekosManager](int)
     {
         actionCollection()->action("show_ekos")->setChecked(m_MainTabWidget->currentWidget() == ekosManager);
+        updatePlanetariumToolbars();
     });
 #endif
+
+    connect(actionCollection()->action("show_mainToolBar"), &QAction::toggled, this,
+            &KStars::updatePlanetariumToolbars);
+    connect(actionCollection()->action("show_viewToolBar"), &QAction::toggled, this,
+            &KStars::updatePlanetariumToolbars);
 
     // Setup GUI from the settings file
     // UI tests provide the default settings file from the resources explicitly file to render UI properly
     setupGUI(StandardWindowOptions(Default), m_KStarsUIResource);
+    updatePlanetariumToolbars();
 
     //get focus of keyboard and mouse actions (for example zoom in with +)
     map()->QWidget::setFocus();
@@ -980,6 +987,15 @@ void KStars::buildGUI()
         actionCollection()->action("zoom_in")->setEnabled(false);
     if (Options::zoomFactor() <= MINZOOM)
         actionCollection()->action("zoom_out")->setEnabled(false);
+}
+
+void KStars::updatePlanetariumToolbars()
+{
+    const bool planetariumActive = m_MainTabWidget->currentWidget() == m_SkyMap;
+    toolBar("kstarsToolBar")->setVisible(
+        planetariumActive && actionCollection()->action("show_mainToolBar")->isChecked());
+    toolBar("viewToolBar")->setVisible(
+        planetariumActive && actionCollection()->action("show_viewToolBar")->isChecked());
 }
 
 void KStars::populateThemes()

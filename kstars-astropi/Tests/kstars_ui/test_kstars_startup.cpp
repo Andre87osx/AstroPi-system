@@ -16,6 +16,8 @@
 #include <QTabWidget>
 #include <QtConcurrent>
 
+#include <KToolBar>
+
 #include "Options.h"
 #include "kstars.h"
 #include "kspaths.h"
@@ -186,10 +188,18 @@ void TestKStarsStartup::testIntegratedEkosTabs()
     QAction *showEkos = KStars::Instance()->actionCollection()->action("show_ekos");
     QVERIFY(showEkos != nullptr);
     QVERIFY(showEkos->isChecked());
+    QVERIFY(!KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
+    QVERIFY(!KStars::Instance()->toolBar("viewToolBar")->isVisible());
 
     mainTabs->setCurrentIndex(1);
     QVERIFY(!showEkos->isChecked());
+    KStars::Instance()->actionCollection()->action("show_mainToolBar")->setChecked(true);
+    KStars::Instance()->actionCollection()->action("show_viewToolBar")->setChecked(true);
+    QVERIFY(KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
+    QVERIFY(KStars::Instance()->toolBar("viewToolBar")->isVisible());
     showEkos->trigger();
     QCOMPARE(mainTabs->currentIndex(), 0);
+    QVERIFY(!KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
+    QVERIFY(!KStars::Instance()->toolBar("viewToolBar")->isVisible());
 #endif
 }
