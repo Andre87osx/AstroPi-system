@@ -6636,16 +6636,9 @@ Scheduler::ErrorHandlingStrategy Scheduler::getErrorHandlingStrategy()
 
 void Scheduler::setErrorHandlingStrategy(Scheduler::ErrorHandlingStrategy strategy)
 {
-    Q_UNUSED(strategy)
-    errorHandlingRescheduleErrorsCB->setChecked(false);
-    errorHandlingRescheduleErrorsCB->setEnabled(false);
-    errorHandlingDelaySB->setEnabled(false);
-    errorHandlingDelaySB->setValue(0);
-    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    Options::setRescheduleErrors(false);
-    Options::setErrorHandlingStrategyDelay(0);
+    Options::setErrorHandlingStrategy(strategy);
 
-    switch (ERROR_DONT_RESTART)
+    switch (strategy)
     {
         case ERROR_RESTART_AFTER_TERMINATION:
             errorHandlingRestartAfterAllButton->setChecked(true);
