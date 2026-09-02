@@ -283,6 +283,19 @@ function install_script()
 		else
 			echo "Warning: verify-indi-fix.sh not found (optional)"
 		fi
+		# Seed default INDI WatchDog config (mount crash-safety net) - only if the
+		# user doesn't already have one, so a reinstall/update never overwrites it.
+		if [[ -f ./WatchDog_config.xml ]]; then
+			mkdir -p "${HOME}"/.indi
+			if [[ ! -f "${HOME}/.indi/WatchDog_config.xml" ]]; then
+				echo "# Install default WatchDog_config.xml in ${HOME}/.indi/"
+				cp "${appDir}"/bin/WatchDog_config.xml "${HOME}"/.indi/WatchDog_config.xml
+			else
+				echo "WatchDog_config.xml already exists, keeping user's configuration"
+			fi
+		else
+			echo "Warning: WatchDog_config.xml not found (optional)"
+		fi
 		cd "${appDir}"/include || exit 1
 		if [[ -f ./solar-system-dark.svg ]]; then
 			echo "# Install AstroPi icons in /usr/share/icons/gnome/scalable/places"
