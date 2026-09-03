@@ -1899,12 +1899,17 @@ void Manager::processNewNumber(INumberVectorProperty * nvp)
 void Manager::processDeleteProperty(const QString &name)
 {
     ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
+    // Sender's device may already be gone (stale/queued signal racing a device removal); avoid a null deref.
+    if (!deviceInterface)
+        return;
     ekosLiveClient.get()->message()->processDeleteProperty(deviceInterface->getDeviceName(), name);
 }
 
 void Manager::processNewProperty(INDI::Property prop)
 {
     ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
+    if (!deviceInterface)
+        return;
 
     settleTimer.start();
 
@@ -4121,6 +4126,8 @@ void Manager::watchDebugProperty(ISwitchVectorProperty * svp)
     if (!strcmp(svp->name, "DEBUG"))
     {
         ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
+        if (!deviceInterface)
+            return;
 
         // We don't process pure general interfaces
         if (deviceInterface->getDriverInterface() == INDI::BaseDevice::GENERAL_INTERFACE)
