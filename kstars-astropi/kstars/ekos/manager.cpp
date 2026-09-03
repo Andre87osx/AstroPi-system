@@ -1341,14 +1341,18 @@ void Manager::deviceConnected()
     disconnectB->setEnabled(true);
     processINDIB->setEnabled(false);
 
+    ISD::GDInterface * dev = qobject_cast<ISD::GDInterface *>(sender());
+    // Sender's device may already be gone (rapid disconnect/reconnect race, e.g. USB dropout); avoid a null deref.
+    if (!dev)
+        return;
+
     Ekos::CommunicationStatus previousStatus = m_indiStatus;
 
     if (Options::verboseLogging())
     {
-        ISD::GDInterface * device = qobject_cast<ISD::GDInterface *>(sender());
-        qCInfo(KSTARS_EKOS) << device->getDeviceName()
-                            << "Version:" << device->getDriverVersion()
-                            << "Interface:" << device->getDriverInterface()
+        qCInfo(KSTARS_EKOS) << dev->getDeviceName()
+                            << "Version:" << dev->getDriverVersion()
+                            << "Interface:" << dev->getDriverInterface()
                             << "is connected.";
     }
 
@@ -1373,8 +1377,6 @@ void Manager::deviceConnected()
 
     if (previousStatus != m_indiStatus)
         emit indiStatusChanged(m_indiStatus);
-
-    ISD::GDInterface * dev = static_cast<ISD::GDInterface *>(sender());
 
     if (dev->getDriverInterface() & INDI::BaseDevice::TELESCOPE_INTERFACE)
     {
