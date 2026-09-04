@@ -145,7 +145,72 @@ causa della race con un core dump: `ulimit -c unlimited` poi
 
 ---
 
-## 3. [DA DEFINIRE] Altri punti aperti
+## 3. [APERTO] Menu planetario residuo nel tab Ekos
 
-Aggiungere qui altri interventi individuati per la 1.8.4 (finora non ne sono
-emersi altri oltre ai due punti sopra).
+Nel tab Ekos resta visibile una riga parziale della toolbar del planetario
+(icone Ekos, INDI e "bersaglio"). Va nascosta completamente, non parzialmente.
+
+Effetto collaterale già presente: passando al tab Planetario, il resto dei
+bottoni del planetario NON ricompare.
+
+**Tentativo precedente (non risolutivo)**: commit `7fa3a00` "feat: add toolbar
+visibility management for planetarium tab in KStars UI" — modifica
+`kstars.h`, `kstarsinit.cpp` e `Tests/kstars_ui/test_kstars_startup.cpp`.
+Rivedere quella logica di show/hide prima di scrivere codice nuovo.
+
+---
+
+## 4. [APERTO] Modulo camera - indicatore colore errato
+
+Nel modulo camera l'indicatore di colore viene visualizzato spento/errato.
+Nessun tentativo di fix precedente trovato nella history (ricerca su
+`CCD_.*color` / `colore` / `filtro colore` senza risultati): punto vergine.
+
+---
+
+## 5. [APERTO] Scheduler ordina per nome oggetto invece che per ora di partenza
+
+Regressione: la coda dei job viene ordinata per nome oggetto e non per ora di
+partenza come avveniva prima.
+
+**Piste già individuate nel codice (da verificare, nessuna modifica fatta)**:
+- `Options::sortSchedulerJobs()` governa un percorso di riordino in
+  `scheduler.cpp` (occorrenze ~1158, 1262, 1336, 1408, 1432, 1446, 1470, 1519,
+  2023-2024). Il log a riga 2023 dice esplicitamente "Option to sort jobs based
+  on priority and altitude is <valore>", e se true (2024) riordina.
+- Comparatori in `schedulerjob.cpp` (~730-762): `decreasingScoreOrder`,
+  `increasingPriorityOrder`, `decreasingAltitudeOrder`,
+  `increasingStartupTimeOrder`.
+- `Scheduler::sortJobsPerAltitude()` (`scheduler.cpp` ~6592) è il pulsante di
+  ordinamento manuale (`sortJobsB`), usa `decreasingAltitudeOrder`.
+- **Ipotesi da verificare**: l'opzione `SortSchedulerJobs` risulta attiva
+  (cambio di default in `kstars.kcfg`?), quindi la coda viene auto-ordinata per
+  priorità/altitudine invece di restare in ordine di ora di partenza.
+
+---
+
+## 6. [APERTO] Guida tecnica Scheduler da aggiornare
+
+Il testo HTML "GUIDA TECNICA SCHEDULER ASTROPI" incorporato in `scheduler.cpp`
+va aggiornato con le ultime correzioni/feature. Verificare in particolare che
+il testo rispecchi il comportamento attuale della strategia di error handling
+(default `ERROR_RESTART_AFTER_TERMINATION` con delay 3600s), già modificata in
+precedenza.
+
+---
+
+## 7. [DA DECIDERE] AstroPi system: da bash+zenity a Python?
+
+`bin/AstroPi.sh` (e gli altri `bin/*.sh`) sono bash + zenity. Valutare la
+conversione a Python con GUI, per maggiore flessibilità e compatibilità con le
+versioni recenti di Raspberry Pi OS (oggi si sviluppa ancora sulla 10).
+
+Non è un fix rapido ma una scelta architetturale: prima va deciso il toolkit
+grafico (Tkinter / PyQt / GTK), poi pianificata la migrazione. Probabilmente da
+rimandare alla 1.8.5 ("definitiva") insieme al refactoring generale.
+
+---
+
+## 8. [DA DEFINIRE] Altri punti aperti
+
+Aggiungere qui eventuali altri interventi individuati per la 1.8.4.
