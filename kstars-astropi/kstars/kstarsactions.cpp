@@ -274,7 +274,10 @@ void KStars::slotINDIToolBar()
     else if (a == actionCollection()->action("show_ekos"))
     {
         if (a->isChecked())
+        {
+            setupEkosTab();
             m_MainTabWidget->setCurrentWidget(Ekos::Manager::Instance());
+        }
         else
             m_MainTabWidget->setCurrentWidget(m_SkyMap);
     }
@@ -789,6 +792,7 @@ void KStars::slotEkos()
     }
 #endif
 
+    setupEkosTab();
     m_MainTabWidget->setCurrentWidget(Ekos::Manager::Instance());
 
 #endif

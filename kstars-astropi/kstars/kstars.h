@@ -821,6 +821,10 @@ class KStars : public KXmlGuiWindow
           /** Show planetarium toolbars only while the planetarium tab is active. */
           void updatePlanetariumToolbars();
 
+          /** Create the Ekos tab. Deferred until after startup: building Ekos::Manager
+           * inside buildGUI() races with KStars' own construction. */
+          void setupEkosTab();
+
         void closeEvent(QCloseEvent *event) override;
 
     public:

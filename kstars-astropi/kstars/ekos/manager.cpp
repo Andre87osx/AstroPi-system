@@ -1967,9 +1967,13 @@ void Manager::processNewProperty(INDI::Property prop)
         {
             // Check if we need to enable debug logging for the INDI drivers.
             auto debugSP = prop->getSwitch();
-            debugSP->at(0)->setState(ISS_ON);
-            debugSP->at(1)->setState(ISS_OFF);
-            deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugSP);
+            // Property may already be deleted driver-side (delProperty race), getSwitch() then returns null.
+            if (debugSP && debugSP->count() >= 2)
+            {
+                debugSP->at(0)->setState(ISS_ON);
+                debugSP->at(1)->setState(ISS_OFF);
+                deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugSP);
+            }
         }
     }
 
@@ -1982,10 +1986,13 @@ void Manager::processNewProperty(INDI::Property prop)
         {
             // Turn on everything
             auto debugLevel = prop->getSwitch();
-            for (auto &it : *debugLevel)
-                it.setState(ISS_ON);
+            if (debugLevel)
+            {
+                for (auto &it : *debugLevel)
+                    it.setState(ISS_ON);
 
-            deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugLevel);
+                deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugLevel);
+            }
         }
     }
 
@@ -4111,6 +4118,8 @@ void Manager::updateDebugInterfaces()
             continue;
 
         auto debugSP = debugProp->getSwitch();
+        if (!debugSP || debugSP->count() < 2)
+            continue;
 
         // Check if the debug interface matches the driver device class
         if ( ( opsLogs->getINDIDebugInterface() & device->getDriverInterface() ) &&
@@ -4137,6 +4146,9 @@ void Manager::updateDebugInterfaces()
 
 void Manager::watchDebugProperty(ISwitchVectorProperty * svp)
 {
+    if (svp == nullptr || svp->sp == nullptr || svp->nsp < 2)
+        return;
+
     if (!strcmp(svp->name, "DEBUG"))
     {
         ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
