@@ -175,6 +175,16 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     connect(connectB, &QPushButton::clicked, this, &Ekos::Manager::connectDevices);
     connect(disconnectB, &QPushButton::clicked, this, &Ekos::Manager::disconnectDevices);
 
+    // Ekos is now built as a tab at KStars startup (rather than lazily on first open), so it
+    // is clickable the instant the main window appears, before KStarsData/driver-list startup
+    // work has settled. Clicking Start immediately races with that and crashes; briefly block
+    // it to match the delay users must otherwise wait out manually.
+    processINDIB->setEnabled(false);
+    QTimer::singleShot(3000, this, [this]()
+    {
+        processINDIB->setEnabled(true);
+    });
+
     ekosLiveB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     ekosLiveClient.reset(new EkosLive::Client(this));
     connect(ekosLiveClient.get(), &EkosLive::Client::connected, [this]()
@@ -1436,7 +1446,9 @@ void Manager::deviceConnected()
 
 void Manager::deviceDisconnected()
 {
-    ISD::GDInterface * dev = static_cast<ISD::GDInterface *>(sender());
+    // Use qobject_cast (not static_cast) so a sender() of the wrong/stale type yields
+    // nullptr instead of an invalid pointer that later dereferences would crash on.
+    ISD::GDInterface * dev = qobject_cast<ISD::GDInterface *>(sender());
 
     Ekos::CommunicationStatus previousStatus = m_indiStatus;
 
