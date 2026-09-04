@@ -143,6 +143,31 @@ presentarsi oltre i 3s (in tal caso il timer va allungato o va cercata la vera
 causa della race con un core dump: `ulimit -c unlimited` poi
 `gdb kstars core` dopo il crash).
 
+### Osservazioni dalla sessione 2026-09-03 (da tenere presenti)
+
+Elementi che NON quadrano con la sola ipotesi "click troppo presto all'avvio",
+quindi la causa potrebbe non essere (solo) quella:
+
+- Un crash è avvenuto **mentre si configurava lo Scheduler**, con tutto già
+  connesso e fermo da tempo — quindi non in fase di avvio/connessione iniziale.
+- Dopo un crash, **riconnettere causa crash immediato** finché non si riavvia
+  la macchina: suggerisce uno stato sporco lasciato indietro (indiserver orfano
+  o socket ancora aperto), non solo una race di avvio.
+- Il crash si presenta **anche senza il driver WatchDog** nel profilo: WatchDog
+  non è la causa, semmai un acceleratore.
+- La build testata era la v1.8.3 (tag `031516a`), che **include già** entrambe
+  le fix null-check su `manager.cpp` → esiste almeno un terzo punto di deref
+  non protetto ancora da trovare.
+- Sequenza in console subito prima del segfault: ripetuti
+  `Dispatch command error(-1): INDI: <delProperty> no such device EQMod AzEq6`
+  (ogni proprietà due volte: DEBUG_LEVEL, LOGGING_LEVEL, LOG_OUTPUT), poi i
+  relativi `setSwitchVector` con stato Ok, poi `Errore di segmentazione`.
+  Il pattern doppio suggerisce due connessioni client che configurano lo stesso
+  device in parallelo.
+- Sessione notturna del 2026-09-03 lanciata sotto gdb per catturare un
+  `bt full` in caso di crash: **verificare l'esito e allegare qui il backtrace**
+  se disponibile.
+
 ---
 
 ## 3. [APERTO] Menu planetario residuo nel tab Ekos
