@@ -183,6 +183,62 @@ visibility management for planetarium tab in KStars UI" — modifica
 `kstars.h`, `kstarsinit.cpp` e `Tests/kstars_ui/test_kstars_startup.cpp`.
 Rivedere quella logica di show/hide prima di scrivere codice nuovo.
 
+### Aggiornamento 2026-09-05: toolbar INDI fissa e toolbar Planetario non ripristinate
+
+Nuova riproduzione osservata:
+
+- nella tab Ekos resta visibile una toolbar/riga di strumenti INDI;
+- passando alla tab Planetario, le toolbar Planetario (main/view) restano
+  spente invece di riapparire;
+- dal menu Impostazioni è possibile accendere/spegnere le toolbar, ma al cambio
+  tab la situazione viene nuovamente forzata: INDI resta visibile in Ekos e le
+  altre toolbar restano spente in Planetario;
+- la toolbar Dome è l'eccezione osservata: non deve essere nascosta o
+  ripristinata automaticamente insieme alle toolbar Planetario.
+
+### Causa probabile già individuata
+
+Il commit `7fa3a00` ha introdotto `KStars::updatePlanetariumToolbars()`:
+
+```cpp
+const bool planetariumActive = m_MainTabWidget->currentWidget() == m_SkyMap;
+toolBar("kstarsToolBar")->setVisible(
+   planetariumActive && actionCollection()->action("show_mainToolBar")->isChecked());
+toolBar("viewToolBar")->setVisible(
+   planetariumActive && actionCollection()->action("show_viewToolBar")->isChecked());
+```
+
+La funzione gestisce soltanto `kstarsToolBar` e `viewToolBar`. Non gestisce la
+toolbar INDI e non conserva/ripristina separatamente lo stato precedente delle
+toolbar. Il cambio tab aggiorna quindi solo due toolbar, mentre la toolbar INDI
+può rimanere visibile e le QAction Planetario possono restare desincronizzate
+dalla visibilità reale.
+
+### Indagine obbligatoria prima del fix
+
+1. Identificare tutti i `QToolBar` creati da `setupGUI()` e il nome esatto della
+  toolbar INDI; non assumere che `kstarsToolBar` sia la toolbar INDI.
+2. Mappare ogni toolbar alla rispettiva QAction `show_*` e distinguere toolbar
+  Planetario, INDI/Ekos e Dome.
+3. Verificare se la toolbar INDI viene resa visibile da `slotINDIToolBar()`,
+  dalla UI XML, da `setupGUI()` o dal menu di configurazione.
+4. Definire una sola funzione di sincronizzazione tab→toolbar che:
+  - nasconda soltanto le toolbar Planetario quando la tab attiva è Ekos;
+  - ripristini in Planetario lo stato scelto dall'utente nelle QAction;
+  - non tocchi la toolbar Dome;
+  - non alteri permanentemente lo stato delle QAction quando cambia tab.
+5. Testare la matrice completa: avvio su Ekos, Ekos→Planetario, Planetario→Ekos,
+  toggle dal menu Impostazioni in entrambe le tab, riavvio e toolbar Dome.
+6. Aggiungere una verifica UI/test o almeno log diagnostici che riportino tab
+  attiva, QAction checked e visibilità reale di ogni toolbar coinvolta.
+
+### Errore da non ripetere
+
+Non aggiungere semplicemente un'altra chiamata a `setVisible(false)` per la
+toolbar INDI: il problema è la sincronizzazione tra stato delle QAction,
+visibilità reale e cambio tab. Una correzione locale rischia di creare un'altra
+combinazione incoerente quando l'utente usa il menu Impostazioni.
+
 ---
 
 ## 4. [APERTO] Modulo camera - indicatore colore errato
@@ -191,9 +247,162 @@ Nel modulo camera l'indicatore di colore viene visualizzato spento/errato.
 Nessun tentativo di fix precedente trovato nella history (ricerca su
 `CCD_.*color` / `colore` / `filtro colore` senza risultati): punto vergine.
 
+### Aggiornamento 2026-09-05: temperatura errata a cooler spento e cooler non sincronizzato
+
+Nuovi sintomi osservati:
+
+- con cooler spento, Capture mostra una temperatura assurda, ad esempio circa
+  `0.60 °C`, mentre il sensore reale è circa `20 °C`;
+- impostando un target, ad esempio `-10 °C`, il cooler spesso non parte al
+  primo comando e il modulo continua a mostrare `Cooler Off`;
+- accendendo il cooler dal pannello INDI, il cooler parte realmente ma Capture
+  non aggiorna il proprio stato e continua a mostrare il pulsante `Cooler Off`;
+- il problema riguarda quindi sia il valore di temperatura visualizzato sia la
+  sincronizzazione del toggle `Cooler On/Off` tra INDI, CCD e Capture.
+
+### History da considerare prima di modificare
+
+Sono già esistiti molti tentativi, alcuni poi revertiti:
+
+- `487d990` - cooler toggle basato sulla temperatura reale quando disabilitato;
+- `d9eb989`, `c387feb`, `b0d59ba` - mostrare temperatura reale o `N/A` in
+  base a cooler/controllo disponibile;
+- `331a6ff` - revert esplicito alla logica funzionante v1.7.7 perché le patch
+  precedenti rompevano temperatura, `N/A` e risposta del cooler;
+- `7504c5a` - spostamento dell'avvio raffreddamento del CCD nella fase startup
+  Scheduler per partire subito;
+- `ea38225` - refactoring del controllo cooler nello Scheduler via QDBus;
+- `7333053` - inizializzazione di `cameraTemperatureN` dalla lettura corrente
+  e sincronizzazione solo quando il campo è read-only.
+
+### Punti del codice da verificare
+
+1. `Capture::checkCCD()`:
+   - oggi inizializza `temperatureOUT` e `cameraTemperatureN` tramite
+     `getTemperature()`;
+   - inizializza i pulsanti con `currentCCD->isCoolerOn()`;
+   - verificare se il primo valore arriva prima che `CCD_TEMPERATURE` e
+     `CCD_COOLER` siano completamente definiti, causando il valore fittizio.
+2. `Capture::updateCCDTemperature()`:
+   - aggiorna sempre `temperatureOUT`;
+   - aggiorna il campo target solo se è read-only;
+   - verificare che `value` sia una lettura reale e non un default/transitorio
+     del driver durante la connessione.
+3. `Capture::setCoolerToggled()` e signal `ISD::CCD::coolerToggled`:
+   - devono aggiornare sempre entrambi i radio button in Capture;
+   - devono riflettere anche un cambio fatto direttamente dal pannello INDI;
+   - evitare di inviare un secondo comando al cooler quando il signal è solo
+     una notifica di stato.
+4. `ISD::CCD::setCoolerControl()`, `isCoolerOn()` e
+   `indiccd.cpp` (`CCD_COOLER`): verificare che stato e proprietà siano letti
+   dal vettore INDI corrente, non da uno stato cache non aggiornato.
+5. Sequenza target `-10 °C`:
+   - distinguere il comando di accensione del cooler dal comando di setpoint;
+   - attendere la conferma INDI (`CCD_COOLER`/`CCD_TEMPERATURE`) prima di
+     considerare la preparazione completata;
+   - se il primo comando arriva prima che la proprietà sia pronta, ritentare
+     in modo limitato e loggare il motivo, senza dichiarare subito `Cooler Off`.
+6. Scheduler/QDBus (`ea38225`, `7504c5a`): verificare che il controllo cooler
+   non mantenga uno stato parallelo diverso da Capture e che il comando non
+   venga inviato due volte durante startup.
+
+### Test obbligatori
+
+- collegare la camera con cooler spento e confrontare Capture, pannello INDI e
+  valore reale del sensore;
+- accendere il cooler dal pannello INDI e verificare che Capture passi a
+  `Cooler On` senza premere pulsanti in Capture;
+- impostare `-10 °C` da Capture e verificare il primo comando, il cambio stato
+  del toggle e il raggiungimento del setpoint;
+- spegnere il cooler da INDI mentre Capture è aperto e verificare il ritorno a
+  `Cooler Off`;
+- ripetere dopo disconnessione/riconnessione della camera e dopo riavvio del
+  profilo Ekos;
+- registrare i valori raw delle proprietà `CCD_TEMPERATURE` e `CCD_COOLER`
+  nel log INDI per distinguere un problema UI da un problema del driver.
+
+### Regola di sicurezza
+
+Non mostrare `0`, `0.60` o un altro valore placeholder come temperatura reale
+durante la fase in cui la proprietà INDI non è ancora valida. Mostrare lo stato
+non disponibile e attendere la prima lettura valida è preferibile a presentare
+una temperatura falsa o a dichiarare il cooler spento mentre è acceso.
+
 ---
 
-## 5. [APERTO] Scheduler ordina per nome oggetto invece che per ora di partenza
+## 5. [APERTO] Scheduler: avvio raffreddamento CCD prima di ogni altra fase
+
+Lo Scheduler deve avviare il raffreddamento della camera all'inizio della
+procedura di startup, prima di dome/unpark/altre operazioni, portando il CCD a
+`-10 °C` oppure al target configurato nella sequenza Capture. Deve farlo solo
+quando la camera selezionata espone davvero il controllo cooler.
+
+### Sintomo osservato 2026-09-05
+
+La camera ha fisicamente il cooler, ma all'avvio Scheduler scrive:
+
+```text
+Cooling CCD skipped: current camera has no cooler control.
+```
+
+La checkbox cooling viene quindi disabilitata anche se il driver INDI supporta
+`CCD_COOLER`.
+
+### Causa probabile nel codice attuale
+
+In `Scheduler::checkStartupState()` il codice chiama via QDBus:
+
+```cpp
+captureInterface->call(QDBus::AutoDetect, "hasCoolerControl")
+```
+
+In `Capture::hasCoolerControl()` la risposta è semplicemente:
+
+```cpp
+return currentCCD && currentCCD->hasCoolerControl();
+```
+
+Se `currentCCD` non è ancora stato selezionato/inizializzato quando Scheduler
+fa il primo controllo, Capture restituisce `false` anche se la camera reale ha
+il cooler. Inoltre Scheduler imposta comunque `m_CaptureReady = true`, quindi
+non riprova più quando Capture aggancia la camera. Il messaggio "no cooler
+control" confonde quindi due stati diversi:
+
+- camera pronta e senza proprietà `CCD_COOLER`;
+- camera non ancora pronta/selezionata.
+
+### Soluzione da progettare
+
+1. Distinguere `camera non pronta` da `camera senza cooler`: se `currentCCD`
+  non esiste ancora, restare in attesa e non disabilitare definitivamente la
+  checkbox.
+2. Rieseguire la detection quando Capture emette la selezione/connessione della
+  camera o quando `CCD_COOLER` diventa disponibile.
+3. Impostare `m_CaptureReady = true` solo dopo che Capture è pronto e la
+  capacità cooler è stata determinata, non dopo una risposta `false` dovuta a
+  inizializzazione incompleta.
+4. Quando il cooler esiste, inviare prima il target (`setCCDTemperature`) e poi
+  il comando di attivazione (`setCoolerControl(true)`), attendendo la conferma
+  INDI prima di continuare lo startup.
+5. Usare il target della sequenza Capture se `enforceTemperature` è attivo;
+  altrimenti usare il default di acclimatazione `-10 °C`.
+6. Se il driver non espone `CCD_COOLER`, loggare "camera pronta senza controllo
+  cooler"; se Capture non è pronto, loggare "camera non ancora pronta".
+
+### Test obbligatori
+
+- camera con cooler connessa prima di avviare Scheduler;
+- camera con cooler connessa dopo l'apertura di Scheduler;
+- camera senza cooler;
+- avvio con target Capture `-10 °C`;
+- verifica che il raffreddamento inizi prima di dome/unpark;
+- verifica che il cooler si attivi al primo comando e che Capture e pannello
+  INDI mostrino lo stesso stato;
+- disconnessione/riconnessione della camera durante la fase startup.
+
+---
+
+## 6. [APERTO] Scheduler ordina per nome oggetto invece che per ora di partenza
 
 Regressione: la coda dei job viene ordinata per nome oggetto e non per ora di
 partenza come avveniva prima.
@@ -214,7 +423,7 @@ partenza come avveniva prima.
 
 ---
 
-## 6. [APERTO] Guida tecnica Scheduler da aggiornare
+## 7. [APERTO] Guida tecnica Scheduler da aggiornare
 
 Il testo HTML "GUIDA TECNICA SCHEDULER ASTROPI" incorporato in `scheduler.cpp`
 va aggiornato con le ultime correzioni/feature. Verificare in particolare che
@@ -224,7 +433,49 @@ precedenza.
 
 ---
 
-## 7. [DA DECIDERE] AstroPi system: da bash+zenity a Python?
+## 8. [APERTO] Logo AstroPi dello Scheduler deformato/ingrandito
+
+Regressione UI osservata il 2026-09-05: nel tab Scheduler il logo AstroPi
+appare enorme, occupa quasi tutta la larghezza del pannello e viene tagliato,
+mentre prima aveva una dimensione contenuta. Vedi screenshot allegato:
+`AstroPi Scheduler Guide`, logo rosso sovradimensionato sopra il pulsante
+`Mostra Guida Tecnica`.
+
+### Obiettivo
+
+- mantenere il logo a dimensione contenuta e stabile;
+- impedire che la QLabel o il layout lo allarghino automaticamente quando
+  Scheduler è integrato nella tab Ekos;
+- verificare il comportamento sia nella tab Ekos sia quando si apre il
+  Planetario/Scheduler dopo un cambio tab;
+- non risolvere il problema deformando il pannello guida o introducendo una
+  dimensione fissa che rompa le risoluzioni più piccole.
+
+### Indagine obbligatoria
+
+1. Cercare in `scheduler.ui`, `scheduler.cpp` e nelle UI della guida il widget
+  che contiene il logo AstroPi e la proprietà `pixmap`/risorsa usata.
+2. Controllare `QLabel::sizePolicy`, `minimumSize`, `maximumSize`,
+  `scaledContents`, `alignment`, stretch del layout e `QSizePolicy::Ignored`.
+3. Verificare se il logo viene caricato con `setPixmap()` senza una dimensione
+  massima o se viene scalato usando la larghezza disponibile del gruppo.
+4. Confrontare la geometria prima/dopo l'integrazione Ekos+Planetario e cercare
+  commit che abbiano modificato il layout della Scheduler Guide.
+5. Testare almeno: avvio su Ekos, passaggio Planetario→Ekos, ridimensionamento
+  finestra, spostamento dei separatori mobili e apertura/chiusura della guida.
+6. Usare una dimensione derivata dalla risorsa/aspect ratio e limiti responsivi;
+  evitare di impostare solo una larghezza enorme o di usare `scaledContents`
+  senza verificare l'altezza.
+
+### Stato
+
+Non applicare ancora una correzione: prima identificare il widget responsabile
+e riprodurre il resize che causa l'espansione. La foto mostra che il problema
+è di layout/geometria, non della risorsa grafica AstroPi.
+
+---
+
+## 9. [DA DECIDERE] AstroPi system: da bash+zenity a Python?
 
 `bin/AstroPi.sh` (e gli altri `bin/*.sh`) sono bash + zenity. Valutare la
 conversione a Python con GUI, per maggiore flessibilità e compatibilità con le
@@ -236,6 +487,6 @@ rimandare alla 1.8.5 ("definitiva") insieme al refactoring generale.
 
 ---
 
-## 8. [DA DEFINIRE] Altri punti aperti
+## 10. [DA DEFINIRE] Altri punti aperti
 
 Aggiungere qui eventuali altri interventi individuati per la 1.8.4.

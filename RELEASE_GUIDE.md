@@ -22,7 +22,7 @@ pubblicata e marcata come **pre-release**.
   **Set as a pre-release** attiva e scarica il tag associato.
 
 L'installer scarica l'archivio del tag, ad esempio
-`v1.8.3.tar.gz`. Percio il tag deve indicare esattamente il commit che si vuole
+`v1.8.4.tar.gz`. Percio il tag deve indicare esattamente il commit che si vuole
 installare.
 
 ## Prima di pubblicare
@@ -51,20 +51,20 @@ push: il suo URL di push e disabilitato.
 Usare una Beta per distribuire una versione in prova senza renderla
 l'aggiornamento stabile.
 
-1. Scegliere una versione nuova, per esempio `1.8.3`.
+1. Scegliere una versione nuova, per esempio `1.8.4`.
 2. Creare e pubblicare il tag sul commit corrente:
 
    ```powershell
-   git tag -a v1.8.3 -m "AstroPi System v1.8.3"
-   git push upstream v1.8.3
-   git ls-remote --tags upstream refs/tags/v1.8.3 refs/tags/v1.8.3^{}
+    git tag -a v1.8.4 -m "AstroPi System v1.8.4"
+    git push upstream v1.8.4
+    git ls-remote --tags upstream refs/tags/v1.8.4 refs/tags/v1.8.4^{}
    ```
 
 3. Aprire la pagina delle release:
    `https://github.com/Andre87osx/AstroPi-system/releases/new`
-4. In **Choose a tag**, selezionare `v1.8.3`. Non creare un tag diverso dalla
+4. In **Choose a tag**, selezionare `v1.8.4`. Non creare un tag diverso dalla
    pagina GitHub.
-5. Impostare il titolo, ad esempio `AstroPi System v1.8.3 Beta`.
+5. Impostare il titolo, ad esempio `AstroPi System v1.8.4 Beta`.
 6. Scrivere note di rilascio concise: novita, correzioni, rischi noti e
    istruzioni speciali per l'aggiornamento.
 7. Attivare **Set as a pre-release** e non attivare **Set as a draft**.
@@ -94,23 +94,23 @@ System update**.
 
 Se dopo la Beta sono state fatte correzioni, creare un nuovo tag con i comandi
 del capitolo precedente, quindi creare la GitHub Release senza attivare
-**Set as a pre-release**. Esempio: dopo `v1.8.3` Beta, una correzione puo essere
-pubblicata come `v1.8.4` stabile.
+**Set as a pre-release**. Esempio: dopo `v1.8.4` Beta, una correzione puo essere
+pubblicata come `v1.8.5` stabile.
 
 ## Verifica prima e dopo
 
 Prima di creare una nuova versione, verificare che il tag non esista gia:
 
 ```powershell
-git ls-remote --tags upstream refs/tags/v1.8.3 refs/tags/v1.8.3^{}
+git ls-remote --tags upstream refs/tags/v1.8.4 refs/tags/v1.8.4^{}
 ```
 
 Dopo il push, confrontare il tag con il commit locale:
 
 ```powershell
 git rev-parse HEAD
-git rev-parse v1.8.3
-git diff --quiet v1.8.3 HEAD
+git rev-parse v1.8.4
+git diff --quiet v1.8.4 HEAD
 ```
 
 I primi due hash devono coincidere e l'ultimo comando deve terminare senza
