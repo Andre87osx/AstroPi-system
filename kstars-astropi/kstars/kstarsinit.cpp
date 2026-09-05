@@ -854,7 +854,6 @@ void KStars::datainitFinished()
     // construction (buildGUI) raced with startup and crashed on device connect.
     QTimer::singleShot(0, this, [this]()
     {
-        setupEkosTab();
         Ekos::Manager::Instance()->initialize();
     });
 #endif
@@ -979,6 +978,9 @@ void KStars::buildGUI()
     // Setup GUI from the settings file
     // UI tests provide the default settings file from the resources explicitly file to render UI properly
     setupGUI(StandardWindowOptions(Default), m_KStarsUIResource);
+#ifdef HAVE_INDI
+    setupEkosTab();
+#endif
     updatePlanetariumToolbars();
 
     //get focus of keyboard and mouse actions (for example zoom in with +)
