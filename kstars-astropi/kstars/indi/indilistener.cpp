@@ -132,16 +132,20 @@ void INDIListener::addClient(ClientManager *cm)
 
     connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice, Qt::BlockingQueuedConnection);
     //connect(cm, &ClientManager::newINDIDevice, this, &INDIListener::processDevice);
-    connect(cm, &ClientManager::newINDIProperty, this, &INDIListener::registerProperty);
+    connect(cm, &ClientManager::newINDIProperty, this, &INDIListener::registerProperty, Qt::BlockingQueuedConnection);
 
     connect(cm, &ClientManager::removeINDIDevice, this, &INDIListener::removeDevice);
-    //connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty, Qt::BlockingQueuedConnection);
-    connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty);
+    // BlockingQueuedConnection: the INDI client thread can free/redefine these raw property
+    // pointers as soon as it parses the next XML message. A plain queued connection lets it
+    // race ahead of the GUI thread and delete the property before it's processed here, causing
+    // a use-after-free (see INDI_E::syncSwitch crash). Blocking forces the client thread to
+    // wait until this side is done with the current pointer.
+    connect(cm, &ClientManager::removeINDIProperty, this, &INDIListener::removeProperty, Qt::BlockingQueuedConnection);
 
-    connect(cm, &ClientManager::newINDISwitch, this, &INDIListener::processSwitch);
-    connect(cm, &ClientManager::newINDIText, this, &INDIListener::processText);
-    connect(cm, &ClientManager::newINDINumber, this, &INDIListener::processNumber);
-    connect(cm, &ClientManager::newINDILight, this, &INDIListener::processLight);
+    connect(cm, &ClientManager::newINDISwitch, this, &INDIListener::processSwitch, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDIText, this, &INDIListener::processText, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDINumber, this, &INDIListener::processNumber, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDILight, this, &INDIListener::processLight, Qt::BlockingQueuedConnection);
     connect(cm, &ClientManager::newINDIBLOB, this, &INDIListener::processBLOB);
     connect(cm, &ClientManager::newINDIUniversalMessage, this, &INDIListener::processUniversalMessage);
 }
