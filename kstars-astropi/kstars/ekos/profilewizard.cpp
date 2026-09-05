@@ -111,7 +111,7 @@ void ProfileWizard::reset()
     useJoystick         = false;
     useRemoteAstrometry = false;
     useSkySafari        = false;
-    useWatchDog         = false;
+    useWatchDog         = true;
     useGuiderType       = INTERNAL_GUIDER;
 
     host.clear();
@@ -130,7 +130,9 @@ void ProfileWizard::processLocalEquipment()
     useInternalServer = true;
     useJoystickCheck->setEnabled(true);
     useRemoteAstrometryCheck->setEnabled(false);
-    useWatchDogCheck->setEnabled(false);
+    // AstroPi: WatchDog survives a KStars crash (runs inside indiserver), so enable
+    // it by default even for local equipment, not just remote setups.
+    useWatchDogCheck->setEnabled(true);
     useSkySafariCheck->setEnabled(true);
     wizardContainer->setCurrentIndex(CREATE_PROFILE);
 #endif

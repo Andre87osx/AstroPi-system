@@ -264,12 +264,18 @@ void GUIManager::buildDevice(DeviceInfo *di)
 
     INDI_D *gdm = new INDI_D(di->getBaseDevice(), cm);
 
-    connect(cm, &ClientManager::newINDIProperty, gdm, &INDI_D::buildProperty);
-    connect(cm, &ClientManager::removeINDIProperty, gdm, &INDI_D::removeProperty);
-    connect(cm, &ClientManager::newINDISwitch, gdm, &INDI_D::updateSwitchGUI);
-    connect(cm, &ClientManager::newINDIText, gdm, &INDI_D::updateTextGUI);
-    connect(cm, &ClientManager::newINDINumber, gdm, &INDI_D::updateNumberGUI);
-    connect(cm, &ClientManager::newINDILight, gdm, &INDI_D::updateLightGUI);
+    // BlockingQueuedConnection (like newINDIDevice/removeINDIDevice above): the INDI client
+    // thread owns and can free/redefine these raw property pointers as soon as it parses the
+    // next XML message. A plain queued connection lets the client thread race ahead and delete
+    // (or replace, e.g. on redefine) the property before the GUI thread gets to process the
+    // update, causing a use-after-free crash in INDI_E::syncSwitch/syncNumber/etc. Blocking
+    // forces the client thread to wait until the GUI has finished with the current pointer.
+    connect(cm, &ClientManager::newINDIProperty, gdm, &INDI_D::buildProperty, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::removeINDIProperty, gdm, &INDI_D::removeProperty, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDISwitch, gdm, &INDI_D::updateSwitchGUI, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDIText, gdm, &INDI_D::updateTextGUI, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDINumber, gdm, &INDI_D::updateNumberGUI, Qt::BlockingQueuedConnection);
+    connect(cm, &ClientManager::newINDILight, gdm, &INDI_D::updateLightGUI, Qt::BlockingQueuedConnection);
     connect(cm, &ClientManager::newINDIBLOB, gdm, &INDI_D::updateBLOBGUI);
 
     connect(cm, &ClientManager::newINDIMessage, gdm, &INDI_D::updateMessageLog);

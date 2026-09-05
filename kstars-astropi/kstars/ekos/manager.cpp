@@ -84,7 +84,7 @@ Manager *Manager::_Manager = nullptr;
 Manager *Manager::Instance()
 {
     if (_Manager == nullptr)
-        _Manager = new Manager(Options::independentWindowEkos() ? nullptr : KStars::Instance());
+        _Manager = new Manager(KStars::Instance());
 
     return _Manager;
 }
@@ -96,29 +96,15 @@ void Manager::release()
 
 Manager::Manager(QWidget * parent) : QDialog(parent)
 {
-#ifdef Q_OS_OSX
-
-    if (Options::independentWindowEkos())
-        setWindowFlags(Qt::Window);
-    else
-    {
-        setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
-        connect(QApplication::instance(), SIGNAL(applicationStateChanged(Qt::ApplicationState)), this,
-                SLOT(changeAlwaysOnTop(Qt::ApplicationState)));
-    }
-#else
-    if (Options::independentWindowEkos())
-        //setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
-        setWindowFlags(Qt::Window);
-#endif
+    setWindowFlags(Qt::Widget);
     setupUi(this);
     // Collega QLabel totalRMSLabel
     totalRMSLabel = findChild<QLabel*>("totalRMSLabel");
     if (totalRMSLabel)
         totalRMSLabel->setText("RMS: --");
 
-    // position the vertical splitter by 2/3
-    deviceSplitter->setSizes(QList<int>({24000, 8000}));
+    // Default splitter ratio: 2/3 image preview, 1/3 analysis panel.
+    deviceSplitter->setSizes(QList<int>({20000, 10000}));
 
     qRegisterMetaType<Ekos::CommunicationStatus>("Ekos::CommunicationStatus");
     qDBusRegisterMetaType<Ekos::CommunicationStatus>();
@@ -188,6 +174,16 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     // Connect/Disconnect INDI devices
     connect(connectB, &QPushButton::clicked, this, &Ekos::Manager::connectDevices);
     connect(disconnectB, &QPushButton::clicked, this, &Ekos::Manager::disconnectDevices);
+
+    // Ekos is now built as a tab at KStars startup (rather than lazily on first open), so it
+    // is clickable the instant the main window appears, before KStarsData/driver-list startup
+    // work has settled. Clicking Start immediately races with that and crashes; briefly block
+    // it to match the delay users must otherwise wait out manually.
+    processINDIB->setEnabled(false);
+    QTimer::singleShot(3000, this, [this]()
+    {
+        processINDIB->setEnabled(true);
+    });
 
     ekosLiveB->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     ekosLiveClient.reset(new EkosLive::Client(this));
@@ -382,8 +378,16 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
     summaryPreview->createFloatingToolBar();
     summaryPreview->setCursorMode(FITSView::dragCursor);
     QVBoxLayout * vlayout = new QVBoxLayout();
+    vlayout->setContentsMargins(0, 0, 0, 0);
+    vlayout->setSpacing(0);
     vlayout->addWidget(summaryPreview.get());
     previewWidget->setLayout(vlayout);
+
+    connect(deviceSplitter, &QSplitter::splitterMoved, this, [this]()
+    {
+        if (summaryPreview && summaryPreview->imageData())
+            QTimer::singleShot(0, summaryPreview.get(), &FITSView::ZoomToFit);
+    });
 
     // JM 2019-01-19: Why cloud images depend on summary preview?
     //    connect(summaryPreview.get(), &FITSView::loaded, [&]()
@@ -418,19 +422,6 @@ Manager::Manager(QWidget * parent) : QDialog(parent)
         button->setAutoDefault(false);
 
 
-    resize(Options::ekosWindowWidth(), Options::ekosWindowHeight());
-}
-
-void Manager::changeAlwaysOnTop(Qt::ApplicationState state)
-{
-    if (isVisible())
-    {
-        if (state == Qt::ApplicationActive)
-            setWindowFlags(Qt::Window | Qt::WindowStaysOnTopHint);
-        else
-            setWindowFlags(windowFlags() & ~Qt::WindowStaysOnTopHint);
-        show();
-    }
 }
 
 Manager::~Manager()
@@ -440,30 +431,11 @@ Manager::~Manager()
 
 void Manager::closeEvent(QCloseEvent * event)
 {
-    //    QAction * a = KStars::Instance()->actionCollection()->action("show_ekos");
-    //    a->setChecked(false);
-
-    // 2019-02-14 JM: Close event, for some reason, make all the children disappear
-    // when the widget is shown again. Applying a workaround here
-
     event->ignore();
-    hide();
-}
-
-void Manager::hideEvent(QHideEvent * /*event*/)
-{
-    Options::setEkosWindowWidth(width());
-    Options::setEkosWindowHeight(height());
-
-    QAction * a = KStars::Instance()->actionCollection()->action("show_ekos");
-    a->setChecked(false);
 }
 
 void Manager::showEvent(QShowEvent * /*event*/)
 {
-    QAction * a = KStars::Instance()->actionCollection()->action("show_ekos");
-    a->setChecked(true);
-
     // Just show the profile wizard ONCE per session
     if (profileWizardLaunched == false && profiles.count() == 1)
     {
@@ -474,6 +446,9 @@ void Manager::showEvent(QShowEvent * /*event*/)
 
 void Manager::resizeEvent(QResizeEvent *)
 {
+    if (summaryPreview && summaryPreview->imageData())
+        QTimer::singleShot(0, summaryPreview.get(), &FITSView::ZoomToFit);
+
     updateFocusDetailView();
     updateGuideDetailView();
 }
@@ -1376,14 +1351,18 @@ void Manager::deviceConnected()
     disconnectB->setEnabled(true);
     processINDIB->setEnabled(false);
 
+    ISD::GDInterface * dev = qobject_cast<ISD::GDInterface *>(sender());
+    // Sender's device may already be gone (rapid disconnect/reconnect race, e.g. USB dropout); avoid a null deref.
+    if (!dev)
+        return;
+
     Ekos::CommunicationStatus previousStatus = m_indiStatus;
 
     if (Options::verboseLogging())
     {
-        ISD::GDInterface * device = qobject_cast<ISD::GDInterface *>(sender());
-        qCInfo(KSTARS_EKOS) << device->getDeviceName()
-                            << "Version:" << device->getDriverVersion()
-                            << "Interface:" << device->getDriverInterface()
+        qCInfo(KSTARS_EKOS) << dev->getDeviceName()
+                            << "Version:" << dev->getDriverVersion()
+                            << "Interface:" << dev->getDriverInterface()
                             << "is connected.";
     }
 
@@ -1408,8 +1387,6 @@ void Manager::deviceConnected()
 
     if (previousStatus != m_indiStatus)
         emit indiStatusChanged(m_indiStatus);
-
-    ISD::GDInterface * dev = static_cast<ISD::GDInterface *>(sender());
 
     if (dev->getDriverInterface() & INDI::BaseDevice::TELESCOPE_INTERFACE)
     {
@@ -1469,7 +1446,9 @@ void Manager::deviceConnected()
 
 void Manager::deviceDisconnected()
 {
-    ISD::GDInterface * dev = static_cast<ISD::GDInterface *>(sender());
+    // Use qobject_cast (not static_cast) so a sender() of the wrong/stale type yields
+    // nullptr instead of an invalid pointer that later dereferences would crash on.
+    ISD::GDInterface * dev = qobject_cast<ISD::GDInterface *>(sender());
 
     Ekos::CommunicationStatus previousStatus = m_indiStatus;
 
@@ -1934,12 +1913,17 @@ void Manager::processNewNumber(INumberVectorProperty * nvp)
 void Manager::processDeleteProperty(const QString &name)
 {
     ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
+    // Sender's device may already be gone (stale/queued signal racing a device removal); avoid a null deref.
+    if (!deviceInterface)
+        return;
     ekosLiveClient.get()->message()->processDeleteProperty(deviceInterface->getDeviceName(), name);
 }
 
 void Manager::processNewProperty(INDI::Property prop)
 {
     ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
+    if (!deviceInterface)
+        return;
 
     settleTimer.start();
 
@@ -1983,9 +1967,13 @@ void Manager::processNewProperty(INDI::Property prop)
         {
             // Check if we need to enable debug logging for the INDI drivers.
             auto debugSP = prop->getSwitch();
-            debugSP->at(0)->setState(ISS_ON);
-            debugSP->at(1)->setState(ISS_OFF);
-            deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugSP);
+            // Property may already be deleted driver-side (delProperty race), getSwitch() then returns null.
+            if (debugSP && debugSP->count() >= 2)
+            {
+                debugSP->at(0)->setState(ISS_ON);
+                debugSP->at(1)->setState(ISS_OFF);
+                deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugSP);
+            }
         }
     }
 
@@ -1998,10 +1986,13 @@ void Manager::processNewProperty(INDI::Property prop)
         {
             // Turn on everything
             auto debugLevel = prop->getSwitch();
-            for (auto &it : *debugLevel)
-                it.setState(ISS_ON);
+            if (debugLevel)
+            {
+                for (auto &it : *debugLevel)
+                    it.setState(ISS_ON);
 
-            deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugLevel);
+                deviceInterface->getDriverInfo()->getClientManager()->sendNewSwitch(debugLevel);
+            }
         }
     }
 
@@ -2391,7 +2382,11 @@ void Manager::initCapture()
     if (!capturePI)
     {
         capturePI = new QProgressIndicator(captureProcess.get());
-        captureGroupLayout->insertWidget(-1, capturePI);
+        const int captureStatusIndex = mountStatusLayout->indexOf(captureStatus);
+        if (captureStatusIndex >= 0)
+            mountStatusLayout->insertWidget(captureStatusIndex + 1, capturePI);
+        else
+            mountStatusLayout->insertWidget(-1, capturePI);
     }
 
     for (auto &device : findDevices(KSTARS_AUXILIARY))
@@ -3076,7 +3071,11 @@ void Manager::initMount()
     if (!mountPI)
     {
         mountPI = new QProgressIndicator(mountProcess.get());
-        mountStatusLayout->insertWidget(-1, mountPI);
+        const int mountStatusIndex = mountStatusLayout->indexOf(mountStatus);
+        if (mountStatusIndex >= 0)
+            mountStatusLayout->insertWidget(mountStatusIndex + 1, mountPI);
+        else
+            mountStatusLayout->insertWidget(-1, mountPI);
     }
 
     mountGroup->setEnabled(true);
@@ -3733,6 +3732,7 @@ void Manager::updateCaptureProgress(Ekos::SequenceJob * job, const QSharedPointe
         if (Options::useSummaryPreview())
         {
             summaryPreview->loadData(data);
+            QTimer::singleShot(0, summaryPreview.get(), &FITSView::ZoomToFit);
             ekosLiveClient.get()->media()->sendPreviewImage(summaryPreview.get(), uuid);
         }
         else
@@ -4118,6 +4118,8 @@ void Manager::updateDebugInterfaces()
             continue;
 
         auto debugSP = debugProp->getSwitch();
+        if (!debugSP || debugSP->count() < 2)
+            continue;
 
         // Check if the debug interface matches the driver device class
         if ( ( opsLogs->getINDIDebugInterface() & device->getDriverInterface() ) &&
@@ -4144,9 +4146,14 @@ void Manager::updateDebugInterfaces()
 
 void Manager::watchDebugProperty(ISwitchVectorProperty * svp)
 {
+    if (svp == nullptr || svp->sp == nullptr || svp->nsp < 2)
+        return;
+
     if (!strcmp(svp->name, "DEBUG"))
     {
         ISD::GenericDevice * deviceInterface = qobject_cast<ISD::GenericDevice *>(sender());
+        if (!deviceInterface)
+            return;
 
         // We don't process pure general interfaces
         if (deviceInterface->getDriverInterface() == INDI::BaseDevice::GENERAL_INTERFACE)
@@ -4315,7 +4322,7 @@ void Manager::connectModules()
     {
         connect(focusProcess.get(), &Ekos::Focus::newStatus, alignProcess.get(), &Ekos::Align::setFocusStatus,
                 Qt::UniqueConnection);
-        connect(alignProcess.get(), &Ekos::Align::newSolution, focusProcess.get(), &Ekos::Focus::syncHFRGuideFromAlignSolution,
+        connect(alignProcess.get(), &Ekos::Align::newSolution, focusProcess.get(), &Ekos::Focus::syncHFRHelperFromAlignSolution,
             Qt::UniqueConnection);
     }
 

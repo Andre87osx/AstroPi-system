@@ -6285,6 +6285,9 @@ IPState Capture::processPreCaptureCalibrationStage()
 
         case FRAME_FLAT:
             return checkFlatFramePendingTasks();
+
+        case FRAME_NONE:
+            return IPS_OK;
     }
 
     return IPS_OK;

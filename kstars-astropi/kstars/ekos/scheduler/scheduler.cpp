@@ -41,6 +41,7 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 #include <QResizeEvent>
+#include <cmath>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -243,17 +244,14 @@ Scheduler::Scheduler()
     // Connect geographical location - when it is available
     //connect(KStarsData::Instance()..., &LocationDialog::locationChanged..., this, &Scheduler::simClockTimeChanged);
 
-    // Force fixed error handling policy for AstroPi UI profile:
-    // - No scheduler-level retry/reschedule management
-    // - No delay
-    setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    errorHandlingRescheduleErrorsCB->setChecked(false);
-    errorHandlingDelaySB->setValue(0);
-    errorHandlingRescheduleErrorsCB->setEnabled(false);
-    errorHandlingDelaySB->setEnabled(false);
-    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    Options::setRescheduleErrors(false);
-    Options::setErrorHandlingStrategyDelay(0);
+    // AstroPi UI profile: the retry-after-abort policy (strategy/delay/reschedule errors) is
+    // configured from Configura KStars -> Ekos -> Scheduler -> Job Recovery, not from this tool's
+    // own (hidden) widgets. Mirror the persisted Options value into them at construction time.
+    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(Options::errorHandlingStrategy()));
+    errorHandlingRescheduleErrorsCB->setChecked(Options::rescheduleErrors());
+    errorHandlingDelaySB->setValue(Options::errorHandlingStrategyDelay());
+    errorHandlingRescheduleErrorsCB->setEnabled(true);
+    errorHandlingDelaySB->setEnabled(true);
 
     if (astroPiLogoLabel != nullptr)
     {
@@ -302,10 +300,9 @@ Scheduler::Scheduler()
 <p><b>Policy globali (profilo AstroPi)</b><br/>
 • <b>MAX_FAILURE_ATTEMPTS</b> = 3 (retry standard per modulo/stage).<br/>
 • <b>UPDATE_PERIOD_MS</b> = 1000 ms (monitoring loop).<br/>
-• <b>ErrorHandlingStrategy</b> forzato a <b>ERROR_DONT_RESTART</b>.<br/>
-• <b>RescheduleErrors</b> forzato a <b>false</b>.<br/>
-• <b>Delay</b> scheduler forzato a <b>0 s</b>.<br/>
-• In uscita da errore: priorità a <b>findNextJob()</b>; se non esistono job eseguibili → procedure di chiusura/parcheggio.</p>
+• <b>ErrorHandlingStrategy</b> di default: <b>Queue</b> (ERROR_RESTART_AFTER_TERMINATION) — quando tutti i job eseguibili risultano completati/abortiti, lo scheduler attende il <b>Delay</b> configurato e poi rivaluta la coda, ritentando i job abortiti (es. velature/nuvole transitorie).<br/>
+• <b>Delay</b> di default: <b>3600 s (60 min)</b>. Regolabile dal tab Scheduler (radio button Queue/Immediate/None + campo delay).<br/>
+• In uscita da errore: priorità a <b>findNextJob()</b>; se non esistono job eseguibili → attesa Delay, poi procedure di chiusura/parcheggio se ancora nessun job è idoneo.</p>
 
 <p><b>Pipeline completa per job</b><br/>
 1) Validazione finestra temporale/altitudine/meteo.<br/>
@@ -3904,6 +3901,16 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_GUIDING:
+            if (getGuidingStatus() == Ekos::GUIDE_GUIDING && hasGuidingTelemetry())
+            {
+                appendLogText(i18n("Job '%1' guiding telemetry acquired (RMS online).", currentJob->getName()));
+                guideFailureCount = 0;
+                restartGuidingTimer.stop();
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
+                getNextAction();
+                break;
+            }
+
             if (currentOperationAttemptTime.isValid() &&
                     currentOperationAttemptTime.elapsed() > static_cast<int>(GUIDE_ATTEMPT_HARD_TIMEOUT_MS))
             {
@@ -4331,13 +4338,13 @@ bool Scheduler::appendEkosScheduleList(const QString &fileURL)
                 }
                 else if (!strcmp(tag, "ErrorHandlingStrategy"))
                 {
-                    setErrorHandlingStrategy(ERROR_DONT_RESTART);
+                    setErrorHandlingStrategy(ERROR_RESTART_AFTER_TERMINATION);
 
                     subEP = findXMLEle(ep, "delay");
                     if (subEP)
                     {
-                        errorHandlingDelaySB->setValue(0);
-                        Options::setErrorHandlingStrategyDelay(0);
+                        errorHandlingDelaySB->setValue(3600);
+                        Options::setErrorHandlingStrategyDelay(3600);
                     }
                     subEP = findXMLEle(ep, "RescheduleErrors");
                     Q_UNUSED(subEP)
@@ -4707,8 +4714,8 @@ bool Scheduler::saveScheduler(const QUrl &fileURL)
         outstream << "</Job>" << endl;
     }
 
-    outstream << "<ErrorHandlingStrategy value='" << ERROR_DONT_RESTART << "'>" << endl;
-    outstream << "<delay>0</delay>" << endl;
+    outstream << "<ErrorHandlingStrategy value='" << ERROR_RESTART_AFTER_TERMINATION << "'>" << endl;
+    outstream << "<delay>3600</delay>" << endl;
     outstream << "</ErrorHandlingStrategy>" << endl;
 
     outstream << "<StartupProcedure>" << endl;
@@ -6629,16 +6636,9 @@ Scheduler::ErrorHandlingStrategy Scheduler::getErrorHandlingStrategy()
 
 void Scheduler::setErrorHandlingStrategy(Scheduler::ErrorHandlingStrategy strategy)
 {
-    Q_UNUSED(strategy)
-    errorHandlingRescheduleErrorsCB->setChecked(false);
-    errorHandlingRescheduleErrorsCB->setEnabled(false);
-    errorHandlingDelaySB->setEnabled(false);
-    errorHandlingDelaySB->setValue(0);
-    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    Options::setRescheduleErrors(false);
-    Options::setErrorHandlingStrategyDelay(0);
+    Options::setErrorHandlingStrategy(strategy);
 
-    switch (ERROR_DONT_RESTART)
+    switch (strategy)
     {
         case ERROR_RESTART_AFTER_TERMINATION:
             errorHandlingRestartAfterAllButton->setChecked(true);
@@ -7441,13 +7441,21 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
         // If calibration stage complete?
         if (status == Ekos::GUIDE_GUIDING)
         {
-            appendLogText(i18n("Job '%1' guiding is in progress.", currentJob->getName()));
-            guideFailureCount = 0;
-            // if guiding recovered while we are waiting, abort the restart
-            restartGuidingTimer.stop();
+            if (hasGuidingTelemetry())
+            {
+                appendLogText(i18n("Job '%1' guiding is in progress.", currentJob->getName()));
+                guideFailureCount = 0;
+                // if guiding recovered while we are waiting, abort the restart
+                restartGuidingTimer.stop();
 
-            currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
-            getNextAction();
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
+                getNextAction();
+            }
+            else
+            {
+                appendLogText(i18n("Job '%1' guiding started, waiting for RMS telemetry...", currentJob->getName()));
+                currentOperationTime.restart();
+            }
         }
         else if (status == Ekos::GUIDE_CALIBRATION_ERROR ||
                  status == Ekos::GUIDE_ABORTED)
@@ -7533,6 +7541,22 @@ GuideState Scheduler::getGuidingStatus()
     Ekos::GuideState gStatus = static_cast<Ekos::GuideState>(guideStatus.toInt());
 
     return gStatus;
+}
+
+bool Scheduler::hasGuidingTelemetry()
+{
+    if (guideInterface.isNull())
+        return false;
+
+    const QVariant axisSigma = guideInterface->property("axisSigma");
+    if (!axisSigma.isValid() || !axisSigma.canConvert<QList<double>>())
+        return false;
+
+    const QList<double> sigma = axisSigma.value<QList<double>>();
+    if (sigma.size() < 2)
+        return false;
+
+    return std::isfinite(sigma.at(0)) && std::isfinite(sigma.at(1));
 }
 
 void Scheduler::setCaptureStatus(Ekos::CaptureState status)

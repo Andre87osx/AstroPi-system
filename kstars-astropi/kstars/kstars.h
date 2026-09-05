@@ -38,6 +38,7 @@ class QDockWidget;
 class QPalette;
 class KActionMenu;
 class KConfigDialog;
+class QTabWidget;
 
 class KStarsData;
 class SkyPoint;
@@ -817,6 +818,13 @@ class KStars : public KXmlGuiWindow
         /** Build the KStars main window */
         void buildGUI();
 
+          /** Show planetarium toolbars only while the planetarium tab is active. */
+          void updatePlanetariumToolbars();
+
+          /** Create the Ekos tab. Deferred until after startup: building Ekos::Manager
+           * inside buildGUI() races with KStars' own construction. */
+          void setupEkosTab();
+
         void closeEvent(QCloseEvent *event) override;
 
     public:
@@ -853,6 +861,7 @@ class KStars : public KXmlGuiWindow
 
         KStarsData *m_KStarsData { nullptr };
         SkyMap *m_SkyMap { nullptr };
+     QTabWidget *m_MainTabWidget { nullptr };
 
         // Widgets
         TimeStepBox *m_TimeStepBox { nullptr };
