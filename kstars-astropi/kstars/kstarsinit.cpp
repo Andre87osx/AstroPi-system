@@ -978,6 +978,17 @@ void KStars::buildGUI()
     // Setup GUI from the settings file
     // UI tests provide the default settings file from the resources explicitly file to render UI properly
     setupGUI(StandardWindowOptions(Default), m_KStarsUIResource);
+
+    const QStringList planetariumToolbars { "kstarsToolBar", "viewToolBar", "INDIToolBar", "TelescopeToolBar" };
+    for (const QString &toolbarName : planetariumToolbars)
+    {
+        auto *toolbar = toolBar(toolbarName);
+        connect(toolbar, &QToolBar::visibilityChanged, this, [this, toolbarName](bool visible)
+        {
+            if (!m_updatingPlanetariumToolbars)
+                m_planetariumToolbarVisibility.insert(toolbarName, visible);
+        });
+    }
 #ifdef HAVE_INDI
     setupEkosTab();
 #endif
@@ -1001,24 +1012,26 @@ void KStars::updatePlanetariumToolbars()
 
     if (planetariumActive)
     {
-        if (m_planetariumToolbarStateSaved)
-        {
-            for (const QString &toolbarName : planetariumToolbars)
-                toolBar(toolbarName)->setVisible(m_planetariumToolbarVisibility.value(toolbarName));
-            m_planetariumToolbarStateSaved = false;
-        }
+        m_updatingPlanetariumToolbars = true;
+        for (const QString &toolbarName : planetariumToolbars)
+            toolBar(toolbarName)->setVisible(m_planetariumToolbarVisibility.value(toolbarName, true));
+        m_updatingPlanetariumToolbars = false;
+        m_planetariumToolbarStateSaved = false;
         return;
     }
 
     if (!m_planetariumToolbarStateSaved)
     {
         for (const QString &toolbarName : planetariumToolbars)
-            m_planetariumToolbarVisibility.insert(toolbarName, toolBar(toolbarName)->isVisible());
+            if (!m_planetariumToolbarVisibility.contains(toolbarName))
+                m_planetariumToolbarVisibility.insert(toolbarName, toolBar(toolbarName)->isVisible());
         m_planetariumToolbarStateSaved = true;
     }
 
+    m_updatingPlanetariumToolbars = true;
     for (const QString &toolbarName : planetariumToolbars)
         toolBar(toolbarName)->setVisible(false);
+    m_updatingPlanetariumToolbars = false;
 }
 
 void KStars::setupEkosTab()

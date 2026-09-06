@@ -670,6 +670,7 @@ void KStars::clearAllViewers()
 
 void KStars::closeEvent(QCloseEvent *event)
 {
+    updatePlanetariumToolbars();
     KStars::Closing = true;
     QWidget::closeEvent(event);
 }

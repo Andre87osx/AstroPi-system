@@ -825,6 +825,7 @@ class KStars : public KXmlGuiWindow
 
           QHash<QString, bool> m_planetariumToolbarVisibility;
           bool m_planetariumToolbarStateSaved { false };
+          bool m_updatingPlanetariumToolbars { false };
 
           /** Create the Ekos tab. Deferred until after startup: building Ekos::Manager
            * inside buildGUI() races with KStars' own construction. */
