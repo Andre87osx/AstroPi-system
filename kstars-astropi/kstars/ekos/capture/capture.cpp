@@ -981,13 +981,9 @@ void Capture::checkCCD(int ccdNum)
                 cameraTemperatureS->setChecked(false);
             }
 
-            double temperature = 0;
-            if (currentCCD->getTemperature(&temperature))
-            {
-                temperatureOUT->setText(QString("%L1").arg(temperature, 0, 'f', 2));
-                // Initialize with the current sensor reading when (re)selecting a camera.
-                cameraTemperatureN->setValue(temperature);
-            }
+            // The value cached in the property at connection time may be a driver placeholder.
+            // Wait for newTemperatureValue before displaying a sensor reading.
+            temperatureOUT->setText(i18n("N/A"));
         }
         else
         {

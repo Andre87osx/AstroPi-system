@@ -946,10 +946,12 @@ void CCD::registerProperty(INDI::Property prop)
     else if (prop->isNameMatch("CCD_TEMPERATURE"))
     {
         auto np = prop->getNumber();
-        HasCooler = true;
-        CanCool   = (np->getPermission() != IP_RO);
         if (np)
+        {
+            HasCooler = true;
+            CanCool   = (np->getPermission() != IP_RO);
             emit newTemperatureValue(np->at(0)->getValue());
+        }
     }
     else if (prop->isNameMatch("CCD_COOLER"))
     {
