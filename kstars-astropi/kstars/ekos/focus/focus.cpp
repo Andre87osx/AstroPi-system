@@ -3413,6 +3413,7 @@ void Focus::processFocusNumber(INumberVectorProperty *nvp)
                 qCDebug(KSTARS_EKOS_FOCUS) << "Abs Focuser position changed to " << currentPosition << "State:" << pstateStr(
                                                currentPositionState);
                 absTicksLabel->setText(QString::number(currentPosition));
+                absTicksSpin->setValue(currentPosition);
                 emit absolutePositionChanged(currentPosition);
             }
         }
