@@ -7,8 +7,32 @@ solo quando verificato/testato, non quando "sembra" a posto.
 
 ## 1. [APERTO] Guide UI Detail View - fix rendering index 0/1/2
 
-Ripreso più volte, ancora NON risolto correttamente. Da riaffrontare da capo
+Ripreso più volte, ancora NON risolto correttamente del tutto. Da riaffrontare
 seguendo l'analisi qui sotto (mantenuta dal memo precedente).
+
+### Aggiornamento 2026-09-06: fix deformazione ovale del "bersaglio" guida
+
+Sintomo riportato: nel Manager, il mini-preview del bersaglio guida (index 1,
+Drift Plot) si deforma diventando ovale SOLO quando la guida parte e riceve
+dati reali. Nella pagina Guida separata, il vero widget "Drift Graphics" resta
+sempre correttamente proporzionato qualunque sia la dimensione del separatore
+mobile - quel widget NON va toccato ed è rimasto intatto.
+
+Causa: `Guide::getDriftPlotViewPixmap()` (guide.cpp) chiedeva a
+`driftPlot->toPixmap(targetWidth, targetHeight, 1.0)` un'istantanea a una
+dimensione arbitraria decisa dal chiamante (Manager), quasi mai coincidente con
+l'aspect ratio reale del widget live. Il lock di scala degli assi che tiene
+rotondo il cerchio del bersaglio è calcolato per la dimensione reale a schermo
+del widget, quindi esportarlo forzato a un formato diverso lo stira in ovale.
+
+Fix applicato (solo in `getDriftPlotViewPixmap`, NON nel widget `driftPlot`
+stesso): prima di chiamare `toPixmap()`, la dimensione richiesta viene adattata
+per rispettare l'aspect ratio reale corrente di `driftPlot->size()` (via
+`QSize::scaled(..., Qt::KeepAspectRatio)`), così l'istantanea esportata ha
+sempre le stesse proporzioni del widget live. Il ridimensionamento/centratura
+nel riquadro nero del Manager (`fitGuidePixmapInBlackBox`, già con
+`Qt::KeepAspectRatio`) resta invariato. Non ancora ricompilato/testato
+dall'utente.
 
 ### SITUAZIONE ORIGINALE (commit 39a99f6)
 
@@ -121,7 +145,20 @@ Lasciare TUTTO il codice relativo a index 1 ESATTAMENTE come nell'originale.
 
 ---
 
-## 2. [DA VERIFICARE] Crash connessione driver INDI subito dopo l'avvio
+## 2. [RISOLTO 2026-09-05] Crash connessione driver INDI subito dopo l'avvio
+
+Root cause trovata con core dump (`gdb /usr/bin/kstars ~/core`): use-after-free
+in `INDI_E::syncSwitch()` (kstars/indi/indielement.cpp) - un evento Qt in coda
+(newINDISwitch/newINDIProperty/ecc., connessioni queued non bloccanti verso
+GUIManager/INDIListener) poteva essere processato dopo che il thread di rete
+INDI aveva già cancellato/ridefinito la proprietà, lasciando un puntatore
+penzolante. Fix: `Qt::BlockingQueuedConnection` su tutte le connessioni che
+portano puntatori grezzi a proprietà in `guimanager.cpp` e `indilistener.cpp`
+(newINDIProperty, removeINDIProperty, newINDISwitch/Text/Number/Light).
+CONFERMATO RISOLTO dall'utente dopo ricompilazione: nessun crash su più
+riavvii completi e primo connect Ekos.
+
+### Cronologia originale (mantenuta per riferimento)
 
 Da quando Ekos è integrato come tab sempre presente in KStars (commit
 `95a4094`), il tab è cliccabile appena la finestra appare, prima che
@@ -433,7 +470,20 @@ precedenza.
 
 ---
 
-## 8. [APERTO] Logo AstroPi dello Scheduler deformato/ingrandito
+## 8. [RISOLTO 2026-09-06] Logo AstroPi dello Scheduler deformato/ingrandito
+
+Causa: `Scheduler::updateAstroPiLogo()` cercava il logo dedicato
+(`astropi_scheduler_logo.png`) con una lista di percorsi relativi al binario
+fragili rispetto al layout di installazione; quando nessuno combaciava,
+ricadeva silenziosamente su `AstroPi_wallpaper.png` (sfondo desktop, molto più
+grande) scalato solo per larghezza, risultando in un'altezza enorme.
+Fix: aggiunta `KSPaths::locate(QStandardPaths::AppDataLocation, ...)` come
+prima strategia di ricerca (stesso meccanismo robusto usato altrove in KStars
+per i file dati installati), più un limite massimo di sicurezza sull'altezza
+indipendente da quale immagine venga trovata. Non ancora ricompilato/testato
+dall'utente.
+
+### Descrizione originale (mantenuta per riferimento)
 
 Regressione UI osservata il 2026-09-05: nel tab Scheduler il logo AstroPi
 appare enorme, occupa quasi tutta la larghezza del pannello e viene tagliato,
@@ -490,3 +540,42 @@ rimandare alla 1.8.5 ("definitiva") insieme al refactoring generale.
 ## 10. [DA DEFINIRE] Altri punti aperti
 
 Aggiungere qui eventuali altri interventi individuati per la 1.8.4.
+
+---
+
+## 11. [RISOLTO 2026-09-06] Scheduler: mount non parcheggiato + Ekos rimasto connesso al mattino
+
+Sintomo: dopo una notte di osservazione, al mattino Ekos/INDI erano ancora
+connessi, il mount non era parcheggiato, e il log dello Scheduler ripeteva
+all'infinito "mount park operation timed out on last attempt.".
+
+Due bug distinti trovati e corretti in `scheduler.cpp`:
+
+1. **Timeout di parcheggio mai propagato allo stato di shutdown**: in
+   `checkMountParkingStatus()`, quando i 3 tentativi di park/unpark finivano
+   in timeout (non un errore INDI esplicito), il codice impostava solo
+   `parkWaitState = PARKWAIT_ERROR` ma MAI `shutdownState = SHUTDOWN_ERROR` (a
+   differenza del caso `ISD::PARK_ERROR` poco sotto, che lo fa correttamente).
+   Risultato: lo Scheduler restava bloccato per sempre in
+   `SHUTDOWN_PARKING_MOUNT`, non raggiungendo mai la logica (già corretta) in
+   `checkStatus()` che disconnette INDI/ferma Ekos rispettando l'opzione
+   `StopEkosAfterShutdown` (kstars.kcfg, default true). Fix: propagata la
+   stessa escalation usata da `ISD::PARK_ERROR` anche ai due rami di timeout
+   (`ISD::PARK_PARKING`/`ISD::PARK_UNPARKING`).
+2. **Comando DBus "park"/"unpark" rifiutato dal driver ma ignorato**: in
+   `parkMount()`/`unParkMount()`, veniva controllato solo l'errore di trasporto
+   DBus (`mountReply.error().type()`), mai il valore booleano di ritorno
+   (`mountReply.value()`). Se il driver rifiutava il comando (es. mount ancora
+   "occupato" da uno slew/correzione di guida appena finita), lo Scheduler
+   aspettava comunque 60s x 3 tentativi un parcheggio mai davvero iniziato -
+   probabile causa reale dell'incidente (parcheggio manuale riuscito subito
+   pochi istanti dopo). Fix: aggiunto un log esplicito e retry immediato
+   quando `mountReply.value()` è false, invece di attendere il timeout a vuoto.
+
+Beneficio collaterale: ora che INDI si disconnette davvero su uno shutdown
+fallito, il driver INDI WatchDog (se configurato) può finalmente accorgersi
+della perdita di connessione ed eseguire la propria procedura di parcheggio
+come rete di sicurezza indipendente.
+
+Non ancora ricompilato/ritestato dall'utente su uno scenario di parcheggio
+fallito reale o simulato.
