@@ -5962,6 +5962,12 @@ void Scheduler::parkMount()
                 if (!manageConnectionLoss())
                     parkWaitState = PARKWAIT_ERROR;
             }
+            // Mount::park() can return false (e.g. mount busy slewing/not ready yet) without a DBUS-level
+            // error - previously this was silently ignored and the scheduler waited 60s for a park that
+            // was never actually started, guaranteeing a timeout. Log it and let the caller's retry loop
+            // (parkingFailureCount in checkMountParkingStatus) try again shortly instead of sitting idle.
+            else if (!mountReply.value())
+                appendLogText(i18n("Warning: mount park request was not accepted by the mount (busy or not ready). Will retry."));
             else currentOperationTime.start();
         }
 
@@ -6029,6 +6035,11 @@ void Scheduler::unParkMount()
                 if (!manageConnectionLoss())
                     parkWaitState = PARKWAIT_ERROR;
             }
+            // Mount::unpark() can return false (e.g. mount busy/not ready yet) without a DBUS-level error -
+            // previously this was silently ignored and the scheduler waited 60s for an unpark that was
+            // never actually started, guaranteeing a timeout. Log it and let the retry loop try again.
+            else if (!mountReply.value())
+                appendLogText(i18n("Warning: mount unpark request was not accepted by the mount (busy or not ready). Will retry."));
             else currentOperationTime.start();
         }
 
@@ -6114,6 +6125,13 @@ void Scheduler::checkMountParkingStatus()
                 else
                 {
                     appendLogText(i18n("Warning: mount unpark operation timed out on last attempt."));
+                    // Propagate the failure to the driving state machine (mirrors the
+                    // ISD::PARK_ERROR case below) - otherwise startupState/shutdownState
+                    // never advance to *_ERROR and the scheduler gets stuck forever
+                    // retrying/logging the same timeout without ever stopping or
+                    // disconnecting INDI/Ekos.
+                    if (startupState == STARTUP_UNPARKING_MOUNT)
+                        startupState = STARTUP_ERROR;
                     parkWaitState = PARKWAIT_ERROR;
                 }
             }
@@ -6134,6 +6152,14 @@ void Scheduler::checkMountParkingStatus()
                 else
                 {
                     appendLogText(i18n("Warning: mount park operation timed out on last attempt."));
+                    // Propagate the failure to the driving state machine (mirrors the
+                    // ISD::PARK_ERROR case below) - otherwise shutdownState never
+                    // advances to SHUTDOWN_ERROR and the scheduler gets stuck forever
+                    // retrying/logging the same timeout without ever stopping or
+                    // disconnecting INDI/Ekos (mount stays connected, never gets a
+                    // second park attempt via the WatchDog either).
+                    if (shutdownState == SHUTDOWN_PARKING_MOUNT)
+                        shutdownState = SHUTDOWN_ERROR;
                     parkWaitState = PARKWAIT_ERROR;
                 }
             }
