@@ -207,7 +207,24 @@ quindi la causa potrebbe non essere (solo) quella:
 
 ---
 
-## 3. [APERTO] Menu planetario residuo nel tab Ekos
+## 3. [IN TEST] Menu planetario residuo nel tab Ekos
+
+### Aggiornamento 2026-09-06: fix applicato, verifica manuale rimandata
+
+Implementata la gestione separata dello stato delle toolbar planetarie:
+
+- in Ekos vengono nascoste completamente le toolbar planetarie senza cambiare
+  le QAction scelte dall'utente;
+- tornando al Planetario vengono ripristinate le toolbar selezionate;
+- `DomeToolBar` resta esclusa dalla gestione automatica;
+- prima della chiusura vengono ripristinate le visibilita' reali per evitare
+  che KStars salvi le toolbar come disattivate e le perda al riavvio.
+
+File coinvolti: `kstars.h`, `kstarsinit.cpp`, `kstars.cpp`.
+
+**Da verificare stasera:** avvio su Ekos, passaggio Ekos/Planetario in entrambi
+i sensi, toggle dal menu Impostazioni, riavvio completo e comportamento della
+toolbar Dome.
 
 Nel tab Ekos resta visibile una riga parziale della toolbar del planetario
 (icone Ekos, INDI e "bersaglio"). Va nascosta completamente, non parzialmente.
@@ -278,7 +295,20 @@ combinazione incoerente quando l'utente usa il menu Impostazioni.
 
 ---
 
-## 4. [APERTO] Modulo camera - indicatore colore errato
+## 4. [IN TEST] Modulo camera - temperatura e indicatore cooler
+
+### Aggiornamento 2026-09-06: rimosso valore temperatura placeholder
+
+Durante la registrazione della proprieta' `CCD_TEMPERATURE`, `indiccd.cpp` non
+emette piu' il valore cache iniziale del driver. Capture resta su `N/A` finche'
+non arriva una lettura reale da INDI, evitando di mostrare valori fittizi come
+`0` o `0.60`. Gli aggiornamenti successivi della temperatura reale restano
+gestiti da `processNumber()`.
+
+**Da verificare stasera:** connessione con cooler spento, assenza di `0.60`,
+lettura della temperatura ambiente reale, ciclo `cooler ON -> -10 C -> cooler
+OFF`, sincronizzazione dei pulsanti Capture/INDI e comportamento dopo
+disconnessione, riconnessione e riavvio del profilo Ekos.
 
 Nel modulo camera l'indicatore di colore viene visualizzato spento/errato.
 Nessun tentativo di fix precedente trovato nella history (ricerca su
