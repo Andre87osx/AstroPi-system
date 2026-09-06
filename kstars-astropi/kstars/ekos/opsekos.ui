@@ -137,16 +137,6 @@
      </layout>
     </item>
     <item>
-     <widget class="QCheckBox" name="kcfg_independentWindowEkos">
-      <property name="toolTip">
-       <string>Make Ekos window independent from KStars main window. Requires restart to take effect.</string>
-      </property>
-      <property name="text">
-       <string>Independent Window</string>
-      </property>
-     </widget>
-    </item>
-    <item>
      <spacer name="verticalSpacer_2">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
@@ -459,7 +449,96 @@
       </layout>
      </widget>
     </item>
-    <item row="3" column="0">
+    <item row="3" column="0" colspan="2">
+     <widget class="QGroupBox" name="groupBox_recovery">
+      <property name="title">
+       <string>Job Recovery</string>
+      </property>
+      <layout class="QFormLayout" name="formLayout_recovery">
+       <property name="horizontalSpacing">
+        <number>3</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>3</number>
+       </property>
+       <property name="leftMargin">
+        <number>3</number>
+       </property>
+       <property name="topMargin">
+        <number>3</number>
+       </property>
+       <property name="rightMargin">
+        <number>3</number>
+       </property>
+       <property name="bottomMargin">
+        <number>3</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QLabel" name="errorHandlingStrategyLabel">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What to do when a job aborts (e.g. focus/align/guide failure). Nessuno: non ritentare. Coda: ritenta quando tutti i job eseguibili sono completati/abortiti, dopo il Delay. Immediato: ritenta subito il job abortito, dopo il Delay.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>On job abort:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="kcfg_ErrorHandlingStrategy">
+         <item>
+          <property name="text">
+           <string>Nessuno</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Coda (dopo tutti i job)</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Immediato</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="errorHandlingDelayLabel">
+         <property name="text">
+          <string>Delay:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="kcfg_ErrorHandlingStrategyDelay">
+         <property name="toolTip">
+          <string>Delay in seconds before retrying an aborted job.</string>
+         </property>
+         <property name="suffix">
+          <string> s</string>
+         </property>
+         <property name="maximum">
+          <number>10000</number>
+         </property>
+         <property name="singleStep">
+          <number>10</number>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0" colspan="2">
+        <widget class="QCheckBox" name="kcfg_RescheduleErrors">
+         <property name="toolTip">
+          <string>Treat errors like aborts (also retry jobs that ran into a hard error, not just aborted ones).</string>
+         </property>
+         <property name="text">
+          <string>Re-schedule errors</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item row="4" column="0">
      <spacer name="verticalSpacer">
       <property name="orientation">
        <enum>Qt::Vertical</enum>

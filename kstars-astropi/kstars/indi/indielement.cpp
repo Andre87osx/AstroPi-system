@@ -198,6 +198,11 @@ void INDI_E::setupElementLabel()
 
 void INDI_E::syncSwitch()
 {
+    // Guard missing upstream (syncText/syncNumber/syncLight all have it): the driver may have
+    // deleted the property (delProperty) while a queued update for it is still pending.
+    if (sp == nullptr || sp->svp == nullptr || guiProp == nullptr)
+        return;
+
     QFont buttonFont;
 
     switch (guiProp->getGUIType())
@@ -249,7 +254,7 @@ void INDI_E::syncSwitch()
 
 void INDI_E::syncText()
 {
-    if (tp == nullptr)
+    if (tp == nullptr || tp->tvp == nullptr)
         return;
 
     if (tp->tvp->p != IP_WO)

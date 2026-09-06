@@ -4408,6 +4408,20 @@ QPixmap Guide::getDriftPlotViewPixmap(const QSize &sizeHint) const
     if (targetHeight <= 1)
         targetHeight = 360;
 
+    // driftPlot's axis scale lock (what keeps the target circle round) is computed for its
+    // live on-screen aspect ratio. Exporting via toPixmap() at a mismatched aspect ratio
+    // stretches that circle into an oval. Fit the requested box to the live widget's own
+    // aspect ratio first; the caller (Manager's mini preview) already re-centers/scales the
+    // result with Qt::KeepAspectRatio, so this only affects the exported snapshot, never the
+    // live drift plot widget itself.
+    const QSize liveSize = driftPlot->size();
+    if (liveSize.width() > 1 && liveSize.height() > 1)
+    {
+        const QSize fitted = liveSize.scaled(targetWidth, targetHeight, Qt::KeepAspectRatio);
+        targetWidth = std::max(1, fitted.width());
+        targetHeight = std::max(1, fitted.height());
+    }
+
     driftPlot->replot();
     const QPixmap pixmap = driftPlot->toPixmap(targetWidth, targetHeight, 1.0);
 

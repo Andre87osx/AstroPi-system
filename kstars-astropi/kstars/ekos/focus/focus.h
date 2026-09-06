@@ -24,16 +24,17 @@
 #include <QtDBus/QtDBus>
 #include <parameters.h>
 
-namespace Ekos
-{
-
-class FocusAlgorithmInterface;
-class PolynomialFit;
 class QDialog;
 class QDoubleSpinBox;
 class QSpinBox;
 class QLabel;
 class QCPItemText;
+
+namespace Ekos
+{
+
+class FocusAlgorithmInterface;
+class PolynomialFit;
 
 /**
  * @class Focus
@@ -297,7 +298,7 @@ class Focus : public QWidget, public Ui::Focus
              * @brief syncCCDInfo Read current CCD information and update settings accordingly.
              */
         void syncCCDInfo();
-        void syncHFRGuideFromAlignSolution(const QVariantMap &solution);
+        void syncHFRHelperFromAlignSolution(const QVariantMap &solution);
 
         /**
              * @brief Check Focuser and make sure information is updated accordingly.
@@ -677,6 +678,8 @@ class Focus : public QWidget, public Ui::Focus
         //int fx,fy,fw,fh;
         /// If HFR=-1 which means no stars detected, we need to decide how many times should the re-capture process take place before we give up or reverse direction.
         int noStarCount { 0 };
+            /// How many times we retried capturing while trying to auto-select the first focus star.
+            int autoStarSelectionRetries { 0 };
         /// Track which upload mode the CCD is set to. If set to UPLOAD_LOCAL, then we need to switch it to UPLOAD_CLIENT in order to do focusing, and then switch it back to UPLOAD_LOCAL
         ISD::CCD::UploadMode rememberUploadMode { ISD::CCD::UPLOAD_CLIENT };
         /// Previous binning setting
@@ -793,41 +796,47 @@ class Focus : public QWidget, public Ui::Focus
         double mountAlt { INVALID_VALUE };
 
         ////////////////////////////////////////////////////////////////////
-        /// HFR Guide Profile
+        /// HFR Helper — theoretical HFR reference for focus quality
         ////////////////////////////////////////////////////////////////////
-        struct HFRGuideConfig
+        struct HFRHelperConfig
         {
             double focalLengthMm {0.0};
             double apertureMm    {0.0};
             double pixelSizeUm   {0.0};
             int    binning       {2};
-            double siteSeeing    {5.0};  // arcsec
+               double siteSeeing    {3.0};  // arcsec
+               double acceptanceRangePct {5.0};
             bool isValid() const
             {
                 return focalLengthMm > 0.0 && apertureMm > 0.0 && pixelSizeUm > 0.0;
             }
         };
 
-        void   loadHFRGuide();
-        double calculateTheoreticalHFR(const HFRGuideConfig &config);
-        void   showHFRGuideConfig();
-            bool   getCurrentHFRGuideCCDInfo(double &pixelSizeUm, int &binning) const;
-            void   refreshHFRGuideFromCCD();
+        void   loadHFRHelper();
+          bool   saveHFRHelperToDisk();
+        double calculateTheoreticalHFR(const HFRHelperConfig &config);
+        void   showHFRHelperConfig();
+            bool   getCurrentHFRHelperCCDInfo(double &pixelSizeUm, int &binning) const;
+               bool   getCurrentHFRHelperTheoretical(double &theoreticalHFR, bool logWarning);
+            void   refreshHFRHelperFromCCD();
             void   updateTheoreticalHFR(bool redrawProfile = true);
-            void   syncHFRGuideDialogControls();
-            void   updateHFRGuideResultLabel();
+            void   syncHFRHelperDialogControls();
+            void   updateHFRHelperResultLabel();
 
-        HFRGuideConfig m_HFRGuideConfig;
-        double         m_TheoreticalHFR {-1.0};
-            double         m_HFRGuideProfileApertureMm {0.0};
+        HFRHelperConfig m_HFRHelperConfig;
+        double          m_TheoreticalHFR {-1.0};
+            double          m_HFRHelperProfileApertureMm {0.0};
+               int             m_HFRHelperAnchorAbsPosition {-1};
+               bool            m_HFRHelperSetupBannerShown {false};
 
-            QPointer<QDialog>        m_HFRGuideDialog;
-            QPointer<QDoubleSpinBox> m_HFRGuideFocalSB;
-            QPointer<QDoubleSpinBox> m_HFRGuideApertureSB;
-            QPointer<QDoubleSpinBox> m_HFRGuidePixelSB;
-            QPointer<QSpinBox>       m_HFRGuideBinningSB;
-            QPointer<QDoubleSpinBox> m_HFRGuideSeeingSB;
-            QPointer<QLabel>         m_HFRGuideResultLabel;
+            QPointer<QDialog>        m_HFRHelperDialog;
+            QPointer<QDoubleSpinBox> m_HFRHelperFocalSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperApertureSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperPixelSB;
+            QPointer<QSpinBox>       m_HFRHelperBinningSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperSeeingSB;
+            QPointer<QDoubleSpinBox> m_HFRHelperRangeSB;
+            QPointer<QLabel>         m_HFRHelperResultLabel;
 
             QCPGraph *theoreticalTargetLine { nullptr };
             QCPGraph *theoreticalCurrentPoint { nullptr };

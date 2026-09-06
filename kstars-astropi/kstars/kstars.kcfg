@@ -1465,14 +1465,6 @@
       </entry>
    </group>
    <group name="Ekos">
-    <entry name="EkosWindowWidth" type="UInt">
-             <label>Ekos window width</label>
-             <default>950</default>
-    </entry>
-    <entry name="EkosWindowHeight" type="UInt">
-             <label>Ekos window height</label>
-             <default>850</default>
-    </entry>
     <entry name="EkosTopIcons" type="Bool">
        <label>Ekos modules icons are placed on the top of pages</label>
        <default>false</default>
@@ -1496,10 +1488,6 @@
     <entry name="EkosLiveUsername" type="String">
        <label>EkosLive username</label>
     </entry>
-      <entry name="independentWindowEkos" type="Bool">
-         <label>Make Ekos window independent of KStars main window</label>
-         <default>true</default>
-      </entry>
       <entry name="profile" type="String">
          <label>Ekos drivers profile</label>
          <default>Simulators</default>
@@ -1796,7 +1784,7 @@
       </entry>
       <entry name="FocusSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after moving the focuser before capturing the next image during AutoFocus.</whatsthis>
-         <default>0</default>
+         <default>1</default>
       </entry>
       <entry name="GuideSettleTime" type="Double">
          <whatsthis>Wait for this many seconds after resuming guide.</whatsthis>
@@ -1813,12 +1801,12 @@
       </entry>
       <entry name="FocusMotionTimeout" type="UInt">
          <whatsthis>Maximum time in seconds to wait for a focuser to move to desired position before declaring a timeout.</whatsthis>
-         <default>30</default>
+         <default>60</default>
       </entry>
       <entry name="FocusMaxTravel" type="UInt">
          <label>Maximum Focus Travel Distance</label>
          <whatsthis>Set the maximum travel distance of an absolute focuser.</whatsthis>
-         <default>250</default>
+         <default>5000</default>
       </entry>
       <entry name="InitialFocusOutSteps" type="Double">
          <label>Initial Focus Out Steps</label>
@@ -1889,11 +1877,11 @@
       </entry>
       <entry name="FocusAlgorithm" type="UInt">
          <label>Focus process algorithm</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusFramesCount" type="UInt">
          <label>Number of focus frames to average for HFR calculations.</label>
-         <default>1</default>
+         <default>2</default>
       </entry>
       <entry name="FocusMaxSingleStep" type="UInt">
          <label>Maximum single step the focus algorithm is permitted to command.</label>
@@ -2573,11 +2561,11 @@
       </entry>
       <entry name="ErrorHandlingStrategy" type="UInt">
          <label>Strategy how to react, when a job aborts or steps into an error.</label>
-         <default>0</default>
+         <default>1</default>
       </entry>
       <entry name="ErrorHandlingStrategyDelay" type="UInt">
-         <label>Delay in minutes how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
-         <default>0</default>
+         <label>Delay in seconds how long the scheduler should pause before restarting an aborted job or a job that ran into an error.</label>
+         <default>3600</default>
       </entry>
       <entry name="RescheduleErrors" type="Bool">
          <label>Re-schedule jobs that ran into errors.</label>

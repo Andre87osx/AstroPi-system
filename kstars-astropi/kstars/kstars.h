@@ -20,7 +20,9 @@
 
 #include <KXmlGuiWindow>
 #include <KLocalizedString>
+#include <QHash>
 #include <QLabel>
+#include <QStringList>
 
 #include <QDockWidget>
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
@@ -38,6 +40,7 @@ class QDockWidget;
 class QPalette;
 class KActionMenu;
 class KConfigDialog;
+class QTabWidget;
 
 class KStarsData;
 class SkyPoint;
@@ -817,6 +820,17 @@ class KStars : public KXmlGuiWindow
         /** Build the KStars main window */
         void buildGUI();
 
+          /** Show planetarium toolbars only while the planetarium tab is active. */
+          void updatePlanetariumToolbars();
+
+          QHash<QString, bool> m_planetariumToolbarVisibility;
+          bool m_planetariumToolbarStateSaved { false };
+          bool m_updatingPlanetariumToolbars { false };
+
+          /** Create the Ekos tab. Deferred until after startup: building Ekos::Manager
+           * inside buildGUI() races with KStars' own construction. */
+          void setupEkosTab();
+
         void closeEvent(QCloseEvent *event) override;
 
     public:
@@ -853,6 +867,7 @@ class KStars : public KXmlGuiWindow
 
         KStarsData *m_KStarsData { nullptr };
         SkyMap *m_SkyMap { nullptr };
+     QTabWidget *m_MainTabWidget { nullptr };
 
         // Widgets
         TimeStepBox *m_TimeStepBox { nullptr };

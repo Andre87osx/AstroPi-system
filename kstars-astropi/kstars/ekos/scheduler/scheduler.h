@@ -805,6 +805,7 @@ class Scheduler : public QWidget, public Ui::Scheduler
 
         // retrieve the guiding status
         GuideState getGuidingStatus();
+     bool hasGuidingTelemetry();
      void updateAstroPiLogo();
 
 

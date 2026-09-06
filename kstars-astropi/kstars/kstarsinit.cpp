@@ -46,6 +46,8 @@
 
 #include <QMenu>
 #include <QStatusBar>
+#include <QTabWidget>
+#include <QTimer>
 
 //This file contains functions that kstars calls at startup (except constructors).
 //These functions are declared in kstars.h
@@ -848,7 +850,12 @@ void KStars::datainitFinished()
     }
 
 #ifdef HAVE_INDI
-    Ekos::Manager::Instance()->initialize();
+    // Deferred to the event loop: constructing Ekos::Manager during KStars' own
+    // construction (buildGUI) raced with startup and crashed on device connect.
+    QTimer::singleShot(0, this, [this]()
+    {
+        Ekos::Manager::Instance()->initialize();
+    });
 #endif
 }
 
@@ -946,15 +953,46 @@ void KStars::buildGUI()
     m_SkyMap = SkyMap::Create();
     connect(m_SkyMap, SIGNAL(mousePointChanged(SkyPoint*)), SLOT(slotShowPositionBar(SkyPoint*)));
     connect(m_SkyMap, SIGNAL(zoomChanged()), SLOT(slotZoomChanged()));
-    setCentralWidget(m_SkyMap);
+    m_MainTabWidget = new QTabWidget(this);
+    m_MainTabWidget->setObjectName("mainTabWidget");
+    m_MainTabWidget->addTab(m_SkyMap, i18n("Planetarium"));
+    setCentralWidget(m_MainTabWidget);
 
     //Initialize menus, toolbars, and statusbars
     initStatusBar();
     initActions();
 
+    connect(m_MainTabWidget, &QTabWidget::currentChanged, this, [this](int)
+    {
+        auto *showEkos = actionCollection()->action("show_ekos");
+        if (showEkos)
+            showEkos->setChecked(m_MainTabWidget->currentWidget() != m_SkyMap);
+        updatePlanetariumToolbars();
+    });
+
+    connect(actionCollection()->action("show_mainToolBar"), &QAction::toggled, this,
+            &KStars::updatePlanetariumToolbars);
+    connect(actionCollection()->action("show_viewToolBar"), &QAction::toggled, this,
+            &KStars::updatePlanetariumToolbars);
+
     // Setup GUI from the settings file
     // UI tests provide the default settings file from the resources explicitly file to render UI properly
     setupGUI(StandardWindowOptions(Default), m_KStarsUIResource);
+
+    const QStringList planetariumToolbars { "kstarsToolBar", "viewToolBar", "INDIToolBar", "TelescopeToolBar" };
+    for (const QString &toolbarName : planetariumToolbars)
+    {
+        auto *toolbar = toolBar(toolbarName);
+        connect(toolbar, &QToolBar::visibilityChanged, this, [this, toolbarName](bool visible)
+        {
+            if (!m_updatingPlanetariumToolbars)
+                m_planetariumToolbarVisibility.insert(toolbarName, visible);
+        });
+    }
+#ifdef HAVE_INDI
+    setupEkosTab();
+#endif
+    updatePlanetariumToolbars();
 
     //get focus of keyboard and mouse actions (for example zoom in with +)
     map()->QWidget::setFocus();
@@ -965,6 +1003,51 @@ void KStars::buildGUI()
         actionCollection()->action("zoom_in")->setEnabled(false);
     if (Options::zoomFactor() <= MINZOOM)
         actionCollection()->action("zoom_out")->setEnabled(false);
+}
+
+void KStars::updatePlanetariumToolbars()
+{
+    const bool planetariumActive = m_MainTabWidget->currentWidget() == m_SkyMap;
+    const QStringList planetariumToolbars { "kstarsToolBar", "viewToolBar", "INDIToolBar", "TelescopeToolBar" };
+
+    if (planetariumActive)
+    {
+        m_updatingPlanetariumToolbars = true;
+        for (const QString &toolbarName : planetariumToolbars)
+            toolBar(toolbarName)->setVisible(m_planetariumToolbarVisibility.value(toolbarName, true));
+        m_updatingPlanetariumToolbars = false;
+        m_planetariumToolbarStateSaved = false;
+        return;
+    }
+
+    if (!m_planetariumToolbarStateSaved)
+    {
+        for (const QString &toolbarName : planetariumToolbars)
+            if (!m_planetariumToolbarVisibility.contains(toolbarName))
+                m_planetariumToolbarVisibility.insert(toolbarName, toolBar(toolbarName)->isVisible());
+        m_planetariumToolbarStateSaved = true;
+    }
+
+    m_updatingPlanetariumToolbars = true;
+    for (const QString &toolbarName : planetariumToolbars)
+        toolBar(toolbarName)->setVisible(false);
+    m_updatingPlanetariumToolbars = false;
+}
+
+void KStars::setupEkosTab()
+{
+#ifdef HAVE_INDI
+    if (m_MainTabWidget == nullptr)
+        return;
+
+    Ekos::Manager *ekosManager = Ekos::Manager::Instance();
+    if (m_MainTabWidget->indexOf(ekosManager) != -1)
+        return;
+
+    m_MainTabWidget->insertTab(0, ekosManager, i18n("Ekos"));
+    m_MainTabWidget->setCurrentWidget(ekosManager);
+    updatePlanetariumToolbars();
+#endif
 }
 
 void KStars::populateThemes()

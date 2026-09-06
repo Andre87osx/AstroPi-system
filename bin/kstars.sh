@@ -58,69 +58,13 @@ fi
 # Wait to know the output status of kStars, 
 # if = 0 the user has closed KStars
 # if != 0 a crash has occurred
+#
+# NOTE (2026-09-02): emergency parking used to be attempted here via parking.py
+# (DBUS to a possibly-crashed KStars). It proved unreliable and is superseded by
+# the INDI WatchDog driver, which runs inside indiserver (survives a KStars
+# crash) and parks the mount on its own after a heartbeat timeout. Configure it
+# in the Ekos profile's Auxiliary drivers. This script now only reports the crash.
 #=========================================================================
-
-# Function to park the telescope safely
-park_telescope() {
-	local park_script="${Script_Dir}/parking.py"
-	local max_attempts=3
-	local attempt=0
-	local py_cmd=""
-	
-	echo "EMERGENCY: Attempting to park telescope..."
-
-	if command -v python3 >/dev/null 2>&1; then
-		py_cmd="python3"
-	else
-		echo "ERROR: python3 not found"
-		return 1
-	fi
-	
-	# Verify parking script exists
-	if [[ ! -f "$park_script" ]]; then
-		echo "ERROR: parking.py not found at $park_script"
-		return 1
-	fi
-	
-	# Try to execute parking script (parking.py uses DBUS, doesn't need GUI)
-	while [[ $attempt -lt $max_attempts ]]; do
-		((attempt++))
-		echo "Parking attempt $attempt/$max_attempts..."
-		
-		if timeout 180 "$py_cmd" "$park_script" > /tmp/parking_log_$$.txt 2>&1; then
-			echo "SUCCESS: Telescope parked successfully"
-			rm -f /tmp/parking_log_$$.txt
-			return 0
-		else
-			# Check if error is due to kstars not running via DBUS
-			if grep -q "org.kde.kstars" /tmp/parking_log_$$.txt 2>/dev/null; then
-				echo "KStars DBUS service not accessible, attempt $attempt"
-				# Only try to restart kstars if we haven't exceeded attempts
-				if [[ $attempt -lt $max_attempts ]]; then
-					echo "Attempting to restart kstars for DBUS access..."
-					# Start kstars WITHOUT GUI in background (headless mode)
-					timeout 30 kstars --silent > /dev/null 2>&1 &
-					KSTARS_PID=$!
-					sleep 3  # Give kstars time to initialize DBUS service
-				fi
-			else
-				# Some other error in parking script
-				echo "ERROR in parking script:"
-				cat /tmp/parking_log_$$.txt
-			fi
-		fi
-		
-		if [[ $attempt -lt $max_attempts ]]; then
-			sleep 2
-		fi
-	done
-	
-	# Clean up temp log
-	rm -f /tmp/parking_log_$$.txt
-	
-	echo "ERROR: Failed to park telescope after $max_attempts attempts"
-	return 1
-}
 
 # Main execution
 if kstars > /dev/null 2>&1; then
@@ -128,33 +72,17 @@ if kstars > /dev/null 2>&1; then
 	echo "KStars - AstroPi is closed by user correctly"
 	exit 0
 else
-	# KStars crashed - emergency procedure
-	echo "FAILURE: KStars crashed. Emergency telescope parking in progress..."
+	# KStars crashed
+	echo "FAILURE: KStars crashed."
 	time=$( date '+%F_%H:%M:%S' )
 
-	# Start parking immediately in background (safety first)
-	park_telescope &
-	PARK_PID=$!
-
-	# Show warning dialog while parking is running
-	nohup zenity --warning --width=350 --title="KStars AstroPi - EMERGENCY" \
+	nohup zenity --warning --width=350 --title="KStars AstroPi - CRASH" \
 		--text="<b>KStars AstroPi crashed!</b>
-\nEmergency parking sequence started at ${time}.
-\n<b>DO NOT POWER OFF THE SYSTEM!</b>
-\nThe telescope is being safely parked.
-\nPlease keep this warning visible until the situation is verified.
+\nCrash detected at ${time}.
+\nIf the INDI WatchDog driver was configured and running, the mount should have
+been parked automatically. <b>Verify mount status before touching the hardware.</b>
 \nContact support: <b>https://github.com/Andre87osx/AstroPi-system/issues</b>" \
 		> /dev/null 2>&1 &
-	ZENITY_PID=$!
 
-	# Wait for parking completion
-	if wait "$PARK_PID"; then
-		echo "Parking sequence completed successfully at $(date '+%F_%H:%M:%S')"
-		kill "$ZENITY_PID" >/dev/null 2>&1 || true
-		exit 0
-	else
-		echo "ERROR: Parking sequence failed. Check system status manually."
-		echo "Mount position may be unsafe. Verify hardware status."
-		exit 1
-	fi
+	exit 1
 fi

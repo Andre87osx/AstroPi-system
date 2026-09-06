@@ -1123,6 +1123,9 @@ Server</string>
                <property name="enabled">
                 <bool>false</bool>
                </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
                <property name="toolTip">
                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use the INDI WatchDog driver. It monitors connection between your remote equipment and Ekos. If the communication is lost between the two, the WatchDog driver goes into safe mode and executes a shutdown procedure to protect your equipment.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                </property>

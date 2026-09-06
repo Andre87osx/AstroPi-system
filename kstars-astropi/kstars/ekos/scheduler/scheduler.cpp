@@ -11,6 +11,7 @@
 
 #include "scheduler.h"
 
+#include "auxiliary/kspaths.h"
 #include "ksalmanac.h"
 #include "ksnotification.h"
 #include "kstars.h"
@@ -41,6 +42,7 @@
 #include <QTextStream>
 #include <QVBoxLayout>
 #include <QResizeEvent>
+#include <cmath>
 #include <fitsio.h>
 #include <ekos_scheduler_debug.h>
 #include <indicom.h>
@@ -243,24 +245,27 @@ Scheduler::Scheduler()
     // Connect geographical location - when it is available
     //connect(KStarsData::Instance()..., &LocationDialog::locationChanged..., this, &Scheduler::simClockTimeChanged);
 
-    // Force fixed error handling policy for AstroPi UI profile:
-    // - No scheduler-level retry/reschedule management
-    // - No delay
-    setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    errorHandlingRescheduleErrorsCB->setChecked(false);
-    errorHandlingDelaySB->setValue(0);
-    errorHandlingRescheduleErrorsCB->setEnabled(false);
-    errorHandlingDelaySB->setEnabled(false);
-    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    Options::setRescheduleErrors(false);
-    Options::setErrorHandlingStrategyDelay(0);
+    // AstroPi UI profile: the retry-after-abort policy (strategy/delay/reschedule errors) is
+    // configured from Configura KStars -> Ekos -> Scheduler -> Job Recovery, not from this tool's
+    // own (hidden) widgets. Mirror the persisted Options value into them at construction time.
+    setErrorHandlingStrategy(static_cast<ErrorHandlingStrategy>(Options::errorHandlingStrategy()));
+    errorHandlingRescheduleErrorsCB->setChecked(Options::rescheduleErrors());
+    errorHandlingDelaySB->setValue(Options::errorHandlingStrategyDelay());
+    errorHandlingRescheduleErrorsCB->setEnabled(true);
+    errorHandlingDelaySB->setEnabled(true);
 
     if (astroPiLogoLabel != nullptr)
     {
         // Prefer dedicated logo assets. Use wallpaper only as a last fallback.
+        // KSPaths::locate is the same robust lookup KStars itself uses for installed data files
+        // (searches the real install prefix, not a path relative to the binary) - the relative-path
+        // guesses below can silently miss on a different install layout, previously causing a fall
+        // through all the way to the much bigger AstroPi_wallpaper.png and an oversized logo.
+        const QString locatedLogoPath = KSPaths::locate(QStandardPaths::AppDataLocation, "icons/astropi_scheduler_logo.png");
         const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         const QStringList candidatePaths
         {
+            locatedLogoPath,
             ":/icons/astropi_scheduler_logo.png",
             appDataPath + "/astropi_scheduler_logo.png",
             QCoreApplication::applicationDirPath() + "/astropi_scheduler_logo.png",
@@ -302,10 +307,9 @@ Scheduler::Scheduler()
 <p><b>Policy globali (profilo AstroPi)</b><br/>
 • <b>MAX_FAILURE_ATTEMPTS</b> = 3 (retry standard per modulo/stage).<br/>
 • <b>UPDATE_PERIOD_MS</b> = 1000 ms (monitoring loop).<br/>
-• <b>ErrorHandlingStrategy</b> forzato a <b>ERROR_DONT_RESTART</b>.<br/>
-• <b>RescheduleErrors</b> forzato a <b>false</b>.<br/>
-• <b>Delay</b> scheduler forzato a <b>0 s</b>.<br/>
-• In uscita da errore: priorità a <b>findNextJob()</b>; se non esistono job eseguibili → procedure di chiusura/parcheggio.</p>
+• <b>ErrorHandlingStrategy</b> di default: <b>Queue</b> (ERROR_RESTART_AFTER_TERMINATION) — quando tutti i job eseguibili risultano completati/abortiti, lo scheduler attende il <b>Delay</b> configurato e poi rivaluta la coda, ritentando i job abortiti (es. velature/nuvole transitorie).<br/>
+• <b>Delay</b> di default: <b>3600 s (60 min)</b>. Regolabile dal tab Scheduler (radio button Queue/Immediate/None + campo delay).<br/>
+• In uscita da errore: priorità a <b>findNextJob()</b>; se non esistono job eseguibili → attesa Delay, poi procedure di chiusura/parcheggio se ancora nessun job è idoneo.</p>
 
 <p><b>Pipeline completa per job</b><br/>
 1) Validazione finestra temporale/altitudine/meteo.<br/>
@@ -481,7 +485,12 @@ void Scheduler::updateAstroPiLogo()
     const int minReadableWidth = 140;
     const int targetWidth = std::max(minReadableWidth, std::min(availableWidth, m_AstroPiLogoSource.width()));
 
-    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaledToWidth(targetWidth, Qt::SmoothTransformation));
+    // Hard cap independent of the width calculation above: a wide-aspect fallback image (e.g. the
+    // desktop wallpaper) scaled only by width could still end up with a huge height. Never let the
+    // logo grow taller than a small multiple of its designed minimum height.
+    const int maxReasonableHeight = astroPiLogoLabel->minimumHeight() > 0 ? astroPiLogoLabel->minimumHeight() * 3 : 192;
+    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaled(QSize(targetWidth, maxReasonableHeight), Qt::KeepAspectRatio,
+                                Qt::SmoothTransformation));
 }
 
 QString Scheduler::getCurrentJobName()
@@ -3904,6 +3913,16 @@ void Scheduler::checkJobStage()
             break;
 
         case SchedulerJob::STAGE_GUIDING:
+            if (getGuidingStatus() == Ekos::GUIDE_GUIDING && hasGuidingTelemetry())
+            {
+                appendLogText(i18n("Job '%1' guiding telemetry acquired (RMS online).", currentJob->getName()));
+                guideFailureCount = 0;
+                restartGuidingTimer.stop();
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
+                getNextAction();
+                break;
+            }
+
             if (currentOperationAttemptTime.isValid() &&
                     currentOperationAttemptTime.elapsed() > static_cast<int>(GUIDE_ATTEMPT_HARD_TIMEOUT_MS))
             {
@@ -4331,13 +4350,13 @@ bool Scheduler::appendEkosScheduleList(const QString &fileURL)
                 }
                 else if (!strcmp(tag, "ErrorHandlingStrategy"))
                 {
-                    setErrorHandlingStrategy(ERROR_DONT_RESTART);
+                    setErrorHandlingStrategy(ERROR_RESTART_AFTER_TERMINATION);
 
                     subEP = findXMLEle(ep, "delay");
                     if (subEP)
                     {
-                        errorHandlingDelaySB->setValue(0);
-                        Options::setErrorHandlingStrategyDelay(0);
+                        errorHandlingDelaySB->setValue(3600);
+                        Options::setErrorHandlingStrategyDelay(3600);
                     }
                     subEP = findXMLEle(ep, "RescheduleErrors");
                     Q_UNUSED(subEP)
@@ -4707,8 +4726,8 @@ bool Scheduler::saveScheduler(const QUrl &fileURL)
         outstream << "</Job>" << endl;
     }
 
-    outstream << "<ErrorHandlingStrategy value='" << ERROR_DONT_RESTART << "'>" << endl;
-    outstream << "<delay>0</delay>" << endl;
+    outstream << "<ErrorHandlingStrategy value='" << ERROR_RESTART_AFTER_TERMINATION << "'>" << endl;
+    outstream << "<delay>3600</delay>" << endl;
     outstream << "</ErrorHandlingStrategy>" << endl;
 
     outstream << "<StartupProcedure>" << endl;
@@ -5955,6 +5974,12 @@ void Scheduler::parkMount()
                 if (!manageConnectionLoss())
                     parkWaitState = PARKWAIT_ERROR;
             }
+            // Mount::park() can return false (e.g. mount busy slewing/not ready yet) without a DBUS-level
+            // error - previously this was silently ignored and the scheduler waited 60s for a park that
+            // was never actually started, guaranteeing a timeout. Log it and let the caller's retry loop
+            // (parkingFailureCount in checkMountParkingStatus) try again shortly instead of sitting idle.
+            else if (!mountReply.value())
+                appendLogText(i18n("Warning: mount park request was not accepted by the mount (busy or not ready). Will retry."));
             else currentOperationTime.start();
         }
 
@@ -6022,6 +6047,11 @@ void Scheduler::unParkMount()
                 if (!manageConnectionLoss())
                     parkWaitState = PARKWAIT_ERROR;
             }
+            // Mount::unpark() can return false (e.g. mount busy/not ready yet) without a DBUS-level error -
+            // previously this was silently ignored and the scheduler waited 60s for an unpark that was
+            // never actually started, guaranteeing a timeout. Log it and let the retry loop try again.
+            else if (!mountReply.value())
+                appendLogText(i18n("Warning: mount unpark request was not accepted by the mount (busy or not ready). Will retry."));
             else currentOperationTime.start();
         }
 
@@ -6107,6 +6137,13 @@ void Scheduler::checkMountParkingStatus()
                 else
                 {
                     appendLogText(i18n("Warning: mount unpark operation timed out on last attempt."));
+                    // Propagate the failure to the driving state machine (mirrors the
+                    // ISD::PARK_ERROR case below) - otherwise startupState/shutdownState
+                    // never advance to *_ERROR and the scheduler gets stuck forever
+                    // retrying/logging the same timeout without ever stopping or
+                    // disconnecting INDI/Ekos.
+                    if (startupState == STARTUP_UNPARKING_MOUNT)
+                        startupState = STARTUP_ERROR;
                     parkWaitState = PARKWAIT_ERROR;
                 }
             }
@@ -6127,6 +6164,14 @@ void Scheduler::checkMountParkingStatus()
                 else
                 {
                     appendLogText(i18n("Warning: mount park operation timed out on last attempt."));
+                    // Propagate the failure to the driving state machine (mirrors the
+                    // ISD::PARK_ERROR case below) - otherwise shutdownState never
+                    // advances to SHUTDOWN_ERROR and the scheduler gets stuck forever
+                    // retrying/logging the same timeout without ever stopping or
+                    // disconnecting INDI/Ekos (mount stays connected, never gets a
+                    // second park attempt via the WatchDog either).
+                    if (shutdownState == SHUTDOWN_PARKING_MOUNT)
+                        shutdownState = SHUTDOWN_ERROR;
                     parkWaitState = PARKWAIT_ERROR;
                 }
             }
@@ -6629,16 +6674,9 @@ Scheduler::ErrorHandlingStrategy Scheduler::getErrorHandlingStrategy()
 
 void Scheduler::setErrorHandlingStrategy(Scheduler::ErrorHandlingStrategy strategy)
 {
-    Q_UNUSED(strategy)
-    errorHandlingRescheduleErrorsCB->setChecked(false);
-    errorHandlingRescheduleErrorsCB->setEnabled(false);
-    errorHandlingDelaySB->setEnabled(false);
-    errorHandlingDelaySB->setValue(0);
-    Options::setErrorHandlingStrategy(ERROR_DONT_RESTART);
-    Options::setRescheduleErrors(false);
-    Options::setErrorHandlingStrategyDelay(0);
+    Options::setErrorHandlingStrategy(strategy);
 
-    switch (ERROR_DONT_RESTART)
+    switch (strategy)
     {
         case ERROR_RESTART_AFTER_TERMINATION:
             errorHandlingRestartAfterAllButton->setChecked(true);
@@ -7441,13 +7479,21 @@ void Scheduler::setGuideStatus(Ekos::GuideState status)
         // If calibration stage complete?
         if (status == Ekos::GUIDE_GUIDING)
         {
-            appendLogText(i18n("Job '%1' guiding is in progress.", currentJob->getName()));
-            guideFailureCount = 0;
-            // if guiding recovered while we are waiting, abort the restart
-            restartGuidingTimer.stop();
+            if (hasGuidingTelemetry())
+            {
+                appendLogText(i18n("Job '%1' guiding is in progress.", currentJob->getName()));
+                guideFailureCount = 0;
+                // if guiding recovered while we are waiting, abort the restart
+                restartGuidingTimer.stop();
 
-            currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
-            getNextAction();
+                currentJob->setStage(SchedulerJob::STAGE_GUIDING_COMPLETE);
+                getNextAction();
+            }
+            else
+            {
+                appendLogText(i18n("Job '%1' guiding started, waiting for RMS telemetry...", currentJob->getName()));
+                currentOperationTime.restart();
+            }
         }
         else if (status == Ekos::GUIDE_CALIBRATION_ERROR ||
                  status == Ekos::GUIDE_ABORTED)
@@ -7533,6 +7579,22 @@ GuideState Scheduler::getGuidingStatus()
     Ekos::GuideState gStatus = static_cast<Ekos::GuideState>(guideStatus.toInt());
 
     return gStatus;
+}
+
+bool Scheduler::hasGuidingTelemetry()
+{
+    if (guideInterface.isNull())
+        return false;
+
+    const QVariant axisSigma = guideInterface->property("axisSigma");
+    if (!axisSigma.isValid() || !axisSigma.canConvert<QList<double>>())
+        return false;
+
+    const QList<double> sigma = axisSigma.value<QList<double>>();
+    if (sigma.size() < 2)
+        return false;
+
+    return std::isfinite(sigma.at(0)) && std::isfinite(sigma.at(1));
 }
 
 void Scheduler::setCaptureStatus(Ekos::CaptureState status)
