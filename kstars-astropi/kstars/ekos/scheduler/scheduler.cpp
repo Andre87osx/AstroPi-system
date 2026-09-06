@@ -11,6 +11,7 @@
 
 #include "scheduler.h"
 
+#include "auxiliary/kspaths.h"
 #include "ksalmanac.h"
 #include "ksnotification.h"
 #include "kstars.h"
@@ -256,9 +257,15 @@ Scheduler::Scheduler()
     if (astroPiLogoLabel != nullptr)
     {
         // Prefer dedicated logo assets. Use wallpaper only as a last fallback.
+        // KSPaths::locate is the same robust lookup KStars itself uses for installed data files
+        // (searches the real install prefix, not a path relative to the binary) - the relative-path
+        // guesses below can silently miss on a different install layout, previously causing a fall
+        // through all the way to the much bigger AstroPi_wallpaper.png and an oversized logo.
+        const QString locatedLogoPath = KSPaths::locate(QStandardPaths::AppDataLocation, "icons/astropi_scheduler_logo.png");
         const QString appDataPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         const QStringList candidatePaths
         {
+            locatedLogoPath,
             ":/icons/astropi_scheduler_logo.png",
             appDataPath + "/astropi_scheduler_logo.png",
             QCoreApplication::applicationDirPath() + "/astropi_scheduler_logo.png",
@@ -478,7 +485,12 @@ void Scheduler::updateAstroPiLogo()
     const int minReadableWidth = 140;
     const int targetWidth = std::max(minReadableWidth, std::min(availableWidth, m_AstroPiLogoSource.width()));
 
-    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaledToWidth(targetWidth, Qt::SmoothTransformation));
+    // Hard cap independent of the width calculation above: a wide-aspect fallback image (e.g. the
+    // desktop wallpaper) scaled only by width could still end up with a huge height. Never let the
+    // logo grow taller than a small multiple of its designed minimum height.
+    const int maxReasonableHeight = astroPiLogoLabel->minimumHeight() > 0 ? astroPiLogoLabel->minimumHeight() * 3 : 192;
+    astroPiLogoLabel->setPixmap(m_AstroPiLogoSource.scaled(QSize(targetWidth, maxReasonableHeight), Qt::KeepAspectRatio,
+                                Qt::SmoothTransformation));
 }
 
 QString Scheduler::getCurrentJobName()
