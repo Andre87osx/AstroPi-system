@@ -190,16 +190,27 @@ void TestKStarsStartup::testIntegratedEkosTabs()
     QVERIFY(showEkos->isChecked());
     QVERIFY(!KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
     QVERIFY(!KStars::Instance()->toolBar("viewToolBar")->isVisible());
+    QVERIFY(!KStars::Instance()->toolBar("INDIToolBar")->isVisible());
+    const bool domeToolbarVisibility = KStars::Instance()->toolBar("DomeToolBar")->isVisible();
 
     mainTabs->setCurrentIndex(1);
     QVERIFY(!showEkos->isChecked());
     KStars::Instance()->actionCollection()->action("show_mainToolBar")->setChecked(true);
-    KStars::Instance()->actionCollection()->action("show_viewToolBar")->setChecked(true);
+    KStars::Instance()->actionCollection()->action("show_viewToolBar")->setChecked(false);
     QVERIFY(KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
-    QVERIFY(KStars::Instance()->toolBar("viewToolBar")->isVisible());
+    QVERIFY(!KStars::Instance()->toolBar("viewToolBar")->isVisible());
+    QVERIFY(KStars::Instance()->toolBar("INDIToolBar")->isVisible());
+    QCOMPARE(KStars::Instance()->toolBar("DomeToolBar")->isVisible(), domeToolbarVisibility);
     showEkos->trigger();
     QCOMPARE(mainTabs->currentIndex(), 0);
     QVERIFY(!KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
     QVERIFY(!KStars::Instance()->toolBar("viewToolBar")->isVisible());
+    QVERIFY(!KStars::Instance()->toolBar("INDIToolBar")->isVisible());
+    QCOMPARE(KStars::Instance()->toolBar("DomeToolBar")->isVisible(), domeToolbarVisibility);
+    mainTabs->setCurrentIndex(1);
+    QVERIFY(KStars::Instance()->toolBar("kstarsToolBar")->isVisible());
+    QVERIFY(!KStars::Instance()->toolBar("viewToolBar")->isVisible());
+    QVERIFY(KStars::Instance()->toolBar("INDIToolBar")->isVisible());
+    QCOMPARE(KStars::Instance()->toolBar("DomeToolBar")->isVisible(), domeToolbarVisibility);
 #endif
 }

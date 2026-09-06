@@ -997,10 +997,28 @@ void KStars::buildGUI()
 void KStars::updatePlanetariumToolbars()
 {
     const bool planetariumActive = m_MainTabWidget->currentWidget() == m_SkyMap;
-    toolBar("kstarsToolBar")->setVisible(
-        planetariumActive && actionCollection()->action("show_mainToolBar")->isChecked());
-    toolBar("viewToolBar")->setVisible(
-        planetariumActive && actionCollection()->action("show_viewToolBar")->isChecked());
+    const QStringList planetariumToolbars { "kstarsToolBar", "viewToolBar", "INDIToolBar", "TelescopeToolBar" };
+
+    if (planetariumActive)
+    {
+        if (m_planetariumToolbarStateSaved)
+        {
+            for (const QString &toolbarName : planetariumToolbars)
+                toolBar(toolbarName)->setVisible(m_planetariumToolbarVisibility.value(toolbarName));
+            m_planetariumToolbarStateSaved = false;
+        }
+        return;
+    }
+
+    if (!m_planetariumToolbarStateSaved)
+    {
+        for (const QString &toolbarName : planetariumToolbars)
+            m_planetariumToolbarVisibility.insert(toolbarName, toolBar(toolbarName)->isVisible());
+        m_planetariumToolbarStateSaved = true;
+    }
+
+    for (const QString &toolbarName : planetariumToolbars)
+        toolBar(toolbarName)->setVisible(false);
 }
 
 void KStars::setupEkosTab()

@@ -20,7 +20,9 @@
 
 #include <KXmlGuiWindow>
 #include <KLocalizedString>
+#include <QHash>
 #include <QLabel>
+#include <QStringList>
 
 #include <QDockWidget>
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
@@ -820,6 +822,9 @@ class KStars : public KXmlGuiWindow
 
           /** Show planetarium toolbars only while the planetarium tab is active. */
           void updatePlanetariumToolbars();
+
+          QHash<QString, bool> m_planetariumToolbarVisibility;
+          bool m_planetariumToolbarStateSaved { false };
 
           /** Create the Ekos tab. Deferred until after startup: building Ekos::Manager
            * inside buildGUI() races with KStars' own construction. */
